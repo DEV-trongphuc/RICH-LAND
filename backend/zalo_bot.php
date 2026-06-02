@@ -641,7 +641,7 @@ function getReportByTimeWindow($conn, $startTimestamp, $endTimestamp, $windowLab
 
     $stmtTicket = $conn->prepare("
         SELECT COUNT(*) as total,
-               SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count,
+               SUM(CASE WHEN status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as approved_count,
                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count
         FROM data_reports 
@@ -924,7 +924,7 @@ function generateWeeklyReportMessage($conn, $sale, $startTimestamp, $endTimestam
     // Query tickets (data_reports) raised by this sale in the time window
     $stmtTicket = $conn->prepare("
         SELECT 
-            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_tickets,
+            SUM(CASE WHEN status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as approved_tickets,
             SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_tickets,
             SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_tickets
         FROM data_reports
@@ -1061,7 +1061,7 @@ function generateMonthlyReportMessage($conn, $sale, $startTimestamp, $endTimesta
     // Query tickets (data_reports) raised by this sale in the time window
     $stmtTicket = $conn->prepare("
         SELECT 
-            SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_tickets,
+            SUM(CASE WHEN status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as approved_tickets,
             SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_tickets,
             SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_tickets
         FROM data_reports

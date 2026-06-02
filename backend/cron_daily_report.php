@@ -149,7 +149,7 @@ function runDailyReportCron($conn)
         // 3. Lấy số ticket trong kỳ báo cáo (cùng cửa sổ với data)
         $stmtTicket = $conn->prepare("
             SELECT COUNT(*) as total,
-                   SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count,
+                   SUM(CASE WHEN status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as approved_count,
                    SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count
             FROM data_reports 

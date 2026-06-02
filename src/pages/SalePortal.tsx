@@ -7,7 +7,7 @@ import {
   XCircle, Clock, FileText,
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
-  LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings
+  LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
@@ -800,6 +800,9 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     if (status === 'assigned' && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
     }
+    if (reportStatus === 'approved_no_comp') {
+      return <span className="badge" style={{ background: '#dbeafe', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)' }}>{t('Lỗi không bù')}</span>;
+    }
     if (status === 'error' && reportStatus === 'approved') {
       return <span className="badge warning">{t('Ticket')}</span>;
     }
@@ -841,6 +844,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         if (lead.report_status !== 'pending') return false;
       } else if (statusFilter === 'approved_ticket') {
         if (lead.report_status !== 'approved') return false;
+      } else if (statusFilter === 'approved_no_comp_ticket') {
+        if (lead.report_status !== 'approved_no_comp') return false;
       } else if (statusFilter === 'rejected_ticket') {
         if (lead.report_status !== 'rejected') return false;
       }
@@ -1574,6 +1579,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 { value: 'reminder', label: t('Nhắc lại') },
                 { value: 'pending_ticket', label: t('Ticket chờ duyệt') },
                 { value: 'approved_ticket', label: t('Ticket đã bù') },
+                { value: 'approved_no_comp_ticket', label: t('Lỗi không bù') },
                 { value: 'rejected_ticket', label: t('Ticket bị từ chối') }
               ]}
               value={statusFilter}
@@ -1756,6 +1762,11 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                                   {t('Đã bù')}
                                 </span>
                               )}
+                              {lead.report_status === 'approved_no_comp' && (
+                                <span className="badge" style={{ background: '#dbeafe', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)', cursor: 'pointer' }} title={t("Ticket duyệt lỗi không bù (Bấm để xem chi tiết)")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
+                                  {t('Lỗi không bù')}
+                                </span>
+                              )}
                               {lead.report_status === 'rejected' && (
                                 <span className="badge danger" title={t("Từ chối")} onClick={() => { setActiveDetailLead(lead); setDetailModalOpen(true); }}>
                                   {t('Từ chối')}
@@ -1911,6 +1922,11 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                             {lead.report_status === 'approved' && (
                               <div style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: 'var(--color-success-light)', color: 'var(--color-success)' }} title={t("Ticket đã duyệt bù")}>
                                 <CheckCircle2 size={16} />
+                              </div>
+                            )}
+                            {lead.report_status === 'approved_no_comp' && (
+                              <div style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#dbeafe', color: '#2563eb' }} title={t("Ticket duyệt lỗi không bù")}>
+                                <Info size={16} />
                               </div>
                             )}
                             {lead.report_status === 'rejected' && (
@@ -3834,18 +3850,20 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     if (item.is_ticket === 1) {
                       let dotColor = '#ef4444'; // default rejected/red
                       if (item.ticket_status === 'approved') dotColor = '#10b981';
+                      if (item.ticket_status === 'approved_no_comp') dotColor = '#2563eb';
                       if (item.ticket_status === 'pending') dotColor = '#f59e0b';
 
                       let statusLabel = t('Báo cáo lỗi (Đã bị từ chối)');
                       if (item.ticket_status === 'approved') statusLabel = t('Báo cáo lỗi (Đã duyệt bù)');
+                      if (item.ticket_status === 'approved_no_comp') statusLabel = t('Báo cáo lỗi (Duyệt không bù)');
                       if (item.ticket_status === 'pending') statusLabel = t('Báo cáo lỗi (Chờ duyệt)');
 
                       return (
                         <div key={idx} className="timeline-item" style={{ marginBottom: '1.25rem' }}>
                           <div className="timeline-icon" style={{ backgroundColor: dotColor, left: '-1.85rem', width: '1rem', height: '1rem', border: '3px solid var(--color-surface)', boxShadow: '0 0 0 1px var(--color-border)' }} />
                           <div className="timeline-content" style={{
-                            background: item.ticket_status === 'approved' ? 'var(--color-success-light)' : item.ticket_status === 'pending' ? 'var(--color-warning-light)' : 'var(--color-danger-light)',
-                            color: item.ticket_status === 'approved' ? 'var(--color-success)' : item.ticket_status === 'pending' ? 'var(--color-warning)' : 'var(--color-danger)',
+                            background: item.ticket_status === 'approved' ? 'var(--color-success-light)' : item.ticket_status === 'approved_no_comp' ? '#dbeafe' : item.ticket_status === 'pending' ? 'var(--color-warning-light)' : 'var(--color-danger-light)',
+                            color: item.ticket_status === 'approved' ? 'var(--color-success)' : item.ticket_status === 'approved_no_comp' ? '#2563eb' : item.ticket_status === 'pending' ? 'var(--color-warning)' : 'var(--color-danger)',
                             padding: '10px 14px', borderRadius: '12px', border: '1px solid currentColor'
                           }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '4px', marginBottom: '4px' }}>
@@ -3985,16 +4003,17 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             {/* Admin Resolution & Feedback details */}
             <div style={{
               display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '12px', borderRadius: '12px', border: '1px solid',
-              background: selectedDetailTicket.status === 'approved' ? 'var(--color-success-light)' : selectedDetailTicket.status === 'pending' ? '#fef3c7' : 'var(--color-danger-light)',
-              borderColor: selectedDetailTicket.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' : selectedDetailTicket.status === 'pending' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-              color: selectedDetailTicket.status === 'approved' ? 'var(--color-success)' : selectedDetailTicket.status === 'pending' ? '#d97706' : 'var(--color-danger)'
+              background: selectedDetailTicket.status === 'approved' ? 'var(--color-success-light)' : selectedDetailTicket.status === 'approved_no_comp' ? '#dbeafe' : selectedDetailTicket.status === 'pending' ? '#fef3c7' : 'var(--color-danger-light)',
+              borderColor: selectedDetailTicket.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' : selectedDetailTicket.status === 'approved_no_comp' ? 'rgba(37, 99, 235, 0.2)' : selectedDetailTicket.status === 'pending' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+              color: selectedDetailTicket.status === 'approved' ? 'var(--color-success)' : selectedDetailTicket.status === 'approved_no_comp' ? '#2563eb' : selectedDetailTicket.status === 'pending' ? '#d97706' : 'var(--color-danger)'
             }}>
               <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
                 {selectedDetailTicket.status === 'pending' && <Clock size={16} />}
                 {selectedDetailTicket.status === 'approved' && <CheckCircle2 size={16} />}
+                {selectedDetailTicket.status === 'approved_no_comp' && <Info size={16} />}
                 {selectedDetailTicket.status === 'rejected' && <XCircle size={16} />}
                 <span>
-                  {t('Trạng thái Ticket: ')}{selectedDetailTicket.status === 'approved' ? t('Đã duyệt đền bù') : selectedDetailTicket.status === 'pending' ? t('Đang chờ phê duyệt') : t('Đã bị từ chối')}
+                  {t('Trạng thái Ticket: ')}{selectedDetailTicket.status === 'approved' ? t('Đã duyệt đền bù') : selectedDetailTicket.status === 'approved_no_comp' ? t('Duyệt không bù') : selectedDetailTicket.status === 'pending' ? t('Đang chờ phê duyệt') : t('Đã bị từ chối')}
                 </span>
               </div>
 
@@ -4010,6 +4029,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     <strong>{t('Ý kiến phản hồi:')}</strong>{' '}
                     {selectedDetailTicket.status === 'approved'
                       ? (selectedDetailTicket.approval_reason || t('Hợp lệ & Đã được đền bù lượt chia mới.'))
+                      : selectedDetailTicket.status === 'approved_no_comp'
+                      ? (selectedDetailTicket.approval_reason || t('Hợp lệ nhưng không đền bù.'))
                       : (selectedDetailTicket.reject_reason || t('Không đủ điều kiện đền bù data lỗi.'))
                     }
                   </div>
@@ -4226,10 +4247,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                             </div>
                             <span style={{
                               padding: '2px 8px', borderRadius: '12px', fontSize: '0.7rem', fontWeight: 700,
-                              background: item.status === 'approved' ? 'var(--color-success-light)' : item.status === 'pending' ? '#fef3c7' : 'var(--color-danger-light)',
-                              color: item.status === 'approved' ? 'var(--color-success)' : item.status === 'pending' ? '#d97706' : 'var(--color-danger)'
+                              background: item.status === 'approved' ? 'var(--color-success-light)' : item.status === 'approved_no_comp' ? '#dbeafe' : item.status === 'pending' ? '#fef3c7' : 'var(--color-danger-light)',
+                              color: item.status === 'approved' ? 'var(--color-success)' : item.status === 'approved_no_comp' ? '#2563eb' : item.status === 'pending' ? '#d97706' : 'var(--color-danger)'
                             }}>
-                              {item.status === 'approved' ? t('Đã bù') : item.status === 'pending' ? t('Chờ duyệt') : t('Từ chối')}
+                              {item.status === 'approved' ? t('Đã bù') : item.status === 'approved_no_comp' ? t('Không bù') : item.status === 'pending' ? t('Chờ duyệt') : t('Từ chối')}
                             </span>
                           </div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', borderLeft: '2px solid var(--color-border)', paddingLeft: 8, fontStyle: 'italic' }}>
@@ -4239,7 +4260,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                             <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
                               <Avatar src={item.resolved_by_avatar} name={item.resolved_by} size={16} />
                               <span>
-                                <strong>Admin {item.resolved_by}:</strong> {item.reject_reason || item.approval_reason || t('Đã duyệt đền bù')}
+                                <strong>Admin {item.resolved_by}:</strong> {item.reject_reason || item.approval_reason || (item.status === 'approved_no_comp' ? t('Đã duyệt không bù') : t('Đã duyệt đền bù'))}
                               </span>
                             </div>
                           )}

@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 type Lead = {
   id: number;
   lead_id?: number;
+  report_id?: number;
   name: string;
   phone: string;
   email: string;
@@ -237,7 +238,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     return () => window.removeEventListener('theme-change', handleThemeChange);
   }, []);
 
-  const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'rejected';
+  const activeFilter = (searchParams.get('status') || 'pending') as 'all' | 'pending' | 'approved' | 'approved_no_comp' | 'rejected';
   const saleFilter = searchParams.get('consultant') || '';
 
   const [dateFilter, setDateFilter] = useState(() => {
@@ -264,7 +265,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const [approveReason, setApproveReason] = useState('');
   const [approvingId, setApprovingId] = useState<number | null>(null);
   const [totalCount, setTotalCount] = useState(0);
-  const [stats, setStats] = useState<any>({ pending: 0, approved: 0, rejected: 0, all: 0 });
+  const [stats, setStats] = useState<any>({ pending: 0, approved: 0, approved_no_comp: 0, rejected: 0, all: 0 });
   const [consultantOptions, setConsultantOptions] = useState<string[]>([]);
   const [allConsultants, setAllConsultants] = useState<any[]>([]);
   const [allAccounts, setAllAccounts] = useState<any[]>([]);
@@ -749,8 +750,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
     setApproveModalOpen(true);
   };
 
-  const submitApprove = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitApprove = async (noComp: boolean) => {
     if (!approvingId) return;
 
     setIsActioning(approvingId);
@@ -762,11 +762,12 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         body: JSON.stringify({
           id: approvingId,
           approval_reason: approveReason,
-          new_consultant_id: reassignConsultantId ? Number(reassignConsultantId) : null
+          new_consultant_id: reassignConsultantId ? Number(reassignConsultantId) : null,
+          no_compensation: noComp
         })
       });
       if (res.success) {
-        toast.success(t('Đã duyệt đền bù Data!'));
+        toast.success(noComp ? t('Đã duyệt không đền bù!') : t('Đã duyệt đền bù Data!'));
         window.dispatchEvent(new Event('ticket-resolved'));
         fetchReports();
       } else {
@@ -776,6 +777,30 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       toast.error(t('Lỗi: ') + e.message);
     }
     setIsActioning(null);
+  };
+
+  const [isCompensatingNoComp, setIsCompensatingNoComp] = useState(false);
+
+  const handleCompensateNoComp = async (reportId: number) => {
+    if (!window.confirm(t("Bạn có chắc chắn muốn thực hiện bù lỗi cho ticket này không? Hệ thống sẽ cộng 1 lượt đền bù cho Sale và chuyển trạng thái log phân bổ sang lỗi."))) return;
+    setIsCompensatingNoComp(true);
+    try {
+      const res = await fetchAPI('compensate_approved_no_comp', {
+        method: 'POST',
+        body: JSON.stringify({ id: reportId })
+      });
+      if (res.success) {
+        toast.success(t('Đã thực hiện bù lỗi thành công!'));
+        setSelectedLead(null);
+        fetchReports();
+      } else {
+        toast.error(res.message || t('Có lỗi xảy ra'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    } finally {
+      setIsCompensatingNoComp(false);
+    }
   };
 
   const openRejectModal = (id: number) => {
@@ -958,9 +983,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const FILTER_TABS = [
     { key: 'pending', label: 'Chờ duyệt', color: '#b45309', bg: '#fef3c7' },
     { key: 'approved', label: 'Đã duyệt', color: '#065f46', bg: '#d1fae5' },
+    { key: 'approved_no_comp', label: 'Duyệt không bù', color: '#2563eb', bg: '#dbeafe' },
     { key: 'rejected', label: 'Đã từ chối', color: '#6b7280', bg: '#f3f4f6' },
     { key: 'all', label: 'Tất cả', color: 'var(--color-text)', bg: 'var(--color-bg)' },
-  ] as const;
+  ];
 
   return (
     <div>
@@ -1463,6 +1489,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           type: r.lead_type || '-',
                           note: r.lead_note || '',
                           report_status: r.status,
+                          report_id: r.id,
                           resolved_by: r.resolved_by,
                           resolved_at: r.resolved_at,
                           last_activity_at: r.last_activity_at,
@@ -1507,18 +1534,18 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           <div style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
                             fontSize: '0.75rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                            background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : 'var(--color-border)',
-                            color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-text-muted)'
+                            background: r.status === 'pending' ? 'var(--color-warning-light)' : r.status === 'approved' ? 'var(--color-success-light)' : r.status === 'approved_no_comp' ? '#dbeafe' : 'var(--color-border)',
+                            color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : r.status === 'approved_no_comp' ? '#2563eb' : 'var(--color-text-muted)'
                           }}>
-                            {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
+                            {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : r.status === 'approved_no_comp' ? t('Duyệt không bù') : t('Từ chối')}
                           </div>
                           {r.status === 'rejected' && r.reject_reason && (
                             <div style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'var(--color-danger-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
                               {t('Lý do:')} {r.reject_reason}
                             </div>
                           )}
-                          {r.status === 'approved' && r.approval_reason && (
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                          {(r.status === 'approved' || r.status === 'approved_no_comp') && r.approval_reason && (
+                            <div style={{ fontSize: '0.75rem', color: r.status === 'approved' ? 'var(--color-success)' : '#2563eb', background: r.status === 'approved' ? 'var(--color-success-light)' : '#e0e7ff', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
                               {t('Lý do:')} {r.approval_reason}
                             </div>
                           )}
@@ -1527,7 +1554,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={16} />
                             <span>
-                              {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
+                              {r.status === 'approved' || r.status === 'approved_no_comp' ? t('Duyệt') : t('Từ chối')} {t('bởi:')} <strong style={{ color: 'var(--color-text-muted)' }}>{t(r.resolved_by || 'Hệ thống')}</strong>
                             </span>
                             {r.resolved_at && (
                               <>
@@ -1541,27 +1568,14 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       <td className="col-actions" style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {r.status === 'pending' ? (
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                            {r.zalo_chat_id && (
-                              <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                                <Bell size={14} />
-                              </button>
-                            )}
-                            <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none' }}>
+                            <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none', minWidth: '85px' }}>
                               {t('Từ chối')}
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none' }}>
-                              {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
+                            <button onClick={(e) => { e.stopPropagation(); openApproveModal(r.id); }} disabled={isActioning === r.id} className="btn primary sm" style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', minWidth: '85px' }}>
+                              {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt')}
                             </button>
                           </div>
-                        ) : (
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
-                            {r.zalo_chat_id && (
-                              <button onClick={(e) => { e.stopPropagation(); setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name }); setQuickMessageOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: '#0068ff' }} title={t("Nhắn Zalo Bot cho Sale")}>
-                                <Bell size={14} />
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        ) : null}
                       </td>
                     </tr>
                   ))}
@@ -1590,6 +1604,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       type: r.lead_type || '-',
                       note: r.lead_note || '',
                       report_status: r.status,
+                      report_id: r.id,
                       resolved_by: r.resolved_by,
                       resolved_at: r.resolved_at,
                       last_activity_at: r.last_activity_at,
@@ -1656,7 +1671,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
                   {/* Error Reason & Status Callout */}
                   <div style={{
-                    background: r.status === 'pending' ? 'rgba(245, 158, 11, 0.04)' : r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(239, 68, 68, 0.04)',
+                    background: r.status === 'pending' ? 'rgba(245, 158, 11, 0.04)' : r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : r.status === 'approved_no_comp' ? 'rgba(37, 99, 235, 0.04)' : 'rgba(239, 68, 68, 0.04)',
                     padding: '10px 12px',
                     borderRadius: '8px',
                     display: 'flex',
@@ -1664,8 +1679,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     gap: '6px'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                        {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : t('Từ chối')}
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: r.status === 'pending' ? 'var(--color-warning)' : r.status === 'approved' ? 'var(--color-success)' : r.status === 'approved_no_comp' ? '#2563eb' : 'var(--color-danger)' }}>
+                        {r.status === 'pending' ? t('Chờ duyệt') : r.status === 'approved' ? t('Đã duyệt') : r.status === 'approved_no_comp' ? t('Duyệt không bù') : t('Từ chối')}
                       </span>
                     </div>
 
@@ -1678,7 +1693,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', borderTop: '1px dashed var(--color-border-light)', paddingTop: 6, marginTop: 4 }}>
                         <Avatar src={r.resolved_by_avatar} name={t(r.resolved_by || 'Hệ thống')} size={14} />
                         <span>
-                          {r.status === 'approved' ? t('Duyệt') : t('Từ chối')} {t('bởi')} <strong>{t(r.resolved_by || 'Hệ thống')}</strong>
+                          {r.status === 'approved' || r.status === 'approved_no_comp' ? t('Duyệt') : t('Từ chối')} {t('bởi')} <strong>{t(r.resolved_by || 'Hệ thống')}</strong>
                         </span>
                         {r.resolved_at && (
                           <span>• {new Date(r.resolved_at).toLocaleString('vi-VN')}</span>
@@ -1691,8 +1706,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         {t('Lý do từ chối:')} {r.reject_reason}
                       </div>
                     )}
-                    {r.status === 'approved' && r.approval_reason && (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 600, background: 'rgba(16, 185, 129, 0.04)', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
+                    {(r.status === 'approved' || r.status === 'approved_no_comp') && r.approval_reason && (
+                      <div style={{ fontSize: '0.75rem', color: r.status === 'approved' ? 'var(--color-success)' : '#2563eb', fontWeight: 600, background: r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : '#e0e7ff', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
                         {t('Ghi chú duyệt:')} {r.approval_reason}
                       </div>
                     )}
@@ -1700,22 +1715,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
                   {/* Actions footer */}
                   {r.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
-                      {r.zalo_chat_id && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name });
-                            setQuickMessageOpen(true);
-                          }}
-                          className="btn ghost sm"
-                          style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }}
-                          title={t("Nhắn Zalo Bot")}
-                        >
-                          <Bell size={16} />
-                        </button>
-                      )}
-
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem', width: '100%' }} onClick={e => e.stopPropagation()}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1723,10 +1723,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                         disabled={isActioning === r.id}
                         className="btn outline sm"
-                        style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                        style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.75rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px' }}
                         title={t('Từ chối')}
                       >
-                        <XCircle size={14} />
+                        <XCircle size={12} />
                         <span>{t('Từ chối')}</span>
                       </button>
 
@@ -1737,28 +1737,11 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                         disabled={isActioning === r.id}
                         className="btn primary sm"
-                        style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                        style={{ background: '#10b981', borderColor: '#10b981', boxShadow: 'none', height: 36, borderRadius: 10, fontSize: '0.75rem', fontWeight: 700, flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '0 8px' }}
                         title={t('Duyệt')}
                       >
-                        <CheckCircle2 size={14} />
+                        <CheckCircle2 size={12} />
                         <span>{t('Duyệt')}</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {r.status !== 'pending' && r.zalo_chat_id && (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setQuickMessageTarget({ id: r.consultant_id, name: r.consultant_name });
-                          setQuickMessageOpen(true);
-                        }}
-                        className="btn ghost sm"
-                        style={{ width: 36, height: 36, padding: 0, borderRadius: 10, color: '#0068ff', border: '1px solid var(--color-border)', background: 'var(--color-surface)', flexShrink: 0 }}
-                        title={t("Nhắn Zalo Bot")}
-                      >
-                        <Bell size={16} />
                       </button>
                     </div>
                   )}
@@ -1922,13 +1905,61 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       </CustomModal>
 
       {/* Approve Modal */}
-      <CustomModal isOpen={approveModalOpen} onClose={() => setApproveModalOpen(false)} title={t("Duyệt & Đền Bù Data")}>
-        {approveModalOpen && (
-          <form onSubmit={submitApprove}>
+      <CustomModal isOpen={approveModalOpen} onClose={() => setApproveModalOpen(false)} title={t("Phê Duyệt Báo Cáo Lỗi")}>
+        {approveModalOpen && (() => {
+          const currentReport = reports.find(r => Number(r.id) === Number(approvingId));
+          return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                {t("Bạn có chắc chắn muốn DUYỆT báo cáo lỗi này và ĐỀN BÙ 1 lượt nhận Data tiếp theo cho Sale không? Hành động này sẽ cộng thêm chỉ số đền bù vào vòng xoay Round-Robin ngay lập tức.")}
-              </p>
+              {currentReport && (
+                <>
+                  {/* Sale Profile Card */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    padding: '12px 16px',
+                    background: 'var(--color-bg)',
+                    borderRadius: 12,
+                    border: '1px solid var(--color-border-light)'
+                  }}>
+                    <Avatar src={currentReport.consultant_avatar} name={currentReport.consultant_name} size={48} />
+                    <div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>
+                        {t("Yêu cầu bởi Sale")}
+                      </div>
+                      <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                        {currentReport.consultant_name}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lead & Issue details */}
+                  <div style={{
+                    padding: '12px 16px',
+                    background: 'rgba(124, 58, 237, 0.03)',
+                    borderRadius: 12,
+                    border: '1.5px dashed rgba(124, 58, 237, 0.12)',
+                    fontSize: '0.85rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                      <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{t("Khách hàng")}:</span>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text)', textAlign: 'right' }}>
+                        {currentReport.lead_name} ({maskPhone(currentReport.lead_phone)})
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                      <span style={{ color: 'var(--color-text-muted)', flexShrink: 0 }}>{t("Lý do báo lỗi")}:</span>
+                      <span style={{ fontWeight: 500, color: 'var(--color-danger)', textAlign: 'right' }}>
+                        {currentReport.reason}
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
+
               <div className="form-group">
                 <label className="form-label">{t("Lý do duyệt (không bắt buộc)")}</label>
                 <textarea
@@ -1940,7 +1971,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   style={{ minHeight: 80, resize: 'vertical' }}
                 />
               </div>
-              {reports.find(r => Number(r.id) === Number(approvingId))?.reason?.includes('Trùng của người khác') && (
+
+              {currentReport?.reason?.includes('Trùng của người khác') && (
                 <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                     {t("Nhắc lại cho TVV khác (Tùy chọn)")}
@@ -1949,10 +1981,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     options={[
                       { value: '', label: t('Không nhắc lại cho TVV khác'), icon: null },
                       ...allConsultants
-                        .filter(c => {
-                          const currentReport = reports.find(r => Number(r.id) === Number(approvingId));
-                          return Number(c.id) !== Number(currentReport?.consultant_id);
-                        })
+                        .filter(c => Number(c.id) !== Number(currentReport?.consultant_id))
                         .map(c => ({
                           value: String(c.id),
                           label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
@@ -1974,15 +2003,31 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   </p>
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8, flexWrap: 'wrap' }}>
                 <button type="button" className="btn ghost" onClick={() => setApproveModalOpen(false)}>{t("Hủy")}</button>
-                <button type="submit" className="btn primary" style={{ background: '#10b981', borderColor: '#10b981' }} disabled={isActioning !== null}>
-                  {isActioning ? t("Đang xử lý...") : t("Xác nhận duyệt")}
+                <button
+                  type="button"
+                  className="btn primary"
+                  style={{ background: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
+                  onClick={() => submitApprove(true)}
+                  disabled={isActioning !== null}
+                >
+                  {isActioning === approvingId ? t("Đang xử lý...") : t("Duyệt Không Bù")}
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  style={{ background: '#10b981', borderColor: '#10b981' }}
+                  onClick={() => submitApprove(false)}
+                  disabled={isActioning !== null}
+                >
+                  {isActioning === approvingId ? t("Đang xử lý...") : t("Duyệt & Đền Bù")}
                 </button>
               </div>
             </div>
-          </form>
-        )}
+          );
+        })()}
       </CustomModal>
 
       {/* Customer Detail Modal */}
@@ -2160,7 +2205,32 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         )}
                       </>
                     )}
- 
+                    {user?.role === 'admin' && selectedLead.report_status === 'approved_no_comp' && !isAdminEditingLead && (
+                      <button
+                        onClick={() => handleCompensateNoComp(selectedLead.report_id || 0)}
+                        disabled={isCompensatingNoComp}
+                        title={t("Bù lỗi")}
+                        className="detail-action-btn"
+                        style={{
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          border: 'none',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.35)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
+                        }}
+                      >
+                        <Zap size={14} />
+                        {isCompensatingNoComp ? t('Đang xử lý...') : t('Bù lỗi')}
+                      </button>
+                    )}
                     {user?.role === 'admin' && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
                       <button
                         onClick={() => {
@@ -2415,6 +2485,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       {selectedLead.status === 'assigned' && (
                         selectedLead.report_status === 'pending' ? (
                           <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t("Ticket Review")}</span>
+                        ) : selectedLead.report_status === 'approved_no_comp' ? (
+                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#dbeafe', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)' }}>{t("Lỗi không bù")}</span>
                         ) : (
                           <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>{t("Đã chia")}</span>
                         )

@@ -299,6 +299,7 @@ if (!in_array($action, $publicActions)) {
         'delete_mapping',
         'approve_report',
         'reject_report',
+        'compensate_approved_no_comp',
         'get_active_compensation_logs',
         'reassign_lead',
         'force_sync',
@@ -347,6 +348,7 @@ if (!in_array($action, $publicActions)) {
         'reorder_rules',
         'approve_report',
         'reject_report',
+        'compensate_approved_no_comp',
         'approve_held_lead',
         'reject_held_lead',
         'blacklist_held_lead',
@@ -1150,7 +1152,7 @@ switch ($action) {
         $sqlTickets = "
             SELECT 
                 COUNT(*) as total,
-                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as approved,
                 SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
             FROM data_reports
@@ -1674,7 +1676,7 @@ switch ($action) {
             SELECT 
                 DATE(t.created_at) as date_str,
                 COUNT(*) as ticket_total,
-                SUM(CASE WHEN t.status = 'approved' THEN 1 ELSE 0 END) as ticket_approved
+                SUM(CASE WHEN t.status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as ticket_approved
             FROM data_reports t
             $ticketJoinQuery
             WHERE $ticketWhereClause
@@ -2673,7 +2675,7 @@ switch ($action) {
         $stmtTickets = $conn->prepare("
             SELECT 
                 COUNT(*) as total,
-                SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN status IN ('approved', 'approved_no_comp') THEN 1 ELSE 0 END) as approved,
                 SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending
             FROM data_reports
@@ -4751,6 +4753,11 @@ switch ($action) {
         $recordsTypes = $baseTypes;
         if ($status === 'pending') {
             $recordsConds[] = "r.status = 'pending'";
+        } else if ($status === 'approved_no_comp') {
+            $recordsConds[] = "r.status = 'approved_no_comp'";
+            if ($dateCondition !== "1=1") {
+                $recordsConds[] = $dateCondition;
+            }
         } else if ($status === 'approved' || $status === 'rejected') {
             $recordsConds[] = "r.status = ?";
             $recordsParams[] = $status;
@@ -4761,7 +4768,7 @@ switch ($action) {
         } else {
             // $status === 'all'
             if ($dateCondition !== "1=1") {
-                $recordsConds[] = "(r.status = 'pending' OR (r.status IN ('approved', 'rejected') AND $dateCondition))";
+                $recordsConds[] = "(r.status = 'pending' OR (r.status IN ('approved', 'rejected', 'approved_no_comp') AND $dateCondition))";
             }
         }
 
@@ -4772,6 +4779,7 @@ switch ($action) {
             SELECT 
                 SUM(CASE WHEN r.status = 'pending' THEN 1 ELSE 0 END) as pending_cnt,
                 SUM(CASE WHEN r.status = 'approved' AND ($dateCondition) THEN 1 ELSE 0 END) as approved_cnt,
+                SUM(CASE WHEN r.status = 'approved_no_comp' AND ($dateCondition) THEN 1 ELSE 0 END) as approved_no_comp_cnt,
                 SUM(CASE WHEN r.status = 'rejected' AND ($dateCondition) THEN 1 ELSE 0 END) as rejected_cnt
             FROM data_reports r
             JOIN leads l ON r.lead_id = l.id
@@ -4791,9 +4799,10 @@ switch ($action) {
         $stats = [
             'pending' => (int) ($rowStats['pending_cnt'] ?? 0),
             'approved' => (int) ($rowStats['approved_cnt'] ?? 0),
+            'approved_no_comp' => (int) ($rowStats['approved_no_comp_cnt'] ?? 0),
             'rejected' => (int) ($rowStats['rejected_cnt'] ?? 0),
         ];
-        $stats['all'] = $stats['pending'] + $stats['approved'] + $stats['rejected'];
+        $stats['all'] = $stats['pending'] + $stats['approved'] + $stats['approved_no_comp'] + $stats['rejected'];
 
         // Query 2: Get total records count for pagination
         $countSql = "
@@ -4913,6 +4922,7 @@ switch ($action) {
         $report_id = (int) ($input['id'] ?? 0);
         $approval_reason = trim($input['approval_reason'] ?? '');
         $new_consultant_id = isset($input['new_consultant_id']) ? (int) $input['new_consultant_id'] : 0;
+        $no_compensation = isset($input['no_compensation']) ? (bool) $input['no_compensation'] : false;
         if (!$report_id) {
             echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
             break;
@@ -4969,13 +4979,15 @@ switch ($action) {
                 $newConsultantName = $newCInfo['name'];
             }
 
-            // 2. Mark report as approved
-            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', approval_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
-            $updRep->bind_param("ssi", $approval_reason, $adminName, $report_id);
+            // 2. Mark report as approved or approved_no_comp
+            $statusVal = $no_compensation ? 'approved_no_comp' : 'approved';
+            $updRep = $conn->prepare("UPDATE data_reports SET status=?, approval_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
+            $updRep->bind_param("sssi", $statusVal, $approval_reason, $adminName, $report_id);
             $updRep->execute();
 
             // 3. Mark lead as faulty (Append to note and optionally assign to new consultant)
-            $faultyMsg = "[LỖI - ĐÃ DUYỆT]: " . $report['reason'];
+            $notePrefix = $no_compensation ? "[LỖI - DUYỆT KHÔNG BÙ]" : "[LỖI - ĐÃ DUYỆT]";
+            $faultyMsg = $notePrefix . ": " . $report['reason'];
             if (!empty($approval_reason)) {
                 $faultyMsg .= " | Lý do duyệt: " . $approval_reason;
             }
@@ -4991,15 +5003,17 @@ switch ($action) {
             }
             $updLead->execute();
 
-            // Mark distribution_logs as error
-            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
-            $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
-            $updLog->execute();
+            if (!$no_compensation) {
+                // Mark distribution_logs as error
+                $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+                $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
+                $updLog->execute();
 
-            // 4. Increment compensation_count for the consultant in that round
-            $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
-            $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
-            $updComp->execute();
+                // 4. Increment compensation_count for the consultant in that round
+                $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
+                $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
+                $updComp->execute();
+            }
 
             // 5. Create reminder distribution log if new consultant selected
             if ($new_consultant_id > 0) {
@@ -5013,7 +5027,8 @@ switch ($action) {
                 $stmtRemLog->close();
             }
 
-            logAdminAction($conn, $decodedUser['id'], 'APPROVE_REPORT', [
+            $adminActionType = $no_compensation ? 'APPROVE_REPORT_NO_COMP' : 'APPROVE_REPORT';
+            logAdminAction($conn, $decodedUser['id'], $adminActionType, [
                 'report_id' => $report_id,
                 'lead_id' => $report['lead_id'],
                 'consultant_id' => $report['consultant_id'],
@@ -5044,6 +5059,7 @@ switch ($action) {
             $leadStmt->bind_param("i", $report['lead_id']);
             $leadStmt->execute();
             $lead = $leadStmt->get_result()->fetch_assoc();
+            $leadStmt->close();
 
             $cName = $consultant['name'] ?? 'Tư vấn viên';
             $lName = $lead['name'] ?? 'Khách hàng';
@@ -5060,45 +5076,30 @@ switch ($action) {
             // Zalo cho Sale
             if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
                 try {
-                    $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
-                        . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT bởi $adminName.\n\n"
-                        . "❖ THÔNG TIN KHÁCH HÀNG:\n"
-                        . "  • Khách hàng: $lName ($lPhone)\n"
-                        . "  • Lỗi bạn báo: {$report['reason']}\n\n"
-                        . "❖ LÝ DO DUYỆT:\n"
-                        . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể") . "\n\n"
-                        . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
+                    if ($no_compensation) {
+                        $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT KHÔNG ĐỀN BÙ ]\n\n"
+                            . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC DUYỆT KHÔNG ĐỀN BÙ bởi $adminName.\n\n"
+                            . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                            . "  • Khách hàng: $lName ($lPhone)\n"
+                            . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                            . "❖ LÝ DO DUYỆT:\n"
+                            . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể") . "\n\n"
+                            . "Lưu ý: Bạn vẫn sở hữu lead này và hệ thống KHÔNG cộng lượt đền bù cho ticket này.";
+                    } else {
+                        $zaloMsg = "[ TICKET ĐÃ ĐƯỢC DUYỆT ]\n\n"
+                            . "Chào $cName, báo cáo lỗi Data của bạn đã ĐƯỢC PHÊ DUYỆT bởi $adminName.\n\n"
+                            . "❖ THÔNG TIN KHÁCH HÀNG:\n"
+                            . "  • Khách hàng: $lName ($lPhone)\n"
+                            . "  • Lỗi bạn báo: {$report['reason']}\n\n"
+                            . "❖ LÝ DO DUYỆT:\n"
+                            . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể") . "\n\n"
+                            . "Hệ thống đã ghi nhận 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
+                    }
                     sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg, false);
                 } catch (Exception $zEx1) {
                     error_log("Error sending Zalo message to consultant in approve_report: " . $zEx1->getMessage());
                 }
             }
-
-            // [TẠM TẮT] Zalo cho các Ticket Admins (trừ admin thực hiện nếu có zalo_chat_id)
-            /*
-            if (!empty($botToken) && !empty($adminEmails)) {
-                $adminChatIds = [];
-                foreach ($adminEmails as $adm) {
-                    if (!empty($adm['zalo_chat_id'])) {
-                        $adminChatIds[] = $adm['zalo_chat_id'];
-                    }
-                }
-                if (!empty($adminChatIds)) {
-                    try {
-                        $zaloAdminMsg = "[ THÔNG BÁO TICKET ĐÃ DUYỆT ]\n\n"
-                            . "Admin $adminName đã duyệt ticket của Sale $cName.\n\n"
-                            . "❖ THÔNG TIN KHÁCH HÀNG:\n"
-                            . "  • Khách hàng: $lName ($lPhone)\n"
-                            . "  • Lỗi báo cáo: {$report['reason']}\n\n"
-                            . "❖ LÝ DO DUYỆT:\n"
-                            . "  " . (!empty($approval_reason) ? $approval_reason : "Không có lý do cụ thể");
-                        sendZaloMessageToMultiple($botToken, $adminChatIds, $zaloAdminMsg, false);
-                    } catch (Exception $zEx2) {
-                        error_log("Error sending Zalo message to multiple admins in approve_report: " . $zEx2->getMessage());
-                    }
-                }
-            }
-            */
 
             // Thông báo qua Email cho Sale (kèm CC)
             if (!empty($consultant['email'])) {
@@ -5116,28 +5117,26 @@ switch ($action) {
                             }
                         }
                     }
-                    // [TẠM TẮT CC ADMIN]
-                    /*
-                    foreach ($adminEmails as $adm) {
-                        if (!empty($adm['email'])) {
-                            $email = trim($adm['email']);
-                            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                                $ccEmailsArr[] = strtolower($email);
-                            }
-                        }
-                    }
-                    */
                     $ccEmailsArr = array_unique($ccEmailsArr);
                     $saleEmail = strtolower(trim($consultant['email']));
                     $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
                     $ccString = implode(',', $ccEmailsArr);
 
-                    $emailSubj = "[BOT] Ticket Lỗi Data Đã Được Duyệt - $lName";
-                    $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
-                                  <p>Chào $cName,</p>
-                                  <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt thành công.</p>
-                                  <p><strong>Lý do duyệt:</strong> " . (!empty($approval_reason) ? htmlspecialchars($approval_reason) : "Không có lý do cụ thể") . "</p>
-                                  <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
+                    if ($no_compensation) {
+                        $emailSubj = "[BOT] Ticket Lỗi Data Đã Được Duyệt Không Đền Bù - $lName";
+                        $emailBody = "<h3>Báo cáo lỗi Data được duyệt không đền bù</h3>
+                                      <p>Chào $cName,</p>
+                                      <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt không đền bù.</p>
+                                      <p><strong>Lý do duyệt:</strong> " . (!empty($approval_reason) ? htmlspecialchars($approval_reason) : "Không có lý do cụ thể") . "</p>
+                                      <p>Bạn vẫn sở hữu lead này và hệ thống không cộng lượt đền bù cho ticket này.</p>";
+                    } else {
+                        $emailSubj = "[BOT] Ticket Lỗi Data Đã Được Duyệt - $lName";
+                        $emailBody = "<h3>Báo cáo lỗi Data được phê duyệt</h3>
+                                      <p>Chào $cName,</p>
+                                      <p>Báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được Quản trị viên <strong>$adminName</strong> duyệt thành công.</p>
+                                      <p><strong>Lý do duyệt:</strong> " . (!empty($approval_reason) ? htmlspecialchars($approval_reason) : "Không có lý do cụ thể") . "</p>
+                                      <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
+                    }
                     sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, $ccString);
                 } catch (Exception $emailEx) {
                     error_log("Error sending email in approve_report: " . $emailEx->getMessage());
@@ -5224,6 +5223,146 @@ switch ($action) {
 
         } catch (Exception $notifyOuterEx) {
             error_log("Outer notification error in approve_report: " . $notifyOuterEx->getMessage());
+        }
+
+        echo json_encode(['success' => true]);
+        break;
+
+    case 'compensate_approved_no_comp':
+        $input = json_decode(file_get_contents('php://input'), true);
+        $report_id = (int) ($input['id'] ?? 0);
+        if (!$report_id) {
+            echo json_encode(['success' => false, 'message' => 'ID báo cáo không hợp lệ']);
+            break;
+        }
+
+        // Lấy thông tin admin thực hiện
+        $adminName = 'Quản trị viên';
+        $adminAccountId = 0;
+        if (isset($decodedUser['id'])) {
+            $adminAccountId = (int) $decodedUser['id'];
+            $admQuery = $conn->prepare("SELECT name FROM accounts WHERE id = ? LIMIT 1");
+            $admQuery->bind_param("i", $decodedUser['id']);
+            $admQuery->execute();
+            $admRes = $admQuery->get_result()->fetch_assoc();
+            if ($admRes && !empty($admRes['name'])) {
+                $adminName = $admRes['name'];
+            }
+            $admQuery->close();
+        }
+
+        $conn->begin_transaction();
+        try {
+            // Fetch report information
+            $stmt = $conn->prepare("
+                SELECT r.lead_id, r.consultant_id, r.round_id, r.reason, r.status, c.name as consultant_name
+                FROM data_reports r
+                LEFT JOIN consultants c ON r.consultant_id = c.id
+                WHERE r.id = ? FOR UPDATE
+            ");
+            $stmt->bind_param("i", $report_id);
+            $stmt->execute();
+            $report = $stmt->get_result()->fetch_assoc();
+
+            if (!$report) {
+                throw new Exception("Báo cáo không tồn tại.");
+            }
+            if ($report['status'] !== 'approved_no_comp') {
+                throw new Exception("Báo cáo không ở trạng thái Duyệt không bù.");
+            }
+
+            // 1. Update report status to 'approved'
+            $updRep = $conn->prepare("UPDATE data_reports SET status='approved', resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
+            $updRep->bind_param("si", $adminName, $report_id);
+            $updRep->execute();
+
+            // 2. Add compensation note to lead
+            $compMsg = "\n[LỖI - ĐÃ BÙ LỖI TRỄ]: Chuyển trạng thái sang đền bù | Admin duyệt: " . $adminName . " | Thời gian: " . date('d/m/Y H:i:s');
+            $updLead = $conn->prepare("UPDATE leads SET note = CONCAT(IFNULL(note, ''), ?) WHERE id=?");
+            $updLead->bind_param("si", $compMsg, $report['lead_id']);
+            $updLead->execute();
+
+            // 3. Update distribution_logs status to 'error'
+            $updLog = $conn->prepare("UPDATE distribution_logs SET status='error' WHERE lead_id=? AND assigned_to=? AND round_id=?");
+            $updLog->bind_param("iii", $report['lead_id'], $report['consultant_id'], $report['round_id']);
+            $updLog->execute();
+
+            // 4. Increment compensation_count
+            $updComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id=? AND consultant_id=?");
+            $updComp->bind_param("ii", $report['round_id'], $report['consultant_id']);
+            $updComp->execute();
+
+            logAdminAction($conn, $decodedUser['id'], 'COMPENSATE_APPROVED_NO_COMP', [
+                'report_id' => $report_id,
+                'lead_id' => $report['lead_id'],
+                'consultant_id' => $report['consultant_id'],
+                'round_id' => $report['round_id']
+            ]);
+
+            $conn->commit();
+            
+            // Trigger Live Two-Way Sync
+            require_once __DIR__ . '/webhook_logic.php';
+            triggerTwoWaySync($conn, $report['lead_id']);
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => getSafeErrorMsg($e)]);
+            break;
+        }
+
+        // DB committed successfully, now handle Zalo and Email notifications
+        try {
+            // Get consultant details
+            $consultStmt = $conn->prepare("SELECT name, email, zalo_chat_id FROM consultants WHERE id = ? LIMIT 1");
+            $consultStmt->bind_param("i", $report['consultant_id']);
+            $consultStmt->execute();
+            $consultant = $consultStmt->get_result()->fetch_assoc();
+            $consultStmt->close();
+
+            // Get lead details
+            $leadStmt = $conn->prepare("SELECT name, phone FROM leads WHERE id = ? LIMIT 1");
+            $leadStmt->bind_param("i", $report['lead_id']);
+            $leadStmt->execute();
+            $lead = $leadStmt->get_result()->fetch_assoc();
+            $leadStmt->close();
+
+            $cName = $consultant['name'] ?? 'Tư vấn viên';
+            $lName = $lead['name'] ?? 'Khách hàng';
+            $lPhone = $lead['phone'] ?? 'Không rõ';
+
+            // Send Zalo Notification
+            require_once __DIR__ . '/zalo_bot.php';
+            $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+            $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+
+            if (!empty($botToken) && !empty($consultant['zalo_chat_id'])) {
+                try {
+                    $zaloMsg = "[ BÙ LỖI TICKET THÀNH CÔNG ]\n\n"
+                        . "Chào $cName, ticket lỗi trước đó cho khách hàng $lName ($lPhone) của bạn đã được bù lỗi trễ bởi $adminName.\n\n"
+                        . "Hệ thống đã cộng 1 lượt đền bù. Bạn sẽ nhận được Data mới vào lần phân bổ tiếp theo.";
+                    sendZaloMessage($botToken, $consultant['zalo_chat_id'], $zaloMsg, false);
+                } catch (Exception $zEx) {
+                    error_log("Error sending Zalo message for late compensation: " . $zEx->getMessage());
+                }
+            }
+
+            // Send Email Notification
+            if (!empty($consultant['email'])) {
+                try {
+                    require_once __DIR__ . '/mailer.php';
+                    $emailSubj = "[BOT] Ticket Lỗi Data Đã Được Bù Lỗi Trễ - $lName";
+                    $emailBody = "<h3>Báo cáo lỗi Data đã được bù lỗi trễ</h3>
+                                  <p>Chào $cName,</p>
+                                  <p>Ticket báo cáo lỗi của bạn cho khách hàng <strong>$lName ($lPhone)</strong> đã được chuyển sang trạng thái <strong>Đền bù</strong> bởi Quản trị viên <strong>$adminName</strong>.</p>
+                                  <p>Hệ thống đã tự động cộng 1 lượt đền bù cho bạn trong vòng phân bổ hiện tại.</p>";
+                    sendEmailNotification($consultant['email'], $emailSubj, 'Kết quả Báo cáo', $emailBody, '');
+                } catch (Exception $emailEx) {
+                    error_log("Error sending email for late compensation: " . $emailEx->getMessage());
+                }
+            }
+        } catch (Exception $notifyEx) {
+            error_log("Outer notification error in compensate_approved_no_comp: " . $notifyEx->getMessage());
         }
 
         echo json_encode(['success' => true]);
@@ -7729,6 +7868,51 @@ switch ($action) {
                     }
                     break;
 
+                case 'APPROVE_REPORT_NO_COMP':
+                    $leadId = (int) ($details['lead_id'] ?? 0);
+
+                    if (!$leadId) {
+                        throw new Exception('ID lead không hợp lệ trong log.');
+                    }
+
+                    $updReport = $conn->prepare("UPDATE data_reports SET status = 'pending', resolved_at = NULL, resolved_by = NULL, approval_reason = NULL WHERE lead_id = ?");
+                    $updReport->bind_param("i", $leadId);
+                    $updReport->execute();
+                    $updReport->close();
+
+                    $updLead = $conn->prepare("UPDATE leads SET status = 'error' WHERE id = ?");
+                    $updLead->bind_param("i", $leadId);
+                    $updLead->execute();
+                    $updLead->close();
+                    break;
+
+                case 'COMPENSATE_APPROVED_NO_COMP':
+                    $leadId = (int) ($details['lead_id'] ?? 0);
+                    $consId = (int) ($details['consultant_id'] ?? 0);
+                    $roundId = (int) ($details['round_id'] ?? 0);
+
+                    if (!$leadId) {
+                        throw new Exception('ID lead không hợp lệ trong log.');
+                    }
+
+                    $updReport = $conn->prepare("UPDATE data_reports SET status = 'approved_no_comp' WHERE lead_id = ?");
+                    $updReport->bind_param("i", $leadId);
+                    $updReport->execute();
+                    $updReport->close();
+
+                    if ($consId && $roundId) {
+                        $updLog = $conn->prepare("UPDATE distribution_logs SET status = 'assigned' WHERE lead_id = ? AND assigned_to = ? AND round_id = ? AND status = 'error'");
+                        $updLog->bind_param("iii", $leadId, $consId, $roundId);
+                        $updLog->execute();
+                        $updLog->close();
+
+                        $updRC = $conn->prepare("UPDATE round_consultants SET compensation_count = GREATEST(0, compensation_count - 1) WHERE round_id = ? AND consultant_id = ?");
+                        $updRC->bind_param("ii", $roundId, $consId);
+                        $updRC->execute();
+                        $updRC->close();
+                    }
+                    break;
+
                 case 'REJECT_REPORT':
                     $leadId = (int) ($details['lead_id'] ?? 0);
 
@@ -9135,7 +9319,7 @@ switch ($action) {
 
         // ticket_errors counts only APPROVED tickets in the date range created_at (for Dashboard card details)
         $ticketErrors = 0;
-        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $dateConditionCreated");
+        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $dateConditionCreated");
         if ($tktErrRes && $row = $tktErrRes->fetch_assoc()) {
             $ticketErrors = (int) $row['cnt'];
         }
@@ -9146,7 +9330,7 @@ switch ($action) {
 
         // Previous period calculations for change percentage
         $prevTicketErrors = 0;
-        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status = 'approved' AND $prevDateConditionCreated");
+        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $prevDateConditionCreated");
         if ($prevTktErrRes && $row = $prevTktErrRes->fetch_assoc()) {
             $prevTicketErrors = (int) $row['cnt'];
         }
@@ -9663,7 +9847,7 @@ switch ($action) {
         $errorSql = "SELECT c.name, COUNT(dr.id) as count 
                      FROM data_reports dr 
                      JOIN consultants c ON dr.consultant_id = c.id
-                     WHERE dr.status = 'approved' AND $dateConditionCreated
+                     WHERE dr.status IN ('approved', 'approved_no_comp') AND $dateConditionCreated
                      GROUP BY c.id ORDER BY count DESC";
         $errorResRaw = $conn->query($errorSql);
         $errorStats = [];
@@ -9978,7 +10162,7 @@ switch ($action) {
         $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
         $ticketCountsSql = "SELECT consultant_id, COUNT(*) as cnt 
                             FROM data_reports 
-                            WHERE status = 'approved' AND $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
+                            WHERE status IN ('approved', 'approved_no_comp') AND $dateConditionCreated" . ($roundId > 0 ? " AND round_id = $roundId" : "") . "
                             GROUP BY consultant_id";
         $tktRes = $conn->query($ticketCountsSql);
         if ($tktRes) {
@@ -10230,7 +10414,7 @@ switch ($action) {
                              (SELECT a.avatar FROM accounts a WHERE a.name = dr.resolved_by LIMIT 1) as resolved_by_avatar
                       FROM data_reports dr
                       WHERE dr.consultant_id = ? 
-                        AND dr.status = 'approved' 
+                        AND dr.status IN ('approved', 'approved_no_comp') 
                         " . ($roundId > 0 ? " AND dr.round_id = $roundId" : "") . "
                       ORDER BY dr.resolved_at DESC";
         $stmtT = $conn->prepare($ticketSql);
