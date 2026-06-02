@@ -2293,7 +2293,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
         prevThemeRef.current = null;
         (window as any).__themeTimeout__ = null;
-      }, 1000); // 1s delay before returning to light theme
+      }, 200); // 200ms delay before returning to light theme
     };
   }, [isOpen]);
 
