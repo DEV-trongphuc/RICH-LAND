@@ -525,7 +525,19 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $res = false;
     }
 
-    if ($res instanceof mysqli_result && $res->num_rows === 0 && $excludeLeadId) {
+    $hasOwner = false;
+    $leadIdForHistory = $excludeLeadId;
+    if ($res instanceof mysqli_result && $res->num_rows > 0) {
+        $row = $res->fetch_assoc();
+        $res->data_seek(0);
+        if (!empty($row['assigned_to'])) {
+            $hasOwner = true;
+        } else {
+            $leadIdForHistory = $row['id'];
+        }
+    }
+
+    if (!$hasOwner && $leadIdForHistory) {
         $stmtHistory = $conn->prepare("
             SELECT dl.assigned_to, dl.received_at as last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
             FROM distribution_logs dl
@@ -537,7 +549,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             ORDER BY dl.received_at DESC LIMIT 1
         ");
         if ($stmtHistory) {
-            $stmtHistory->bind_param("i", $excludeLeadId);
+            $stmtHistory->bind_param("i", $leadIdForHistory);
             $stmtHistory->execute();
             $res = $stmtHistory->get_result();
             $stmtHistory->close();

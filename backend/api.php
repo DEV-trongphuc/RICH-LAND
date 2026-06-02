@@ -9226,31 +9226,19 @@ switch ($action) {
             'no_consultant' => 0,
             'blacklisted' => 0,
             'pending_approval' => 0,
-            'rejected' => 0
+            'rejected' => 0,
+            'fallback' => 0,
+            'success' => 0
         ];
-        $statsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
-        $distributionBlacklisted = 0;
         if ($statsResRaw) {
             while ($row = $statsResRaw->fetch_assoc()) {
                 $status = $row['status'];
                 $cnt = (int) $row['cnt'];
-                $statsRes['total'] += $cnt;
                 if (array_key_exists($status, $statusCounts)) {
                     $statusCounts[$status] = $cnt;
                 }
-                if ($status === 'duplicate' || $status === 'reminder') {
-                    $statsRes['duplicates'] += $cnt;
-                } else if ($status === 'error' || $status === 'no_consultant') {
-                    $statsRes['errors'] += $cnt;
-                } else if ($status === 'blacklisted') {
-                    $statsRes['errors'] += $cnt;
-                    $distributionBlacklisted += $cnt;
-                }
             }
         }
-        $assigned_total = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + max(0, $statusCounts['error'] - $statusCounts['compensation']);
-        $compensation_total = $statusCounts['compensation'];
-        $statsRes['distributed'] = $assigned_total + $compensation_total;
 
         // Query previous period stats for % change
         $prevStatsSql = "SELECT dl.status, COUNT(*) as cnt 
@@ -9275,31 +9263,19 @@ switch ($action) {
             'no_consultant' => 0,
             'blacklisted' => 0,
             'pending_approval' => 0,
-            'rejected' => 0
+            'rejected' => 0,
+            'fallback' => 0,
+            'success' => 0
         ];
-        $prevStatsRes = ['total' => 0, 'distributed' => 0, 'duplicates' => 0, 'errors' => 0];
-        $prevDistributionBlacklisted = 0;
         if ($prevStatsResRaw) {
             while ($row = $prevStatsResRaw->fetch_assoc()) {
                 $status = $row['status'];
                 $cnt = (int) $row['cnt'];
-                $prevStatsRes['total'] += $cnt;
                 if (array_key_exists($status, $prevStatusCounts)) {
                     $prevStatusCounts[$status] = $cnt;
                 }
-                if ($status === 'duplicate' || $status === 'reminder') {
-                    $prevStatsRes['duplicates'] += $cnt;
-                } else if ($status === 'error' || $status === 'no_consultant') {
-                    $prevStatsRes['errors'] += $cnt;
-                } else if ($status === 'blacklisted') {
-                    $prevStatsRes['errors'] += $cnt;
-                    $prevDistributionBlacklisted += $cnt;
-                }
             }
         }
-        $prev_assigned_total = $prevStatusCounts['assigned'] + $prevStatusCounts['rule_6_month'] + $prevStatusCounts['pending_work_hours'] + max(0, $prevStatusCounts['error'] - $prevStatusCounts['compensation']);
-        $prev_compensation_total = $prevStatusCounts['compensation'];
-        $prevStatsRes['distributed'] = $prev_assigned_total + $prev_compensation_total;
 
         // Query active blacklist counts from admin_logs (excluding manual ones that are already in distribution_logs as status='blacklisted' to avoid double-counting)
         $dateConditionCreated = str_replace('received_at', 'created_at', $dateCondition);
@@ -9360,10 +9336,6 @@ switch ($action) {
             $ticketErrors = (int) $row['cnt'];
         }
 
-        $blacklistCnt = $distributionBlacklisted + $autoBlacklistCnt;
-        $underStandard = $statusCounts['rejected'] + $statusCounts['pending_approval'];
-        $statsRes['errors'] = $ticketErrors + $underStandard + $blacklistCnt;
-
         // Previous period calculations for change percentage
         $prevTicketErrors = 0;
         $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $prevDateConditionCreated");
@@ -9371,9 +9343,57 @@ switch ($action) {
             $prevTicketErrors = (int) $row['cnt'];
         }
 
-        $prevBlacklistCnt = $prevDistributionBlacklisted + $prevAutoBlacklistCnt;
-        $prevUnderStandard = $prevStatusCounts['rejected'] + $prevStatusCounts['pending_approval'];
-        $prevStatsRes['errors'] = $prevTicketErrors + $prevUnderStandard + $prevBlacklistCnt;
+        // 1. Success (Distributed) Calculations
+        $raw_distributed = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'] + $statusCounts['compensation'];
+        $distributed_today = max(0, $raw_distributed - $ticketErrors);
+
+        // Keep details consistent: distributed_assigned + distributed_compensation = distributed_today
+        $assigned_count = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'];
+        $compensation_count = $statusCounts['compensation'];
+        $assigned_adjusted = max(0, $assigned_count - $ticketErrors);
+        $rem = max(0, $ticketErrors - $assigned_count);
+        $compensation_adjusted = max(0, $compensation_count - $rem);
+        
+        $assigned_total = $assigned_adjusted;
+        $compensation_total = $compensation_adjusted;
+
+        // 2. Duplicates Calculations
+        $duplicates = $statusCounts['duplicate'] + $statusCounts['reminder'];
+
+        // 3. Errors Calculations
+        $underStandard = $statusCounts['rejected'] + $statusCounts['pending_approval'] + $statusCounts['error'] + $statusCounts['no_consultant'];
+        $blacklistCnt = $statusCounts['blacklisted'] + $autoBlacklistCnt;
+        $errors = $ticketErrors + $underStandard + $blacklistCnt;
+
+        // 4. Total Calculations
+        $total_today = $distributed_today + $duplicates + $errors;
+
+        $statsRes = [
+            'total' => $total_today,
+            'distributed' => $distributed_today,
+            'duplicates' => $duplicates,
+            'errors' => $errors
+        ];
+
+        // Do the same for previous period to keep % change consistent
+        $prev_raw_distributed = $prevStatusCounts['assigned'] + $prevStatusCounts['rule_6_month'] + $prevStatusCounts['pending_work_hours'] + $prevStatusCounts['fallback'] + $prevStatusCounts['success'] + $prevStatusCounts['compensation'];
+        $prev_distributed_today = max(0, $prev_raw_distributed - $prevTicketErrors);
+        $prev_duplicates = $prevStatusCounts['duplicate'] + $prevStatusCounts['reminder'];
+        $prev_underStandard = $prevStatusCounts['rejected'] + $prevStatusCounts['pending_approval'] + $prevStatusCounts['error'] + $prevStatusCounts['no_consultant'];
+        $prev_blacklistCnt = $prevStatusCounts['blacklisted'] + $prevAutoBlacklistCnt;
+        $prev_errors = $prevTicketErrors + $prev_underStandard + $prev_blacklistCnt;
+        $prev_total_today = $prev_distributed_today + $prev_duplicates + $prev_errors;
+
+        $prevStatsRes = [
+            'total' => $prev_total_today,
+            'distributed' => $prev_distributed_today,
+            'duplicates' => $prev_duplicates,
+            'errors' => $prev_errors
+        ];
+
+        // Also define $raw_duplicates and $raw_errors to keep totalLogsCount consistent
+        $raw_duplicates = $duplicates;
+        $raw_errors = $underStandard;
 
         $calcChange = function ($current, $prev) {
             $current = (int) $current;
@@ -12065,14 +12085,14 @@ switch ($action) {
                             $ownerId = !empty($crmCheck['assignedTo']) ? $crmCheck['assignedTo'] : $fileConsultantId;
                             // If current database lead has no owner (assignedTo is empty), write the owner. Otherwise, only update interaction date.
                             $onlyUpdateDate = !empty($crmCheck['assignedTo']);
-                            $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate, $name, $onlyUpdateDate);
+                            $leadId = updateLead($conn, $phone, $email, $ownerId, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate, $name, $onlyUpdateDate, true);
                             $duplicateCount++;
-                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).', false);
+                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Trung so).', false, $customDate);
                         } else {
                             $ownerId = $fileConsultantId;
-                            $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate);
+                            $leadId = insertLead($conn, [], $ownerId, $phone, $email, $name, 'Excel Import', 'Excel', 'Nhap du lieu cu', null, $customDate, true);
                             $newCount++;
-                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).', false);
+                            logDistribution($conn, $leadId, $ownerId, null, 'silent', 'Chi dong bo check trung, khong dinh tuyen (Moi).', false, $customDate);
                         }
                     } else {
                         if ($crmCheck['isDuplicate']) {

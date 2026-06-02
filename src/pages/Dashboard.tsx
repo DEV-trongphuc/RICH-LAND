@@ -412,7 +412,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     },
     {
       id: 'distributed',
-      statusValue: 'assigned,compensation,rule_6_month,pending_work_hours',
+      statusValue: 'assigned,compensation,rule_6_month,pending_work_hours,fallback,success',
       label: t('ĐÃ CHIA VÒNG THÀNH CÔNG'),
       value: stats?.distributed_today?.toLocaleString() || '0',
       icon: UserPlus,
@@ -422,7 +422,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     },
     {
       id: 'duplicates',
-      statusValue: 'reminder',
+      statusValue: 'reminder,duplicate',
       label: t('BỊ TRÙNG LẶP (< 6 THÁNG)'),
       value: stats?.duplicates?.toLocaleString() || '0',
       icon: AlertTriangle,
@@ -432,7 +432,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     },
     {
       id: 'errors',
-      statusValue: 'error,blacklisted,rejected,pending_approval',
+      statusValue: 'error,blacklisted,rejected,pending_approval,no_consultant',
       label: t('DATA LỖI / Dưới chuẩn'),
       value: stats?.errors?.toLocaleString() || '0',
       icon: Zap,
