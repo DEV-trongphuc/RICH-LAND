@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Server, Database, GitBranch, Users, Pause, Cpu, ShieldAlert, Terminal, Tv, Eye, ChevronDown, Calendar } from 'lucide-react';
+import { X, Server, Database, GitBranch, Users, Pause, Cpu, ShieldAlert, Terminal, Tv, Eye, Calendar } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { fetchAPI } from '../../utils/api';
-import toast from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
 // Sound system has been removed
 
@@ -63,6 +63,14 @@ const getInitials = (name: string) => {
 // ============================================================================
 // SPACE CANVAS BACKGROUND (100% Isolated Canvas Loop, Framerate Independent)
 // ============================================================================
+const getQuadraticBezierPoint = (t: number, p0x: number, p0y: number, p1x: number, p1y: number, p2x: number, p2y: number) => {
+  const mt = 1 - t;
+  return {
+    x: mt * mt * p0x + 2 * mt * t * p1x + t * t * p2x,
+    y: mt * mt * p0y + 2 * mt * t * p1y + t * t * p2y
+  };
+};
+
 const SpaceCanvasBackground: React.FC<{
   containerRef: React.RefObject<HTMLDivElement | null>;
   isPlaying: boolean;
@@ -84,6 +92,12 @@ const SpaceCanvasBackground: React.FC<{
   lastActiveSaleIdx: number | null;
   isFocusMode: boolean;
   isRetainedGlow: boolean;
+  isCoreHoveredRef: React.RefObject<boolean>;
+  hoveredSaleIdx: number | null;
+  hoveredSourceIdx: number | null;
+  fairShareEquity: string;
+  sheetsStatus: string;
+  isTelemetryGlitch: boolean;
 }> = React.memo(({
   containerRef,
   isPlaying,
@@ -100,7 +114,13 @@ const SpaceCanvasBackground: React.FC<{
   coordsRef,
   lastActiveSaleIdx,
   isFocusMode,
-  isRetainedGlow
+  isRetainedGlow,
+  isCoreHoveredRef,
+  hoveredSaleIdx,
+  hoveredSourceIdx,
+  fairShareEquity,
+  sheetsStatus,
+  isTelemetryGlitch
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   // Reference containerRef to satisfy TS6133 unused variable compiler rule
@@ -500,7 +520,7 @@ const SpaceCanvasBackground: React.FC<{
         // Varying orbit radius from 58px to 142px
         const orbitRadius = 58 + Math.random() * 84;
         // Keplerian speed: speed is inversely proportional to square root of radius
-        const speed = (6.8 / Math.sqrt(orbitRadius)) * (0.85 + Math.random() * 0.3);
+        const speed = (2.2 / Math.sqrt(orbitRadius)) * (0.85 + Math.random() * 0.3);
         const size = 0.8 + Math.random() * 1.5;
         const color = colors[Math.floor(Math.random() * colors.length)];
 
@@ -519,7 +539,7 @@ const SpaceCanvasBackground: React.FC<{
     }
 
     // Space-Time Gravity Warp Grid & Click Ripples calculation
-    const distortPoint = (x: number, y: number, coreX: number, coreY: number) => {
+    const distortPoint = (x: number, y: number, coreX: number, coreY: number, timeVal: number = 0) => {
       let dx = x;
       let dy = y;
 
@@ -533,6 +553,18 @@ const SpaceCanvasBackground: React.FC<{
         const strength = Math.pow(1 - distCore / 360, 1.5);
         dx += (dxCore / distCore) * deflection * strength;
         dy += (dyCore / distCore) * deflection * strength;
+      }
+
+      // 1b. Core vortex twist on Core Hover
+      if (isCoreHoveredRef.current && distCore > 0 && distCore < 320) {
+        const factor = (1 - distCore / 320);
+        const twistAngle = 0.15 * factor * Math.sin(timeVal * 0.0035);
+        const cosT = Math.cos(twistAngle);
+        const sinT = Math.sin(twistAngle);
+        const rx = dx - coreX;
+        const ry = dy - coreY;
+        dx = coreX + (rx * cosT - ry * sinT);
+        dy = coreY + (rx * sinT + ry * cosT);
       }
 
       // 2. Mouse gravity & twist wormhole
@@ -842,7 +874,7 @@ const SpaceCanvasBackground: React.FC<{
       for (let x = 0; x < width + gridSize; x += gridSize) {
         let first = true;
         for (let y = 0; y <= height + 50; y += 50) {
-          const pt = distortPoint(x, y, coreX, coreY);
+          const pt = distortPoint(x, y, coreX, coreY, timestamp);
           if (first) {
             ctx.moveTo(pt.x, pt.y);
             first = false;
@@ -854,7 +886,7 @@ const SpaceCanvasBackground: React.FC<{
       for (let y = 0; y < height + gridSize; y += gridSize) {
         let first = true;
         for (let x = 0; x <= width + 50; x += 50) {
-          const pt = distortPoint(x, y, coreX, coreY);
+          const pt = distortPoint(x, y, coreX, coreY, timestamp);
           if (first) {
             ctx.moveTo(pt.x, pt.y);
             first = false;
@@ -910,7 +942,7 @@ const SpaceCanvasBackground: React.FC<{
 
       if (starsBin1.length > 0) {
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)'; // Dimmed background stars
         starsBin1.forEach(s => {
           ctx.moveTo(s.x + s.r, s.y);
           ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -919,7 +951,7 @@ const SpaceCanvasBackground: React.FC<{
       }
       if (starsBin2.length > 0) {
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.32)'; // Dimmed background stars
         starsBin2.forEach(s => {
           ctx.moveTo(s.x + s.r, s.y);
           ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -928,7 +960,7 @@ const SpaceCanvasBackground: React.FC<{
       }
       if (starsBin3.length > 0) {
         ctx.beginPath();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.50)'; // Dimmed background stars
         starsBin3.forEach(s => {
           ctx.moveTo(s.x + s.r, s.y);
           ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
@@ -938,11 +970,11 @@ const SpaceCanvasBackground: React.FC<{
       layer2Stars.forEach(s => {
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(228, 208, 255, ${s.opacity})`;
+        ctx.fillStyle = `rgba(228, 208, 255, ${s.opacity * 0.45})`; // Dimmed layer 2 stars
         ctx.fill();
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size * 2.3, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(168, 85, 247, ${s.opacity * 0.16})`;
+        ctx.fillStyle = `rgba(168, 85, 247, ${s.opacity * 0.08})`; // Dimmed layer 2 star glow
         ctx.fill();
       });
 
@@ -1074,7 +1106,7 @@ const SpaceCanvasBackground: React.FC<{
             const color = Math.random() > 0.6 ? '#a855f7' : Math.random() > 0.3 ? '#8b5cf6' : '#c084fc';
             p3d.push({
               angle: Math.random() * Math.PI * 2,
-              speed: 0.45 + Math.random() * 0.75,
+              speed: 0.15 + Math.random() * 0.25,
               radiusX: 52 + Math.random() * 32,
               radiusY: 18 + Math.random() * 12,
               tilt,
@@ -1086,8 +1118,9 @@ const SpaceCanvasBackground: React.FC<{
           core3DParticlesRef.current = p3d;
         }
 
+        const speedMultiplier = isCoreHoveredRef.current ? 2.5 : 1.0;
         core3DParticlesRef.current.forEach(p => {
-          p.angle += p.speed * deltaTime;
+          p.angle += p.speed * speedMultiplier * deltaTime;
           const cosA = Math.cos(p.angle);
           const sinA = Math.sin(p.angle);
 
@@ -1118,7 +1151,7 @@ const SpaceCanvasBackground: React.FC<{
           const sinY = Math.sin(yaw);
 
           accretionDiskRef.current.forEach(p => {
-            p.angle += p.speed * deltaTime;
+            p.angle += p.speed * speedMultiplier * deltaTime;
             const xo = Math.cos(p.angle) * p.orbitRadius;
             const yo = Math.sin(p.angle) * p.orbitRadius;
 
@@ -1219,16 +1252,90 @@ const SpaceCanvasBackground: React.FC<{
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
+        // Clockwise rotating dashed inner accent ring at radius 130
+        ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.25)' : 'rgba(96, 165, 250, 0.16)';
+        ctx.lineWidth = 0.8;
+        ctx.setLineDash([3, 12]);
+        ctx.beginPath();
+        const innerRotation = timestamp * 0.00008; // Clockwise
+        ctx.arc(coreX, coreY, 130, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Orbiting Satellite Nodes on the dashed ring
+        for (let i = 0; i < 4; i++) {
+          const nodeAngle = innerRotation + (i * Math.PI / 2);
+          const nodeX = coreX + 130 * Math.cos(nodeAngle);
+          const nodeY = coreY + 130 * Math.sin(nodeAngle);
+          ctx.beginPath();
+          ctx.arc(nodeX, nodeY, 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = isRetainedGlowRef.current ? '#ef4444' : '#60a5fa';
+          ctx.fill();
+
+          ctx.save();
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = isRetainedGlowRef.current ? '#ef4444' : '#60a5fa';
+          ctx.beginPath();
+          ctx.arc(nodeX, nodeY, 1.2, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.restore();
+        }
+
         ctx.restore();
 
-        ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.35)' : 'rgba(139, 92, 246, 0.12)';
-        ctx.lineWidth = 0.8;
+        // Periodic flare animation for the tick-marked outer ring at radius 150
+        const flareDuration = 1800; // 1.8 seconds flare duration
+        const flareCycle = 10000;   // 10 seconds total cycle
+        const timeInCycle = timestamp % flareCycle;
+        let flareAlpha = 0;
+        if (timeInCycle < flareDuration) {
+          // Smooth sine pulse from 0 -> 1 -> 0
+          flareAlpha = Math.sin((timeInCycle / flareDuration) * Math.PI);
+        }
+
+        const baseOpacity = isRetainedGlowRef.current ? 0.35 : 0.12;
+        const maxFlareOpacity = isRetainedGlowRef.current ? 0.95 : 0.80;
+        const currentOpacity = baseOpacity + (maxFlareOpacity - baseOpacity) * flareAlpha;
+        const rColor = isRetainedGlowRef.current ? 239 : 139;
+        const gColor = isRetainedGlowRef.current ? 68 : 92;
+        const bColor = isRetainedGlowRef.current ? 68 : 246;
+
+        // Draw a glowing underlay/shadow during flare
+        if (flareAlpha > 0.05) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          ctx.shadowBlur = 10 * flareAlpha;
+          ctx.shadowColor = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.8)' : 'rgba(139, 92, 246, 0.8)';
+          ctx.strokeStyle = isRetainedGlowRef.current ? `rgba(239, 68, 68, ${0.15 * flareAlpha})` : `rgba(139, 92, 246, ${0.15 * flareAlpha})`;
+          ctx.lineWidth = 2.0;
+          ctx.beginPath();
+          ctx.arc(coreX, coreY, 150, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // And draw ticks underlay
+          const outerRotation = -timestamp * 0.00007;
+          for (let angle = 0; angle < 360; angle += 15) {
+            const rad = (angle * Math.PI / 180) + outerRotation;
+            const innerR = 146;
+            const outerR = 154;
+            ctx.beginPath();
+            ctx.moveTo(coreX + innerR * Math.cos(rad), coreY + innerR * Math.sin(rad));
+            ctx.lineTo(coreX + outerR * Math.cos(rad), coreY + outerR * Math.sin(rad));
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
+
+        ctx.strokeStyle = `rgba(${rColor}, ${gColor}, ${bColor}, ${currentOpacity})`;
+        ctx.lineWidth = 0.8 + 0.4 * flareAlpha;
         ctx.beginPath();
         ctx.arc(coreX, coreY, 150, 0, Math.PI * 2);
         ctx.stroke();
 
+        const outerRotation = -timestamp * 0.00007; // Slow counter-clockwise rotation
         for (let angle = 0; angle < 360; angle += 15) {
-          const rad = angle * Math.PI / 180;
+          const rad = (angle * Math.PI / 180) + outerRotation;
           const innerR = 146;
           const outerR = 154;
           ctx.beginPath();
@@ -1437,34 +1544,73 @@ const SpaceCanvasBackground: React.FC<{
 
       // 8. Cyber conduits
       if (coreRef.current) {
+        const isErrorState = isRetainedGlowRef.current;
+        const speed = isErrorState ? 0.00045 : 0.00022; // speed of packets
+        
         ctx.lineWidth = 1.0;
         ctx.setLineDash([5, 12]);
         ctx.lineDashOffset = -timestamp * 0.03;
 
+        // Draw sources to core conduits
         mockSources.forEach((src, idx) => {
           const sCoord = coords.sources[idx];
           if (sCoord) {
+            const midX = (sCoord.x + coreX) / 2;
+            
             ctx.beginPath();
             ctx.moveTo(sCoord.x, sCoord.y);
-            const midX = (sCoord.x + coreX) / 2;
             ctx.quadraticCurveTo(midX, sCoord.y, coreX, coreY);
             ctx.strokeStyle = src.color + '22';
             ctx.stroke();
+
+            if (isErrorState) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(sCoord.x, sCoord.y);
+              ctx.quadraticCurveTo(midX, sCoord.y, coreX, coreY);
+              ctx.strokeStyle = 'rgba(239, 68, 68, 0.22)';
+              ctx.lineWidth = 1.6;
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            // Draw zipping energy packets along the curve
+            const offsets = [0, 0.33, 0.66];
+            offsets.forEach(offset => {
+              const t = (timestamp * speed + offset) % 1.0;
+              const pt = getQuadraticBezierPoint(t, sCoord.x, sCoord.y, midX, sCoord.y, coreX, coreY);
+              
+              ctx.save();
+              ctx.beginPath();
+              const size = isErrorState ? 0.5 : 0.25;
+              ctx.arc(pt.x, pt.y, size, 0, Math.PI * 2);
+              ctx.fillStyle = isErrorState ? '#ef4444' : src.color;
+              if (isErrorState) {
+                ctx.shadowBlur = 3;
+                ctx.shadowColor = '#ef4444';
+              } else {
+                ctx.shadowBlur = 1;
+                ctx.shadowColor = src.color;
+              }
+              ctx.fill();
+              ctx.restore();
+            });
           }
         });
 
-        // Core to Sales (Active cables glow brightly and pulse)
-        salesList.forEach((_, idx) => {
+        // Core to Sales
+        salesList.forEach((sale, idx) => {
           const saleCoord = coords.sales[idx];
           if (saleCoord) {
             const isActive = idx === lastActiveSaleIdxRef.current;
+            const midX = (coreX + saleCoord.x) / 2;
+
             ctx.beginPath();
             ctx.moveTo(coreX, coreY);
-            const midX = (coreX + saleCoord.x) / 2;
             ctx.quadraticCurveTo(midX, saleCoord.y, saleCoord.x, saleCoord.y);
 
             if (isActive) {
-              ctx.strokeStyle = 'rgba(168, 85, 247, 0.45)';
+              ctx.strokeStyle = sale.color + '77';
               ctx.lineWidth = 1.8;
               ctx.stroke();
 
@@ -1479,8 +1625,56 @@ const SpaceCanvasBackground: React.FC<{
               ctx.lineWidth = 1.0;
               ctx.stroke();
             }
+
+            if (isErrorState) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(coreX, coreY);
+              ctx.quadraticCurveTo(midX, saleCoord.y, saleCoord.x, saleCoord.y);
+              ctx.strokeStyle = 'rgba(239, 68, 68, 0.22)';
+              ctx.lineWidth = 1.6;
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            // Draw zipping energy packets along the curve
+            const offsets = [0, 0.33, 0.66];
+            offsets.forEach(offset => {
+              const t = (timestamp * speed + offset) % 1.0;
+              const pt = getQuadraticBezierPoint(t, coreX, coreY, midX, saleCoord.y, saleCoord.x, saleCoord.y);
+
+              ctx.save();
+              ctx.beginPath();
+              const size = isErrorState ? 0.5 : 0.25;
+              ctx.arc(pt.x, pt.y, size, 0, Math.PI * 2);
+              ctx.fillStyle = isErrorState ? '#ef4444' : sale.color;
+              if (isErrorState) {
+                ctx.shadowBlur = 3;
+                ctx.shadowColor = '#ef4444';
+              } else {
+                ctx.shadowBlur = 1;
+                ctx.shadowColor = sale.color;
+              }
+              ctx.fill();
+              ctx.restore();
+            });
           }
         });
+
+        // Draw continuous high-frequency plasma zaps on hover
+        if (hoveredSaleIdx !== null && coords.sales[hoveredSaleIdx] && hoveredSaleIdx < salesList.length) {
+          const saleCoord = coords.sales[hoveredSaleIdx];
+          const targetColor = salesList[hoveredSaleIdx]?.color || '#a855f7';
+          drawLightning(coreX, coreY, saleCoord.x, saleCoord.y, targetColor);
+          drawLightning(coreX, coreY, saleCoord.x, saleCoord.y, '#ffffff');
+        }
+
+        if (hoveredSourceIdx !== null && coords.sources[hoveredSourceIdx] && hoveredSourceIdx < mockSources.length) {
+          const srcCoord = coords.sources[hoveredSourceIdx];
+          const targetColor = mockSources[hoveredSourceIdx]?.color || '#3b82f6';
+          drawLightning(srcCoord.x, srcCoord.y, coreX, coreY, targetColor);
+          drawLightning(srcCoord.x, srcCoord.y, coreX, coreY, '#ffffff');
+        }
 
         ctx.setLineDash([]);
       }
@@ -1769,8 +1963,28 @@ const SpaceCanvasBackground: React.FC<{
             });
           }
 
-          if (p.progress >= 1.0) {
+          // Trigger collision and shatter into stardust exactly 18px before reaching the target card
+          // (which corresponds to ~10px outside the card boundary, before touching it)
+          const distToTarget = p.targetX - p.x;
+          if (distToTarget < 18) {
             triggerSaleRipple(p.saleIndex, p.sourceType, p.color, p.id, p.status as any);
+
+            // Spawn 15 tiny stardust particles splashing outwards on collision with sales card
+            for (let i = 0; i < 15; i++) {
+              // Splash back to the left (cone of 120 to 240 degrees)
+              const angle = Math.PI + (Math.random() - 0.5) * 1.6;
+              const speed = 110 + Math.random() * 140; // High speed splash
+              stardustRef.current.push({
+                x: p.x, // Spawn exactly at the shatter point (outside the card)
+                y: p.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                color: p.color,
+                size: 1.4 + Math.random() * 1.8, // Slightly larger particles for visibility
+                alpha: 1.0,
+                decay: 5.2 + Math.random() * 4.8 // Fast fade out (0.1s - 0.2s) for crispness
+              });
+            }
             return false;
           }
         }
@@ -2036,12 +2250,29 @@ const SpaceCanvasBackground: React.FC<{
       // 12. Floating Telemetry HUD text
       if (coreRef.current) {
         const breath = Math.sin(timestamp * 0.0035) * 5;
-        ctx.font = 'bold 8px monospace';
-        ctx.fillStyle = 'rgba(139, 92, 246, 0.4)';
+        ctx.save();
         ctx.textAlign = 'center';
 
-        ctx.fillText(`SYSTEM_LATENCY: 12ms`, coreX - 148, coreY - 115 + breath);
-        ctx.fillText(`SECURITY_GATE: ACTIVE`, coreX + 148, coreY + 125 - breath);
+        if (isTelemetryGlitch) {
+          ctx.font = 'bold 9px monospace';
+          ctx.fillStyle = '#f87171'; // Red highlight during glitch
+          ctx.shadowColor = '#ef4444';
+          ctx.shadowBlur = 8;
+
+          const offsetX1 = (Math.random() - 0.5) * 5;
+          const offsetY1 = (Math.random() - 0.5) * 5;
+          const offsetX2 = (Math.random() - 0.5) * 5;
+          const offsetY2 = (Math.random() - 0.5) * 5;
+
+          ctx.fillText(`FAIR_SHARE: ${fairShareEquity}`, coreX - 148 + offsetX1, coreY - 115 + breath + offsetY1);
+          ctx.fillText(`SHEETS_SYNC: ${sheetsStatus}`, coreX + 148 + offsetX2, coreY + 125 - breath + offsetY2);
+        } else {
+          ctx.font = 'bold 8px monospace';
+          ctx.fillStyle = 'rgba(139, 92, 246, 0.4)';
+          ctx.fillText(`FAIR_SHARE: ${fairShareEquity}`, coreX - 148, coreY - 115 + breath);
+          ctx.fillText(`SHEETS_SYNC: ${sheetsStatus}`, coreX + 148, coreY + 125 - breath);
+        }
+        ctx.restore();
 
         ctx.strokeStyle = 'rgba(124, 58, 237, 0.09)';
         ctx.lineWidth = 0.8;
@@ -2064,12 +2295,24 @@ const SpaceCanvasBackground: React.FC<{
         const intensity = coreGlowIntensityRef.current;
         const blast = coreBlastIntensityRef.current;
         const baseScale = 1.0 + 0.03 * Math.sin(timestamp / 240);
-        const scale = baseScale - maxCompression + blast * 0.12 + intensity * 0.05;
-        const shadowSpread = 35 + intensity * 48 + blast * 20;
+        
+        const isCoreHovered = isCoreHoveredRef.current;
+        const hoverScale = isCoreHovered ? (0.04 + 0.02 * Math.sin(timestamp * 0.015)) : 0;
+        const scale = baseScale - maxCompression + blast * 0.12 + intensity * 0.05 + hoverScale;
+        
+        const hoverShadow = isCoreHovered ? (15 + 10 * Math.sin(timestamp * 0.015)) : 0;
+        const shadowSpread = 35 + intensity * 48 + blast * 20 + hoverShadow;
         const opacity = 0.8 + intensity * 0.2 + blast * 0.15;
+        
+        const shakeX = isCoreHovered ? (Math.random() - 0.5) * 0.5 : 0;
+        const shakeY = isCoreHovered ? (Math.random() - 0.5) * 0.5 : 0;
 
-        coreSphereRef.current.style.transform = `scale(${scale})`;
-        if (isRetainedGlowRef.current) {
+        coreSphereRef.current.style.transform = `scale(${scale}) translate(${shakeX}px, ${shakeY}px)`;
+        
+        if (isCoreHovered) {
+          coreSphereRef.current.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.95) 0%, rgba(124, 58, 237, 0.95) 100%)';
+          coreSphereRef.current.style.boxShadow = `0 0 ${shadowSpread}px rgba(168, 85, 247, 0.85), inset 0 0 20px rgba(255, 255, 255, 0.6)`;
+        } else if (isRetainedGlowRef.current) {
           coreSphereRef.current.style.boxShadow = `0 0 ${shadowSpread}px rgba(239, 68, 68, ${0.5 + intensity * 0.5}), inset 0 0 20px rgba(255, 255, 255, 0.55)`;
           coreSphereRef.current.style.background = `linear-gradient(135deg, rgba(239, 68, 68, ${opacity}) 0%, rgba(185, 28, 28, ${opacity}) 100%)`;
         } else {
@@ -2090,7 +2333,7 @@ const SpaceCanvasBackground: React.FC<{
       canvas.removeEventListener('mouseleave', handleMouseLeave);
       canvas.removeEventListener('click', handleCanvasClick);
     };
-  }, [isPlaying, bootPhase, mockSources, salesList, coordsRef, coreRef, coreSphereRef, sourceRefs, saleRefs, particlesRef, triggerSaleRipple, triggerRetainedRipple]);
+  }, [isPlaying, bootPhase, mockSources, salesList, coordsRef, coreRef, coreSphereRef, sourceRefs, saleRefs, particlesRef, triggerSaleRipple, triggerRetainedRipple, isCoreHoveredRef]);
 
   return (
     <canvas
@@ -2179,6 +2422,56 @@ const isSingleDay = (dateStr: string) => {
   return false;
 };
 
+const isCurrentlyWorking = (consultant: any) => {
+  // If they are on leave/vacation/inactive, they are not working
+  if (
+    consultant.vacation_mode === 1 ||
+    Number(consultant.vacation_mode) === 1 ||
+    consultant.status === 'leave' ||
+    consultant.status === 'inactive' ||
+    consultant.statusMsg === 'Vắng mặt' ||
+    consultant.statusMsg === 'Inactive'
+  ) {
+    return false;
+  }
+
+  const now = new Date();
+  const day = now.getDay(); // 0: Sunday, 1: Monday, ... 6: Saturday
+  const key = day === 0 ? '7' : String(day);
+
+  let startStr = consultant.work_start_time || '08:00';
+  let endStr = consultant.work_end_time || '22:00';
+  let active = true;
+
+  if (consultant.work_schedule && consultant.work_schedule[key]) {
+    const sched = consultant.work_schedule[key];
+    active = sched.active;
+    if (sched.start) startStr = sched.start;
+    if (sched.end) endStr = sched.end;
+  }
+
+  if (!active) return false;
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const parseTimeToMinutes = (tStr: string) => {
+    const parts = String(tStr).split(':');
+    const h = parseInt(parts[0] || '0', 10);
+    const m = parseInt(parts[1] || '0', 10);
+    return h * 60 + m;
+  };
+
+  const startMinutes = parseTimeToMinutes(startStr);
+  const endMinutes = parseTimeToMinutes(endStr);
+
+  if (startMinutes <= endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  } else {
+    // Overnight shift
+    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  }
+};
+
 // ============================================================================
 // MAIN FLIGHT DECK COMPONENT
 // ============================================================================
@@ -2196,6 +2489,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   const coreSphereRef = useRef<HTMLDivElement | null>(null);
   const sourceRefs = useRef<(HTMLDivElement | null)[]>([]);
   const saleRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
+  const isCoreHoveredRef = useRef(false);
 
   // Coordinate Ref shared with Canvas child
   const coordsRef = useRef<{
@@ -2210,17 +2505,93 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   // React HUD states (only trigger visual overlays occasionally)
   const [isPlaying, setIsPlaying] = useState(true);
   const [currentTime, setCurrentTime] = useState('');
+  const [hoveredSummary, setHoveredSummary] = useState<{ type: 'source' | 'sale'; data: any; x: number; y: number } | null>(null);
   const [activeSalesGlow, setActiveSalesGlow] = useState<Record<number, boolean>>({});
   const [lastActiveSaleIdx, setLastActiveSaleIdx] = useState<number | null>(null);
   const [activeSourcesGlow, setActiveSourcesGlow] = useState<Record<number, boolean>>({});
+  const [sourceGlowKeys, setSourceGlowKeys] = useState<Record<number, number>>({});
+  const [isTelemetryGlitch, setIsTelemetryGlitch] = useState(false);
   const [lastActiveSourceIdx, setLastActiveSourceIdx] = useState<number | null>(null);
   const [localRecentFeed, setLocalRecentFeed] = useState<any[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
+  const [hoveredSourceIdx, setHoveredSourceIdx] = useState<number | null>(null);
+  const [hoveredSaleIdx, setHoveredSaleIdx] = useState<number | null>(null);
+
+  const handleConnectionSyncEvent = (connName: string, lastSync: string, status: 'success' | 'error' = 'success', errorMsg?: string) => {
+    const syncTime = new Date(lastSync).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    if (status === 'error' && errorMsg) {
+      console.error(`Sync error on ${connName}: ${errorMsg}`);
+    }
+
+    toast.custom((t) => (
+      <div
+        style={{
+          background: 'rgba(8, 12, 28, 0.95)',
+          backdropFilter: 'blur(15px)',
+          border: `1px solid ${status === 'error' ? 'rgba(239, 68, 68, 0.18)' : 'rgba(168, 85, 247, 0.18)'}`,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.45)',
+          borderRadius: '30px',
+          padding: '6px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: '#fff',
+          fontFamily: 'monospace',
+          fontSize: '0.72rem',
+          minWidth: '220px',
+          maxWidth: '280px',
+          animation: t.visible 
+            ? 'slideInLeft 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards' 
+            : 'slideOutLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+          zIndex: 999999,
+          pointerEvents: 'none'
+        }}
+      >
+        <span style={{ 
+          width: '6px', 
+          height: '6px', 
+          borderRadius: '50%', 
+          background: status === 'error' ? '#ef4444' : '#10b981', 
+          boxShadow: `0 0 4px ${status === 'error' ? '#ef4444' : '#10b981'}`,
+          display: 'inline-block',
+          flexShrink: 0
+        }} />
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <strong style={{ color: status === 'error' ? '#ef4444' : '#c084fc', fontSize: '0.65rem', marginRight: 4 }}>
+            {status === 'error' ? 'ERR:' : 'SYNC:'}
+          </strong>
+          {connName}
+        </div>
+        <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.4)', flexShrink: 0 }}>
+          {syncTime}
+        </span>
+      </div>
+    ), { duration: 5000, id: `sync-${connName}-${Date.now()}` });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchAPI('get_connections')
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          setConnections(res.data);
+        }
+      })
+      .catch(err => console.error('Lỗi fetch connections on load:', err));
+  }, [isOpen]);
 
   const [todayStats, setTodayStats] = useState<any>(null);
   const [todayLogs, setTodayLogs] = useState<any[]>([]);
   const [allConsultants, setAllConsultants] = useState<any[]>([]);
   const [summaryDate, setSummaryDate] = useState('7 ngày qua');
   const [yesterdayLogs, setYesterdayLogs] = useState<any[]>([]);
+
+  const currentActiveLogs = useMemo(() => {
+    if (isPlaying) {
+      return yesterdayLogs;
+    }
+    return summaryDate === 'Hôm nay' ? todayLogs : yesterdayLogs;
+  }, [isPlaying, todayLogs, yesterdayLogs, summaryDate]);
 
   const [isMobile, setIsMobile] = useState(false);
   const prevThemeRef = useRef<'light' | 'dark' | null>(null);
@@ -2340,9 +2711,10 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     const pollData = () => {
       Promise.all([
         fetchAPI('get_dashboard_stats&date=Hôm nay'),
-        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=100')
+        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=100'),
+        fetchAPI('get_connections')
       ])
-        .then(([statsRes, logsRes]) => {
+        .then(([statsRes, logsRes, connsRes]) => {
           if (statsRes.success && statsRes.data) {
             setTodayStats(statsRes.data);
           }
@@ -2350,8 +2722,28 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             const filtered = logsRes.data.filter((log: any) => log.status !== 'silent');
             setTodayLogs(filtered);
           }
+          if (connsRes.success && Array.isArray(connsRes.data)) {
+            setConnections(prev => {
+              if (prev && prev.length > 0) {
+                let delayOffset = 0;
+                connsRes.data.forEach((conn: any) => {
+                  // Only trace sheet connections
+                  if (conn.connection_type !== 'sheets') return;
+
+                  const matched = prev.find((p: any) => String(p.id) === String(conn.id));
+                  if (matched && matched.last_sync_at !== conn.last_sync_at && conn.last_sync_at) {
+                    setTimeout(() => {
+                      handleConnectionSyncEvent(conn.sheet_name, conn.last_sync_at, conn.sync_status || 'success', conn.last_error);
+                    }, delayOffset);
+                    delayOffset += 1800; // Stagger subsequent toasts by 1800ms
+                  }
+                });
+              }
+              return connsRes.data;
+            });
+          }
         })
-        .catch(err => console.error('Lỗi poll realtime stats/logs:', err));
+        .catch(err => console.error('Lỗi poll realtime stats/logs/connections:', err));
     };
 
     // Poll immediately on transition to real-time mode
@@ -2477,6 +2869,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     }
     const rid = Math.random().toString(36).substring(2, 9);
     setRetainedRipples(prev => [...prev, { id: rid }]);
+
+    setIsTelemetryGlitch(true);
+    setTimeout(() => {
+      setIsTelemetryGlitch(false);
+    }, 300);
+
     setTimeout(() => {
       setIsRetainedGlow(false);
     }, 1500);
@@ -2508,6 +2906,51 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   const [simTotalCount, setSimTotalCount] = useState(0);
   const [simSharedCount, setSimSharedCount] = useState(0);
   const [simErrorCount, setSimErrorCount] = useState(0);
+
+  const sysDecLockText = useMemo(() => {
+    const statsSource = todayStats || stats;
+    const passed = isPlaying 
+      ? (simTotalCount - simErrorCount) 
+      : (statsSource?.ai_passed_count || 950);
+    const total = isPlaying 
+      ? simTotalCount 
+      : (statsSource?.total_today || 1542);
+    return `AI_SCREEN: ${passed}/${total} PASSED`;
+  }, [isPlaying, simTotalCount, simErrorCount, todayStats, stats]);
+
+  const fairShareEquityText = useMemo(() => {
+    if (isPlaying) {
+      const counts = Object.values(simulatedLeadsPerSale);
+      if (counts.length < 2) return '100.0%';
+      const mean = counts.reduce((a, b) => a + b, 0) / counts.length;
+      if (mean === 0) return '100.0%';
+      const variance = counts.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / counts.length;
+      const sd = Math.sqrt(variance);
+      const coeffOfVariation = sd / mean;
+      const equity = Math.max(70, 100 - (coeffOfVariation * 20));
+      return equity.toFixed(1) + '%';
+    } else {
+      return (todayStats || stats)?.fair_share_equity || '96.5%';
+    }
+  }, [isPlaying, simulatedLeadsPerSale, todayStats, stats]);
+
+  const sheetsStatusText = useMemo(() => {
+    if (isPlaying) {
+      return '2/2 OK';
+    } else {
+      const sheets = connections.filter(c => c.connection_type === 'sheets');
+      if (sheets.length === 0) return 'NONE';
+      const errors = sheets.filter(c => c.sync_status === 'error').length;
+      return errors > 0 ? `${errors} ERR` : `${sheets.length}/${sheets.length} OK`;
+    }
+  }, [isPlaying, connections]);
+
+  const gatewayPingText = useMemo(() => {
+    const pendingCount = isPlaying
+      ? yesterdayLogs.slice(0, simCurrentIndex).filter((log: any) => log.status === 'pending_work_hours').length
+      : (todayStats || stats)?.pending_work_hours_count || 38;
+    return `PENDING_QUEUE: ${pendingCount} LEADS`;
+  }, [isPlaying, yesterdayLogs, simCurrentIndex, todayStats, stats]);
 
   // MOCK DATA HELPERS
   const firstNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Phan', 'Vũ', 'Đặng', 'Bùi', 'Đỗ'];
@@ -2559,14 +3002,16 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       const colors = ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ec4899'];
       return Array.from(uniqueSources).map((srcName, idx) => {
         const count = simulatedLeadsPerSource[srcName] || 0;
+        const isApiOrWebhook = srcName.toLowerCase().includes('api') || srcName.toLowerCase().includes('webhook');
+        const isManual = srcName === 'Nhập tay';
         return {
           id: `sim_src_${idx}`,
           name: srcName,
-          type: srcName.toLowerCase().includes('api') || srcName.toLowerCase().includes('webhook') ? 'api' : 'sheet',
-          icon: srcName.toLowerCase().includes('api') || srcName.toLowerCase().includes('webhook') ? GitBranch : Database,
+          type: isApiOrWebhook ? 'api' : isManual ? 'manual' : 'sheet',
+          icon: isApiOrWebhook ? GitBranch : Database,
           color: colors[idx % colors.length],
           count,
-          ping: 'Active',
+          ping: (isApiOrWebhook || isManual) ? 'Active' : 'Sync',
           rate: count > 0 ? (count / Math.max(1, simElapsedTime)).toFixed(2) + '/s' : '0.00/s'
         };
       });
@@ -2575,14 +3020,16 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       if (!currentStats || !Array.isArray(currentStats.sourceStats)) return [];
       const filteredStats = currentStats.sourceStats.filter((s: any) => s.value > 0);
       return filteredStats.map((s: any, idx: number) => {
+        const isApiOrWebhook = s.name.toLowerCase().includes('api') || s.name.toLowerCase().includes('webhook');
+        const isManual = s.name === 'Nhập tay';
         return {
           id: `real_src_${idx}`,
           name: s.name,
-          type: s.name.toLowerCase().includes('api') || s.name.toLowerCase().includes('webhook') ? 'api' : 'sheet',
-          icon: s.name.toLowerCase().includes('api') || s.name.toLowerCase().includes('webhook') ? GitBranch : Database,
+          type: isApiOrWebhook ? 'api' : isManual ? 'manual' : 'sheet',
+          icon: isApiOrWebhook ? GitBranch : Database,
           color: s.color || '#3b82f6',
           count: s.value,
-          ping: 'Active',
+          ping: (isApiOrWebhook || isManual) ? 'Active' : 'Sync',
           rate: s.value > 0 ? (s.value / 86400).toFixed(3) + '/s' : '0.00/s'
         };
       });
@@ -2600,14 +3047,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         const statItem = rawConsultants.find((rc: any) => rc.name === c.name || String(rc.id) === String(c.id));
         const dataCount = statItem ? statItem.data : 0;
 
-        let statusMsg = 'Đang trực';
-        if (c.status === 'leave' || c.vacation_mode === 1 || Number(c.vacation_mode) === 1) {
-          statusMsg = 'Vắng mặt';
-        } else if (c.status === 'pending_work_hours') {
-          statusMsg = 'Chờ giờ làm';
-        } else if (c.status === 'inactive') {
-          statusMsg = 'Vắng mặt';
-        }
+        const isWorking = isCurrentlyWorking(c);
+        const statusMsg = isWorking ? 'Active' : 'Inactive';
 
         return {
           id: c.id,
@@ -2615,6 +3056,9 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           avatar: c.avatar || '',
           status: c.status || 'active',
           vacation_mode: c.vacation_mode || 0,
+          work_start_time: c.work_start_time || '08:00',
+          work_end_time: c.work_end_time || '17:30',
+          work_schedule: c.work_schedule || null,
           data: dataCount,
           percent: 0,
           color: colors[idx % colors.length],
@@ -2636,8 +3080,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
       // Sort: Online/active first, then by data count desc
       list.sort((a, b) => {
-        const aActive = a.status === 'active' || a.status === 'pending_work_hours';
-        const bActive = b.status === 'active' || b.status === 'pending_work_hours';
+        const aActive = isCurrentlyWorking(a);
+        const bActive = isCurrentlyWorking(b);
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
         return b.data - a.data;
@@ -2646,16 +3090,17 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       list = list.slice(0, 5);
     } else if (rawConsultants && rawConsultants.length > 0) {
       list = rawConsultants.slice(0, 5).map((rc: any, idx: number) => {
-        let statusMsg = 'Đang trực';
-        if (rc.status === 'leave' || rc.vacation_mode === 1 || Number(rc.vacation_mode) === 1) {
-          statusMsg = 'Vắng mặt';
-        }
+        const isWorking = isCurrentlyWorking(rc);
+        const statusMsg = isWorking ? 'Active' : 'Inactive';
         return {
           id: rc.id,
           name: rc.name,
           avatar: rc.avatar || '',
           status: rc.status || 'active',
           vacation_mode: rc.vacation_mode || 0,
+          work_start_time: rc.work_start_time || '08:00',
+          work_end_time: rc.work_end_time || '17:30',
+          work_schedule: rc.work_schedule || null,
           data: rc.data || 0,
           percent: 0,
           color: colors[idx % colors.length],
@@ -2665,11 +3110,17 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       });
     } else {
       list = [
-        { name: 'Nguyễn Thị Linh Đan', data: 3, avatar: '', status: 'active', percent: 80, color: '#7c3aed', efficiency: '98%', statusMsg: 'Đang trực' },
-        { name: 'Lưu Phan Hoàng Phúc', data: 2, avatar: '', status: 'active', percent: 50, color: '#3b82f6', efficiency: '92%', statusMsg: 'Đang trực' },
-        { name: 'Lê Đình Ý Nhi', data: 1, avatar: '', status: 'active', percent: 40, color: '#10b981', efficiency: '87%', statusMsg: 'Đang trực' },
-        { name: 'Nguyễn Phương Uyên', data: 1, avatar: '', status: 'active', percent: 25, color: '#f59e0b', efficiency: '88%', statusMsg: 'Đang trực' }
-      ];
+        { name: 'Nguyễn Thị Linh Đan', data: 3, avatar: '', status: 'active', percent: 80, color: '#7c3aed', efficiency: '98%', work_start_time: '08:00', work_end_time: '17:30' },
+        { name: 'Lưu Phan Hoàng Phúc', data: 2, avatar: '', status: 'active', percent: 50, color: '#3b82f6', efficiency: '92%', work_start_time: '08:00', work_end_time: '17:30' },
+        { name: 'Lê Đình Ý Nhi', data: 1, avatar: '', status: 'active', percent: 40, color: '#10b981', efficiency: '87%', work_start_time: '08:00', work_end_time: '17:30' },
+        { name: 'Nguyễn Phương Uyên', data: 1, avatar: '', status: 'active', percent: 25, color: '#f59e0b', efficiency: '88%', work_start_time: '08:00', work_end_time: '17:30' }
+      ].map(item => {
+        const isWorking = isCurrentlyWorking(item);
+        return {
+          ...item,
+          statusMsg: isWorking ? 'Active' : 'Inactive'
+        };
+      });
     }
 
     return list.map((sale: any) => {
@@ -2684,24 +3135,21 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
   const totalLeadsOfAll = salesList.reduce((sum: number, s: any) => sum + (s.data || 0) + (simulatedLeadsPerSale[s.name] || 0), 0);
 
   const getSaleStatus = (sale: any) => {
-    if (sale.status === 'leave' || sale.vacation_mode === 1 || Number(sale.vacation_mode) === 1 || sale.statusMsg === 'Vắng mặt') {
-      return { text: t('Vắng mặt'), color: '#f59e0b', dotColor: '#f59e0b' };
+    const isWorking = isCurrentlyWorking(sale);
+    if (isWorking) {
+      return { text: 'Active', color: '#10b981', dotColor: '#10b981' };
+    } else {
+      return { text: 'Inactive', color: '#f59e0b', dotColor: '#f59e0b' };
     }
-    if (sale.status === 'pending_work_hours' || sale.statusMsg === 'Chờ giờ làm') {
-      return { text: t('Chờ giờ làm'), color: '#3b82f6', dotColor: '#3b82f6' };
-    }
-    if (sale.status === 'inactive') {
-      return { text: t('Vắng mặt'), color: '#f59e0b', dotColor: '#f59e0b' };
-    }
-    return { text: t('Online'), color: '#10b981', dotColor: '#10b981' };
   };
 
   const triggerSourceRipple = (index: number) => {
     setLastActiveSourceIdx(index);
+    setSourceGlowKeys(prev => ({ ...prev, [index]: (prev[index] || 0) + 1 }));
     setActiveSourcesGlow(prev => ({ ...prev, [index]: true }));
     setTimeout(() => {
       setActiveSourcesGlow(prev => ({ ...prev, [index]: false }));
-    }, 1600);
+    }, 850);
   };
 
   const spawnParticle = (leadName: string, sourceIdx: number, saleIdx: number, status: 'assigned' | 'rejected' | 'duplicate' | 'compensation' | 'pending_work_hours' | 'reminder', particleId: string) => {
@@ -2714,45 +3162,51 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
     triggerSourceRipple(sourceIdx);
 
-    const startX = sCoord.x;
-    const startY = sCoord.y;
-    const targetX = saCoord.x;
-    const targetY = saCoord.y;
+    setTimeout(() => {
+      const currentCoords = coordsRef.current;
+      const curSCoord = currentCoords.sources[sourceIdx] || sCoord;
+      const curSaCoord = currentCoords.sales[saleIdx] || saCoord || cCoord;
 
-    const holdTime = isPlaying
-      ? (1.8 + Math.random() * 0.6) // Vets at AI core for ~1.8-2.4s in simulation
-      : (7.0 + Math.random() * 2.0); // Vets at AI core for ~7-9s in real-time
+      const startX = curSCoord.x;
+      const startY = curSCoord.y;
+      const targetX = curSaCoord.x;
+      const targetY = curSaCoord.y;
 
-    const newParticle: Particle = {
-      id: particleId,
-      leadName,
-      sourceType: activeSources[sourceIdx]?.name || 'Nhập tay',
-      status,
-      saleName: salesList[saleIdx]?.name || 'Hệ thống',
-      saleIndex: saleIdx,
-      x: startX,
-      y: startY,
-      lastX: startX,
-      lastY: startY,
-      startX,
-      startY,
-      targetX,
-      targetY,
-      progress: 0,
-      duration: isPlaying
-        ? (2.5 + Math.random() * 1.0) // ~2.5-3.5s drift to core in simulation
-        : (35.0 + Math.random() * 4.0), // ~35-39s drift to core in real-time (Max 90s total)
-      duration2: isPlaying
-        ? (2.5 + Math.random() * 1.0) // ~2.5-3.5s drift to sale rep in simulation
-        : (35.0 + Math.random() * 4.0), // ~35-39s drift to sale rep in real-time (Max 90s total)
-      stage: 0,
-      holdTime,
-      maxHoldTime: holdTime,
-      color: activeSources[sourceIdx]?.color || '#a855f7',
-      size: 4.5 + Math.random() * 1.5
-    };
+      const holdTime = isPlaying
+        ? (1.8 + Math.random() * 0.6) // Vets at AI core for ~1.8-2.4s in simulation
+        : (7.0 + Math.random() * 2.0); // Vets at AI core for ~7-9s in real-time
 
-    particlesRef.current.push(newParticle);
+      const newParticle: Particle = {
+        id: particleId,
+        leadName,
+        sourceType: activeSources[sourceIdx]?.name || 'Nhập tay',
+        status,
+        saleName: salesList[saleIdx]?.name || 'Hệ thống',
+        saleIndex: saleIdx,
+        x: startX,
+        y: startY,
+        lastX: startX,
+        lastY: startY,
+        startX,
+        startY,
+        targetX,
+        targetY,
+        progress: 0,
+        duration: isPlaying
+          ? (2.5 + Math.random() * 1.0) // ~2.5-3.5s drift to core in simulation
+          : (35.0 + Math.random() * 4.0), // ~35-39s drift to core in real-time (Max 90s total)
+        duration2: isPlaying
+          ? (2.5 + Math.random() * 1.0) // ~2.5-3.5s drift to sale rep in simulation
+          : (35.0 + Math.random() * 4.0), // ~35-39s drift to sale rep in real-time (Max 90s total)
+        stage: 0,
+        holdTime,
+        maxHoldTime: holdTime,
+        color: activeSources[sourceIdx]?.color || '#a855f7',
+        size: 4.5 + Math.random() * 1.5
+      };
+
+      particlesRef.current.push(newParticle);
+    }, 800);
   };
 
   const getSecondsFromMidnight = (dateStr: string) => {
@@ -2834,7 +3288,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     setTimeout(() => {
       particlesRef.current = [];
       onClose();
-    }, 950);
+    }, 1300);
   };
 
   // Load logs and stats for the selected summary date specifically for simulation
@@ -3136,12 +3590,42 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       const duration = getSimulationDuration();
       setSimElapsedTime(prev => {
         const next = prev + 1;
+        if (summaryDate === 'Hôm nay') {
+          const now = new Date();
+          const actualSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+          const projectedSecs = Math.floor((next / duration) * 86400);
+          if (projectedSecs >= actualSecs) {
+            // Switch to Realtime mode when catching up to now
+            setTimeout(() => {
+              setIsPlaying(false);
+            }, 0);
+            return prev;
+          }
+        }
         if (next >= duration) {
           // Switch to Realtime mode on completion
           setTimeout(() => {
             setIsPlaying(false);
           }, 0);
           return prev;
+        }
+        // Simulate a connection sync event every 20 seconds
+        if (next % 20 === 0) {
+          const activeConns = connections.filter(c => c.connection_type === 'sheets').length > 0 
+            ? connections.filter(c => c.connection_type === 'sheets') 
+            : [
+                { sheet_name: 'Lead 4 CT Đặt lịch', sync_status: 'success', connection_type: 'sheets' },
+                { sheet_name: 'Lead Đặt giờ - EMBA', sync_status: 'success', connection_type: 'sheets' }
+              ];
+          const randomConn = activeConns[Math.floor(Math.random() * activeConns.length)];
+          const fakeSyncTime = new Date().toISOString();
+          const isErr = randomConn.sync_status === 'error';
+          handleConnectionSyncEvent(
+            randomConn.sheet_name, 
+            fakeSyncTime, 
+            isErr ? 'error' : 'success', 
+            isErr ? (randomConn.last_error || 'Failed to fetch CSV. Spreadsheet might be private.') : undefined
+          );
         }
         return next;
       });
@@ -3259,19 +3743,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     return Math.max(180, Math.round((days / 7) * 600)); // Minimum 180 seconds (3 mins), linearly scales from there
   };
 
-  const getProjectedTimeOfDay = (elapsedSecs: number) => {
-    const duration = getSimulationDuration();
-    if (isSingleDay(summaryDate)) {
-      const daySecs = Math.min(86399, Math.floor((elapsedSecs / duration) * 86400));
-      const hours = Math.floor(daySecs / 3600);
-      const minutes = Math.floor((daySecs % 3600) / 60);
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    } else {
-      const minutes = Math.floor(elapsedSecs / 60);
-      const seconds = elapsedSecs % 60;
-      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-  };
+
 
   const getDisplayTime = () => {
     if (isPlaying) {
@@ -3307,7 +3779,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         fontFamily: 'monospace',
         overflow: 'hidden',
         userSelect: 'none',
-        animation: bootPhase === 'shutting_down' ? 'holoDissolve 0.8s cubic-bezier(0.25, 1, 0.2, 1) forwards' : 'none',
+        animation: bootPhase === 'shutting_down' ? 'holoDissolve 1.3s cubic-bezier(0.25, 1, 0.2, 1) forwards' : 'none',
         transformOrigin: 'center'
       }}
     >
@@ -3330,6 +3802,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           lastActiveSaleIdx={lastActiveSaleIdx}
           isFocusMode={isFocusMode}
           isRetainedGlow={isRetainedGlow}
+          isCoreHoveredRef={isCoreHoveredRef}
+          hoveredSaleIdx={hoveredSaleIdx}
+          hoveredSourceIdx={hoveredSourceIdx}
+          fairShareEquity={fairShareEquityText}
+          sheetsStatus={sheetsStatusText}
+          isTelemetryGlitch={isTelemetryGlitch}
         />
       )}
 
@@ -3500,8 +3978,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     >
                       <div style={{ fontSize: '0.625rem', color: '#c084fc', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}>
                         <Calendar size={10} style={{ color: '#c084fc' }} />
-                        <span>{t('Đang tóm tắt')}</span>
-                        <ChevronDown size={10} style={{ opacity: 0.8 }} />
+                        <span>{t('Data report')}</span>
                       </div>
                       <div style={{ fontSize: '0.875rem', fontWeight: 800, color: '#ffffff', marginTop: 2, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                         {summaryDate === 'Hôm nay' && (
@@ -3560,7 +4037,22 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   {isPlaying ? (
                     <>
                       <Pause size={12} style={{ color: '#c084fc' }} />
-                      <span>{t('Tóm tắt')} ({getProjectedTimeOfDay(simElapsedTime)})</span>
+                      {(() => {
+                        const duration = getSimulationDuration();
+                        if (isSingleDay(summaryDate)) {
+                          const daySecs = Math.min(86399, Math.floor((simElapsedTime / duration) * 86400));
+                          const hours = Math.floor(daySecs / 3600);
+                          const minutes = Math.floor((daySecs % 3600) / 60);
+                          const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                          return <span>{t('Tóm tắt')} ({timeStr})</span>;
+                        } else {
+                          const remainingSecs = Math.max(0, duration - simElapsedTime);
+                          const min = Math.floor(remainingSecs / 60);
+                          const sec = remainingSecs % 60;
+                          const countdownStr = `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+                          return <span>{t('Tóm tắt')} ({countdownStr})</span>;
+                        }
+                      })()}
                     </>
                   ) : (
                     <>
@@ -3666,6 +4158,20 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       key={src.id}
                       ref={el => { sourceRefs.current[idx] = el; }}
                       className="war-room-source-card"
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredSummary({
+                          type: 'source',
+                          data: src,
+                          x: rect.right + 12,
+                          y: rect.top
+                        });
+                        setHoveredSourceIdx(idx);
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredSummary(null);
+                        setHoveredSourceIdx(null);
+                      }}
                       style={{
                         background: isGlow
                           ? `${src.color}26`
@@ -3691,10 +4197,40 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                         gap: isMobile ? 8 : 14,
                         position: 'relative',
                         overflow: 'hidden',
-                        transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)'
+                        transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                        ['--hover-glow' as any]: `${src.color}45`,
+                        ['--hover-border' as any]: src.color,
+                        ['--hover-bg' as any]: `${src.color}15`
                       }}
                     >
                       <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: src.color }} />
+
+                      {isGlow && (
+                        <React.Fragment key={sourceGlowKeys[idx] || 0}>
+                          <div style={{
+                            position: 'absolute',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: src.color,
+                            boxShadow: `0 0 10px ${src.color}, 0 0 20px ${src.color}`,
+                            zIndex: 10,
+                            pointerEvents: 'none',
+                            animation: 'borderDotTop 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards'
+                          }} />
+                          <div style={{
+                            position: 'absolute',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: src.color,
+                            boxShadow: `0 0 10px ${src.color}, 0 0 20px ${src.color}`,
+                            zIndex: 10,
+                            pointerEvents: 'none',
+                            animation: 'borderDotBottom 0.8s cubic-bezier(0.25, 1, 0.5, 1) forwards'
+                          }} />
+                        </React.Fragment>
+                      )}
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: isMobile ? '26px' : '32px', height: isMobile ? '26px' : '32px', borderRadius: '6px', background: `${src.color}15`, border: `1px solid ${src.color}30`, flexShrink: 0 }}>
@@ -3737,8 +4273,34 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 transition: 'padding-top 0.35s ease-out'
               }}
             >
-              <div style={{ position: 'absolute', top: '15%', left: '10%', fontSize: '0.55rem', color: 'rgba(124, 58, 237, 0.3)', pointerEvents: 'none' }}>SYS_DEC_LOCK: ACTIVE</div>
-              <div style={{ position: 'absolute', bottom: '20%', right: '8%', fontSize: '0.55rem', color: 'rgba(168, 85, 247, 0.3)', pointerEvents: 'none' }}>GATEWAY_PING: OK</div>
+              <div
+                className={isTelemetryGlitch ? "telemetry-glitch-active" : ""}
+                style={{
+                  position: 'absolute',
+                  top: '15%',
+                  left: '10%',
+                  fontSize: '0.55rem',
+                  color: isTelemetryGlitch ? '#f87171' : 'rgba(124, 58, 237, 0.3)',
+                  pointerEvents: 'none',
+                  transition: 'color 0.15s ease'
+                }}
+              >
+                {sysDecLockText}
+              </div>
+              <div
+                className={isTelemetryGlitch ? "telemetry-glitch-active" : ""}
+                style={{
+                  position: 'absolute',
+                  bottom: '20%',
+                  right: '8%',
+                  fontSize: '0.55rem',
+                  color: isTelemetryGlitch ? '#f87171' : 'rgba(168, 85, 247, 0.3)',
+                  pointerEvents: 'none',
+                  transition: 'color 0.15s ease'
+                }}
+              >
+                {gatewayPingText}
+              </div>
 
               <div
                 ref={coreRef}
@@ -3797,6 +4359,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 {/* Glowing Hologram Center sphere */}
                 <div
                   ref={coreSphereRef}
+                  onMouseEnter={() => { isCoreHoveredRef.current = true; }}
+                  onMouseLeave={() => { isCoreHoveredRef.current = false; }}
                   style={{
                     width: isMobile ? '76px' : '120px',
                     height: isMobile ? '76px' : '120px',
@@ -3812,7 +4376,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     transition: 'transform 0.05s ease-out, box-shadow 0.35s ease',
                     position: 'relative',
                     zIndex: 4,
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    cursor: 'pointer'
                   }}
                 >
                   {/* Red warning overlay for hardware-accelerated opacity transition */}
@@ -3837,9 +4402,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 className="war-room-hud-stats"
                 style={{
                   marginTop: isMobile ? '3rem' : '7.5rem',
-                  background: 'linear-gradient(135deg, rgba(8, 12, 28, 0.65) 0%, rgba(3, 5, 14, 0.85) 100%)',
+                  background: 'linear-gradient(135deg, rgba(8, 12, 28, 0.7) 0%, rgba(3, 5, 14, 0.9) 100%)',
+                  backgroundImage: 'linear-gradient(rgba(168, 85, 247, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(168, 85, 247, 0.035) 1px, transparent 1px)',
+                  backgroundSize: '12px 12px',
+                  backgroundPosition: 'center',
                   backdropFilter: 'blur(25px)',
-                  border: 'none',
+                  border: '1px solid rgba(168, 85, 247, 0.16)',
                   borderRadius: isMobile ? '12px' : '16px',
                   padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.75rem',
                   display: 'grid',
@@ -3847,25 +4415,66 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   gap: isMobile ? '8px' : '12px',
                   textAlign: 'center',
                   width: isMobile ? '300px' : '460px',
-                  boxShadow: '0 15px 50px rgba(0, 0, 0, 0.75), inset 0 0 20px rgba(139, 92, 246, 0.05)',
+                  boxShadow: '0 15px 50px rgba(0, 0, 0, 0.75), 0 0 25px rgba(168, 85, 247, 0.08), inset 0 0 24px rgba(139, 92, 246, 0.04)',
                   position: 'relative',
                   overflow: 'visible'
                 }}
               >
-                {/* Tech Corners */}
-                <div style={{ position: 'absolute', top: -1, left: -1, width: 8, height: 8, borderTop: '2px solid #a855f7', borderLeft: '2px solid #a855f7', borderTopLeftRadius: 4 }} />
-                <div style={{ position: 'absolute', top: -1, right: -1, width: 8, height: 8, borderTop: '2px solid #a855f7', borderRight: '2px solid #a855f7', borderTopRightRadius: 4 }} />
-                <div style={{ position: 'absolute', bottom: -1, left: -1, width: 8, height: 8, borderBottom: '2px solid #a855f7', borderLeft: '2px solid #a855f7', borderBottomLeftRadius: 4 }} />
-                <div style={{ position: 'absolute', bottom: -1, right: -1, width: 8, height: 8, borderBottom: '2px solid #a855f7', borderRight: '2px solid #a855f7', borderBottomRightRadius: 4 }} />
+                {/* Inner boundary wrapper for scanline to prevent it leaking outside the rounded corners */}
+                <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: 'inherit', pointerEvents: 'none' }}>
+                  {/* Active Telemetry Scanline */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      height: '1.5px',
+                      background: 'linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.35), transparent)',
+                      boxShadow: '0 0 6px rgba(168, 85, 247, 0.5)',
+                      animation: 'scanlineSweep 7s linear infinite',
+                      pointerEvents: 'none',
+                      zIndex: 10
+                    }}
+                  />
+                </div>
+
+                {/* Advanced Tech Corners */}
+                {/* Top Left */}
+                <div style={{ position: 'absolute', top: 0, left: 0, width: 12, height: 12, borderTop: '2px solid #a855f7', borderLeft: '2px solid #a855f7', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: 4, left: 4, width: 3, height: 3, borderRadius: '50%', background: '#c084fc', opacity: 0.8, pointerEvents: 'none' }} />
+
+                {/* Top Right */}
+                <div style={{ position: 'absolute', top: 0, right: 0, width: 12, height: 12, borderTop: '2px solid #a855f7', borderRight: '2px solid #a855f7', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', top: 4, right: 4, width: 3, height: 3, borderRadius: '50%', background: '#c084fc', opacity: 0.8, pointerEvents: 'none' }} />
+
+                {/* Bottom Left */}
+                <div style={{ position: 'absolute', bottom: 0, left: 0, width: 12, height: 12, borderBottom: '2px solid #a855f7', borderLeft: '2px solid #a855f7', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: 4, left: 4, width: 3, height: 3, borderRadius: '50%', background: '#c084fc', opacity: 0.8, pointerEvents: 'none' }} />
+
+                {/* Bottom Right */}
+                <div style={{ position: 'absolute', bottom: 0, right: 0, width: 12, height: 12, borderBottom: '2px solid #a855f7', borderRight: '2px solid #a855f7', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: 4, right: 4, width: 3, height: 3, borderRadius: '50%', background: '#c084fc', opacity: 0.8, pointerEvents: 'none' }} />
 
                 {/* Gradient vertical divider lines */}
                 <div style={{ position: 'absolute', left: '33.33%', top: '20%', bottom: '20%', width: '1px', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent)' }} />
                 <div style={{ position: 'absolute', right: '33.33%', top: '20%', bottom: '20%', width: '1px', background: 'linear-gradient(to bottom, transparent, rgba(255,255,255,0.12), transparent)' }} />
 
-                {/* Breathing SVG Throughput Wave background */}
-                <svg viewBox="0 0 400 100" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '55px', pointerEvents: 'none', zIndex: -1, opacity: 0.12, borderRadius: '16px' }}>
-                  <path d="M 0 50 Q 80 15, 160 45 T 320 50 T 400 35" fill="none" stroke="#a855f7" strokeWidth="1.5" style={{ animation: 'waveDrift 10s linear infinite' }} />
-                  <path d="M 0 60 Q 90 75, 180 55 T 360 65 T 400 50" fill="none" stroke="#3b82f6" strokeWidth="1.0" style={{ animation: 'waveDrift2 14s linear infinite' }} />
+                {/* Breathing SVG Throughput Wave background with linear gradients */}
+                <svg viewBox="0 0 400 100" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '55px', pointerEvents: 'none', zIndex: -1, opacity: 0.18, borderRadius: '16px' }}>
+                  <defs>
+                    <linearGradient id="waveGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#a855f7" stopOpacity="0.2" />
+                      <stop offset="50%" stopColor="#c084fc" stopOpacity="1" />
+                      <stop offset="100%" stopColor="#a855f7" stopOpacity="0.2" />
+                    </linearGradient>
+                    <linearGradient id="waveGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.1" />
+                      <stop offset="50%" stopColor="#60a5fa" stopOpacity="0.85" />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.1" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M 0 50 Q 80 15, 160 45 T 320 50 T 400 35" fill="none" stroke="url(#waveGrad1)" strokeWidth="1.8" style={{ animation: 'waveDrift 10s linear infinite' }} />
+                  <path d="M 0 60 Q 90 75, 180 55 T 360 65 T 400 50" fill="none" stroke="url(#waveGrad2)" strokeWidth="1.2" style={{ animation: 'waveDrift2 14s linear infinite' }} />
                 </svg>
 
                 <div
@@ -3901,8 +4510,19 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       +1
                     </div>
                   ))}
-                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>TỔNG QUÉT</div>
-                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#c084fc', marginTop: 4, letterSpacing: '0.05em', textShadow: isTotalGlow ? '0 0 12px rgba(168, 85, 247, 0.85)' : '0 0 6px rgba(168, 85, 247, 0.3)' }}>{displayTotalCounter}</div>
+                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#c084fc', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>TOTAL INGESTED</div>
+                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#c084fc', marginTop: 4, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span
+                      key={displayTotalCounter}
+                      style={{
+                        display: 'inline-block',
+                        animation: 'counterPopTotal 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        textShadow: isTotalGlow ? '0 0 14px rgba(168, 85, 247, 0.95)' : '0 0 6px rgba(168, 85, 247, 0.3)'
+                      }}
+                    >
+                      {displayTotalCounter}
+                    </span>
+                  </div>
                 </div>
 
                 <div
@@ -3938,8 +4558,19 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       +1
                     </div>
                   ))}
-                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>ĐÃ PHÂN PHỐI</div>
-                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#10b981', marginTop: 4, letterSpacing: '0.05em', textShadow: isSharedGlow ? '0 0 12px rgba(16, 185, 129, 0.85)' : '0 0 6px rgba(16, 185, 129, 0.3)' }}>{displaySharedCounter}</div>
+                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>DISTRIBUTED</div>
+                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#10b981', marginTop: 4, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span
+                      key={displaySharedCounter}
+                      style={{
+                        display: 'inline-block',
+                        animation: 'counterPopShared 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        textShadow: isSharedGlow ? '0 0 14px rgba(16, 185, 129, 0.95)' : '0 0 6px rgba(16, 185, 129, 0.3)'
+                      }}
+                    >
+                      {displaySharedCounter}
+                    </span>
+                  </div>
                 </div>
 
                 <div
@@ -3975,8 +4606,19 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       +1
                     </div>
                   ))}
-                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>BỊ GIỮ LẠI</div>
-                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#ef4444', marginTop: 4, letterSpacing: '0.05em', textShadow: isRetainedGlow ? '0 0 12px rgba(239, 68, 68, 0.85)' : '0 0 6px rgba(239, 68, 68, 0.3)' }}>{displayErrorCounter}</div>
+                  <div style={{ fontSize: isMobile ? '0.6rem' : '0.68rem', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>RETAINED</div>
+                  <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: '#ef4444', marginTop: 4, letterSpacing: '0.05em', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span
+                      key={displayErrorCounter}
+                      style={{
+                        display: 'inline-block',
+                        animation: 'counterPopError 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                        textShadow: isRetainedGlow ? '0 0 14px rgba(239, 68, 68, 0.95)' : '0 0 6px rgba(239, 68, 68, 0.3)'
+                      }}
+                    >
+                      {displayErrorCounter}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -4007,6 +4649,20 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       key={sale.name}
                       ref={el => { saleRefs.current[idx] = el; }}
                       className="war-room-sale-card"
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setHoveredSummary({
+                          type: 'sale',
+                          data: { ...sale, channelName: channel.name, channelColor: channel.color },
+                          x: rect.left - 290,
+                          y: rect.top
+                        });
+                        setHoveredSaleIdx(idx);
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredSummary(null);
+                        setHoveredSaleIdx(null);
+                      }}
                       style={{
                         background: isGlow
                           ? `${channel.color}26`
@@ -4032,7 +4688,10 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                         gap: isMobile ? 8 : 12,
                         position: 'relative',
                         transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        ['--hover-glow' as any]: `${channel.color}45`,
+                        ['--hover-border' as any]: channel.color,
+                        ['--hover-bg' as any]: `${channel.color}15`
                       }}
                     >
                       {/* Floating +1 Lead bubble */}
@@ -4663,8 +5322,131 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         </div>
       )}
 
+      {/* local bottom-left toaster */}
+      <Toaster position="bottom-left" containerStyle={{ bottom: 180, left: 24 }} />
+
       {/* CSS Styles */}
       <style>{`
+        .war-room-source-card {
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          cursor: pointer;
+        }
+        .war-room-source-card:hover {
+          transform: translateY(-2px) scale(1.025);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px var(--hover-glow) !important;
+          border-color: var(--hover-border) !important;
+          background: var(--hover-bg) !important;
+        }
+        .war-room-sale-card {
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          cursor: pointer;
+        }
+        .war-room-sale-card:hover {
+          transform: translateY(-2px) scale(1.025);
+          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.65), 0 0 20px var(--hover-glow) !important;
+          border-color: var(--hover-border) !important;
+          background: var(--hover-bg) !important;
+        }
+
+        @keyframes borderDotTop {
+          0% {
+            left: 0%;
+            top: -4px;
+            transform: translate(0, 0) scale(0.6);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+            transform: translate(0, 0) scale(1.1);
+          }
+          75% {
+            left: 100%;
+            top: -4px;
+            transform: translate(-100%, 0) scale(1);
+          }
+          100% {
+            left: 100%;
+            top: 50%;
+            transform: translate(-50%, -50%) scale(1.4);
+            opacity: 1;
+          }
+        }
+        @keyframes borderDotBottom {
+          0% {
+            left: 0%;
+            bottom: -4px;
+            transform: translate(0, 0) scale(0.6);
+            opacity: 0;
+          }
+          10% {
+            opacity: 1;
+            transform: translate(0, 0) scale(1.1);
+          }
+          75% {
+            left: 100%;
+            bottom: -4px;
+            transform: translate(-100%, 0) scale(1);
+          }
+          100% {
+            left: 100%;
+            bottom: 50%;
+            transform: translate(-50%, 50%) scale(1.4);
+            opacity: 1;
+          }
+        }
+
+        @keyframes hudGlitch {
+          0%, 100% {
+            transform: translate(0, 0) skew(0deg);
+            opacity: 1;
+            filter: hue-rotate(0deg);
+          }
+          10% {
+            transform: translate(-2px, 1px) skew(-3deg);
+            opacity: 0.85;
+            filter: hue-rotate(90deg);
+          }
+          20% {
+            transform: translate(2px, -1px) skew(4deg);
+            opacity: 0.9;
+          }
+          30% {
+            transform: translate(-1px, -2px) skew(-2deg);
+            opacity: 0.8;
+            filter: hue-rotate(180deg);
+          }
+          40% {
+            transform: translate(2px, 2px) skew(3deg);
+            opacity: 0.95;
+          }
+          50% {
+            transform: translate(-2px, -1px) skew(-4deg);
+            opacity: 0.85;
+            filter: hue-rotate(270deg);
+          }
+          60% {
+            transform: translate(1px, 2px) skew(2deg);
+            opacity: 0.9;
+          }
+          70% {
+            transform: translate(-2px, 1px) skew(-3deg);
+            opacity: 0.75;
+          }
+          80% {
+            transform: translate(2px, -2px) skew(4deg);
+            opacity: 0.95;
+          }
+          90% {
+            transform: translate(-1px, 1px) skew(-1deg);
+            opacity: 0.9;
+          }
+        }
+        .telemetry-glitch-active {
+          animation: hudGlitch 0.25s linear infinite;
+          color: #f87171 !important;
+          text-shadow: 0 0 8px #ef4444, 0 0 15px #ef4444 !important;
+        }
+
         @keyframes spinCore {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }
@@ -4719,6 +5501,49 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           15% { transform: translateY(-8px) scale(1.1); opacity: 1; }
           100% { transform: translateY(-38px) scale(0.9); opacity: 0; }
         }
+        .spin {
+          animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes scanlineSweep {
+          0% { top: 0%; opacity: 0; }
+          5% { opacity: 0.15; }
+          95% { opacity: 0.15; }
+          100% { top: 100%; opacity: 0; }
+        }
+        @keyframes counterPopTotal {
+          0% { transform: scale(0.8); filter: brightness(2.5); text-shadow: 0 0 16px rgba(168, 85, 247, 0.95); }
+          50% { transform: scale(1.22); filter: brightness(2.5); text-shadow: 0 0 28px rgba(168, 85, 247, 1); }
+          100% { transform: scale(1); filter: brightness(1); text-shadow: 0 0 6px rgba(168, 85, 247, 0.3); }
+        }
+        @keyframes counterPopShared {
+          0% { transform: scale(0.8); filter: brightness(2.5); text-shadow: 0 0 16px rgba(16, 185, 129, 0.95); }
+          50% { transform: scale(1.22); filter: brightness(2.5); text-shadow: 0 0 28px rgba(16, 185, 129, 1); }
+          100% { transform: scale(1); filter: brightness(1); text-shadow: 0 0 6px rgba(16, 185, 129, 0.3); }
+        }
+        @keyframes counterPopError {
+          0% { transform: scale(0.8); filter: brightness(2.5); text-shadow: 0 0 16px rgba(239, 68, 68, 0.95); }
+          50% { transform: scale(1.22); filter: brightness(2.5); text-shadow: 0 0 28px rgba(239, 68, 68, 1); }
+          100% { transform: scale(1); filter: brightness(1); text-shadow: 0 0 6px rgba(239, 68, 68, 0.3); }
+        }
+        @keyframes techHeartbeat {
+          0%, 100% { opacity: 0.3; transform: scaleY(0.9); }
+          50% { opacity: 0.9; transform: scaleY(1.2); }
+        }
+        @keyframes slideUpFade {
+          from { transform: translateY(10px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideInLeft {
+          0% { transform: translateX(-120%); opacity: 0; }
+          100% { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutLeft {
+          0% { transform: translateX(0); opacity: 1; }
+          100% { transform: translateX(-120%); opacity: 0; }
+        }
         @keyframes waveDrift {
           0% { transform: translateX(0); }
           100% { transform: translateX(-40px); }
@@ -4749,24 +5574,24 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           100% { height: 9px; }
         }
         @keyframes holoDissolve {
-          0% {
-            transform: scale(1);
-            filter: brightness(1) blur(0px);
+          0%, 55% {
+            transform: scale(1) skewX(0deg);
+            filter: brightness(1) blur(0px) hue-rotate(0deg);
             opacity: 1;
           }
-          30% {
-            transform: scale(1.02);
-            filter: brightness(1.5) blur(2px) hue-rotate(15deg);
+          70% {
+            transform: scale(1.02) skewX(1deg);
+            filter: brightness(1.4) blur(3px) hue-rotate(10deg);
             opacity: 0.9;
           }
-          60% {
-            transform: scale(0.97) skewX(2deg);
-            filter: brightness(2.5) blur(6px) hue-rotate(-15deg);
-            opacity: 0.6;
+          85% {
+            transform: scale(0.97) skewX(-2deg);
+            filter: brightness(2.2) blur(8px) hue-rotate(-10deg);
+            opacity: 0.55;
           }
           100% {
             transform: scale(0.92);
-            filter: brightness(4) blur(15px);
+            filter: brightness(3.5) blur(18px);
             opacity: 0;
           }
         }
@@ -5242,6 +6067,169 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           </div>
         </div>
       )}
+
+      {/* Dynamic Telemetry Hover summary popover */}
+      {hoveredSummary && (() => {
+        const color = hoveredSummary.type === 'source' ? hoveredSummary.data.color : hoveredSummary.data.channelColor;
+        
+        let details = null;
+        if (hoveredSummary.type === 'source') {
+          const sourceName = hoveredSummary.data.name;
+          // Filter logs matching this source to calculate real counts
+          const sourceLogs = currentActiveLogs.filter((log: any) => {
+            const logSource = log.source || log.type || 'Nhập tay';
+            return logSource === sourceName;
+          });
+          const totalLogs = sourceLogs.length;
+          
+          const distributed = sourceLogs.filter((log: any) => 
+            log.status === 'assigned' || 
+            log.status === 'compensation' || 
+            log.status === 'pending_work_hours' || 
+            log.status === 'reminder'
+          ).length;
+          
+          const duplicates = sourceLogs.filter((log: any) => 
+            log.status === 'duplicate' || 
+            log.status === 'duplicate_reassigned'
+          ).length;
+          
+          const errors = sourceLogs.filter((log: any) => 
+            log.status === 'rejected' || 
+            log.status === 'error'
+          ).length;
+
+          // If currentActiveLogs has 0 items (e.g. no logs parsed yet), fallback gracefully to props count
+          const realTotal = totalLogs > 0 ? totalLogs : hoveredSummary.data.count;
+          const realDistributed = totalLogs > 0 ? distributed : hoveredSummary.data.count;
+          
+          details = (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Trạng thái:</span>
+                <span style={{ color: color, fontWeight: 700 }}>
+                  {hoveredSummary.data.ping === 'Sync' ? 'Sheets Syncing' : 'API Active'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Số lead tổng:</span>
+                <span style={{ color: '#fff', fontWeight: 700 }}>{realTotal} Leads</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Đã chia:</span>
+                <span style={{ color: '#10b981', fontWeight: 700 }}>{realDistributed} Leads</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Trùng:</span>
+                <span style={{ color: '#f59e0b', fontWeight: 700 }}>{duplicates} Leads</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Lỗi:</span>
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>{errors} Leads</span>
+              </div>
+            </>
+          );
+        } else {
+          // For Sales Rep
+          const saleName = hoveredSummary.data.name;
+          const saleLogs = currentActiveLogs.filter((log: any) => log.assigned_to_name === saleName);
+          const totalSaleLogs = saleLogs.length;
+
+          const leadNhan = saleLogs.filter((log: any) => 
+            log.status === 'assigned' || 
+            log.status === 'compensation'
+          ).length;
+
+          const nhacLai = saleLogs.filter((log: any) => 
+            log.status === 'reminder' || 
+            log.status === 'duplicate'
+          ).length;
+
+          const errors = saleLogs.filter((log: any) => 
+            log.status === 'error' || 
+            log.status === 'rejected'
+          ).length;
+
+          const leadsCount = hoveredSummary.data.data + (simulatedLeadsPerSale[saleName] || 0);
+          
+          const currentStats = todayStats || stats;
+          const errorStatItem = currentStats?.errorStats?.find((e: any) => e.name === saleName);
+          const fallbackErrors = errorStatItem ? errorStatItem.errors : 0;
+
+          const displayLeadNhan = totalSaleLogs > 0 ? leadNhan : leadsCount;
+          const displayNhacLai = totalSaleLogs > 0 ? nhacLai : 0;
+          const displayErrors = totalSaleLogs > 0 ? errors : fallbackErrors;
+
+          const isWorking = isCurrentlyWorking(hoveredSummary.data);
+          const statusText = isWorking ? 'Active' : 'Inactive';
+          const statusColor = isWorking ? '#10b981' : '#f59e0b';
+
+          details = (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Hoạt động:</span>
+                <span style={{ color: statusColor, fontWeight: 700 }}>
+                  {statusText}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Số lead đã nhận:</span>
+                <span style={{ color: '#fff', fontWeight: 700 }}>{displayLeadNhan} Leads</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Nhắc lại:</span>
+                <span style={{ color: '#3b82f6', fontWeight: 700 }}>{displayNhacLai} Leads</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Ticket/Lỗi:</span>
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>{displayErrors} Leads</span>
+              </div>
+            </>
+          );
+        }
+
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              left: hoveredSummary.x,
+              top: hoveredSummary.y,
+              width: '270px',
+              background: 'rgba(5, 7, 20, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: `1.5px solid ${color}`,
+              borderRadius: '12px',
+              padding: '12px 16px',
+              boxShadow: `0 15px 35px rgba(0, 0, 0, 0.7), 0 0 20px ${color}25`,
+              zIndex: 999999,
+              pointerEvents: 'none',
+              fontFamily: 'monospace',
+              animation: 'slideUpFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+            }}
+          >
+            {/* Tech crosshair corners */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: 6, height: 6, borderTop: `1.5px solid ${color}`, borderLeft: `1.5px solid ${color}` }} />
+            <div style={{ position: 'absolute', top: 0, right: 0, width: 6, height: 6, borderTop: `1.5px solid ${color}`, borderRight: `1.5px solid ${color}` }} />
+            <div style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 6, borderBottom: `1.5px solid ${color}`, borderLeft: `1.5px solid ${color}` }} />
+            <div style={{ position: 'absolute', bottom: 0, right: 0, width: 6, height: 6, borderBottom: `1.5px solid ${color}`, borderRight: `1.5px solid ${color}` }} />
+
+            {/* Header */}
+            <div style={{ borderBottom: `1px solid rgba(255, 255, 255, 0.1)`, paddingBottom: '8px', marginBottom: '10px' }}>
+              <div style={{ fontSize: '0.6rem', color: color, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                {hoveredSummary.type === 'source' ? 'INGESTION SOURCE TELEMETRY' : 'CONSULTANT AGENT PREVIEW'}
+              </div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#fff', marginTop: '3px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                {hoveredSummary.data.name}
+              </div>
+            </div>
+
+            {/* Metadata Grid */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.72rem' }}>
+              {details}
+            </div>
+          </div>
+        );
+      })()}
     </div>,
     document.body
   );
