@@ -14,7 +14,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import toast from 'react-hot-toast';
 import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
@@ -62,7 +62,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     return cached === null ? true : cached === '1';
   });
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || '30 ngày qua';
+    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
   });
 
   const handleUpdateDateFilter = (val: string) => {

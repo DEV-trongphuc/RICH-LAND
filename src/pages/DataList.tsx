@@ -42,7 +42,7 @@ type Lead = {
   ai_evaluation?: string;
 };
 
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 
 const parseServerDate = (dateStr: string) => {
   if (!dateStr) return new Date();
@@ -319,7 +319,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || '30 ngày qua';
+    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
   });
 
   const handleUpdateDateFilter = (val: string) => {
@@ -504,7 +504,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   useEffect(() => {
     if (isActive) {
-      const saved = localStorage.getItem('domation_global_date') || '30 ngày qua';
+      const saved = localStorage.getItem('domation_global_date') || getDefaultDateFilter();
       if (saved && saved !== dateFilter) {
         setDateFilter(saved);
       }

@@ -6,7 +6,7 @@ import { Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChar
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 import toast from 'react-hot-toast';
 import {
   ShieldAlert, RefreshCw, Filter, Zap, Trash2, Plus,
@@ -533,7 +533,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
   // Search Params
   const getInitialDateFilter = () => {
-    return localStorage.getItem('domation_global_date') || '30 ngày qua';
+    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
   };
   const dateFilter = searchParams.get('date') || getInitialDateFilter();
 

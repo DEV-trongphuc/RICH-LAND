@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 import toast from 'react-hot-toast';
 import { KpiCardSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
@@ -28,7 +28,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || '30 ngày qua';
+    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
   });
 
   const handleUpdateDateFilter = (val: string) => {

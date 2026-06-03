@@ -132,13 +132,13 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
   };
 
   const handleProfileClick = () => {
-    if (user?.role === 'admin' || user?.role === 'assistant') {
+    if (user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') {
       window.dispatchEvent(new CustomEvent('open-profile-modal'));
     }
   };
 
   const handleActivityClick = () => {
-    if (user?.role === 'admin' || user?.role === 'assistant') {
+    if (user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') {
       window.dispatchEvent(new CustomEvent('open-profile-modal', { detail: { tab: 'activity' } }));
     }
   };
@@ -556,7 +556,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
               gap: '0.625rem',
               paddingLeft: '0.875rem',
               borderLeft: '1px solid var(--color-border)',
-              cursor: (user?.role === 'admin' || user?.role === 'assistant') ? 'pointer' : 'default',
+              cursor: (user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') ? 'pointer' : 'default',
               padding: '4px 8px',
               borderRadius: '6px',
               transition: 'background 0.2s',
@@ -594,7 +594,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
                   transformOrigin: 'top right'
                 }}
               >
-                {(user?.role === 'admin' || user?.role === 'assistant') && (
+                {(user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') && (
                   <>
                     <button
                       onClick={handleProfileClick}

@@ -5,7 +5,7 @@ import { withRouterFreezer } from '../components/RouterFreezer';
 import { Plus, Users, Zap, X, Shield, Check, LayoutGrid, List, Trash2, Search, AlertCircle, Clock, Scale, Info, Layers, HelpCircle, ArrowRight, RefreshCw } from 'lucide-react';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 import toast from 'react-hot-toast';
 import { RoundCardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
@@ -63,7 +63,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || '30 ngày qua';
+    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
   });
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');

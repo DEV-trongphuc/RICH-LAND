@@ -7,7 +7,7 @@ import {
   PieChart, Pie, Cell, BarChart, LabelList
 } from 'recharts';
 import toast from 'react-hot-toast';
-import { fetchAPI } from '../utils/api';
+import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 import { TableSkeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -242,7 +242,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const saleFilter = searchParams.get('consultant') || '';
 
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || '30 ngày qua';
+    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
   });
 
   const handleUpdateDateFilter = (val: string) => {
@@ -978,7 +978,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const filteredReports = reports;
 
   const pendingCount = stats.pending;
-  const hasActiveFilters = saleFilter || (dateFilter !== '30 ngày qua' && dateFilter !== 'all' && dateFilter !== '');
+  const hasActiveFilters = saleFilter || (dateFilter !== getDefaultDateFilter() && dateFilter !== 'all' && dateFilter !== '');
 
   const FILTER_TABS = [
     { key: 'pending', label: 'Chờ duyệt', color: '#b45309', bg: '#fef3c7' },
@@ -1073,7 +1073,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
           {hasActiveFilters && (
             <button onClick={() => {
-              handleUpdateDateFilter('30 ngày qua');
+              handleUpdateDateFilter(getDefaultDateFilter());
               setSearchParams((prev: any) => {
                 prev.delete('consultant');
                 prev.delete('page');
@@ -1347,7 +1347,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           {/* Clear filters */}
           {hasActiveFilters && (
             <button onClick={() => {
-              handleUpdateDateFilter('30 ngày qua');
+              handleUpdateDateFilter(getDefaultDateFilter());
               setSearchParams((prev: any) => {
                 prev.delete('consultant');
                 prev.delete('page');

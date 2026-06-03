@@ -7,6 +7,7 @@ import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Keyboard } from 'lucide-react';
 import { CustomModal } from './components/ui/CustomModal';
+import { getDefaultDateFilter } from './utils/api';
 
 // Lazy load all pages for Code Splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -419,7 +420,7 @@ export default function App() {
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
     }
-    localStorage.setItem('domation_global_date', '30 ngày qua');
+    localStorage.setItem('domation_global_date', getDefaultDateFilter());
   }, []);
 
   return (

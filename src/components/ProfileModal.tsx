@@ -48,14 +48,15 @@ export const ProfileModal = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const handleOpen = () => {
+    const handleOpen = (e: any) => {
       setProfileData({ 
         name: user?.name || '', 
         email: user?.email || user?.username || '',
         avatar: user?.avatar || ''
       });
       setPassData({ oldPassword: '', newPassword: '', confirmPassword: '' });
-      setActiveTab('profile');
+      const targetTab = e?.detail?.tab || 'profile';
+      setActiveTab(targetTab as 'profile' | 'password' | 'activity');
       setIsOpen(true);
     };
     window.addEventListener('open-profile-modal', handleOpen);

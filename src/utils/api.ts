@@ -180,3 +180,7 @@ export async function fetchPublicAPI(action: string, options: RequestInit = {}) 
 
   return json;
 }
+
+export function getDefaultDateFilter(): string {
+  return new Date().getDate() >= 7 ? 'Tháng này' : '30 ngày qua';
+}
