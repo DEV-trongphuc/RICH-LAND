@@ -1414,7 +1414,7 @@ switch ($action) {
         }
         if (isset($_GET['search']) && trim($_GET['search']) !== '') {
             $search = $conn->real_escape_string(trim($_GET['search']));
-            $extraCondition .= " AND (l.name LIKE '$search%' OR l.phone LIKE '$search%' OR l.email LIKE '$search%')";
+            $extraCondition .= " AND (l.name LIKE '%$search%' OR l.phone LIKE '%$search%' OR l.email LIKE '%$search%')";
             $isFilteringActive = true;
         }
 
@@ -1917,7 +1917,7 @@ switch ($action) {
         }
         if ($searchFilter !== '') {
             $s = $conn->real_escape_string($searchFilter);
-            $sqlFilters .= " AND (l.name LIKE '$s%' OR l.phone LIKE '$s%' OR l.email LIKE '$s%')";
+            $sqlFilters .= " AND (l.name LIKE '%$s%' OR l.phone LIKE '%$s%' OR l.email LIKE '%$s%')";
             $isFilteringActive = true;
         }
 

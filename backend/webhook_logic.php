@@ -204,40 +204,40 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                 // 2. Query ticket notify admins
                 $admins = getTicketNotifyAdmins($conn);
                 if (!empty($admins)) {
-                        $maskedPhone = '';
-                        if (!empty($phone)) {
-                            $trimmed = trim($phone);
-                            if (strlen($trimmed) <= 6) {
-                                $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
-                            } else {
-                                $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+                    $maskedPhone = '';
+                    if (!empty($phone)) {
+                        $trimmed = trim($phone);
+                        if (strlen($trimmed) <= 6) {
+                            $maskedPhone = substr($trimmed, 0, 2) . str_repeat('*', strlen($trimmed) - 2);
+                        } else {
+                            $maskedPhone = substr($trimmed, 0, 3) . '****' . substr($trimmed, -3);
+                        }
+                    }
+
+                    $zaloMsg = "⚠️ [ CẢNH BÁO DATA TRÙNG/SPAM CHẶN BLACKLIST ]\n\n"
+                        . "Hệ thống vừa nhận được data mới khớp với danh sách đen/từ khóa loại trừ và đã tự động bỏ qua.\n\n"
+                        . "- Tên khách hàng: " . ($name ?: 'Không rõ') . "\n"
+                        . "- SĐT: " . ($maskedPhone ?: '-') . "\n"
+                        . "- Email: " . ($email ?: '-') . "\n"
+                        . "- Nguồn: " . ($source ?: '-') . "\n"
+                        . "- Loại: " . ($type ?: '-') . "\n"
+                        . "- Ghi chú: " . ($note ?: '-') . "\n"
+                        . "- Lý do lọc: " . $reason;
+
+                    // Send Zalo
+                    if (!empty($botToken)) {
+                        require_once __DIR__ . '/zalo_bot.php';
+                        foreach ($admins as $admin) {
+                            if (!empty($admin['zalo_chat_id'])) {
+                                sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
                             }
                         }
+                    }
 
-                        $zaloMsg = "⚠️ [ CẢNH BÁO DATA TRÙNG/SPAM CHẶN BLACKLIST ]\n\n"
-                            . "Hệ thống vừa nhận được data mới khớp với danh sách đen/từ khóa loại trừ và đã tự động bỏ qua.\n\n"
-                            . "- Tên khách hàng: " . ($name ?: 'Không rõ') . "\n"
-                            . "- SĐT: " . ($maskedPhone ?: '-') . "\n"
-                            . "- Email: " . ($email ?: '-') . "\n"
-                            . "- Nguồn: " . ($source ?: '-') . "\n"
-                            . "- Loại: " . ($type ?: '-') . "\n"
-                            . "- Ghi chú: " . ($note ?: '-') . "\n"
-                            . "- Lý do lọc: " . $reason;
-
-                        // Send Zalo
-                        if (!empty($botToken)) {
-                            require_once __DIR__ . '/zalo_bot.php';
-                            foreach ($admins as $admin) {
-                                if (!empty($admin['zalo_chat_id'])) {
-                                    sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
-                                }
-                            }
-                        }
-
-                        // Send Email
-                        require_once __DIR__ . '/mailer.php';
-                        $emailSubj = "[Cảnh báo] Data mới bị loại trừ (Blacklist) - " . ($name ?: 'Không rõ');
-                        $emailBody = "<h3>Cảnh báo Data mới khớp danh sách đen / từ khóa loại trừ</h3>
+                    // Send Email
+                    require_once __DIR__ . '/mailer.php';
+                    $emailSubj = "[Cảnh báo] Data mới bị loại trừ (Blacklist) - " . ($name ?: 'Không rõ');
+                    $emailBody = "<h3>Cảnh báo Data mới khớp danh sách đen / từ khóa loại trừ</h3>
                                       <p>Hệ thống đã tự động bỏ qua (không lưu CRM, không phân bổ) data sau:</p>
                                       <ul>
                                           <li><strong>Họ tên:</strong> " . ($name ?: 'Không rõ') . "</li>
@@ -249,12 +249,12 @@ function checkGlobalExclusion($conn, $data, $phone, $email, $notifyAdmins = fals
                                           <li><strong>Lý do lọc:</strong> " . $reason . "</li>
                                       </ul>";
 
-                        foreach ($admins as $admin) {
-                            if (!empty($admin['email'])) {
-                                sendEmailNotification($admin['email'], $emailSubj, 'Cảnh báo Data Blacklist', $emailBody, '');
-                            }
+                    foreach ($admins as $admin) {
+                        if (!empty($admin['email'])) {
+                            sendEmailNotification($admin['email'], $emailSubj, 'Cảnh báo Data Blacklist', $emailBody, '');
                         }
                     }
+                }
             } catch (Exception $ex) {
                 error_log("Error notifying admins of blacklist match: " . $ex->getMessage());
             }
@@ -407,7 +407,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     }
 
     $isDynamic = true;
-    $excludeLeadId = ($excludeLeadId && $excludeLeadId > 0) ? (int)$excludeLeadId : null;
+    $excludeLeadId = ($excludeLeadId && $excludeLeadId > 0) ? (int) $excludeLeadId : null;
 
     if (count($phones) === 1 && count($emails) === 0) {
         if ($excludeLeadId) {
@@ -847,7 +847,7 @@ function getNextConsultantInRound($conn, $roundId)
         $logStmt->execute();
         $logRes = $logStmt->get_result();
         if ($logRow = $logRes->fetch_assoc()) {
-            $absoluteLastAssignedId = $logRow['assigned_to'] !== null ? (int)$logRow['assigned_to'] : null;
+            $absoluteLastAssignedId = $logRow['assigned_to'] !== null ? (int) $logRow['assigned_to'] : null;
         }
         $logStmt->close();
     }
@@ -958,7 +958,7 @@ function getNextConsultantInRound($conn, $roundId)
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 
         // Nếu Sale này vừa nhận lead trước đó (absoluteLastAssignedId từ logs), ta sẽ bỏ qua lượt đền bù này nếu trong vòng còn có TVV khác đang hoạt động.
-        $isLastAssigned = ($absoluteLastAssignedId !== null && (int)$row['id'] === (int)$absoluteLastAssignedId);
+        $isLastAssigned = ($absoluteLastAssignedId !== null && (int) $row['id'] === (int) $absoluteLastAssignedId);
         $shouldSkipConsecutiveComp = ($isLastAssigned && $activeCount > 1);
 
         if (empty($compensatedConsultant) && $isAvailable && !$shouldSkipConsecutiveComp && intval($row['compensation_count']) > 0) {
@@ -1342,7 +1342,7 @@ function simulateNextConsultantInRound($conn, $roundId)
         $logStmt->execute();
         $logRes = $logStmt->get_result();
         if ($logRow = $logRes->fetch_assoc()) {
-            $absoluteLastAssignedId = $logRow['assigned_to'] !== null ? (int)$logRow['assigned_to'] : null;
+            $absoluteLastAssignedId = $logRow['assigned_to'] !== null ? (int) $logRow['assigned_to'] : null;
         }
         $logStmt->close();
     }
@@ -1446,7 +1446,7 @@ function simulateNextConsultantInRound($conn, $roundId)
 
         // Priority 1: Compensation
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale.
-        $isLastAssigned = ($absoluteLastAssignedId !== null && (int)$row['id'] === (int)$absoluteLastAssignedId);
+        $isLastAssigned = ($absoluteLastAssignedId !== null && (int) $row['id'] === (int) $absoluteLastAssignedId);
         $shouldSkipConsecutiveComp = ($isLastAssigned && $activeCount > 1);
 
         if (empty($compensatedConsultant) && $isAvailable && !$shouldSkipConsecutiveComp && intval($row['compensation_count']) > 0) {
@@ -2062,19 +2062,72 @@ function triggerTwoWaySync($conn, $leadId)
 }
 
 if (!function_exists('cleanLeadNoteForAI')) {
-    function cleanLeadNoteForAI($note) {
+    function cleanLeadNoteForAI($note)
+    {
         if (empty($note)) {
             return '';
         }
 
         // List of noisy and technical fields to discard
         $blacklist = [
-            'ip', 'ipaddress', 'ip_address', 'useragent', 'user_agent', 'browser', 'device', 'platform', 'os', 
-            'fbclid', 'gclid', 'dclid', 'msclkid', 'clickid', 'click_id', 'affiliateid', 'affiliate_id', 'affid',
-            'utmsource', 'utmmedium', 'utmcampaign', 'utmcontent', 'utmterm', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 
-            'createdat', 'created_at', 'updatedat', 'updated_at', 'id', 'connectionid', 'connection_id', 'leadid', 'lead_id', 'spreadsheetid', 'spreadsheet_id',
-            'token', 'webhooktoken', 'webhook_token', 'sec', 'key', 'apikey', 'api_key', 'apikeysecret', 'api_key_secret', 'secret',
-            'phone', 'sdt', 'sodienthoai', 'email', 'mail', 'name', 'hoten', 'ten', 'tenkhachhang'
+            'ip',
+            'ipaddress',
+            'ip_address',
+            'useragent',
+            'user_agent',
+            'browser',
+            'device',
+            'platform',
+            'os',
+            'fbclid',
+            'gclid',
+            'dclid',
+            'msclkid',
+            'clickid',
+            'click_id',
+            'affiliateid',
+            'affiliate_id',
+            'affid',
+            'utmsource',
+            'utmmedium',
+            'utmcampaign',
+            'utmcontent',
+            'utmterm',
+            'utm_source',
+            'utm_medium',
+            'utm_campaign',
+            'utm_content',
+            'utm_term',
+            'createdat',
+            'created_at',
+            'updatedat',
+            'updated_at',
+            'id',
+            'connectionid',
+            'connection_id',
+            'leadid',
+            'lead_id',
+            'spreadsheetid',
+            'spreadsheet_id',
+            'token',
+            'webhooktoken',
+            'webhook_token',
+            'sec',
+            'key',
+            'apikey',
+            'api_key',
+            'apikeysecret',
+            'api_key_secret',
+            'secret',
+            'phone',
+            'sdt',
+            'sodienthoai',
+            'email',
+            'mail',
+            'name',
+            'hoten',
+            'ten',
+            'tenkhachhang'
         ];
 
         $lines = explode("\n", $note);
@@ -2088,7 +2141,7 @@ if (!function_exists('cleanLeadNoteForAI')) {
 
             if (strpos($line, ':') !== false) {
                 list($key, $val) = explode(':', $line, 2);
-                
+
                 // Normalize key (strip spaces, strip accents, lowercase)
                 $keyClean = str_replace(' ', '', strtolower(trim($key)));
                 $keyClean = preg_replace('/[àáạảãâầấậẩẫăằắặẳẵ]/u', 'a', $keyClean);
@@ -2098,7 +2151,7 @@ if (!function_exists('cleanLeadNoteForAI')) {
                 $keyClean = preg_replace('/[ùúụủũưừứựửữ]/u', 'u', $keyClean);
                 $keyClean = preg_replace('/[ỳýỵỷỹ]/u', 'y', $keyClean);
                 $keyClean = preg_replace('/[đ]/u', 'd', $keyClean);
-                
+
                 // Skip if key is on the blacklist
                 if (in_array($keyClean, $blacklist)) {
                     continue;
@@ -2208,13 +2261,13 @@ function runAIScreener($conn, $leadData, $customRules = null)
     $totalTokens = 0;
 
     if (isset($resJson['usageMetadata'])) {
-        $promptTokens = (int)($resJson['usageMetadata']['promptTokenCount'] ?? 0);
-        $completionTokens = (int)($resJson['usageMetadata']['candidatesTokenCount'] ?? 0);
-        $totalTokens = (int)($resJson['usageMetadata']['totalTokenCount'] ?? 0);
+        $promptTokens = (int) ($resJson['usageMetadata']['promptTokenCount'] ?? 0);
+        $completionTokens = (int) ($resJson['usageMetadata']['candidatesTokenCount'] ?? 0);
+        $totalTokens = (int) ($resJson['usageMetadata']['totalTokenCount'] ?? 0);
     } elseif (isset($resJson['usage'])) {
-        $promptTokens = (int)($resJson['usage']['prompt_tokens'] ?? 0);
-        $completionTokens = (int)($resJson['usage']['completion_tokens'] ?? 0);
-        $totalTokens = (int)($resJson['usage']['total_tokens'] ?? 0);
+        $promptTokens = (int) ($resJson['usage']['prompt_tokens'] ?? 0);
+        $completionTokens = (int) ($resJson['usage']['completion_tokens'] ?? 0);
+        $totalTokens = (int) ($resJson['usage']['total_tokens'] ?? 0);
     }
 
     $rawText = $resJson['candidates'][0]['content']['parts'][0]['text'] ?? '';
@@ -2269,7 +2322,7 @@ function runAIScreener($conn, $leadData, $customRules = null)
     // 3. Scan for reason key among common names
     foreach ($data as $key => $val) {
         if ($key === $statusKey) {
-            
+
             continue;
         }
         $lowerKey = strtolower($key);
@@ -2778,7 +2831,7 @@ function sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customer
     $statusText = 'Không rõ';
     switch ($distData['status']) {
         case 'assigned':
-            $statusText = 'Chia mới thành công (Round-robin)';
+            $statusText = 'Chia mới thành công';
             break;
         case 'compensation':
             $statusText = 'Chia đền bù';
@@ -2790,7 +2843,7 @@ function sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customer
             $statusText = 'Chỉ đồng bộ check trùng (Không chia số)';
             break;
         case 'duplicate':
-            $statusText = 'Trùng số - Nhắc lại cho Sale cũ';
+            $statusText = 'Trùng số - Nhắc lại cho Sale';
             break;
         case 'pending_approval':
             $statusText = 'Tạm giữ chờ AI duyệt';
