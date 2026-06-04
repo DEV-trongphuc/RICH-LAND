@@ -2711,7 +2711,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     const pollData = () => {
       Promise.all([
         fetchAPI('get_dashboard_stats&date=Hôm nay'),
-        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=100'),
+        fetchAPI('get_logs&date=Hôm nay&exclude_status=silent&page=1&pageSize=100'),
         fetchAPI('get_connections')
       ])
         .then(([statsRes, logsRes, connsRes]) => {
@@ -3350,7 +3350,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
       // Fetch today's logs and all consultants
       Promise.all([
-        fetchAPI('get_logs&exclude_status=silent&page=1&pageSize=100'),
+        fetchAPI('get_logs&date=Hôm nay&exclude_status=silent&page=1&pageSize=100'),
         fetchAPI('get_consultants')
       ])
         .then(([logsRes, consultantsRes]) => {

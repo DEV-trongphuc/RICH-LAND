@@ -1343,6 +1343,35 @@ foreach ($connections as $connItem) {
                     continue;
                 }
 
+                // --- 2.2. If existing lead is currently held in pending_approval, keep it held and skip assignment/AI ---
+                if ($crmCheckResult['leadExists'] && $crmCheckResult['leadStatus'] === 'pending_approval') {
+                    $conn->begin_transaction();
+                    try {
+                        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connItem['id'], null, $name);
+                        
+                        $updStmt = $conn->prepare("UPDATE leads SET status = 'pending_approval', assigned_to = NULL WHERE id = ?");
+                        if ($updStmt) {
+                            $updStmt->bind_param("i", $leadId);
+                            $updStmt->execute();
+                            $updStmt->close();
+                        }
+                        
+                        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Dữ liệu trùng lặp đang chờ AI/Admin phê duyệt (đồng bộ hệ thống).', false);
+                        
+                        // Record hash so we don't process this row again on next cron run
+                        $recordStmt->bind_param("is", $connItem['id'], $rowHash);
+                        $recordStmt->execute();
+                        $hashMap[$rowHash] = true;
+                        
+                        $conn->commit();
+                        triggerTwoWaySync($conn, $leadId);
+                    } catch (Exception $txE) {
+                        $conn->rollback();
+                        logSync("Transaction failed for duplicate pending_approval row: " . $txE->getMessage());
+                    }
+                    continue;
+                }
+
                 // --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
                 $screenerData = [
                     'phone' => $phone,

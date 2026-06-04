@@ -689,7 +689,7 @@ switch ($action) {
                     'username' => $user['username'],
                     'email' => $user['email'] ?? '',
                     'role' => $user['role'],
-                    'exp' => time() + 86400
+                    'exp' => time() + 86400 * 30
                 ];
                 $token = create_jwt($payload, $JWT_SECRET);
                 echo json_encode([
@@ -782,7 +782,7 @@ switch ($action) {
                 'username' => $user['username'],
                 'email' => $user['email'] ?? '',
                 'role' => $user['role'],
-                'exp' => time() + 86400
+                'exp' => time() + 86400 * 30
             ];
             $token = create_jwt($payload, $JWT_SECRET);
             echo json_encode([
@@ -855,7 +855,7 @@ switch ($action) {
                 'email' => $adminUser['email'] ?? '',
                 'role' => $adminUser['role'],
                 'name' => $adminUser['name'],
-                'exp' => time() + 86400 * 7
+                'exp' => time() + 86400 * 30
             ];
             $token = create_jwt($payload, $JWT_SECRET);
             echo json_encode([
@@ -899,7 +899,7 @@ switch ($action) {
                 'email' => $sale['email'],
                 'role' => 'sale',
                 'name' => $sale['name'],
-                'exp' => time() + 86400 * 7 // 7 days token for sales
+                'exp' => time() + 86400 * 30 // 30 days token for sales
             ];
             $token = create_jwt($payload, $JWT_SECRET);
             echo json_encode([

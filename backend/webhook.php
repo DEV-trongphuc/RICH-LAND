@@ -536,6 +536,43 @@ if ($crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteractio
     respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "duplicate", "assignedTo" => $assignedTo, "message" => "Duplicate < " . $dupCheckMonths . " months."], $lockKey, $lockReleased);
 }
 
+// --- 2.2. If existing lead is currently held in pending_approval, keep it held and skip assignment/AI ---
+if ($crmCheckResult['leadExists'] && $crmCheckResult['leadStatus'] === 'pending_approval') {
+    $conn->begin_transaction();
+    try {
+        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, $connectionId, null, $name);
+        
+        $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', assigned_to = NULL WHERE id = ?");
+        $updHeld->bind_param("i", $leadId);
+        $updHeld->execute();
+        $updHeld->close();
+        
+        logDistribution($conn, $leadId, null, $targetRoundId, 'pending_approval', 'Dữ liệu trùng lặp đang chờ AI/Admin phê duyệt.', false);
+        $conn->commit();
+        if (!empty($leadId)) {
+            triggerTwoWaySync($conn, $leadId);
+        }
+    } catch (Exception $e) {
+        $conn->rollback();
+        if ($e instanceof mysqli_sql_exception && ($e->getCode() === 1062 || strpos($e->getMessage(), 'Duplicate entry') !== false)) {
+            echo json_encode(["success" => true, "status" => "pending_approval", "message" => "Dữ liệu trùng lặp (Duplicate Key) đang chờ AI/Admin phê duyệt."]);
+        } else {
+            echo json_encode(["success" => false, "message" => "Lỗi Database: Dữ liệu đang được xử lý, vui lòng thử lại sau."]);
+        }
+        releaseAdvisoryLock($conn, $lockKey, $lockReleased);
+        exit();
+    }
+
+    $custData = ['name' => $name, 'phone' => $phone, 'email' => $email, 'source' => $source, 'type' => $type, 'note' => $note];
+    $distData = [
+        'status' => 'pending_approval',
+        'assigned_to_id' => null,
+        'round_id' => $targetRoundId,
+        'message' => 'Dữ liệu trùng lặp đang chờ AI/Admin phê duyệt.'
+    ];
+    respondAndNotifyAdmin($conn, $connData, $leadId, $custData, $distData, ["success" => true, "status" => "pending_approval", "message" => "Dữ liệu trùng lặp đang chờ AI/Admin phê duyệt."], $lockKey, $lockReleased);
+}
+
 // --- 2.5. AI Screener & Gatekeeper evaluation (Only if new lead / duplicate older than N months) ---
 $aiScreenerResult = evaluateScreener($conn, $targetRoundId, $data);
 

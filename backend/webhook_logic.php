@@ -412,7 +412,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     if (count($phones) === 1 && count($emails) === 0) {
         if ($excludeLeadId) {
             if ($stmtPhoneEx === null) {
-                $stmtPhoneEx = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                $stmtPhoneEx = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                              FROM leads l 
                                              LEFT JOIN consultants c ON l.assigned_to = c.id 
                                              WHERE l.phone = ? AND l.id != ?
@@ -423,7 +423,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $params = [$phones[0], $excludeLeadId];
         } else {
             if ($stmtPhone === null) {
-                $stmtPhone = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                $stmtPhone = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                              FROM leads l 
                                              LEFT JOIN consultants c ON l.assigned_to = c.id 
                                              WHERE l.phone = ? 
@@ -437,7 +437,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     } else if (count($phones) === 0 && count($emails) === 1) {
         if ($excludeLeadId) {
             if ($stmtEmailEx === null) {
-                $stmtEmailEx = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                $stmtEmailEx = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                              FROM leads l 
                                              LEFT JOIN consultants c ON l.assigned_to = c.id 
                                              WHERE l.email = ? AND l.id != ?
@@ -448,7 +448,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $params = [$emails[0], $excludeLeadId];
         } else {
             if ($stmtEmail === null) {
-                $stmtEmail = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                $stmtEmail = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                              FROM leads l 
                                              LEFT JOIN consultants c ON l.assigned_to = c.id 
                                              WHERE l.email = ? 
@@ -462,7 +462,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     } else if (count($phones) === 1 && count($emails) === 1) {
         if ($excludeLeadId) {
             if ($stmtBothEx === null) {
-                $stmtBothEx = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                $stmtBothEx = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                              FROM leads l 
                                              LEFT JOIN consultants c ON l.assigned_to = c.id 
                                              WHERE (l.phone = ? OR l.email = ?) AND l.id != ?
@@ -473,7 +473,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $params = [$phones[0], $emails[0], $excludeLeadId];
         } else {
             if ($stmtBoth === null) {
-                $stmtBoth = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+                $stmtBoth = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                              FROM leads l 
                                              LEFT JOIN consultants c ON l.assigned_to = c.id 
                                              WHERE l.phone = ? OR l.email = ? 
@@ -497,7 +497,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         }
         $whereClause = implode(" OR ", $where);
         if ($excludeLeadId) {
-            $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+            $stmt = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                     FROM leads l 
                                     LEFT JOIN consultants c ON l.assigned_to = c.id 
                                     WHERE ($whereClause) AND l.id != ?
@@ -505,7 +505,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $params[] = $excludeLeadId;
             $types .= 'i';
         } else {
-            $stmt = $conn->prepare("SELECT l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
+            $stmt = $conn->prepare("SELECT l.id, l.status as lead_status, l.assigned_to, l.last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
                                     FROM leads l 
                                     LEFT JOIN consultants c ON l.assigned_to = c.id 
                                     WHERE $whereClause 
@@ -525,19 +525,25 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         $res = false;
     }
 
-    $hasOwner = false;
-    $leadIdForHistory = $excludeLeadId;
+    $leadExists = false;
+    $leadId = null;
+    $leadStatus = null;
+    $leadRow = null;
+
     if ($res instanceof mysqli_result && $res->num_rows > 0) {
-        $row = $res->fetch_assoc();
+        $leadRow = $res->fetch_assoc();
         $res->data_seek(0);
-        if (!empty($row['assigned_to'])) {
-            $hasOwner = true;
-        } else {
-            $leadIdForHistory = $row['id'];
-        }
+        $leadExists = true;
+        $leadId = $leadRow['id'];
+        $leadStatus = $leadRow['lead_status'];
     }
 
-    if (!$hasOwner && $leadIdForHistory) {
+    $hasOwner = false;
+    if ($leadExists && !empty($leadRow['assigned_to'])) {
+        $hasOwner = true;
+    }
+
+    if ($leadExists && !$hasOwner && $leadId) {
         $stmtHistory = $conn->prepare("
             SELECT dl.assigned_to, dl.received_at as last_interaction_date, c.name as consultant_name, c.status as consultant_status, c.leave_start, c.leave_end, c.vacation_mode 
             FROM distribution_logs dl
@@ -549,16 +555,26 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             ORDER BY dl.received_at DESC LIMIT 1
         ");
         if ($stmtHistory) {
-            $stmtHistory->bind_param("i", $leadIdForHistory);
+            $stmtHistory->bind_param("i", $leadId);
             $stmtHistory->execute();
-            $res = $stmtHistory->get_result();
+            $resHistory = $stmtHistory->get_result();
             $stmtHistory->close();
+            if ($resHistory && $resHistory->num_rows > 0) {
+                $historyRow = $resHistory->fetch_assoc();
+                $leadRow['assigned_to'] = $historyRow['assigned_to'];
+                $leadRow['last_interaction_date'] = $historyRow['last_interaction_date'];
+                $leadRow['consultant_name'] = $historyRow['consultant_name'];
+                $leadRow['consultant_status'] = $historyRow['consultant_status'];
+                $leadRow['leave_start'] = $historyRow['leave_start'];
+                $leadRow['leave_end'] = $historyRow['leave_end'];
+                $leadRow['vacation_mode'] = $historyRow['vacation_mode'];
+            }
         }
     }
 
-    if ($res instanceof mysqli_result && $res->num_rows > 0) {
-        $row = $res->fetch_assoc();
-        $lastInteraction = new DateTime($row['last_interaction_date']);
+    if ($leadExists && $leadRow) {
+        $lastInteractionDate = !empty($leadRow['last_interaction_date']) ? $leadRow['last_interaction_date'] : date('Y-m-d H:i:s');
+        $lastInteraction = new DateTime($lastInteractionDate);
         $now = new DateTime();
         $diff = $now->diff($lastInteraction);
         $months = ($diff->format('%y') * 12) + $diff->format('%m');
@@ -568,13 +584,13 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
             $reassignIfOwnerInactive = '1'; // Default to ON (mặc định bật)
         }
 
-        $consultantStatus = $row['consultant_status'];
-        $leaveStart = $row['leave_start'] ?? null;
-        $leaveEnd = $row['leave_end'] ?? null;
+        $consultantStatus = $leadRow['consultant_status'] ?? null;
+        $leaveStart = $leadRow['leave_start'] ?? null;
+        $leaveEnd = $leadRow['leave_end'] ?? null;
         $today = date('Y-m-d');
 
         $isActuallyOnLeave = false;
-        if ($consultantStatus === 'leave' || (isset($row['vacation_mode']) && $row['vacation_mode'] == 1)) {
+        if ($consultantStatus === 'leave' || (isset($leadRow['vacation_mode']) && $leadRow['vacation_mode'] == 1)) {
             $isActuallyOnLeave = true;
         } else if ($consultantStatus === 'active' && !empty($leaveStart)) {
             if ($today >= $leaveStart && (empty($leaveEnd) || $today <= $leaveEnd)) {
@@ -588,25 +604,32 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
         // Nếu nghỉ phép (status = 'leave' hoặc có lịch nghỉ, vacation_mode), vẫn được coi là hoạt động/giữ khách cũ.
         $isInactive = ($consultantStatus === 'inactive');
 
-        if ($reassignIfOwnerInactive === '1' && !$ignoreReassignIfOwnerInactive) {
-            // Chỉ chuyển giao cho Sale khác nếu Sale cũ đã NGỪNG HOẠT ĐỘNG (status = inactive)
-            // Nếu chỉ nghỉ phép (status = leave, vacation_mode = 1, hoặc lịch nghỉ), vẫn giữ lại khách cũ (isDuplicate = true)
-            $isDuplicate = !$isInactive;
-            $assignedTo = $isDuplicate ? $row['assigned_to'] : null;
+        if (!empty($leadRow['assigned_to'])) {
+            if ($reassignIfOwnerInactive === '1' && !$ignoreReassignIfOwnerInactive) {
+                // Chỉ chuyển giao cho Sale khác nếu Sale cũ đã NGỪNG HOẠT ĐỘNG (status = inactive)
+                // Nếu chỉ nghỉ phép (status = leave, vacation_mode = 1, hoặc lịch nghỉ), vẫn giữ lại khách cũ (isDuplicate = true)
+                $isDuplicate = !$isInactive;
+                $assignedTo = $isDuplicate ? $leadRow['assigned_to'] : null;
+            } else {
+                // OFF hoặc bỏ qua: Luôn coi là trùng và giữ nguyên Sale cũ
+                $isDuplicate = true;
+                $assignedTo = $leadRow['assigned_to'];
+            }
         } else {
-            // OFF hoặc bỏ qua: Luôn coi là trùng và giữ nguyên Sale cũ
+            // No owner assigned yet (e.g. pending_approval)
             $isDuplicate = true;
-            $assignedTo = $row['assigned_to'];
+            $assignedTo = null;
         }
 
         return [
             'isDuplicate' => $isDuplicate,
             'leadExists' => true,
+            'leadStatus' => $leadStatus,
             'monthsSinceLastInteraction' => $months,
             'assignedTo' => $assignedTo,
-            'assignedName' => $row['consultant_name'] ?? 'Không rõ',
-            'lastInteractionDate' => $row['last_interaction_date'],
-            'originalAssignedTo' => $row['assigned_to'],
+            'assignedName' => $leadRow['consultant_name'] ?? 'Không rõ',
+            'lastInteractionDate' => $leadRow['last_interaction_date'] ?? null,
+            'originalAssignedTo' => $leadRow['assigned_to'] ?? null,
             'consultantStatus' => $effectiveStatus
         ];
     }
@@ -614,6 +637,7 @@ function checkCRMInteraction($conn, $phone, $email, $ignoreReassignIfOwnerInacti
     return [
         'isDuplicate' => false,
         'leadExists' => false,
+        'leadStatus' => null,
         'monthsSinceLastInteraction' => 0,
         'assignedTo' => null,
         'assignedName' => 'Không rõ',
