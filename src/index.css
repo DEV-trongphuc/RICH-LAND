@@ -437,46 +437,46 @@
    ================================================ */
 :root {
   /* Brand */
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-primary-light: rgba(124, 58, 237, 0.08);
-  --sidebar-bg: #1e1246;
-  --sidebar-hover: rgba(255, 255, 255, 0.08);
-  --sidebar-active: rgba(124, 58, 237, 0.9);
+  --color-primary: oklch(53% 0.25 285);
+  --color-primary-hover: oklch(45% 0.24 286);
+  --color-primary-light: oklch(53% 0.25 285 / 8%);
+  --sidebar-bg: oklch(16.5% 0.085 282.8);
+  --sidebar-hover: oklch(100% 0 0 / 8%);
+  --sidebar-active: oklch(53% 0.25 285 / 90%);
 
   /* Neutrals */
-  --color-bg: #f8fafc;
-  --color-surface: #ffffff;
-  --color-border: #e2e8f0;
-  --color-border-light: #f1f5f9;
-  --color-text: #0f172a;
-  --color-text-light: #475569;
-  --color-text-muted: #94a3b8;
+  --color-bg: oklch(98.4% 0.007 247);
+  --color-surface: oklch(100% 0 0);
+  --color-border: oklch(92.5% 0.012 246);
+  --color-border-light: oklch(96.8% 0.009 246);
+  --color-text: oklch(15.9% 0.034 254);
+  --color-text-light: oklch(42.5% 0.039 249);
+  --color-text-muted: oklch(70% 0.034 247);
 
   /* Semantics */
-  --color-success: #10b981;
-  --color-success-light: rgba(16, 185, 129, 0.1);
-  --color-warning: #f59e0b;
-  --color-warning-light: rgba(245, 158, 11, 0.1);
-  --color-danger: #ef4444;
-  --color-danger-light: rgba(239, 68, 68, 0.1);
-  --color-info: #3b82f6;
-  --color-info-light: rgba(59, 130, 246, 0.1);
+  --color-success: oklch(70% 0.187 167);
+  --color-success-light: oklch(70% 0.187 167 / 10%);
+  --color-warning: oklch(73.1% 0.177 71.9);
+  --color-warning-light: oklch(73.1% 0.177 71.9 / 10%);
+  --color-danger: oklch(57.7% 0.228 27.4);
+  --color-danger-light: oklch(57.7% 0.228 27.4 / 10%);
+  --color-info: oklch(62.8% 0.198 253.9);
+  --color-info-light: oklch(62.8% 0.198 253.9 / 10%);
 
   /* Lead Score colors */
-  --score-hot: #ef4444;
-  --score-warm: #f97316;
-  --score-neutral: #f59e0b;
-  --score-cool: #3b82f6;
-  --score-cold: #6b7280;
+  --score-hot: oklch(57.7% 0.228 27.4);
+  --score-warm: oklch(64.8% 0.2 46.5);
+  --score-neutral: oklch(73.1% 0.177 71.9);
+  --score-cool: oklch(62.8% 0.198 253.9);
+  --score-cold: oklch(53% 0.02 250);
 
   /* Premium Shadows */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 2px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.02);
-  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03);
-  --shadow-lg: 0 12px 24px -4px rgba(15, 23, 42, 0.06), 0 4px 12px -4px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 20px 32px -4px rgba(15, 23, 42, 0.08), 0 8px 16px -8px rgba(15, 23, 42, 0.04);
-  --shadow-primary: 0 8px 24px -4px rgba(124, 58, 237, 0.25);
+  --shadow-xs: 0 1px 2px oklch(15.9% 0.034 254 / 4%);
+  --shadow-sm: 0 2px 4px oklch(15.9% 0.034 254 / 4%), 0 1px 2px oklch(15.9% 0.034 254 / 2%);
+  --shadow-md: 0 4px 12px -2px oklch(15.9% 0.034 254 / 5%), 0 2px 4px -2px oklch(15.9% 0.034 254 / 3%);
+  --shadow-lg: 0 12px 24px -4px oklch(15.9% 0.034 254 / 6%), 0 4px 12px -4px oklch(15.9% 0.034 254 / 4%);
+  --shadow-xl: 0 20px 32px -4px oklch(15.9% 0.034 254 / 8%), 0 8px 16px -8px oklch(15.9% 0.034 254 / 4%);
+  --shadow-primary: 0 8px 24px -4px oklch(53% 0.25 285 / 25%);
 
   /* Shape */
   --radius-sm: 6px;
@@ -491,75 +491,75 @@
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Skeleton loaders */
-  --skeleton-base: #e2e8f0;
-  --skeleton-shine: #f1f5f9;
+  --skeleton-base: oklch(92.5% 0.012 246);
+  --skeleton-shine: oklch(96.8% 0.009 246);
 }
 
 [data-theme="dark"] {
   /* Brand & Layout Backgrounds */
-  --color-bg: #060913;
+  --color-bg: oklch(7.2% 0.024 250);
   /* Premium deep slate-navy background */
-  --color-surface: #0f1422;
+  --color-surface: oklch(12.3% 0.024 254);
   /* Luminous deep slate-navy card surface */
-  --sidebar-bg: #0a0e1a;
+  --sidebar-bg: oklch(9% 0.023 253);
   /* Darker navy-slate sidebar for contrast hierarchy */
-  --sidebar-hover: rgba(255, 255, 255, 0.04);
-  --sidebar-active: rgba(139, 92, 246, 0.15);
+  --sidebar-hover: oklch(100% 0 0 / 4%);
+  --sidebar-active: oklch(73% 0.18 285 / 15%);
   /* Softer violet active theme state */
 
   /* Soft and Premium Indigo/Navy Border Accents */
-  --color-border: rgba(99, 102, 241, 0.15);
+  --color-border: oklch(60% 0.2 265 / 15%);
   /* Slate-indigo border tint */
-  --color-border-light: rgba(99, 102, 241, 0.08);
+  --color-border-light: oklch(60% 0.2 265 / 8%);
   /* Subtle divider tint */
 
-  --color-text: #f8fafc;
+  --color-text: oklch(98.4% 0.007 247);
   /* Slate-50 crisp readable text */
-  --color-text-light: #cbd5e1;
+  --color-text-light: oklch(86.3% 0.021 245);
   /* Slate-300 secondary text */
-  --color-text-muted: #64748b;
+  --color-text-muted: oklch(54.1% 0.038 248);
   /* Slate-500 muted text */
 
   /* Cohesive Violet Brand Accent */
-  --color-primary: #a78bfa;
+  --color-primary: oklch(73% 0.18 285);
   /* Softer violet-400 for text accents, badges, toggles */
-  --color-primary-hover: #c084fc;
+  --color-primary-hover: oklch(70% 0.22 295);
   /* Purple-400 for interactive hover highlights */
-  --color-primary-light: rgba(167, 139, 250, 0.12);
+  --color-primary-light: oklch(73% 0.18 285 / 12%);
   /* Subtle violet glow background */
 
   /* Optimized Semantic Badges/Alerts Contrast for eye-friendly reading */
-  --color-success: #34d399;
+  --color-success: oklch(79.4% 0.17 166);
   /* Emerald-400 for vibrant and highly legible success labels */
-  --color-success-light: rgba(52, 211, 153, 0.08);
-  --color-warning: #fbbf24;
+  --color-success-light: oklch(79.4% 0.17 166 / 8%);
+  --color-warning: oklch(80.5% 0.187 75);
   /* Amber-400 warm yellow for warning labels */
-  --color-warning-light: rgba(251, 191, 36, 0.08);
-  --color-danger: #f87171;
+  --color-warning-light: oklch(80.5% 0.187 75 / 8%);
+  --color-danger: oklch(68.5% 0.186 25);
   /* Red-400 soft coral red for danger labels */
-  --color-danger-light: rgba(248, 113, 113, 0.08);
-  --color-info: #60a5fa;
+  --color-danger-light: oklch(68.5% 0.186 25 / 8%);
+  --color-info: oklch(72.7% 0.15 250);
   /* Blue-400 sky blue for info labels */
-  --color-info-light: rgba(96, 165, 250, 0.08);
+  --color-info-light: oklch(72.7% 0.15 250 / 8%);
 
   /* Temperature Score colors optimized for dark theme reading */
-  --score-hot: #f87171;
-  --score-warm: #fb923c;
-  --score-neutral: #fbbf24;
-  --score-cool: #60a5fa;
-  --score-cold: #64748b;
+  --score-hot: oklch(68.5% 0.186 25);
+  --score-warm: oklch(72.6% 0.17 50);
+  --score-neutral: oklch(80.5% 0.187 75);
+  --score-cool: oklch(72.7% 0.15 250);
+  --score-cold: oklch(54.1% 0.038 248);
 
   /* Premium Elevated Dark Theme Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.6);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.6), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.65), 0 4px 12px -4px rgba(0, 0, 0, 0.45);
-  --shadow-xl: 0 20px 32px -4px rgba(0, 0, 0, 0.7), 0 8px 16px -8px rgba(0, 0, 0, 0.5);
-  --shadow-primary: 0 8px 24px -4px rgba(139, 92, 246, 0.3);
+  --shadow-xs: 0 1px 2px oklch(0% 0 0 / 60%);
+  --shadow-sm: 0 2px 4px oklch(0% 0 0 / 50%), 0 1px 2px oklch(0% 0 0 / 30%);
+  --shadow-md: 0 4px 12px -2px oklch(0% 0 0 / 60%), 0 2px 6px -2px oklch(0% 0 0 / 40%);
+  --shadow-lg: 0 12px 24px -4px oklch(0% 0 0 / 65%), 0 4px 12px -4px oklch(0% 0 0 / 45%);
+  --shadow-xl: 0 20px 32px -4px oklch(0% 0 0 / 70%), 0 8px 16px -8px oklch(0% 0 0 / 50%);
+  --shadow-primary: 0 8px 24px -4px oklch(73% 0.18 285 / 30%);
 
   /* Skeleton loaders */
-  --skeleton-base: #1c2438;
-  --skeleton-shine: #29344f;
+  --skeleton-base: oklch(15.9% 0.034 254);
+  --skeleton-shine: oklch(21% 0.034 254);
 }
 
 [data-theme="dark"] th {

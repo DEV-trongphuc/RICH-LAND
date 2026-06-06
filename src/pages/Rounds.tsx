@@ -462,6 +462,59 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             grid-template-columns: repeat(3, 1fr) !important;
           }
         }
+        .compensation-report-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1rem 1.25rem;
+          border: 1px solid var(--color-border-light);
+          border-radius: 12px;
+          background: var(--color-surface);
+          box-shadow: var(--shadow-sm);
+          gap: 1rem;
+          flex-wrap: nowrap;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: default;
+        }
+        .compensation-report-row:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+          border-color: var(--color-border);
+        }
+        .report-left-details {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex: 1;
+          min-width: 0;
+          flex-wrap: nowrap;
+        }
+        .report-right-actions {
+          flex: 0 0 240px;
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          min-width: 0;
+        }
+        @media (max-width: 768px) {
+          .compensation-report-row {
+            flex-wrap: wrap;
+            align-items: flex-start;
+          }
+          .report-left-details {
+            flex-wrap: wrap;
+          }
+          .report-right-actions {
+            flex: 1 1 100%;
+            justify-content: flex-start;
+            margin-top: 0.5rem;
+          }
+          .mobile-ml-0 {
+            margin-left: 0 !important;
+            border-left: none !important;
+            padding-left: 0 !important;
+          }
+        }
       `}</style>
       <div className="page-header">
         <div>
@@ -1569,66 +1622,105 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     {reports.map(r => {
                       const initials = r.lead_name ? r.lead_name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase() : '?';
                       return (
-                        <div key={r.id} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '0.625rem 1rem',
-                          border: '1px solid',
-                          borderColor: r.status === 'pending' ? 'var(--color-warning)' : 'var(--color-border)',
-                          borderRadius: '8px',
-                          background: r.status === 'pending' ? 'var(--color-warning-light)' : 'var(--color-bg)',
-                          boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                          gap: '1rem',
-                          flexWrap: 'wrap'
-                        }}>
+                        <div key={r.id} className="compensation-report-row">
                           {/* Left Details */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 280, flexWrap: 'wrap' }}>
+                          <div className="report-left-details">
                             <div style={{
-                              width: 32, height: 32, borderRadius: '50%',
+                              width: 38, height: 38, borderRadius: '50%',
                               background: getColorForName(r.lead_name), color: 'white',
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '0.75rem', fontWeight: 700, flexShrink: 0
+                              fontSize: '0.8rem', fontWeight: 800, flexShrink: 0,
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
                             }}>
                               {initials}
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                              <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span>{r.lead_name}</span>
-                                <span style={{ color: 'var(--color-primary)', fontWeight: 500, fontSize: '0.8125rem' }}>({r.lead_phone})</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '0 0 220px', minWidth: 0 }}>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.9375rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.lead_name}>
+                                {r.lead_name}
                               </div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                <Avatar src={r.consultant_avatar} name={r.consultant_name} size={16} />
-                                <span>{t('Sale:')} <strong>{r.consultant_name}</strong></span>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Avatar src={r.consultant_avatar} name={r.consultant_name} size={18} />
+                                <span>{t('Sale:')} <strong style={{ color: 'var(--color-text)' }}>{r.consultant_name}</strong></span>
                               </div>
                             </div>
 
-                            <div style={{ color: '#ef4444', fontWeight: 500, fontSize: '0.8125rem', flex: 1, minWidth: 180, display: 'flex', flexDirection: 'column', gap: '2px', borderLeft: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', paddingLeft: '0.75rem' }}>
-                              <div><span style={{ fontWeight: 600 }}>{t('Lý do:')}</span> {translateReason(r.reason)}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <Clock size={11} />
+                            <div style={{
+                              flex: 1,
+                              minWidth: 220,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
+                              borderLeft: '1px solid var(--color-border-light)',
+                              paddingLeft: '1rem',
+                              marginLeft: '0.5rem'
+                            }} className="mobile-ml-0">
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                                <span style={{
+                                  fontWeight: 800,
+                                  fontSize: '0.7rem',
+                                  textTransform: 'uppercase',
+                                  color: 'var(--color-danger)',
+                                  background: 'var(--color-danger-light)',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  marginRight: '8px',
+                                  display: 'inline-block'
+                                }}>{t('Lý do')}</span>
+                                <span style={{ color: 'var(--color-text-light)' }}>{translateReason(r.reason)}</span>
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Clock size={12} style={{ opacity: 0.6 }} />
                                 <span>{t('Báo cáo:')} {new Date(r.created_at).toLocaleString('vi-VN')}</span>
                               </div>
                             </div>
                           </div>
 
                           {/* Right Actions / Status */}
-                          <div style={{ flexShrink: 0 }}>
+                          <div className="report-right-actions">
                             {r.status === 'pending' ? (
-                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', gap: '0.625rem', alignItems: 'center' }}>
                                 <button
                                   onClick={() => handleReportAction(r.id, 'approve')}
                                   disabled={isActioning === r.id}
-                                  className="btn primary sm"
-                                  style={{ background: '#10b981', borderColor: '#10b981', padding: '6px 12px', fontSize: '0.75rem', height: 'auto', boxShadow: 'none' }}
+                                  className="btn primary sm hover-lift active-press"
+                                  style={{
+                                    background: 'linear-gradient(135deg, var(--color-success) 0%, oklch(75% 0.17 166) 100%)',
+                                    borderColor: 'transparent',
+                                    padding: '8px 16px',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 700,
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    color: 'white',
+                                    boxShadow: '0 4px 10px rgba(16, 185, 129, 0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
                                 >
                                   {isActioning === r.id ? t('Đang xử lý...') : t('Duyệt & Đền Bù')}
                                 </button>
                                 <button
                                   onClick={() => handleReportAction(r.id, 'reject')}
                                   disabled={isActioning === r.id}
-                                  className="btn outline sm"
-                                  style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', padding: '6px 12px', fontSize: '0.75rem', height: 'auto', boxShadow: 'none' }}
+                                  className="btn secondary sm hover-lift active-press"
+                                  style={{
+                                    color: 'var(--color-danger)',
+                                    borderColor: 'var(--color-danger)',
+                                    padding: '8px 16px',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 700,
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    background: 'var(--color-surface)',
+                                    boxShadow: 'none'
+                                  }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.background = 'var(--color-danger-light)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.background = 'var(--color-surface)';
+                                  }}
                                 >
                                   {t('Từ chối')}
                                 </button>

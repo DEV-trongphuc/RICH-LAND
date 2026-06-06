@@ -332,40 +332,40 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
       {/* CSS Styles injection */}
       <style>{`
         :root {
-          --chatbot-window-bg: rgba(255, 255, 255, 0.75);
-          --chatbot-window-border: rgba(255, 255, 255, 0.6);
-          --chatbot-sidebar-bg: rgba(248, 250, 252, 0.35);
-          --chatbot-sidebar-border: rgba(0, 0, 0, 0.05);
-          --chatbot-bubble-bot-bg: rgba(79, 70, 229, 0.04);
-          --chatbot-bubble-bot-border: rgba(79, 70, 229, 0.08);
-          --chatbot-bubble-user-bg: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-          --chatbot-text: #0f172a;
-          --chatbot-text-muted: #64748b;
-          --chatbot-card-bg: rgba(255, 255, 255, 0.85);
-          --chatbot-card-hover-bg: #ffffff;
-          --chatbot-card-border: rgba(0, 0, 0, 0.04);
-          --chatbot-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
-          --chatbot-input-bg: rgba(248, 250, 252, 0.7);
-          --chatbot-btn-bg: #ffffff;
-          --chatbot-btn-border: #4f46e5;
+          --chatbot-window-bg: oklch(100% 0 0 / 75%);
+          --chatbot-window-border: oklch(100% 0 0 / 60%);
+          --chatbot-sidebar-bg: oklch(98.4% 0.007 247 / 35%);
+          --chatbot-sidebar-border: oklch(0% 0 0 / 5%);
+          --chatbot-bubble-bot-bg: oklch(54% 0.235 274 / 4%);
+          --chatbot-bubble-bot-border: oklch(54% 0.235 274 / 8%);
+          --chatbot-bubble-user-bg: linear-gradient(135deg, oklch(54% 0.235 274) 0%, oklch(53% 0.25 285) 100%);
+          --chatbot-text: oklch(15.9% 0.034 254);
+          --chatbot-text-muted: oklch(54.1% 0.038 248);
+          --chatbot-card-bg: oklch(100% 0 0 / 85%);
+          --chatbot-card-hover-bg: oklch(100% 0 0);
+          --chatbot-card-border: oklch(0% 0 0 / 4%);
+          --chatbot-card-shadow: 0 4px 12px oklch(0% 0 0 / 2%);
+          --chatbot-input-bg: oklch(98.4% 0.007 247 / 70%);
+          --chatbot-btn-bg: oklch(100% 0 0);
+          --chatbot-btn-border: oklch(54% 0.235 274);
         }
         [data-theme="dark"] {
-          --chatbot-window-bg: rgba(26, 26, 36, 0.75);
-          --chatbot-window-border: rgba(255, 255, 255, 0.08);
-          --chatbot-sidebar-bg: rgba(15, 15, 20, 0.4);
-          --chatbot-sidebar-border: rgba(255, 255, 255, 0.06);
-          --chatbot-bubble-bot-bg: rgba(255, 255, 255, 0.03);
-          --chatbot-bubble-bot-border: rgba(255, 255, 255, 0.06);
-          --chatbot-bubble-user-bg: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-          --chatbot-text: #f1f5f9;
-          --chatbot-text-muted: #94a3b8;
-          --chatbot-card-bg: rgba(37, 37, 53, 0.6);
-          --chatbot-card-hover-bg: rgba(37, 37, 53, 0.8);
-          --chatbot-card-border: rgba(255, 255, 255, 0.04);
-          --chatbot-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          --chatbot-input-bg: rgba(15, 15, 20, 0.5);
-          --chatbot-btn-bg: #121826;
-          --chatbot-btn-border: #6366f1;
+          --chatbot-window-bg: oklch(12.7% 0.016 264 / 75%);
+          --chatbot-window-border: oklch(100% 0 0 / 8%);
+          --chatbot-sidebar-bg: oklch(6.5% 0.008 264 / 40%);
+          --chatbot-sidebar-border: oklch(100% 0 0 / 6%);
+          --chatbot-bubble-bot-bg: oklch(100% 0 0 / 3%);
+          --chatbot-bubble-bot-border: oklch(100% 0 0 / 6%);
+          --chatbot-bubble-user-bg: linear-gradient(135deg, oklch(54% 0.235 274) 0%, oklch(53% 0.25 285) 100%);
+          --chatbot-text: oklch(96.8% 0.009 246);
+          --chatbot-text-muted: oklch(70% 0.034 247);
+          --chatbot-card-bg: oklch(17.8% 0.022 264 / 60%);
+          --chatbot-card-hover-bg: oklch(17.8% 0.022 264 / 80%);
+          --chatbot-card-border: oklch(100% 0 0 / 4%);
+          --chatbot-card-shadow: 0 4px 12px oklch(0% 0 0 / 15%);
+          --chatbot-input-bg: oklch(6.5% 0.008 264 / 50%);
+          --chatbot-btn-bg: oklch(12.7% 0.024 254);
+          --chatbot-btn-border: oklch(60% 0.2 265);
         }
         
         .pulse-chatbot {
