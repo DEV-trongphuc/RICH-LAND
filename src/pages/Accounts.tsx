@@ -541,7 +541,7 @@ const AccountsInner = () => {
                   ))}
                   {accounts.length === 0 && (
                     <tr>
-                      <td colSpan={5}>
+                      <td colSpan={6}>
                         <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                           <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                             <UserCog size={32} color="var(--color-text-muted)" />

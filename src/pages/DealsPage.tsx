@@ -389,19 +389,19 @@ export const DealsPage: React.FC = () => {
         <div style={{ flex: 1 }} />
 
         {/* Kanban vs List Toggle */}
-        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginRight: '1rem', height: 44 }}>
+        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', marginRight: '1rem', height: 38, border: '1px solid var(--color-border)' }}>
           <button 
             className={`btn ${viewMode === 'kanban' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-md)', padding: '0 12px', height: 36 }}
+            style={{ borderRadius: 'var(--radius-sm)', padding: '0 10px', height: 28, minWidth: 32, fontSize: '0.8rem' }}
             onClick={() => setViewMode('kanban')}
             title="Dạng bảng (Kanban)"
-          ><LayoutGrid size={18}/></button>
+          ><LayoutGrid size={15}/></button>
           <button 
             className={`btn ${viewMode === 'list' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-md)', padding: '0 12px', height: 36 }}
+            style={{ borderRadius: 'var(--radius-sm)', padding: '0 10px', height: 28, minWidth: 32, fontSize: '0.8rem' }}
             onClick={() => setViewMode('list')}
             title="Dạng danh sách"
-          ><List size={18}/></button>
+          ><List size={15}/></button>
         </div>
 
         {/* Mobile Pipeline Selector Dropdown */}
@@ -410,7 +410,7 @@ export const DealsPage: React.FC = () => {
             value={pipelineView} 
             onChange={e => setPipelineView(e.target.value as any)}
             className="form-select"
-            style={{ height: 44, borderRadius: 'var(--radius-lg)', padding: '0 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600 }}
+            style={{ height: 38, borderRadius: 'var(--radius-md)', padding: '0 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600, fontSize: '0.875rem' }}
           >
             <option value="contacts">KH</option>
             <option value="deals">Cơ hội</option>
@@ -419,42 +419,42 @@ export const DealsPage: React.FC = () => {
         </div>
 
         {/* Desktop Pipeline Tabs Switcher */}
-        <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44, marginRight: '1rem' }}>
+        <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', height: 38, marginRight: '1rem', border: '1px solid var(--color-border)' }}>
           <button 
             className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
+            style={{ borderRadius: 'var(--radius-sm)', height: 28, padding: '0 10px', fontSize: '0.8rem' }}
             onClick={() => setPipelineView('contacts')}
           >
-            <User size={16} /> Khách hàng
+            <User size={14} /> Khách hàng
           </button>
           <button 
             className={`btn ${pipelineView === 'deals' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
+            style={{ borderRadius: 'var(--radius-sm)', height: 28, padding: '0 10px', fontSize: '0.8rem' }}
             onClick={() => setPipelineView('deals')}
           >
-            <DollarSign size={16} /> Cơ hội
+            <DollarSign size={14} /> Cơ hội
           </button>
           <button 
             className={`btn ${pipelineView === 'companies' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
+            style={{ borderRadius: 'var(--radius-sm)', height: 28, padding: '0 10px', fontSize: '0.8rem' }}
             onClick={() => setPipelineView('companies')}
           >
-            <Building2 size={16} /> Doanh nghiệp
+            <Building2 size={14} /> Doanh nghiệp
           </button>
         </div>
 
-        <button className="btn outline" style={{ height: 44, borderRadius: 'var(--radius-lg)', marginRight: '0.5rem' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
-          <Download size={16} />
-          <span className="hide-on-mobile" style={{ marginLeft: '0.5rem' }}> Nhập/Xuất</span>
+        <button className="btn outline" style={{ height: 38, borderRadius: 'var(--radius-md)', marginRight: '0.5rem', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+          <Download size={14} />
+          <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Nhập/Xuất</span>
         </button>
 
-        <button className="btn primary" style={{ height: 44, borderRadius: 'var(--radius-lg)' }} onClick={() => {
+        <button className="btn primary" style={{ height: 38, borderRadius: 'var(--radius-md)', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => {
             if (pipelineView === 'deals') { setSelectedDeal(null); setShowDealDrawer(true); }
             else if (pipelineView === 'contacts') { setSelectedContact(null); setShowContactDrawer(true); }
             else { setSelectedCompany(null); setShowCompanyDrawer(true); }
         }} title="Thêm mới">
-          <Plus size={16} />
-          <span className="hide-on-mobile" style={{ marginLeft: '0.5rem' }}> Thêm {pipelineView === 'deals' ? 'Cơ Hội' : (pipelineView === 'contacts' ? 'Khách Hàng' : 'Doanh Nghiệp')}</span>
+          <Plus size={14} />
+          <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Thêm {pipelineView === 'deals' ? 'Cơ Hội' : (pipelineView === 'contacts' ? 'Khách Hàng' : 'Doanh Nghiệp')}</span>
         </button>
       </div>
 
@@ -530,7 +530,7 @@ export const DealsPage: React.FC = () => {
                 
                 <div style={{ flex: 1 }} />
 
-                <button className={`btn ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => setShowFilterPanel(!showFilterPanel)} style={{ borderRadius: 'var(--radius-lg)', padding: '0 1.25rem', height: 44 }}>
+                <button className={`btn ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => setShowFilterPanel(!showFilterPanel)} style={{ borderRadius: 'var(--radius-md)', padding: '0 1rem', height: 38, fontSize: '0.8125rem' }}>
                   <Filter size={14} /> {showFilterPanel ? 'Đóng bộ lọc' : 'Bộ lọc nâng cao'}
                 </button>
               </div>

@@ -345,7 +345,7 @@ export const InvoicesPage: React.FC = () => {
                 })}
               </AnimatePresence>
               {!loading && items.length === 0 && (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không có hóa đơn nào trong kỳ này</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không có hóa đơn nào trong kỳ này</td></tr>
               )}
             </tbody>
           </table>
