@@ -37,9 +37,24 @@ CREATE TABLE IF NOT EXISTS `users` (
   `last_login_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `team_id` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2.05 Table: teams (CRM & Routing)
+CREATE TABLE IF NOT EXISTS `teams` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT 1,
+  `name` varchar(255) NOT NULL,
+  `leader_id` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`leader_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `users` ADD CONSTRAINT `fk_user_team` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE SET NULL;
 
 -- 2.1 View: consultants (Backward compatibility for DATA app)
 CREATE OR REPLACE VIEW `consultants` AS 
@@ -56,7 +71,8 @@ SELECT
   `work_end_time`, 
   `work_schedule`, 
   `avatar_url` AS `avatar`, 
-  `vacation_mode` 
+  `vacation_mode`,
+  `team_id`
 FROM `users` 
 WHERE `role` = 'sales';
 

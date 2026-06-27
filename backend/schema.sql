@@ -45,6 +45,19 @@ CREATE TABLE `accounts` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `teams`
+--
+
+CREATE TABLE `teams` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `leader_id` int(11) NOT NULL COMMENT 'Liên kết với ID tài khoản Manager trong bảng accounts',
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `active_compensation_logs`
 --
 
@@ -110,7 +123,8 @@ CREATE TABLE `consultants` (
   `work_end_time` varchar(5) DEFAULT '23:59' COMMENT 'Giờ làm việc kết thúc (HH:MM)',
   `work_schedule` longtext DEFAULT NULL COMMENT 'Cấu hình lịch làm việc chi tiết dạng JSON',
   `avatar` varchar(255) DEFAULT NULL COMMENT 'Đường dẫn ảnh đại diện của Sale',
-  `vacation_mode` tinyint(1) DEFAULT 0 COMMENT 'Chế độ nghỉ phép nhanh'
+  `vacation_mode` tinyint(1) DEFAULT 0 COMMENT 'Chế độ nghỉ phép nhanh',
+  `team_id` int(11) DEFAULT NULL COMMENT 'ID của Team trực thuộc'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -387,6 +401,13 @@ ALTER TABLE `accounts`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Chỉ mục cho bảng `teams`
+--
+ALTER TABLE `teams`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `leader_id` (`leader_id`);
+
+--
 -- Chỉ mục cho bảng `active_compensation_logs`
 --
 ALTER TABLE `active_compensation_logs`
@@ -551,6 +572,12 @@ ALTER TABLE `zalo_queue`
 -- AUTO_INCREMENT cho bảng `accounts`
 --
 ALTER TABLE `accounts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `teams`
+--
+ALTER TABLE `teams`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -726,6 +753,18 @@ ALTER TABLE `sync_queue`
 --
 ALTER TABLE `ticket_notify_settings`
   ADD CONSTRAINT `ticket_notify_settings_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `teams`
+--
+ALTER TABLE `teams`
+  ADD CONSTRAINT `teams_ibfk_1` FOREIGN KEY (`leader_id`) REFERENCES `accounts` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `consultants`
+--
+ALTER TABLE `consultants`
+  ADD CONSTRAINT `consultants_ibfk_team` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
