@@ -208,7 +208,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   if (onMobileClose) onMobileClose();
                 }}
                 style={{
-                  width: 44, height: 44, borderRadius: '50%',
+                  width: 38, height: 38, borderRadius: '50%',
                   background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
@@ -217,7 +217,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                 title={t("AI Infinity")}
               >
-                <Cpu size={20} />
+                <Cpu size={18} />
               </button>
             ) : (
               <button
@@ -225,11 +225,12 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   window.dispatchEvent(new CustomEvent('open-ai-infinity-view'));
                   if (onMobileClose) onMobileClose();
                 }}
+                className="btn primary"
                 style={{
-                  width: '100%', height: 44, borderRadius: '12px',
+                  width: '100%', height: 38, borderRadius: '10px',
                   background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
+                  gap: 8, fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => {
@@ -241,7 +242,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.4)';
                 }}
               >
-                <Cpu size={18} /> {t("AI Infinity")}
+                <Cpu size={16} /> {t("AI Infinity")}
               </button>
             )
           ) : (
@@ -252,7 +253,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   if (onMobileClose) onMobileClose();
                 }}
                 style={{
-                  width: 44, height: 44, borderRadius: '50%',
+                  width: 38, height: 38, borderRadius: '50%',
                   background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
@@ -261,7 +262,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                 title={t("Thêm Data Nhanh")}
               >
-                <Plus size={20} />
+                <Plus size={18} />
               </button>
             ) : (
               <button
@@ -269,11 +270,12 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
                   if (onMobileClose) onMobileClose();
                 }}
+                className="btn primary"
                 style={{
-                  width: '100%', height: 44, borderRadius: '12px',
+                  width: '100%', height: 38, borderRadius: '10px',
                   background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
+                  gap: 8, fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => {
@@ -285,7 +287,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.4)';
                 }}
               >
-                <Plus size={18} /> {t("Thêm Data Nhanh")}
+                <Plus size={16} /> {t("Thêm Data Nhanh")}
               </button>
             )
           )}

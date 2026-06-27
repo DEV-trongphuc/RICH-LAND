@@ -1633,7 +1633,7 @@ select:focus {
   .form-select,
   select,
   .searchTrigger {
-    min-height: 44px;
+    min-height: 38px;
   }
 
   .grid-4,
