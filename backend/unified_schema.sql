@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS `contacts` (
 CREATE TABLE IF NOT EXISTS `leads` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `person_id` int(11) DEFAULT NULL,
-  `phone` varchar(20) DEFAULT NULL,
+  `phone` varchar(20) DEFAULT NULL UNIQUE,
   `email` varchar(255) DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
   `source` varchar(255) DEFAULT NULL,
