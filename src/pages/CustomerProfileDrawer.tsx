@@ -1048,6 +1048,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           onClick={() => {
                             if (isCurrent) return;
                             
+                            // Check interaction guardrail: if transitioning to 'churned' (Đã rời bỏ/Đóng), must have at least 1 activity
+                            if (st.id === 'churned' && drawerActivities.length === 0) {
+                              addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
+                              return;
+                            }
+
                             // Check TTL1 constraint: moving to status index >= 2 (e.g. 'dong_y_gap' / 'Đồng Ý Gặp' or later)
                             const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(st.id));
                             if (targetIdx >= 2) {
