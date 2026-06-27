@@ -8,6 +8,7 @@ import { AddressSelect } from '../components/ui/AddressSelect';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css';
 
 interface EntityDrawerProps {
@@ -43,7 +44,10 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
     if (entity) setFormData(entity);
   }, [entity]);
 
-  return (
+  if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       <AnimatePresence>
         {isOpen && (
@@ -516,6 +520,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
           </>
         )}
       </AnimatePresence>
-    </>
+    </>,
+    document.body
   );
 };

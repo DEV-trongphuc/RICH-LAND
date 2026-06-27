@@ -6,6 +6,7 @@ import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
+import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css';
 import { TagInput } from '../components/ui/TagInput';
 import { MentionInput } from '../components/ui/MentionInput';
@@ -99,8 +100,9 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   };
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -417,6 +419,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

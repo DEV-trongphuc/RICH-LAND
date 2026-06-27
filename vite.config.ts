@@ -8,4 +8,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: {
+      '/backend': {
+        target: 'http://open.domation.net/richland',
+        changeOrigin: true,
+      }
+    }
+  }
 })

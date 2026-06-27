@@ -7,7 +7,7 @@ import { Avatar } from '../ui/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
 import { fetchAPI } from '../../utils/api';
-import { DEV_MODE, setDevMode } from '../../config/env';
+import { DEV_MODE } from '../../config/env';
 import vnFlag from '../../assets/vn.svg';
 import usFlag from '../../assets/us.svg';
 import jpFlag from '../../assets/jp.svg';
@@ -393,31 +393,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           }} />
         </button>
 
-        {/* Demo / API Mode Toggle Badge */}
-        <button
-          onClick={() => setDevMode(!DEV_MODE)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '4px 10px',
-            borderRadius: '8px',
-            fontSize: '0.75rem',
-            fontWeight: 800,
-            cursor: 'pointer',
-            border: '1px solid var(--color-border)',
-            background: DEV_MODE ? 'rgba(217, 119, 6, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-            color: DEV_MODE ? '#d97706' : '#059669',
-            transition: 'all 0.2s',
-            outline: 'none',
-            marginRight: '8px',
-            height: 30
-          }}
-          title={DEV_MODE ? "Nhấn để chuyển sang DÙNG THẬT (API)" : "Nhấn để chuyển sang DÙNG MOCK (DEMO)"}
-        >
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: DEV_MODE ? '#d97706' : '#059669', animation: 'pulse 1.5s infinite' }} />
-          <span>{DEV_MODE ? "DEMO MODE" : "API MODE (REAL)"}</span>
-        </button>
 
         {/* Theme Toggle Button */}
         <button

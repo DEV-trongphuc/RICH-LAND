@@ -5,6 +5,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
+import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css'; 
 
 interface Props {
@@ -92,7 +93,10 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
     });
   };
 
-  return (
+  if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -279,6 +283,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
           </motion.div>
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

@@ -11,6 +11,7 @@ import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { ActivityModal } from '../components/ui/ActivityModal';
+import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 import { numberToText } from '../utils/numberToText';
 
@@ -151,8 +152,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <>
@@ -825,6 +827,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
           />
         </>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

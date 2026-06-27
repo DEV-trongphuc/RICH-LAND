@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
@@ -696,7 +697,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   if (!contact) return null;
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <>
       <AnimatePresence>
         {isOpen && (
@@ -2357,6 +2360,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         contacts={contacts}
         users={users}
       />
-    </>
+    </>,
+    document.body
   );
 };
