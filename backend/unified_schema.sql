@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `tenant_id` int(11) NOT NULL DEFAULT 1,
   `username` varchar(100) DEFAULT NULL UNIQUE,
   `email` varchar(255) NOT NULL UNIQUE,
-  `password_hash` varchar(255) NOT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
   `full_name` varchar(200) NOT NULL,
   `phone` varchar(50) DEFAULT NULL,
   `avatar_url` varchar(255) DEFAULT NULL,
