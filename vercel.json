@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/backend/:path*",
+      "destination": "http://open.domation.net/richland/backend/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
