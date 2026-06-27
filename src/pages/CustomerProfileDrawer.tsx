@@ -554,10 +554,34 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (formData.expected_revenue > 100000000) { s += 30; r.push({ rule: 'Deal size tiềm năng > 100Tr', pts: 30, type: 'Behavioral' }); }
     if (formData.status === 'qualified' || formData.status === 'customer') { s += 20; r.push({ rule: 'Sales đã verify chất lượng', pts: 20, type: 'Behavioral' }); }
 
+    // Temperature Decay rule: -15 points after 5 days of inactivity
+    let lastInteractionTime = contact?.last_contact || contact?.updated_at || formData.created_at;
+    if (drawerActivities && drawerActivities.length > 0) {
+      const latestActivity = drawerActivities.reduce((latest, current) => {
+        const latestTime = new Date(latest.created_at).getTime();
+        const currentTime = new Date(current.created_at).getTime();
+        return currentTime > latestTime ? current : latest;
+      }, drawerActivities[0]);
+      if (latestActivity && latestActivity.created_at) {
+        lastInteractionTime = latestActivity.created_at;
+      }
+    }
+
+    const fiveDaysInMs = 5 * 24 * 60 * 60 * 1000;
+    const isDecayed = lastInteractionTime ? (new Date().getTime() - new Date(lastInteractionTime).getTime() > fiveDaysInMs) : false;
+
+    if (isDecayed) {
+      s -= 15;
+      r.push({ rule: 'Rớt nhiệt do quá 5 ngày không tương tác', pts: -15, type: 'Decay' });
+    }
+
     if (r.length === 0) r.push({ rule: 'Điểm khởi tạo (Mặc định)', pts: 15, type: 'System' });
 
-    return { score: Math.min(100, s || 15), rules: r };
-  }, [formData.job_title, formData.phone, formData.email, formData.source, formData.expected_revenue, formData.status]);
+    return { score: Math.min(100, Math.max(0, s || 15)), rules: r };
+  }, [
+    formData.job_title, formData.phone, formData.email, formData.source, formData.expected_revenue, formData.status,
+    formData.created_at, contact?.last_contact, contact?.updated_at, drawerActivities
+  ]);
 
   const mockStore = useMockStore();
 
