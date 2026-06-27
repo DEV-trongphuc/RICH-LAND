@@ -1,5 +1,5 @@
 /**
- * DOMATION CRM - Google Apps Script Two-Way Synchronization Script
+ * RICH LAND CRM - Google Apps Script Two-Way Synchronization Script
  * 
  * HƯỚNG DẪN CẤU HÌNH:
  * 1. Mở trang Google Sheet của bạn.

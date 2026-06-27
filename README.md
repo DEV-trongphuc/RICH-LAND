@@ -1,4 +1,4 @@
-# HỆ THỐNG PHÂN PHỐI LEAD (DOMATION DATA)
+# HỆ THỐNG PHÂN PHỐI LEAD (RICH LAND DATA)
 
 Dự án quản lý, đồng bộ và phân phối khách hàng tiềm năng (lead) từ Google Sheets / Landing Page cho đội ngũ tư vấn viên (Sale / Consultant) qua Email và Zalo Bot.
 
