@@ -865,7 +865,7 @@ CREATE TABLE `users` (
   `id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
   `email` varchar(255) NOT NULL,
-  `password_hash` varchar(255) NOT NULL,
+  `password_hash` varchar(255) DEFAULT NULL,
   `full_name` varchar(200) NOT NULL,
   `avatar_url` text DEFAULT NULL,
   `role` enum('super_admin','admin','manager','sales','viewer') NOT NULL DEFAULT 'sales',
