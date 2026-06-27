@@ -433,7 +433,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 borderRadius: '9999px',
                 background: isTicketViewHovered 
                   ? 'linear-gradient(135deg, #b59dfb 0%, #6d28d9 100%)' 
-                  : 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                  : 'linear-gradient(135deg, #a78bfa 0%, #a31422 100%)',
                 border: 'none',
                 color: '#fff',
                 boxShadow: isTicketViewHovered 
@@ -522,7 +522,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 borderRadius: '9999px',
                 background: isHeldViewHovered 
                   ? 'linear-gradient(135deg, #b59dfb 0%, #6d28d9 100%)' 
-                  : 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                  : 'linear-gradient(135deg, #a78bfa 0%, #a31422 100%)',
                 border: 'none',
                 color: '#fff',
                 boxShadow: isHeldViewHovered 

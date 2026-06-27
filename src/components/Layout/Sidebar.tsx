@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
@@ -8,6 +8,18 @@ import { fetchAPI } from '../../utils/api';
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
   { name: 'Quản lý Data', href: '/data', icon: Database },
+  { name: 'Khách hàng (CRM)', href: '/contacts', icon: Users },
+  { name: 'Công ty', href: '/companies', icon: Building2 },
+  { name: 'Cơ hội (Deals)', href: '/deals', icon: TrendingUp },
+  { name: 'Báo giá', href: '/quotes', icon: FileText },
+  { name: 'Hoạt động', href: '/activities', icon: Calendar },
+  { name: 'Sản phẩm', href: '/products', icon: Package },
+  { name: 'Hóa đơn', href: '/invoices', icon: Receipt },
+  { name: 'Chi phí', href: '/expenses', icon: CreditCard },
+  { name: 'Báo cáo CRM', href: '/reports-crm', icon: BarChart2 },
+  { name: 'Nhà cung cấp', href: '/suppliers', icon: Truck },
+  { name: 'Tệp tin', href: '/files', icon: File },
+  { name: 'Kho hàng', href: '/inventory', icon: Boxes },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
@@ -149,7 +161,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 fontWeight: 800,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                background: 'linear-gradient(135deg, #d8b4fe 0%, #c084fc 50%, #a855f7 100%)',
+                background: 'linear-gradient(135deg, #f45b69 0%, #e63946 50%, #BD1D2D 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 marginTop: '4px',
@@ -172,7 +184,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 }}
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                  background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
                 }}
@@ -190,7 +202,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 }}
                 style={{
                   width: '100%', height: 44, borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                  background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
@@ -216,7 +228,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 }}
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
                 }}
@@ -234,7 +246,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 }}
                 style={{
                   width: '100%', height: 44, borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
                   boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'

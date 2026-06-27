@@ -559,7 +559,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             e.currentTarget.style.display = 'none';
             const parent = e.currentTarget.parentElement;
             if (parent) {
-              parent.style.background = 'linear-gradient(135deg, #4f46e5, #7c3aed)';
+              parent.style.background = 'linear-gradient(135deg, #4f46e5, #a31422)';
               if (!parent.querySelector('.btn-fallback-icon')) {
                 const fallback = document.createElement('span');
                 fallback.className = 'btn-fallback-icon';
@@ -705,7 +705,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               gap: 6,
               background: 'rgba(79, 70, 229, 0.01)'
             }}>
-              <Sparkles size={12} style={{ color: '#7c3aed' }} />
+              <Sparkles size={12} style={{ color: '#a31422' }} />
               <span>{t('Nhấp để hỏi AI tự động')}</span>
             </div>
           </div>
@@ -717,7 +717,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           <div
             style={{
               padding: '14px 20px',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #a31422 100%)',
               color: 'white',
               display: 'flex',
               alignItems: 'center',

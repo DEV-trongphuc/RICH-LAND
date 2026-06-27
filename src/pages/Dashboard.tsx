@@ -128,7 +128,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   };
 
   const getMetricColor = (_metric: string) => {
-    return '#7c3aed';
+    return '#a31422';
   };
 
   const isSingleDay = dateFilter === 'Hôm nay' || dateFilter === 'Hôm qua';
@@ -406,7 +406,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       label: t('TỔNG DATA TIẾP NHẬN'),
       value: stats?.total_today?.toLocaleString() || '0',
       icon: GitBranch,
-      color: '#7c3aed', // Purple for Total Data
+      color: '#a31422', // Purple for Total Data
       change: stats?.total_change,
       up: (stats?.total_change || '').startsWith('+')
     },
@@ -543,7 +543,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         }
         .stat-card.total-card:hover {
           box-shadow: 0 6px 16px rgba(124, 58, 237, 0.15) !important;
-          border-color: #7c3aed !important;
+          border-color: #a31422 !important;
         }
         .stat-card.distributed-card:hover {
           box-shadow: 0 6px 16px rgba(59, 130, 246, 0.15) !important;
@@ -618,7 +618,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+              background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
               color: '#fff',
               border: 'none',
               boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
@@ -642,7 +642,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               alignItems: 'center',
               gap: '6px',
               borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+              background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
               color: '#fff',
               border: 'none',
               boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
@@ -828,7 +828,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 {card.id === 'total' && (
                   <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7c3aed', display: 'inline-block', flexShrink: 0 }} />
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#a31422', display: 'inline-block', flexShrink: 0 }} />
                       <span>
                         {t('Tỷ lệ chia')}: {(() => {
                           const total = stats?.total_today || 0;
@@ -1155,7 +1155,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       }
                       return null;
                     }} />
-                    <Bar dataKey="volume" fill="#7c3aed" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20}>
+                    <Bar dataKey="volume" fill="#a31422" fillOpacity={0.85} radius={[4, 4, 0, 0]} maxBarSize={20}>
                       <LabelList dataKey="volume" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
                     </Bar>
                   </ComposedChart>
@@ -1568,8 +1568,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       <Pie
                         data={[
                           { name: t('Ngoài giờ làm việc'), value: stats?.pending_work_hours_count || 0, color: '#f59e0b' },
-                          { name: t('Trong giờ làm việc'), value: Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0)), color: theme === 'dark' ? '#a78bfa' : '#7c3aed' }
-                        ].filter(item => item.value > 0 || (stats?.total_today === 0 && item.color === (theme === 'dark' ? '#a78bfa' : '#7c3aed')))}
+                          { name: t('Trong giờ làm việc'), value: Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0)), color: theme === 'dark' ? '#a78bfa' : '#a31422' }
+                        ].filter(item => item.value > 0 || (stats?.total_today === 0 && item.color === (theme === 'dark' ? '#a78bfa' : '#a31422')))}
                         cx="50%"
                         cy="50%"
                         innerRadius={54}
@@ -1579,8 +1579,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       >
                         {([
                           { name: t('Ngoài giờ làm việc'), value: stats?.pending_work_hours_count || 0, color: '#f59e0b' },
-                          { name: t('Trong giờ làm việc'), value: Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0)), color: theme === 'dark' ? '#a78bfa' : '#7c3aed' }
-                        ].filter(item => item.value > 0 || (stats?.total_today === 0 && item.color === (theme === 'dark' ? '#a78bfa' : '#7c3aed')))).map((entry, index) => (
+                          { name: t('Trong giờ làm việc'), value: Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0)), color: theme === 'dark' ? '#a78bfa' : '#a31422' }
+                        ].filter(item => item.value > 0 || (stats?.total_today === 0 && item.color === (theme === 'dark' ? '#a78bfa' : '#a31422')))).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
@@ -1632,10 +1632,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     fontSize: '0.8125rem'
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-light)', fontWeight: 600 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: theme === 'dark' ? '#a78bfa' : '#7c3aed' }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: theme === 'dark' ? '#a78bfa' : '#a31422' }} />
                       {t('Trong giờ')}
                     </span>
-                    <strong style={{ color: theme === 'dark' ? '#a78bfa' : '#7c3aed', fontWeight: 700 }}>
+                    <strong style={{ color: theme === 'dark' ? '#a78bfa' : '#a31422', fontWeight: 700 }}>
                       {Math.max(0, (stats?.total_today || 0) - (stats?.pending_work_hours_count || 0))} lead ({(() => {
                         const ratio = parseFloat(stats?.out_of_hours_ratio || '0');
                         return (100 - ratio).toFixed(1) + '%';
@@ -1770,7 +1770,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         const isEven = idx % 2 === 0;
                         const individualFairness = Math.max(85, Math.min(100, parseFloat(stats?.fair_share_equity || '96.5') + (isEven ? 1.5 : -2.0) - (idx * 0.5)));
 
-                        let trackColor = 'linear-gradient(90deg, #a78bfa 0%, #7c3aed 100%)'; // Purple gradient
+                        let trackColor = 'linear-gradient(90deg, #a78bfa 0%, #a31422 100%)'; // Purple gradient
                         let badgeBg = 'var(--color-primary-light)';
                         let badgeTextColor = 'var(--color-primary)';
 
@@ -2007,7 +2007,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         <div
                           style={{
                             width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`,
-                            background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
+                            background: 'linear-gradient(90deg, #a78bfa, #a31422)',
                             transition: 'width 0.3s ease'
                           }}
                           title={`${t('Thành công')}: ${statsData.summary.successful}`}
@@ -2127,8 +2127,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           <BarChart data={statsData.by_date} margin={{ left: -10, right: 5, top: 20, bottom: 0 }}>
                             <defs>
                               <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+                                <stop offset="0%" stopColor="#e63946" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#a31422" stopOpacity={0.8} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
@@ -2155,7 +2155,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Tỷ lệ Trạng thái Data')}</h4>
                       {(() => {
                         const statusChartData = [
-                          { name: t('Thành công'), value: statsData.summary.successful, color: '#7c3aed' },
+                          { name: t('Thành công'), value: statsData.summary.successful, color: '#a31422' },
                           { name: t('Nhắc lại'), value: statsData.summary.reminder, color: '#f59e0b' },
                           { name: t('Lỗi'), value: statsData.summary.error, color: '#ef4444' }
                         ].filter(item => item.value > 0);
@@ -2212,7 +2212,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                               <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
                               <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
-                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
+                              <Bar dataKey="successful_count" stackId="a" fill="#a31422" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
                               <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name={t("Nhắc lại")} />
                               <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name={t("Lỗi")} />
                             </BarChart>

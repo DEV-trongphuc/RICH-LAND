@@ -413,7 +413,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
 
           {/* AI Block (purple background, purple left border) */}
           {aiStatus === 'passed' && aiEvaluation && (
-            <div style={{ backgroundColor: '#f5f3ff', borderLeft: '4px solid #7c3aed', padding: '24px', margin: '30px 0', borderRadius: '0 12px 12px 0' }}>
+            <div style={{ backgroundColor: '#f5f3ff', borderLeft: '4px solid #a31422', padding: '24px', margin: '30px 0', borderRadius: '0 12px 12px 0' }}>
               <p style={{ color: '#6d28d9', fontSize: '16px', margin: '0 0 12px 0', fontWeight: 'bold', lineHeight: 1.6, borderBottom: '1px solid #ddd6fe', paddingBottom: '8px' }}>
                 🤖 Đánh giá AI:
               </p>
@@ -439,17 +439,17 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
         {/* Info Header */}
         <div style={{
           background: isEmail ? '#f5f3ff' : '#e0f2fe',
-          border: isEmail ? '1px solid #e9d5ff' : '1px solid #bae6fd',
+          border: isEmail ? '1px solid #ffccd5' : '1px solid #bae6fd',
           borderRadius: '8px',
           padding: '10px 14px',
           marginBottom: '1rem',
           fontSize: '0.8rem',
-          color: isEmail ? '#6b21a8' : '#0369a1',
+          color: isEmail ? '#700913' : '#0369a1',
           display: 'flex',
           alignItems: 'center',
           gap: 8
         }}>
-          {isEmail ? <Mail size={14} style={{ color: '#7c3aed' }} /> : <MessageCircle size={14} style={{ color: '#0068ff' }} />}
+          {isEmail ? <Mail size={14} style={{ color: '#a31422' }} /> : <MessageCircle size={14} style={{ color: '#0068ff' }} />}
           <span>
             {t("Thông báo này được gửi tự động lúc")} <strong>{sentAt}</strong> {t("đến Sale")} <strong>{assignedToName}</strong>
           </span>

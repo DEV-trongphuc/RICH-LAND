@@ -437,12 +437,12 @@
    ================================================ */
 :root {
   /* Brand */
-  --color-primary: oklch(53% 0.25 285);
-  --color-primary-hover: oklch(45% 0.24 286);
-  --color-primary-light: oklch(53% 0.25 285 / 8%);
-  --sidebar-bg: oklch(16.5% 0.085 282.8);
+  --color-primary: oklch(51.5% 0.192 23.2);
+  --color-primary-hover: oklch(44.2% 0.174 23.3);
+  --color-primary-light: oklch(51.5% 0.192 23.2 / 8%);
+  --sidebar-bg: oklch(16.5% 0.03 23.2);
   --sidebar-hover: oklch(100% 0 0 / 8%);
-  --sidebar-active: oklch(53% 0.25 285 / 90%);
+  --sidebar-active: oklch(51.5% 0.192 23.2 / 90%);
 
   /* Neutrals */
   --color-bg: oklch(98.4% 0.007 247);
@@ -476,7 +476,7 @@
   --shadow-md: 0 4px 12px -2px oklch(15.9% 0.034 254 / 5%), 0 2px 4px -2px oklch(15.9% 0.034 254 / 3%);
   --shadow-lg: 0 12px 24px -4px oklch(15.9% 0.034 254 / 6%), 0 4px 12px -4px oklch(15.9% 0.034 254 / 4%);
   --shadow-xl: 0 20px 32px -4px oklch(15.9% 0.034 254 / 8%), 0 8px 16px -8px oklch(15.9% 0.034 254 / 4%);
-  --shadow-primary: 0 8px 24px -4px oklch(53% 0.25 285 / 25%);
+  --shadow-primary: 0 8px 24px -4px oklch(51.5% 0.192 23.2 / 25%);
 
   /* Shape */
   --radius-sm: 6px;
@@ -504,7 +504,7 @@
   --sidebar-bg: oklch(9% 0.023 253);
   /* Darker navy-slate sidebar for contrast hierarchy */
   --sidebar-hover: oklch(100% 0 0 / 4%);
-  --sidebar-active: oklch(73% 0.18 285 / 15%);
+  --sidebar-active: oklch(68.5% 0.15 23.2 / 15%);
   /* Softer violet active theme state */
 
   /* Soft and Premium Indigo/Navy Border Accents */
@@ -520,12 +520,12 @@
   --color-text-muted: oklch(54.1% 0.038 248);
   /* Slate-500 muted text */
 
-  /* Cohesive Violet Brand Accent */
-  --color-primary: oklch(73% 0.18 285);
-  /* Softer violet-400 for text accents, badges, toggles */
-  --color-primary-hover: oklch(70% 0.22 295);
-  /* Purple-400 for interactive hover highlights */
-  --color-primary-light: oklch(73% 0.18 285 / 12%);
+  /* Cohesive Red Brand Accent */
+  --color-primary: oklch(68.5% 0.15 23.2);
+  /* Softer red for text accents, badges, toggles */
+  --color-primary-hover: oklch(62% 0.17 23.2);
+  /* Red for interactive hover highlights */
+  --color-primary-light: oklch(68.5% 0.15 23.2 / 12%);
   /* Subtle violet glow background */
 
   /* Optimized Semantic Badges/Alerts Contrast for eye-friendly reading */
@@ -555,7 +555,7 @@
   --shadow-md: 0 4px 12px -2px oklch(0% 0 0 / 60%), 0 2px 6px -2px oklch(0% 0 0 / 40%);
   --shadow-lg: 0 12px 24px -4px oklch(0% 0 0 / 65%), 0 4px 12px -4px oklch(0% 0 0 / 45%);
   --shadow-xl: 0 20px 32px -4px oklch(0% 0 0 / 70%), 0 8px 16px -8px oklch(0% 0 0 / 50%);
-  --shadow-primary: 0 8px 24px -4px oklch(73% 0.18 285 / 30%);
+  --shadow-primary: 0 8px 24px -4px oklch(68.5% 0.15 23.2 / 30%);
 
   /* Skeleton loaders */
   --skeleton-base: oklch(15.9% 0.034 254);

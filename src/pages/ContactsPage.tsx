@@ -1,0 +1,887 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
+import { useUIStore } from '../store/uiStore';
+import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+import { LeadScoreRing } from '../components/ui/LeadScoreRing';
+import { TagDisplay } from '../components/ui/TagInput';
+import { Pagination } from '../components/ui/Pagination';
+import { ColumnCustomizer, type ColumnDef } from '../components/ui/ColumnCustomizer';
+import { ImportExportModal } from '../components/ui/ImportExportModal';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
+import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
+import { PhoneLink } from '../components/ui/PhoneLink';
+import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
+import { AddressSelect } from '../components/ui/AddressSelect';
+import type { Period, DateRange } from '../components/ui/PeriodFilter';
+import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
+import { useDebounce } from '../hooks/useDebounce';
+
+const PAGE_SIZE = 50;
+
+const STATUS_LABEL: Record<string,string> = { lead:'Lead mới', qualified:'Đủ điều kiện', customer:'Khách hàng', churned:'Đã rời' };
+const STATUS_CLASS: Record<string,string> = { lead:'info', qualified:'warning', customer:'success', churned:'danger' };
+
+const calcScore = (c: any) => {
+  if (!c) return 0;
+  let s = 50;
+  if (c.status==='customer')  s+=30;
+  if (c.status==='qualified') s+=15;
+  if (c.status==='churned')   s-=20;
+  if (c.source==='referral')  s+=10;
+  if (c.has_called)           s+=15;
+  return Math.min(100, Math.max(0,s));
+};
+
+const SEGMENTS = [
+  { key:'all',         label:'Tất cả',              icon:'' },
+  { key:'hot',         label:'Hot (≥80đ)',          icon:'' },
+  { key:'customer',    label:'Khách hàng',           icon:'' },
+  { key:'has_deal',    label:'Có deal đang mở',      icon:'' },
+  { key:'no_contact',  label:'Không liên hệ >30n',   icon:'' },
+  { key:'new_week',    label:'Mới trong tuần',        icon:'' },
+];
+
+const FMT_VND = (n: number) => n ? new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n) : '—';
+const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime())/86400000) : 999;
+
+export const ContactsPage: React.FC = () => {
+  const { addToast, showConfirm, closeConfirm } = useUIStore();
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300); // 300ms debounce
+  const [segment, setSegment] = useState('all');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [page, setPage] = useState(1);
+  const [profileContact, setProfileContact] = useState<any>(null);
+  const [showImportExport, setShowImportExport] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
+  const [creating, setCreating] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
+
+  // New Enterprise Features State
+  const [viewMode, setViewMode] = useState<'list' | 'card'>(() => window.innerWidth <= 768 ? 'card' : 'list');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 600);
+      if (window.innerWidth <= 768) {
+        setViewMode('card');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+
+  const [sortBy, setSortBy] = useState<'newest' | 'score_desc' | 'deal_desc'>('newest');
+  
+  // Date filter
+  const [datePeriod, setDatePeriod] = useState<Period>('this_month');
+  const [dateRange, setDateRange] = useState<DateRange>({ from: '', to: '' });
+  const [filterDateField, setFilterDateField] = useState<'created_at' | 'updated_at'>('created_at');
+  const [dateFilterActive, setDateFilterActive] = useState(false);
+  
+  const [columns, setColumns] = useState<ColumnDef[]>([
+    { id: 'name', label: 'Tên liên hệ', visible: true },
+    { id: 'email', label: 'Email', visible: true },
+    { id: 'phone', label: 'SĐT', visible: true },
+    { id: 'score', label: 'Lead Score', visible: false },
+    { id: 'company', label: 'Công ty', visible: false },
+    { id: 'tags', label: 'Phân loại (Tags)', visible: true },
+    { id: 'status', label: 'Trạng thái', visible: true },
+    { id: 'contact', label: 'Liên lạc cuối', visible: true },
+    { id: 'deal', label: 'Deal hiện tại', visible: false },
+    { id: 'owner', label: 'Sale phụ trách', visible: true },
+    { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
+    { id: 'created_at', label: 'Ngày tạo', visible: true },
+  ]);
+  const [showColumns, setShowColumns] = useState(false);
+
+  const [total, setTotal] = useState(0);
+
+  const fetchData = async () => {
+    if (DEV_MODE) {
+      const state = getFilteredMockState();
+      let list = [...state.contacts];
+      
+      // Basic search
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        list = list.filter(c => 
+          (c.first_name + ' ' + c.last_name).toLowerCase().includes(s) || 
+          c.email?.toLowerCase().includes(s) || 
+          c.phone?.includes(s)
+        );
+      }
+
+      // Segment filtering
+      if (segment !== 'all') {
+        if (segment === 'hot') list = list.filter(c => (c.lead_score || calcScore(c)) >= 80);
+        else if (segment === 'customer') list = list.filter(c => c.status === 'customer');
+        else if (segment === 'has_deal') list = list.filter(c => (c.open_deal_value || 0) > 0);
+      }
+
+      setContacts(list.map(c => ({ ...c, score: c.lead_score || calcScore(c) })));
+      setTotal(list.length);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const params: any = { 
+        page, 
+        limit: PAGE_SIZE, 
+        search: debouncedSearch, 
+        segment,
+        sort: sortBy === 'score_desc' ? 'lead_score' : (sortBy === 'deal_desc' ? 'open_deal_value' : 'created_at'),
+        order: 'DESC'
+      };
+      
+      if (dateFilterActive && (dateRange.from || dateRange.to)) {
+        params.from = dateRange.from;
+        params.to = dateRange.to;
+        params.date_field = filterDateField;
+      }
+
+      const r = await api.get('/contacts', { params });
+      const data = r.data.data;
+      setContacts((data.items || []).map((c: any) => ({ ...c, score: c.lead_score || calcScore(c) })));
+      setTotal(data.total || 0);
+    } catch (e: any) {
+      setContacts([]);
+      setTotal(0);
+      addToast('Không thể lấy danh sách liên hệ', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [page, debouncedSearch, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
+
+  useEffect(() => {
+    // Fetch sales/users for assignment once
+    api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCreateModal && !creating) {
+        setShowCreateModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showCreateModal, creating]);
+
+  const paged = contacts;
+
+  const toggleSelect = (id: number) => setSelected(p => { 
+    const n = new Set(p); 
+    if (n.has(id)) n.delete(id); 
+    else n.add(id); 
+    return n; 
+  });
+  const toggleAll = () => setSelected(selected.size===paged.length ? new Set() : new Set(paged.map(c=>c.id)));
+
+  const bulkDelete = () => {
+    showConfirm({
+      title: `Xóa ${selected.size} liên hệ?`,
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn các liên hệ đã chọn? Thao tác này không thể hoàn tác.`,
+      isDanger: true,
+      impactInfo: `Cảnh báo: Thao tác này sẽ xóa vĩnh viễn ${selected.size} liên hệ và toàn bộ lịch sử giao dịch liên quan.`,
+      requireWordMatch: selected.size > 10 ? 'DELETE' : undefined,
+      confirmText: 'Xác nhận xóa vĩnh viễn',
+      onConfirm: async () => {
+        try {
+          await api.post('/contacts/bulk-delete', { ids: Array.from(selected) });
+          setContacts(p => p.filter(c => !selected.has(c.id)));
+          addToast(`Đã xóa ${selected.size} liên hệ thành công`, 'success');
+          setSelected(new Set());
+        } catch (e: any) {
+          addToast(e.response?.data?.message || 'Lỗi khi xóa liên hệ', 'error');
+        } finally {
+          closeConfirm();
+        }
+      }
+    });
+  };
+
+  const bulkExport = () => {
+    window.open(`${api.defaults.baseURL}/export?type=contact&token=${localStorage.getItem('token')}`, '_blank');
+    addToast('Đang tải xuống dữ liệu Export...', 'info');
+  };
+  const bulkTag    = () => addToast('Mở gán tag hàng loạt...', 'info');
+  const bulkEmail  = () => addToast(`Soạn email cho ${selected.size} liên hệ...`, 'info');
+  const bulkAssign = () => addToast('Gán nhân viên phụ trách...', 'info');
+
+  const handleCreateContact = async () => {
+    if (!createForm.first_name.trim()) { addToast('Vui lòng nhập họ tên', 'error'); return; }
+    
+    // Yêu cầu ít nhất email hoặc số điện thoại
+    if (!createForm.email.trim() && !createForm.phone.trim()) {
+      addToast('Vui lòng cung cấp ít nhất Email hoặc Số điện thoại', 'error');
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const r = await api.post('/contacts', createForm);
+      const newContact = r.data.data;
+      setContacts(prev => [newContact, ...prev]);
+      setShowCreateModal(false);
+      setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
+      addToast('Đã thêm liên hệ mới thành công', 'success');
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Không thể tạo liên hệ', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const segmentCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: contacts.length, hot: 0, customer: 0, has_deal: 0, no_contact: 0, new_week: 0 };
+    contacts.forEach(c => {
+      if (!c) return;
+      const days = AGO_DAYS(c.last_contact);
+      if (c.score >= 80) counts.hot++;
+      if (c.status === 'customer') counts.customer++;
+      if ((c.open_deal_value || 0) > 0) counts.has_deal++;
+      if (days > 30) counts.no_contact++;
+      if (days <= 7) counts.new_week++;
+    });
+    return counts;
+  }, [contacts]);
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Liên hệ & Khách hàng</h1>
+          <p className="page-subtitle">{loading ? '...' : `${total} liên hệ`}</p>
+        </div>
+        <div className="flex gap-2">
+          <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
+            <Download size={14}/>
+            <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
+          </button>
+          <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
+            <Plus size={15}/>
+            <span className="hide-on-mobile"> Thêm liên hệ</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Smart Segments */}
+      <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1rem', overflowX:'auto', paddingBottom:4 }}>
+        {SEGMENTS.map(s => {
+          const cnt = segmentCounts[s.key] || 0;
+          return (
+            <button key={s.key} onClick={() => { setSegment(s.key); setPage(1); }}
+              style={{ padding:'0.5rem 1rem', borderRadius:'var(--radius-full)', border:`1px solid ${segment===s.key?'var(--color-primary)':'var(--color-border)'}`, background:segment===s.key?'var(--color-primary)':'var(--color-surface)', color:segment===s.key?'white':'var(--color-text)', fontWeight:600, fontSize:'0.8125rem', whiteSpace:'nowrap', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'6px' }}>
+              {s.icon && <span>{s.icon}</span>}{s.label}
+              <span style={{ background:segment===s.key?'rgba(255,255,255,0.25)':'var(--color-bg)', borderRadius:10, padding:'1px 6px', fontSize:'0.7rem', fontWeight:700 }}>{cnt}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Search + filter row */}
+      <div className="card" style={{ padding:'0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', alignItems:'center', flexWrap: 'wrap' }}>
+        <div className="filter-search" style={{ width: '300px', position: 'relative' }}>
+          <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
+          <input placeholder="Tìm tên, email, điện thoại..." value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{ paddingRight: '2rem' }}/>
+          <AnimatePresence>
+            {search && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.8 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+                className="btn-icon-bare" 
+                onClick={() => setSearch('')} 
+                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', padding: 4 }}
+                title="Xóa tìm kiếm"
+              >
+                <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Date filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CustomSelect
+            value={filterDateField}
+            onChange={v => setFilterDateField(v as any)}
+            options={[
+              { value: 'created_at', label: 'Ngày tạo' },
+              { value: 'updated_at', label: 'Cập nhật' }
+            ]}
+          />
+          <PeriodFilter
+            value={datePeriod}
+            onChange={(p, r) => { setDatePeriod(p); setDateRange(r); setDateFilterActive(true); setPage(1); }}
+          />
+          {dateFilterActive && (
+            <button className="btn ghost sm" onClick={() => { setDateFilterActive(false); setDateRange({ from: '', to: '' }); }}>
+              <X size={13} /> Bỏ lọc ngày
+            </button>
+          )}
+        </div>
+        
+        <div style={{ flex: 1 }} />
+        
+        {/* View Mode & Layout Controls */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ width: 170 }}>
+            <CustomSelect 
+              value={sortBy} 
+              onChange={val => setSortBy(val as any)} 
+              options={[
+                { value: 'newest', label: 'Mới nhất', icon: <ArrowDownUp size={14} /> },
+                { value: 'score_desc', label: 'Score giảm dần', icon: <ArrowDownUp size={14} /> },
+                { value: 'deal_desc', label: 'Deal lớn nhất', icon: <ArrowDownUp size={14} /> }
+              ]} 
+            />
+          </div>
+
+          <button 
+            className={`btn sm ${viewMode === 'list' ? 'primary' : 'ghost'}`} 
+            onClick={() => setViewMode('list')} 
+            title="Danh sách"
+            style={{ padding: '0.5rem' }}
+          >
+            <List size={16} />
+          </button>
+          <button 
+            className={`btn sm ${viewMode === 'card' ? 'primary' : 'ghost'}`} 
+            onClick={() => setViewMode('card')} 
+            title="Dạng thẻ"
+            style={{ padding: '0.5rem' }}
+          >
+            <LayoutGrid size={16} />
+          </button>
+          
+          <button 
+            className="btn outline" 
+            onClick={() => setShowColumns(true)} 
+            title="Tùy chỉnh cột"
+            style={{ padding: '0 0.75rem' }}
+          >
+            <Columns size={16} />
+          </button>
+        </div>
+      </div>
+
+      <ColumnCustomizer 
+        isOpen={showColumns} 
+        onClose={() => setShowColumns(false)} 
+        columns={columns} 
+        onChange={setColumns} 
+      />
+
+      {/* Bulk Action Bar */}
+      <AnimatePresence>
+        {selected.size > 0 && (
+          <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
+            style={{ position:'sticky', top:68, zIndex:100, marginBottom:'0.75rem', padding:'0.75rem 1.25rem', background:'var(--color-primary)', borderRadius:'var(--radius-xl)', display:'flex', alignItems:'center', gap:'0.75rem', boxShadow:'0 8px 24px rgba(124,58,237,0.3)' }}>
+            <span style={{ color:'white', fontWeight:700, fontSize:'0.875rem' }}>{selected.size} đã chọn</span>
+            <div style={{ flex:1 }}/>
+            {[
+              { label:'Email', action:bulkEmail },
+              { label:'Tag',   action:bulkTag   },
+              { label:'Gán',  action:bulkAssign},
+              { label:'Xuất', action:bulkExport },
+            ].map(b=>(
+              <button key={b.label} onClick={b.action}
+                style={{ padding:'0.375rem 0.875rem', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'var(--radius-lg)', color:'white', fontWeight:600, fontSize:'0.8125rem', cursor:'pointer' }}>
+                {b.label}
+              </button>
+            ))}
+            <button onClick={bulkDelete}
+              style={{ padding:'0.375rem 0.875rem', background:'rgba(239,68,68,0.8)', border:'none', borderRadius:'var(--radius-lg)', color:'white', fontWeight:700, fontSize:'0.8125rem', cursor:'pointer' }}>
+              Xóa
+            </button>
+            <button onClick={() => setSelected(new Set())} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.7)', cursor:'pointer' }}><X size={16}/></button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Table */}
+      {loading ? (
+        <div className="card">
+          <TableSkeleton rows={6} cols={6} />
+        </div>
+      ) : (
+        <div className="card" style={{ overflow: 'visible' }}>
+          {viewMode === 'list' ? (
+            <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 0 var(--color-border)' }}>
+                  <tr>
+                    <th style={{ width: 44, padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border)' }}>
+                      <CustomCheckbox 
+                        checked={selected.size === paged.length && paged.length > 0} 
+                        onChange={toggleAll} 
+                      />
+                    </th>
+                    {columns.find(c => c.id === 'name')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>}
+                    {(columns.find(c => c.id === 'email')?.visible || columns.find(c => c.id === 'phone')?.visible) && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc</th>
+                    )}
+                    {columns.find(c => c.id === 'score')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Score</th>}
+                    {columns.find(c => c.id === 'company')?.visible && !columns.find(c => c.id === 'name')?.visible && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Công ty</th>
+                    )}
+                    {columns.find(c => c.id === 'tags')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Tags</th>}
+                    {columns.find(c => c.id === 'status')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
+                    {columns.find(c => c.id === 'contact')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>
+                    )}
+                    {columns.find(c => c.id === 'deal')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Deal đang mở</th>}
+                    {columns.find(c => c.id === 'owner')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Sale phụ trách</th>}
+                    {columns.find(c => c.id === 'updated_at')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
+                    )}
+                    {columns.find(c => c.id === 'created_at')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
+                    <th style={{ width: 120, borderBottom: '1px solid var(--color-border)' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.map(c => {
+                    const days = AGO_DAYS(c.last_contact);
+                    const fullName = `${c.first_name} ${c.last_name}`;
+                    return (
+                      <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                         style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                         className="table-row-hover"
+                         onClick={() => setProfileContact(c)}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
+                          <CustomCheckbox 
+                            checked={selected.has(c.id)} 
+                            onChange={() => toggleSelect(c.id)} 
+                          />
+                        </td>
+                        {columns.find(col => col.id === 'name')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <Avatar name={fullName} size={36} />
+                              <div>
+                                <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{fullName}</p>
+                                {columns.find(col => col.id === 'company')?.visible && c.company_name && (
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                                    {c.company_name} {c.job_title ? `• ${c.job_title}` : ''}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        )}
+                        {(columns.find(col => col.id === 'email')?.visible || columns.find(col => col.id === 'phone')?.visible) && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              {columns.find(col => col.id === 'phone')?.visible && c.phone ? (
+                                <PhoneLink phone={c.phone} style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} />
+                              ) : null}
+                              {columns.find(col => col.id === 'email')?.visible && c.email ? (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{c.email}</span>
+                              ) : null}
+                            </div>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'score')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
+                              {c.score}
+                            </span>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'company')?.visible && !columns.find(col => col.id === 'name')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>{c.company_name || '—'}</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{c.job_title || ''}</p>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'tags')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', maxWidth: 160, borderBottom: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                              {(c.tags || []).slice(0, 2).map((t: string) => (
+                                <span key={t} style={{ padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                  {t}
+                                </span>
+                              ))}
+                              {(c.tags || []).length > 2 && (
+                                <span style={{ padding: '2px 6px', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>+{c.tags.length - 2}</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'status')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'contact')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <span style={{ fontSize: '0.8125rem', color: days > 30 ? 'var(--color-danger)' : days > 14 ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: days > 30 ? 700 : 400 }}>
+                              {c.last_contact ? (days === 0 ? 'Hôm nay' : days === 1 ? 'Hôm qua' : `${days} ngày trước`) : '—'}
+                            </span>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'deal')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: (c.open_deal_value || 0) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                              {FMT_VND(c.open_deal_value || 0)}
+                            </span>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'owner')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            {c.owner_name ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <Avatar name={c.owner_name} size={32} />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{c.owner_name}</span>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                    Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                                  <User size={16} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa giao</span>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                                    Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'updated_at')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}</p>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'created_at')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '—'}</p>
+                          </td>
+                        )}
+                        <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', opacity: 0 }} className="row-actions">
+                            <button className="btn ghost sm" title="Xem hồ sơ" onClick={() => setProfileContact(c)}><Eye size={13} /></button>
+                            <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} title="Xóa"
+                              onClick={() => {
+                                showConfirm({
+                                  title: 'Xóa liên hệ',
+                                  message: `Bạn có chắc chắn muốn xóa liên hệ ${fullName}? Hành động này không thể hoàn tác.`,
+                                  isDanger: true,
+                                  confirmText: 'Xóa',
+                                  onConfirm: async () => {
+                                    try {
+                                      await api.delete(`/contacts/${c.id}`);
+                                      setContacts(p => p.filter(x => x.id !== c.id));
+                                      addToast('Đã xóa liên hệ thành công', 'success');
+                                    } catch (e: any) {
+                                      addToast(e.response?.data?.message || 'Lỗi khi xóa liên hệ', 'error');
+                                    }
+                                  }
+                                });
+                              }}>
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {total === 0 && (
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  <Users size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                  <p style={{ fontWeight: 600 }}>Không tìm thấy liên hệ nào</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: '1rem', background: 'var(--color-surface)' }}>
+              <div className="grid-cards-responsive">
+                {paged.map(c => {
+                  const days = AGO_DAYS(c.last_contact);
+                  const fullName = `${c.first_name} ${c.last_name}`;
+                  return (
+                    <motion.div 
+                      key={c.id} 
+                      initial={{ opacity: 0, scale: 0.95 }} 
+                      animate={{ opacity: 1, scale: 1 }}
+                      onClick={() => setProfileContact(c)}
+                      style={{ 
+                        background: 'var(--color-surface)', border: '1px solid var(--color-border)', 
+                        borderRadius: 'var(--radius-lg)', padding: '1rem', cursor: 'pointer',
+                        boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', position: 'relative'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
+                      onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
+                    >
+                      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }} onClick={e => e.stopPropagation()}>
+                        <CustomCheckbox 
+                          checked={selected.has(c.id)} 
+                          onChange={() => toggleSelect(c.id)} 
+                        />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem' }}>
+                          {(c.first_name?.[0] || '?').toUpperCase()}
+                        </div>
+                        <div>
+                          <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{fullName}</h3>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <Building2 size={12} /> {c.company_name || 'Cá nhân'}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                        <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
+                        <span style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', fontWeight: 600, color: c.score >= 80 ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                          Score: {c.score}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                        <div>
+                          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.25rem' }}>Liên lạc cuối</p>
+                          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: days > 30 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                            {c.last_contact ? (days === 0 ? 'Hôm nay' : days === 1 ? 'Hôm qua' : `${days} ngày trước`) : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.25rem' }}>Deal đang mở</p>
+                          <p style={{ fontSize: '0.875rem', fontWeight: 700, color: (c.open_deal_value || 0) > 0 ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                            {FMT_VND(c.open_deal_value || 0)}
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+              {total === 0 && (
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  <Users size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                  <p style={{ fontWeight: 600 }}>Không tìm thấy liên hệ nào</p>
+                </div>
+              )}
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '1rem' }}>
+            <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+          </div>
+        </div>
+      )}
+
+      {/* 360° Profile Drawer */}
+      <CustomerProfileDrawer
+        isOpen={!!profileContact}
+        onClose={() => setProfileContact(null)}
+        contact={profileContact}
+        onUpdate={updated => { setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated}:c)); }}
+      />
+      
+      <ImportExportModal 
+        isOpen={showImportExport} 
+        onClose={() => setShowImportExport(false)} 
+        entityName="Liên hệ" 
+        onExport={(format) => {
+          window.open(`${api.defaults.baseURL}/export?type=contact&token=${localStorage.getItem('token')}`, '_blank');
+        }}
+      />
+
+      {/* Quick Create Contact Modal - Enhanced UI */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <>
+            <motion.div 
+              className="overlay-backdrop" 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              onClick={() => !creating && setShowCreateModal(false)} 
+              style={{ zIndex: 1000 }} 
+            />
+            <motion.div
+              className="modal-sheet"
+              initial={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
+              animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+              exit={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={isMobile ? { 
+                position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+                maxWidth: '100vw', zIndex: 1010, overflow: 'hidden', borderRadius: 0,
+                display: 'flex', flexDirection: 'column'
+              } : { 
+                position: 'fixed', top: '50%', left: '50%', width: 640, 
+                maxWidth: 'calc(100vw - 2rem)', zIndex: 1010, overflow: 'visible'
+              }}
+            >
+              {/* Header */}
+              <div className="modal-header" style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.75rem' : '1.25rem' }}>
+                  <div style={{ width: isMobile ? 40 : 52, height: isMobile ? 40 : 52, borderRadius: '16px', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <User size={isMobile ? 20 : 26} style={{ color: 'var(--color-primary)' }} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>Thêm Liên hệ mới</h3>
+                    <p style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', color: 'var(--color-text-light)', marginTop: 2 }}>{isMobile ? 'Nhập thông tin để quản lý khách hàng' : 'Nhập thông tin cơ bản để bắt đầu quản lý khách hàng'}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="btn-icon-bare" 
+                  disabled={creating}
+                ><X size={isMobile ? 20 : 24} /></button>
+              </div>
+
+              {/* Body */}
+              <div className="modal-body" style={{ padding: isMobile ? '1.25rem' : '2.5rem', overflowY: 'auto' }}>
+                {/* Name row */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Họ <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <input className="form-input lg" placeholder="VD: Nguyễn" value={createForm.first_name} onChange={e => setCreateForm(f => ({ ...f, first_name: e.target.value }))} autoFocus />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Tên đệm & Tên</label>
+                    <input className="form-input lg" placeholder="VD: Văn An" value={createForm.last_name} onChange={e => setCreateForm(f => ({ ...f, last_name: e.target.value }))} />
+                  </div>
+                </div>
+
+                {/* Contact row */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Số điện thoại</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} placeholder="09xx xxx xxx" value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} />
+                      <Phone size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Email liên hệ</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} type="email" placeholder="email@congty.com" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} />
+                      <Mail size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company + Job */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Công ty / Tổ chức</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} placeholder="Tên công ty..." value={createForm.company_name} onChange={e => setCreateForm(f => ({ ...f, company_name: e.target.value }))} />
+                      <Building2 size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Chức vụ</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} placeholder="VD: Giám đốc, Kế toán..." value={createForm.job_title} onChange={e => setCreateForm(f => ({ ...f, job_title: e.target.value }))} />
+                      <Briefcase size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Status + Source */}
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Trạng thái Lead</label>
+                    <CustomSelect 
+                      options={[
+                        { value: 'lead', label: 'Lead mới (Chưa xử lý)' },
+                        { value: 'qualified', label: 'Đủ điều kiện (Qualified)' },
+                        { value: 'customer', label: 'Khách hàng (Closed Won)' }
+                      ]} 
+                      value={createForm.status} 
+                      onChange={val => setCreateForm(f => ({ ...f, status: val.toString() }))} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Phụ trách bởi (Sale)</label>
+                    <CustomSelect 
+                      options={users.map(u => ({ 
+                        value: u.id, 
+                        label: u.full_name, 
+                        avatar: u.avatar_url,
+                        sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
+                      }))}
+                      value={createForm.owner_id}
+                      onChange={val => setCreateForm(f => ({ ...f, owner_id: val.toString() }))}
+                      placeholder="Chọn sale phụ trách..."
+                      searchable
+                      showAvatars
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 700 }}>Nguồn khách hàng</label>
+                  <CustomSelect 
+                    options={[
+                      { value: 'website', label: 'Đăng ký từ Website' },
+                      { value: 'referral', label: 'Được giới thiệu' },
+                      { value: 'social', label: 'Mạng xã hội (FB/Zalo)' },
+                      { value: 'cold_call', label: 'Telesale / Cold Call' },
+                      { value: 'event', label: 'Sự kiện / Workshop' },
+                      { value: 'other', label: 'Nguồn khác' }
+                    ]} 
+                    value={createForm.source} 
+                    onChange={val => setCreateForm(f => ({ ...f, source: val.toString() }))} 
+                  />
+                </div>
+                <div className="form-group" style={{ marginTop: isMobile ? '1rem' : '1.5rem' }}>
+                  <AddressSelect 
+                    label="Địa chỉ khách hàng"
+                    value={createForm.address || ''}
+                    onChange={addr => setCreateForm(f => ({ ...f, address: addr }))}
+                    placeholder="Chọn địa chỉ..."
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="modal-footer" style={{ padding: isMobile ? '1rem 1.25rem' : '1.5rem 2.5rem' }}>
+                <button className={`btn outline ${isMobile ? 'sm' : 'lg'}`} onClick={() => setShowCreateModal(false)} disabled={creating}>Hủy bỏ</button>
+                <button 
+                  className={`btn primary ${isMobile ? 'sm' : 'lg'}`} 
+                  onClick={handleCreateContact} 
+                  disabled={creating} 
+                  style={{ minWidth: isMobile ? 140 : 200, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                >
+                  {creating ? <Loader2 size={20} className="spin" /> : <Plus size={20} />}
+                  {creating ? 'Đang khởi tạo...' : 'Tạo Liên hệ'}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};

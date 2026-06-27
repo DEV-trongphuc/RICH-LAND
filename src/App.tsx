@@ -26,6 +26,19 @@ const DemoEntry = lazy(() => import('./pages/DemoEntry').then(module => ({ defau
 const SalePortal = lazy(() => import('./pages/SalePortal').then(module => ({ default: module.SalePortal })));
 const FairShareAudit = lazy(() => import('./pages/FairShareAudit').then(module => ({ default: module.FairShareAudit })));
 
+const ContactsPage = lazy(() => import('./pages/ContactsPage').then(module => ({ default: module.ContactsPage })));
+const CompaniesPage = lazy(() => import('./pages/CompaniesPage').then(module => ({ default: module.CompaniesPage })));
+const DealsPage = lazy(() => import('./pages/DealsPage').then(module => ({ default: module.DealsPage })));
+const QuotesPage = lazy(() => import('./pages/QuotesPage').then(module => ({ default: module.QuotesPage })));
+const ActivitiesPage = lazy(() => import('./pages/ActivitiesPage').then(module => ({ default: module.ActivitiesPage })));
+const ProductsPage = lazy(() => import('./pages/ProductsPage').then(module => ({ default: module.ProductsPage })));
+const InvoicesPage = lazy(() => import('./pages/InvoicesPage').then(module => ({ default: module.InvoicesPage })));
+const ExpensesPage = lazy(() => import('./pages/ExpensesPage').then(module => ({ default: module.ExpensesPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(module => ({ default: module.ReportsPage })));
+const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(module => ({ default: module.SuppliersPage })));
+const FilesPage = lazy(() => import('./pages/FilesPage').then(module => ({ default: module.FilesPage })));
+const InventoryPage = lazy(() => import('./pages/InventoryPage').then(module => ({ default: module.default })));
+
 // Loading spinner fallback
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px]">
@@ -65,7 +78,7 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper'];
-  const userPaths = ['/', '/data', '/calendar'];
+  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -99,6 +112,92 @@ const AppTabs = () => {
         {(visitedPaths.includes('/data') || visitedPaths.includes('/calendar')) && (
           <Suspense fallback={<PageLoader />}>
             <DataList />
+          </Suspense>
+        )}
+      </div>
+
+      {/* CRM Pages */}
+      <div style={{ display: currentPath === '/contacts' ? 'block' : 'none' }} className={currentPath === '/contacts' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/contacts') && (
+          <Suspense fallback={<PageLoader />}>
+            <ContactsPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/companies' ? 'block' : 'none' }} className={currentPath === '/companies' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/companies') && (
+          <Suspense fallback={<PageLoader />}>
+            <CompaniesPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/deals' ? 'block' : 'none' }} className={currentPath === '/deals' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/deals') && (
+          <Suspense fallback={<PageLoader />}>
+            <DealsPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/quotes' ? 'block' : 'none' }} className={currentPath === '/quotes' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/quotes') && (
+          <Suspense fallback={<PageLoader />}>
+            <QuotesPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/activities' ? 'block' : 'none' }} className={currentPath === '/activities' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/activities') && (
+          <Suspense fallback={<PageLoader />}>
+            <ActivitiesPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/products' ? 'block' : 'none' }} className={currentPath === '/products' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/products') && (
+          <Suspense fallback={<PageLoader />}>
+            <ProductsPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/invoices' ? 'block' : 'none' }} className={currentPath === '/invoices' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/invoices') && (
+          <Suspense fallback={<PageLoader />}>
+            <InvoicesPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/expenses' ? 'block' : 'none' }} className={currentPath === '/expenses' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/expenses') && (
+          <Suspense fallback={<PageLoader />}>
+            <ExpensesPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/reports-crm' ? 'block' : 'none' }} className={currentPath === '/reports-crm' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/reports-crm') && (
+          <Suspense fallback={<PageLoader />}>
+            <ReportsPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/suppliers' ? 'block' : 'none' }} className={currentPath === '/suppliers' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/suppliers') && (
+          <Suspense fallback={<PageLoader />}>
+            <SuppliersPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/files' ? 'block' : 'none' }} className={currentPath === '/files' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/files') && (
+          <Suspense fallback={<PageLoader />}>
+            <FilesPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/inventory' ? 'block' : 'none' }} className={currentPath === '/inventory' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/inventory') && (
+          <Suspense fallback={<PageLoader />}>
+            <InventoryPage />
           </Suspense>
         )}
       </div>

@@ -705,7 +705,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
     };
   }) : [];
 
-  const sourceColors = ['#6366f1', '#10b981', '#fbbf24', '#f43f5e', '#a855f7', '#06b6d4'];
+  const sourceColors = ['#6366f1', '#10b981', '#fbbf24', '#f43f5e', '#BD1D2D', '#06b6d4'];
 
   // Custom legend renderer for balanced charts - Styled exactly like Tỷ lệ Nguồn Data
   const renderCustomLegend = (props: any) => {

@@ -1210,7 +1210,7 @@ const ConsultantsInner = () => {
                         <div
                           style={{
                             width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`,
-                            background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
+                            background: 'linear-gradient(90deg, #a78bfa, #a31422)',
                             transition: 'width 0.3s ease'
                           }}
                           title={`${t('Thành công')}: ${statsData.summary.successful}`}
@@ -1330,8 +1330,8 @@ const ConsultantsInner = () => {
                           <BarChart data={statsData.by_date} margin={{ left: -10, right: 5, top: 20, bottom: 0 }}>
                             <defs>
                               <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+                                <stop offset="0%" stopColor="#e63946" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#a31422" stopOpacity={0.8} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
@@ -1358,7 +1358,7 @@ const ConsultantsInner = () => {
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Tỷ lệ Trạng thái Data')}</h4>
                       {(() => {
                         const statusChartData = [
-                          { name: t('Thành công'), value: statsData.summary.successful, color: '#7c3aed' },
+                          { name: t('Thành công'), value: statsData.summary.successful, color: '#a31422' },
                           { name: t('Nhắc lại'), value: statsData.summary.reminder, color: '#f59e0b' },
                           { name: t('Lỗi'), value: statsData.summary.error, color: '#ef4444' }
                         ].filter(item => item.value > 0);
@@ -1415,7 +1415,7 @@ const ConsultantsInner = () => {
                               <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                               <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
                               <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
-                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
+                              <Bar dataKey="successful_count" stackId="a" fill="#a31422" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
                               <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name={t("Nhắc lại")} />
                               <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name={t("Lỗi")} />
                             </BarChart>

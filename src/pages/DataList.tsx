@@ -234,7 +234,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
       accentColor: '#8b5cf6',
       textAccentColor: theme === 'dark' ? '#a78bfa' : '#6d28d9',
       topAccentGradient: 'linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%)',
-      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)' : 'linear-gradient(135deg, #faf5ff 0%, #eef2ff 100%)',
+      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)' : 'linear-gradient(135deg, #fff8f9 0%, #eef2ff 100%)',
       borderColor: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(139, 92, 246, 0.15)',
     };
   } else if (selectedLead.status === 'pending_approval') {
@@ -1163,7 +1163,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               padding: '2px 4px',
               borderRadius: '4px',
               background: theme === 'dark' ? 'var(--color-primary-light)' : '#f5f3ff',
-              color: theme === 'dark' ? 'var(--color-primary)' : '#7c3aed',
+              color: theme === 'dark' ? 'var(--color-primary)' : '#a31422',
               fontSize: '0.6875rem',
               fontWeight: 600,
               border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe'
@@ -1600,7 +1600,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 <span style={{ color: 'var(--color-text-muted)' }}>{t('Blacklist')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7c3aed' }}></span>
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a31422' }}></span>
                 <span style={{ color: 'var(--color-text-muted)' }}>{t('Ticket lỗi')}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -4614,9 +4614,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: theme === 'dark' ? 'rgba(139, 92, 246, 0.15)' : '#f3e8ff',
-                  color: theme === 'dark' ? '#a78bfa' : '#6b21a8',
-                  border: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid #e9d5ff',
+                  background: theme === 'dark' ? 'rgba(139, 92, 246, 0.15)' : '#fff0f3',
+                  color: theme === 'dark' ? '#a78bfa' : '#700913',
+                  border: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid #ffccd5',
                   padding: '3px 8px',
                   borderRadius: '12px',
                   fontSize: '0.72rem',
@@ -5147,7 +5147,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <div
                           style={{
                             width: `${(statsData.summary.successful / Math.max(1, statsData.summary.total)) * 100}%`,
-                            background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
+                            background: 'linear-gradient(90deg, #a78bfa, #a31422)',
                             transition: 'width 0.3s ease'
                           }}
                           title={`${t('Thành công')}: ${statsData.summary.successful}`}
@@ -5267,8 +5267,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           <BarChart data={statsData.by_date} margin={{ left: -10, right: 5, top: 20, bottom: 0 }}>
                             <defs>
                               <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+                                <stop offset="0%" stopColor="#e63946" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#a31422" stopOpacity={0.8} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
@@ -5295,7 +5295,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Tỷ lệ Trạng thái Data')}</h4>
                       {(() => {
                         const statusChartData = [
-                          { name: t('Thành công'), value: statsData.summary.successful, color: '#7c3aed' },
+                          { name: t('Thành công'), value: statsData.summary.successful, color: '#a31422' },
                           { name: t('Nhắc lại'), value: statsData.summary.reminder, color: '#f59e0b' },
                           { name: t('Lỗi'), value: statsData.summary.error, color: '#ef4444' }
                         ].filter(item => item.value > 0);
@@ -5352,7 +5352,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                               <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
                               <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
-                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
+                              <Bar dataKey="successful_count" stackId="a" fill="#a31422" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
                               <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name={t("Nhắc lại")} />
                               <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name={t("Lỗi")} />
                             </BarChart>

@@ -1045,10 +1045,10 @@ export const QuickAddLeadModal = () => {
           padding: '12px 14px',
           background: theme === 'dark' ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(237, 216, 252, 0.05) 100%)' : 'linear-gradient(135deg, #f5f3ff 0%, #edd8fc 100%)',
           borderRadius: '12px',
-          border: theme === 'dark' ? '1px dashed rgba(168, 85, 247, 0.4)' : '1px dashed #c084fc',
+          border: theme === 'dark' ? '1px dashed rgba(168, 85, 247, 0.4)' : '1px dashed #e63946',
           boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(192, 132, 252, 0.08)'
         }}>
-          <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', letterSpacing: '0.5px' }}>
+          <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: '#a31422', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', letterSpacing: '0.5px' }}>
             AI VIP PROMAX ULTRA
           </label>
           <textarea
@@ -1263,7 +1263,7 @@ export const QuickAddLeadModal = () => {
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#f5f3ff';
-                          e.currentTarget.style.color = '#7c3aed';
+                          e.currentTarget.style.color = '#a31422';
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.backgroundColor = 'transparent';

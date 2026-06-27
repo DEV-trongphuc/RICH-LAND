@@ -379,7 +379,7 @@ export const ReportData = () => {
                     <button type="submit" disabled={submitting}
                       style={{
                         width: '100%', flexShrink: 0, marginTop: 'auto',
-                        background: params.isTest ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                        background: params.isTest ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #a31422, #6d28d9)',
                         color: 'white', padding: '14px', borderRadius: 12, border: 'none',
                         fontSize: '0.95rem', fontWeight: 700,
                         cursor: submitting || params.isTest ? 'not-allowed' : 'pointer',

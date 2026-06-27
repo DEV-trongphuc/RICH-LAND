@@ -902,7 +902,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           {/* Header/Logo */}
           <div style={{
             width: 64, height: 64, margin: '0 auto 1.5rem', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+            background: 'linear-gradient(135deg, #a31422 0%, #6d28d9 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(124,58,237,0.3)', overflow: 'hidden',
             border: '2px solid rgba(255,255,255,0.9)'
@@ -1048,7 +1048,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   // Active Sale Portal View
   const renderDashboardView = () => {
     const kpis = [
-      { key: 'data', status: 'all', label: t('DATA KHÁCH HÀNG'), value: data.stats.total_received, sub: t('Tổng nhận được bàn giao'), color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', icon: FileText },
+      { key: 'data', status: 'all', label: t('DATA KHÁCH HÀNG'), value: data.stats.total_received, sub: t('Tổng nhận được bàn giao'), color: '#a31422', bg: 'rgba(124, 58, 237, 0.08)', icon: FileText },
       { key: 'tickets', status: 'pending', label: t('TICKET BÁO LỖI'), value: data.stats.tickets_total, sub: `${data.stats.tickets_pending} đang chờ duyệt`, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', icon: AlertCircle },
       { key: 'data', status: 'approved_ticket', label: t('ĐÃ DUYỆT BÙ'), value: data.stats.tickets_approved, sub: t('Hợp lệ & Đã được bù'), color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', icon: CheckCircle2 },
       { key: 'data', status: 'rejected_ticket', label: t('TỪ CHỐI BÙ'), value: data.stats.tickets_rejected, sub: t('Bị từ chối / Không đền bù'), color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', icon: XCircle }
@@ -2352,7 +2352,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 padding: '2px 4px',
                 borderRadius: '4px',
                 background: theme === 'dark' ? 'var(--color-primary-light)' : '#f5f3ff',
-                color: theme === 'dark' ? 'var(--color-primary)' : '#7c3aed',
+                color: theme === 'dark' ? 'var(--color-primary)' : '#a31422',
                 fontSize: '0.6875rem',
                 fontWeight: 600,
                 border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe'
@@ -2446,7 +2446,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               <span style={{ color: 'var(--color-text-muted)' }}>{t('Đã chia')}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#7c3aed' }}></span>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#a31422' }}></span>
               <span style={{ color: 'var(--color-text-muted)' }}>{t('Ticket lỗi')}</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -2960,7 +2960,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 fontWeight: 800,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                background: 'linear-gradient(135deg, #d8b4fe 0%, #c084fc 50%, #a855f7 100%)',
+                background: 'linear-gradient(135deg, #f45b69 0%, #e63946 50%, #BD1D2D 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 marginTop: '4px',
@@ -2982,7 +2982,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               }}
               style={{
                 width: 44, height: 44, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
               }}
@@ -3000,7 +3000,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               }}
               style={{
                 width: '100%', height: 44, borderRadius: '12px',
-                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
                 boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
@@ -3856,7 +3856,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     <div style={{
                       width: 24, height: 24, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                      background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: 'white', fontWeight: 800, fontSize: '0.65rem'
                     }}>

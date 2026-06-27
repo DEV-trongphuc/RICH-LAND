@@ -168,7 +168,7 @@ export const Login = () => {
               <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>{t("HỆ THỐNG AUTO CHIA DATA LOGIC")}</span>
             </div>
             <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-1px' }}>
-              DOMATION <span style={{ background: 'linear-gradient(to right, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
+              DOMATION <span style={{ background: 'linear-gradient(to right, #818cf8, #e63946)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
             </h1>
             <p style={{ fontSize: '1.125rem', color: '#cbd5e1', lineHeight: 1.6, maxWidth: 480 }}>
               {t("Giải pháp toàn diện giúp tự động hóa quy trình phân bổ khách hàng, theo dõi hiệu suất và tăng tỷ lệ chuyển đổi.")}
@@ -398,7 +398,7 @@ export const Login = () => {
           box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.15) !important;
         }
         .login-btn {
-          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          background: linear-gradient(135deg, #4f46e5 0%, #a31422 100%);
           color: white;
           border: none;
           border-radius: 12px;

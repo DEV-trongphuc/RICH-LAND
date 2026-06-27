@@ -1218,6 +1218,9 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
             $sStmt->close();
         }
     }
+    if ($id > 0) {
+        ensurePersonAndContact($conn, $id);
+    }
     return $id;
 }
 
@@ -1310,6 +1313,9 @@ function updateLead($conn, $phone, $email, $assignedConsultantId, $source, $type
         }
         $uStmt->execute();
         $uStmt->close();
+        if ($id > 0) {
+            ensurePersonAndContact($conn, $id);
+        }
         return $id;
     }
     return null;
@@ -2944,6 +2950,92 @@ function sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customer
     }
 
     return true;
+}
+
+function ensurePersonAndContact($conn, $leadId) {
+    // 1. Get lead info
+    $stmt = $conn->prepare("SELECT phone, email, name, source, note, assigned_to, is_accepted, target_round_id FROM leads WHERE id = ?");
+    if (!$stmt) return;
+    $stmt->bind_param("i", $leadId);
+    $stmt->execute();
+    $lead = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$lead) return;
+
+    $phone = normalizePhone($lead['phone']);
+    if (empty($phone)) return;
+
+    $email = $lead['email'] ?? '';
+    $name = $lead['name'] ?? '';
+    $assigned_to = $lead['assigned_to'] ?? null;
+    $is_accepted = (int)($lead['is_accepted'] ?? 0);
+    $source = $lead['source'] ?? 'other';
+    $note = $lead['note'] ?? '';
+
+    // 2. Ensure Person
+    $stmtPerson = $conn->prepare("
+        INSERT INTO persons (phone, email, full_name) 
+        VALUES (?, ?, ?) 
+        ON DUPLICATE KEY UPDATE 
+            email = IF(email IS NULL OR email = '', VALUES(email), email), 
+            full_name = IF(full_name IS NULL OR full_name = '', VALUES(full_name), full_name)
+    ");
+    if ($stmtPerson) {
+        $stmtPerson->bind_param("sss", $phone, $email, $name);
+        $stmtPerson->execute();
+        $stmtPerson->close();
+    }
+
+    // Get Person ID
+    $stmtGet = $conn->prepare("SELECT id FROM persons WHERE phone = ? LIMIT 1");
+    if (!$stmtGet) return;
+    $stmtGet->bind_param("s", $phone);
+    $stmtGet->execute();
+    $person = $stmtGet->get_result()->fetch_assoc();
+    $stmtGet->close();
+
+    if (!$person) return;
+    $person_id = $person['id'];
+
+    // Update Lead with person_id
+    $stmtUpLead = $conn->prepare("UPDATE leads SET person_id = ? WHERE id = ?");
+    if ($stmtUpLead) {
+        $stmtUpLead->bind_param("ii", $person_id, $leadId);
+        $stmtUpLead->execute();
+        $stmtUpLead->close();
+    }
+
+    // 3. Ensure CRM Contact if assigned and accepted
+    if ($assigned_to > 0 && $is_accepted === 1) {
+        $projectId = null;
+        if (!empty($lead['target_round_id'])) {
+            $projectId = 1;
+        }
+
+        // Split name into first_name and last_name
+        $parts = explode(' ', trim($name));
+        $lastName = array_shift($parts) ?? '';
+        $firstName = implode(' ', $parts);
+        if (empty($firstName)) {
+            $firstName = $lastName;
+            $lastName = '';
+        }
+
+        $stmtContact = $conn->prepare("
+            INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh')
+            ON DUPLICATE KEY UPDATE 
+                owner_id = VALUES(owner_id),
+                status = 'lead'
+        ");
+        if ($stmtContact) {
+            $createdBy = 1;
+            $stmtContact->bind_param("iiiisssss", $person_id, $projectId, $assigned_to, $createdBy, $firstName, $lastName, $email, $phone, $source);
+            $stmtContact->execute();
+            $stmtContact->close();
+        }
+    }
 }
 
 

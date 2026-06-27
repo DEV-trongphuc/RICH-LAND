@@ -662,7 +662,7 @@ const RuleSettingsInner = () => {
           <p className="page-subtitle">{t("Hệ thống Rule Engine tự động phân tích Data Inbound và điều phối cho Tư vấn viên.")}</p>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button className="btn outline" onClick={handleAIEvaluateRules} style={{ borderColor: '#7c3aed', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button className="btn outline" onClick={handleAIEvaluateRules} style={{ borderColor: '#a31422', color: '#a31422', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <img 
               src="https://crm-domation.vercel.app/LOGO.jpg" 
               alt="Gemini" 

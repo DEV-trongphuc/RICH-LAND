@@ -1408,7 +1408,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
-            <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)' }}>
+            <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)' }}>
               <Shield size={24} />
             </span>
             {t('AI Pre-screener')}
@@ -1611,13 +1611,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     padding: '2px 8px',
                     borderRadius: '20px',
                     background: 'rgba(124, 58, 237, 0.08)',
-                    color: '#7c3aed',
+                    color: '#a31422',
                     border: '1px solid rgba(124, 58, 237, 0.15)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px'
                   }}>
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#7c3aed' }} />
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#a31422' }} />
                     {t('Thời gian thực (Realtime)')}
                   </span>
                 </div>
@@ -1642,7 +1642,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     border: aiScreenerEnabled ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(124, 58, 237, 0.2)',
                     fontSize: '0.6875rem',
                     fontWeight: 700,
-                    color: aiScreenerEnabled ? '#10b981' : '#7c3aed'
+                    color: aiScreenerEnabled ? '#10b981' : '#a31422'
                   }}>
                     {aiScreenerEnabled ? (
                       <>
@@ -1748,7 +1748,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       padding: '2px 8px',
                       borderRadius: '20px',
                       background: 'rgba(124, 58, 237, 0.08)',
-                      color: '#7c3aed',
+                      color: '#a31422',
                       border: '1px solid rgba(124, 58, 237, 0.2)',
                       whiteSpace: 'nowrap'
                     }}>
@@ -1859,7 +1859,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       padding: '2px 8px',
                       borderRadius: '20px',
                       background: 'rgba(124, 58, 237, 0.08)',
-                      color: '#7c3aed',
+                      color: '#a31422',
                       border: '1px solid rgba(124, 58, 237, 0.2)',
                       whiteSpace: 'nowrap'
                     }}>
@@ -2205,7 +2205,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           borderBottom: '1px solid var(--color-border)',
           flexWrap: 'wrap', alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#7c3aed', fontWeight: 700, fontSize: '0.8125rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#a31422', fontWeight: 700, fontSize: '0.8125rem' }}>
             <Filter size={14} />
             <span>{t('Bộ lọc')}</span>
           </div>
@@ -2326,7 +2326,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 marginRight: '8px',
                 padding: '0 16px',
                 borderRadius: 'var(--radius-lg)',
-                background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                 color: '#fff',
                 border: 'none',
                 boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
@@ -2350,7 +2350,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 gap: '6px',
                 padding: '0 16px',
                 borderRadius: 'var(--radius-lg)',
-                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)',
                 color: '#fff',
                 border: 'none',
                 boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
@@ -3888,7 +3888,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   {t('Bộ lọc:')}
                 </span>
                 <span style={{
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                  background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)',
                   color: '#fff',
                   fontSize: '0.75rem',
                   fontWeight: 700,
@@ -3942,7 +3942,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                       <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <GitBranch size={18} color="#7c3aed" />
+                        <GitBranch size={18} color="#a31422" />
                         {t('Vòng phân bổ dưới chuẩn nhiều nhất')}
                       </h4>
                     </div>
@@ -3955,7 +3955,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         statsData.rounds_breakdown?.map((item: any, idx: number) => {
                           const totalBS = statsData.stats?.total_below_standard || 1;
                           const pct = Math.round((item.count / totalBS) * 100);
-                          const colors = ['#7c3aed', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+                          const colors = ['#a31422', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
                           const color = colors[idx % colors.length];
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -3997,7 +3997,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         statsData.sources_breakdown?.map((item: any, idx: number) => {
                           const totalBS = statsData.stats?.total_below_standard || 1;
                           const pct = Math.round((item.count / totalBS) * 100);
-                          const colors = ['#3b82f6', '#10b981', '#7c3aed', '#f59e0b', '#ef4444'];
+                          const colors = ['#3b82f6', '#10b981', '#a31422', '#f59e0b', '#ef4444'];
                           const color = colors[idx % colors.length];
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -4085,7 +4085,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
                             {/* Giao lead Row */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#7c3aed', flexShrink: 0 }} />
+                              <div style={{ width: 14, height: 14, borderRadius: '50%', background: '#a31422', flexShrink: 0 }} />
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{t('Giao lead')}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{`${giaoLeadPctClamped}% ${t('tổng data')}`}</div>
@@ -4303,7 +4303,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   {t('Thời gian:')}
                 </span>
                 <span style={{
-                  background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                  background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                   color: '#fff',
                   fontSize: '0.75rem',
                   fontWeight: 700,
@@ -5581,7 +5581,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5
                       }}>
                         <div style={{ fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Clock size={14} color="#7c3aed" />
+                          <Clock size={14} color="#a31422" />
                           {t("Thông tin thêm")}
                         </div>
                         <div>
@@ -6605,7 +6605,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         <div
                           style={{
                             width: `${(statsConsultantData.summary.successful / Math.max(1, statsConsultantData.summary.total)) * 100}%`,
-                            background: 'linear-gradient(90deg, #a78bfa, #7c3aed)',
+                            background: 'linear-gradient(90deg, #a78bfa, #a31422)',
                             transition: 'width 0.3s ease'
                           }}
                           title={`${t('Thành công')}: ${statsConsultantData.summary.successful}`}
@@ -6725,8 +6725,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           <BarChart data={statsConsultantData.by_date} margin={{ left: -10, right: 5, top: 20, bottom: 0 }}>
                             <defs>
                               <linearGradient id="statsDateGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor="#c084fc" stopOpacity={1} />
-                                <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.8} />
+                                <stop offset="0%" stopColor="#e63946" stopOpacity={1} />
+                                <stop offset="100%" stopColor="#a31422" stopOpacity={0.8} />
                               </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
@@ -6753,7 +6753,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       <h4 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Tỷ lệ Trạng thái Data')}</h4>
                       {(() => {
                         const statusChartData = [
-                          { name: t('Thành công'), value: statsConsultantData.summary.successful, color: '#7c3aed' },
+                          { name: t('Thành công'), value: statsConsultantData.summary.successful, color: '#a31422' },
                           { name: t('Nhắc lại'), value: statsConsultantData.summary.reminder, color: '#f59e0b' },
                           { name: t('Lỗi'), value: statsConsultantData.summary.error, color: '#ef4444' }
                         ].filter(item => item.value > 0);
@@ -6810,7 +6810,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               <XAxis type="number" tick={{ fontSize: 9 }} axisLine={false} tickLine={false} />
                               <YAxis dataKey="round_name" type="category" width={90} tick={{ fontSize: 9, fontWeight: 600 }} axisLine={false} tickLine={false} />
                               <Tooltip contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', fontSize: '0.75rem', borderRadius: 8 }} />
-                              <Bar dataKey="successful_count" stackId="a" fill="#7c3aed" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
+                              <Bar dataKey="successful_count" stackId="a" fill="#a31422" radius={[0, 0, 0, 0]} barSize={12} name={t("Thành công")} />
                               <Bar dataKey="reminder_count" stackId="a" fill="#f59e0b" radius={[0, 0, 0, 0]} barSize={12} name={t("Nhắc lại")} />
                               <Bar dataKey="error_count" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} barSize={12} name={t("Lỗi")} />
                             </BarChart>
@@ -6972,7 +6972,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
         .flow-step-number {
           position: relative;
-          background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+          background: linear-gradient(135deg, #a31422 0%, #4f46e5 100%);
           color: #fff;
           font-weight: 800;
           width: 24px;
