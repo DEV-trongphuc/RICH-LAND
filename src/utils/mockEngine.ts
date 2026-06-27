@@ -354,7 +354,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
           total_count: filtered.length,
           admin_avatars: {
             'Admin Demo': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150',
-            'AI Screener': 'https://crm-domation.vercel.app/LOGO.jpg'
+            'AI Screener': '/LOGO.jpg'
           },
           counts: {
             queue: queueCount,
@@ -542,7 +542,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
               ],
               blacklist: 2,
               blacklist_details: [
-                { admin_name: 'AI Screener', admin_avatar: 'https://crm-domation.vercel.app/LOGO.jpg', created_at: new Date(Date.now() - 18000000).toISOString(), reason: 'Chặn số blacklist spam' }
+                { admin_name: 'AI Screener', admin_avatar: '/LOGO.jpg', created_at: new Date(Date.now() - 18000000).toISOString(), reason: 'Chặn số blacklist spam' }
               ],
               reassign: 1,
               reassign_details: [
@@ -707,7 +707,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
           round_name: '',
           received_at: new Date(new Date(receivedAt).getTime() - 1000 * 6).toISOString(),
           consultant_name: 'Hệ thống',
-          consultant_avatar: 'https://crm-domation.vercel.app/LOGO.jpg',
+          consultant_avatar: '/LOGO.jpg',
           message: `Lead mới từ nguồn ${source} - Tên: ${name}, SĐT: ${phone}`,
           is_ticket: 0
         });
@@ -718,7 +718,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
             round_name: '',
             received_at: new Date(new Date(receivedAt).getTime() - 1000 * 4).toISOString(),
             consultant_name: 'AI Screener',
-            consultant_avatar: 'https://crm-domation.vercel.app/LOGO.jpg',
+            consultant_avatar: '/LOGO.jpg',
             message: status === 'rejected' || status === 'blacklisted' 
               ? `[Từ chối tự động]: Số điện thoại không đạt chuẩn | Lý do: ${heldLead?.ai_evaluation || 'Không liên lạc được'}`
               : `[Đạt chuẩn]: Số điện thoại hợp lệ và không trùng lặp`,

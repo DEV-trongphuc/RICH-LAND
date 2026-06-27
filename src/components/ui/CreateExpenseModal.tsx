@@ -20,7 +20,7 @@ interface Props {
 const CATEGORIES = [
   { id: 'Di chuyển', label: 'Di chuyển', icon: Car, color: '#3b82f6' },
   { id: 'Ăn uống', label: 'Ăn uống', icon: UtensilsCrossed, color: '#f59e0b' },
-  { id: 'Vận hành', label: 'Vận hành', icon: Settings, color: '#8b5cf6' },
+  { id: 'Vận hành', label: 'Vận hành', icon: Settings, color: '#BD1D2D' },
   { id: 'Marketing', label: 'Marketing', icon: Briefcase, color: '#ec4899' },
   { id: 'Công cụ', label: 'Công cụ', icon: Wrench, color: '#10b981' },
   { id: 'Nhân sự', label: 'Nhân sự', icon: User, color: '#f97316' },
@@ -178,7 +178,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                 width: 44, height: 44, borderRadius: '12px',
                 background: 'linear-gradient(135deg, #a31422, #BD1D2D)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 8px 16px rgba(124,58,237,0.25)'
+                boxShadow: '0 8px 16px rgba(163, 20, 34,0.25)'
               }}>
                 <DollarSign size={22} color="white" />
               </div>
@@ -400,7 +400,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                       display: 'inline-flex', alignItems: 'center', gap: '6px',
                       background: 'var(--color-primary-light)', color: 'var(--color-primary)',
                       padding: '4px 10px', borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 700,
-                      border: '1px solid rgba(124,58,237,0.2)',
+                      border: '1px solid rgba(163, 20, 34,0.2)',
                     }}>
                       <Avatar name={c.name} size={18} />
                       {c.name}

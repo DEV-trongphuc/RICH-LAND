@@ -264,7 +264,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         } else if (item.status === 'blacklisted') {
           return { icon: <ShieldAlert size={size} />, color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' };
         }
-        return { icon: <UserCheck size={size} />, color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' };
+        return { icon: <UserCheck size={size} />, color: '#BD1D2D', bg: 'rgba(189, 29, 45, 0.1)' };
       case 'admin':
         if (item.action === 'LOGIN') {
           return { icon: <LogIn size={size} />, color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
@@ -432,13 +432,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 fontWeight: 600, 
                 borderRadius: '9999px',
                 background: isTicketViewHovered 
-                  ? 'linear-gradient(135deg, #b59dfb 0%, #6d28d9 100%)' 
+                  ? 'linear-gradient(135deg, #b59dfb 0%, #8a0f1b 100%)' 
                   : 'linear-gradient(135deg, #a78bfa 0%, #a31422 100%)',
                 border: 'none',
                 color: '#fff',
                 boxShadow: isTicketViewHovered 
-                  ? '0 6px 20px rgba(124, 58, 237, 0.4)' 
-                  : '0 4px 12px rgba(124, 58, 237, 0.25)',
+                  ? '0 6px 20px rgba(163, 20, 34, 0.4)' 
+                  : '0 4px 12px rgba(163, 20, 34, 0.25)',
                 display: 'inline-flex', 
                 justifyContent: 'center', 
                 alignItems: 'center', 
@@ -466,7 +466,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             width: 56, 
             height: 56, 
             borderRadius: '50%', 
-            background: 'rgba(124, 58, 237, 0.08)', 
+            background: 'rgba(163, 20, 34, 0.08)', 
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center', 
@@ -521,13 +521,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 fontWeight: 600, 
                 borderRadius: '9999px',
                 background: isHeldViewHovered 
-                  ? 'linear-gradient(135deg, #b59dfb 0%, #6d28d9 100%)' 
+                  ? 'linear-gradient(135deg, #b59dfb 0%, #8a0f1b 100%)' 
                   : 'linear-gradient(135deg, #a78bfa 0%, #a31422 100%)',
                 border: 'none',
                 color: '#fff',
                 boxShadow: isHeldViewHovered 
-                  ? '0 6px 20px rgba(124, 58, 237, 0.4)' 
-                  : '0 4px 12px rgba(124, 58, 237, 0.25)',
+                  ? '0 6px 20px rgba(163, 20, 34, 0.4)' 
+                  : '0 4px 12px rgba(163, 20, 34, 0.25)',
                 display: 'inline-flex', 
                 justifyContent: 'center', 
                 alignItems: 'center', 

@@ -440,7 +440,7 @@
   --color-primary: oklch(51.5% 0.192 23.2);
   --color-primary-hover: oklch(44.2% 0.174 23.3);
   --color-primary-light: oklch(51.5% 0.192 23.2 / 8%);
-  --sidebar-bg: oklch(16.5% 0.03 23.2);
+  --sidebar-bg: oklch(18% 0.005 240); /* charcoal light black */
   --sidebar-hover: oklch(100% 0 0 / 8%);
   --sidebar-active: oklch(51.5% 0.192 23.2 / 90%);
 
@@ -501,7 +501,7 @@
   /* Premium deep slate-navy background */
   --color-surface: oklch(12.3% 0.024 254);
   /* Luminous deep slate-navy card surface */
-  --sidebar-bg: oklch(9% 0.023 253);
+  --sidebar-bg: oklch(14% 0.005 240); /* charcoal light black for dark mode */
   /* Darker navy-slate sidebar for contrast hierarchy */
   --sidebar-hover: oklch(100% 0 0 / 4%);
   --sidebar-active: oklch(68.5% 0.15 23.2 / 15%);
@@ -820,13 +820,13 @@ ul {
   background: var(--color-primary);
   color: #fff;
   border: 1px solid var(--color-primary);
-  box-shadow: 0 4px 14px 0 rgba(124, 58, 237, 0.3);
+  box-shadow: 0 4px 14px 0 rgba(163, 20, 34, 0.3);
 }
 
 .btn.primary:hover {
   background: var(--color-primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 6px 20px rgba(163, 20, 34, 0.4);
 }
 
 .btn.primary:active {
@@ -960,7 +960,7 @@ ul {
 }
 
 .badge.purple {
-  background: rgba(124, 58, 237, 0.12);
+  background: rgba(163, 20, 34, 0.12);
   color: var(--color-primary);
 }
 
@@ -1905,7 +1905,7 @@ input[type="radio"]:hover:not(:checked) {
 .period-filter-btn.active {
   background: var(--color-primary);
   color: white;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 2px 8px rgba(163, 20, 34, 0.25);
 }
 
 /* ================================================
@@ -2179,7 +2179,7 @@ input[type="radio"]:hover:not(:checked) {
 
 /* Dark mode improvements */
 [data-theme="dark"] tbody tr:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: rgba(189, 29, 45, 0.06);
 }
 
 [data-theme="dark"] th {
@@ -2972,13 +2972,13 @@ th.col-check {
 
 .hover-glow:hover {
   transform: translateY(-3px);
-  border-color: rgba(124, 58, 237, 0.35) !important;
-  box-shadow: 0 12px 28px -4px rgba(124, 58, 237, 0.12), 0 8px 12px -6px rgba(124, 58, 237, 0.08) !important;
+  border-color: rgba(163, 20, 34, 0.35) !important;
+  box-shadow: 0 12px 28px -4px rgba(163, 20, 34, 0.12), 0 8px 12px -6px rgba(163, 20, 34, 0.08) !important;
 }
 
 [data-theme="dark"] .hover-glow:hover {
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  box-shadow: 0 12px 28px -4px rgba(99, 102, 241, 0.22), 0 8px 12px -6px rgba(99, 102, 241, 0.15) !important;
+  border-color: rgba(189, 29, 45, 0.4) !important;
+  box-shadow: 0 12px 28px -4px rgba(189, 29, 45, 0.22), 0 8px 12px -6px rgba(189, 29, 45, 0.15) !important;
 }
 
 /* Premium CSS Tooltip (Spring Scale-Up) */
@@ -3282,7 +3282,7 @@ tbody tr td {
 }
 
 tbody tr:hover td {
-  background-color: var(--color-bg-alt, var(--color-surface-hover, rgba(124, 58, 237, 0.04))) !important;
+  background-color: var(--color-bg-alt, var(--color-surface-hover, rgba(163, 20, 34, 0.04))) !important;
 }
 
 /* Left edge slide-in indicator on the first column cell */
@@ -3293,7 +3293,7 @@ tbody tr td:first-child::before {
   top: 15%;
   bottom: 15%;
   width: 3.5px;
-  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover, #6d28d9) 100%);
+  background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary-hover, #8a0f1b) 100%);
   border-radius: 0 4px 4px 0;
   transform: scaleY(0);
   transform-origin: center;
@@ -3332,7 +3332,7 @@ html {
 textarea:focus, 
 select:focus {
   border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12) !important;
+  box-shadow: 0 0 0 4px rgba(163, 20, 34, 0.12) !important;
   outline: none !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
@@ -3341,7 +3341,7 @@ select:focus {
 [data-theme="dark"] .form-select:focus,
 [data-theme="dark"] textarea:focus,
 [data-theme="dark"] select:focus {
-  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.2) !important;
+  box-shadow: 0 0 0 4px rgba(189, 29, 45, 0.2) !important;
 }
 
 /* Custom Scrollbar for scrollable divs: 

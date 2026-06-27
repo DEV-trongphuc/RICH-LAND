@@ -28,11 +28,11 @@ export const AIChatbot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const botAvatarUrl = "https://crm-domation.vercel.app/LOGO.jpg";
+  const botAvatarUrl = "/LOGO.jpg";
 
   // Sidebar stats card config
   const statsConfig = [
-    { key: 'total_today', label: t('Tổng tiếp nhận'), color: '#6366f1', prompt: t('Hôm nay hệ thống nhận bao nhiêu data?') },
+    { key: 'total_today', label: t('Tổng tiếp nhận'), color: '#BD1D2D', prompt: t('Hôm nay hệ thống nhận bao nhiêu data?') },
     { key: 'distributed_today', label: t('Đã bàn giao'), color: '#10b981', prompt: t('Hôm nay đã chia bao nhiêu data cho Sale?') },
     { key: 'duplicates', label: t('Trùng lặp'), color: '#f59e0b', prompt: t('Có bao nhiêu data trùng lặp hôm nay?') },
     { key: 'blacklists', label: t('Chặn Blacklist'), color: '#6b7280', prompt: t('Có bao nhiêu số điện thoại bị chặn blacklist hôm nay?') },
@@ -373,17 +373,17 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
         }
         @keyframes pulse-ring-chatbot {
           0% {
-            box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
+            box-shadow: 0 0 0 0 rgba(163, 20, 34, 0.4);
             transform: scale(1);
           }
           50% {
             transform: scale(1.03);
           }
           70% {
-            box-shadow: 0 0 0 15px rgba(79, 70, 229, 0);
+            box-shadow: 0 0 0 15px rgba(163, 20, 34, 0);
           }
           100% {
-            box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+            box-shadow: 0 0 0 0 rgba(163, 20, 34, 0);
             transform: scale(1);
           }
         }
@@ -416,7 +416,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           transform: translateY(-2px) scale(1.02);
           background: var(--chatbot-card-hover-bg) !important;
           box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
-          border-color: rgba(79, 70, 229, 0.15) !important;
+          border-color: rgba(163, 20, 34, 0.15) !important;
         }
         .chatbot-stats-card:active {
           transform: translateY(0) scale(0.98);
@@ -466,7 +466,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
         }
         .chatbot-input-field:focus {
           border-color: var(--color-primary) !important;
-          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15) !important;
+          box-shadow: 0 0 0 3px rgba(163, 20, 34, 0.15) !important;
           background: var(--color-surface) !important;
         }
         .chatbot-send-button {
@@ -489,11 +489,11 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(79, 70, 229, 0.15);
+          background: rgba(163, 20, 34, 0.15);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(79, 70, 229, 0.3);
+          background: rgba(163, 20, 34, 0.3);
         }
         
         @media (max-width: 768px) {
@@ -537,7 +537,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           padding: 0,
           cursor: 'pointer',
           border: 'none',
-          boxShadow: '0 10px 30px rgba(79, 70, 229, 0.3)',
+          boxShadow: '0 10px 30px rgba(163, 20, 34, 0.3)',
           opacity: isOpen ? 0 : 1,
           transform: buttonTransform,
           pointerEvents: isOpen ? 'none' : 'auto',
@@ -559,7 +559,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
             e.currentTarget.style.display = 'none';
             const parent = e.currentTarget.parentElement;
             if (parent) {
-              parent.style.background = 'linear-gradient(135deg, #4f46e5, #a31422)';
+              parent.style.background = 'linear-gradient(135deg, #a31422, #a31422)';
               if (!parent.querySelector('.btn-fallback-icon')) {
                 const fallback = document.createElement('span');
                 fallback.className = 'btn-fallback-icon';
@@ -638,9 +638,9 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              background: 'rgba(79, 70, 229, 0.02)'
+              background: 'rgba(163, 20, 34, 0.02)'
             }}>
-              <Database size={15} style={{ color: '#4f46e5' }} />
+              <Database size={15} style={{ color: '#a31422' }} />
               <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--chatbot-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {t('Số liệu hôm nay')}
               </span>
@@ -703,7 +703,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'rgba(79, 70, 229, 0.01)'
+              background: 'rgba(163, 20, 34, 0.01)'
             }}>
               <Sparkles size={12} style={{ color: '#a31422' }} />
               <span>{t('Nhấp để hỏi AI tự động')}</span>
@@ -717,12 +717,12 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           <div
             style={{
               padding: '14px 20px',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #a31422 100%)',
+              background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
               color: 'white',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              boxShadow: '0 4px 15px rgba(79, 70, 229, 0.15)',
+              boxShadow: '0 4px 15px rgba(163, 20, 34, 0.15)',
               zIndex: 10
             }}
           >
@@ -828,7 +828,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                     fontSize: '0.875rem',
                     lineHeight: '1.6',
                     boxShadow: msg.sender === 'user' 
-                      ? '0 4px 15px rgba(124, 58, 237, 0.2)' 
+                      ? '0 4px 15px rgba(163, 20, 34, 0.2)' 
                       : '0 4px 15px rgba(0,0,0,0.02)',
                     border: msg.sender === 'user' ? 'none' : '1px solid var(--chatbot-bubble-bot-border)'
                   }}
@@ -875,7 +875,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               flexDirection: 'column',
               gap: 8,
               borderTop: '1px solid var(--chatbot-window-border)',
-              background: 'rgba(124, 58, 237, 0.01)'
+              background: 'rgba(163, 20, 34, 0.01)'
             }}
           >
             <div style={{ fontSize: '0.72rem', color: 'var(--chatbot-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t('Gợi ý hỏi nhanh:')}</div>
@@ -953,7 +953,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
                 cursor: inputValue.trim() ? 'pointer' : 'default',
                 border: 'none',
                 outline: 'none',
-                boxShadow: inputValue.trim() ? '0 4px 10px rgba(124, 58, 237, 0.15)' : 'none'
+                boxShadow: inputValue.trim() ? '0 4px 10px rgba(163, 20, 34, 0.15)' : 'none'
               }}
             >
               <Send size={15} />

@@ -18,7 +18,7 @@ const TYPES = [
   { id: 'call', label: 'Cuộc gọi', icon: <Phone size={16} />, color: 'var(--color-primary)' },
   { id: 'email', label: 'Email', icon: <Mail size={16} />, color: '#10b981' },
   { id: 'meeting', label: 'Cuộc họp', icon: <Users size={16} />, color: '#f59e0b' },
-  { id: 'task', label: 'Công việc', icon: <CheckSquare size={16} />, color: '#8b5cf6' },
+  { id: 'task', label: 'Công việc', icon: <CheckSquare size={16} />, color: '#BD1D2D' },
   { id: 'note', label: 'Ghi chú', icon: <AlignLeft size={16} />, color: '#f59e0b' }
 ];
 
@@ -166,7 +166,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
             {/* Automation Trigger Toggle */}
             <div 
               style={{
-                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))',
+                background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.08), rgba(189, 29, 45, 0.08))',
                 border: '1px solid var(--color-primary-light)', borderRadius: 'var(--radius-xl)',
                 padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer',
                 marginTop: '0.5rem'

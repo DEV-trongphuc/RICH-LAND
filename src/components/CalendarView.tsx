@@ -60,7 +60,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventClick, onDate
     if (isDark) {
       switch (type) {
         case 'call': return { backgroundColor: 'rgba(59, 130, 246, 0.15)', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.3)' };
-        case 'email': return { backgroundColor: 'rgba(168, 85, 247, 0.15)', color: '#e63946', borderColor: 'rgba(168, 85, 247, 0.3)' };
+        case 'email': return { backgroundColor: 'rgba(189, 29, 45, 0.15)', color: '#e63946', borderColor: 'rgba(189, 29, 45, 0.3)' };
         case 'meeting': return { backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#6ee7b7', borderColor: 'rgba(16, 185, 129, 0.3)' };
         case 'task': return { backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#fcd34d', borderColor: 'rgba(245, 158, 11, 0.3)' };
         default: return { backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#cbd5e1', borderColor: 'rgba(255, 255, 255, 0.1)' };
@@ -86,7 +86,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventClick, onDate
         key={d} 
         className="calendar-day" 
         onClick={() => onDateClick?.(dateStr)}
-        style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', padding: '0.5rem', minHeight: '120px', transition: 'background-color 0.2s', backgroundColor: isToday ? 'rgba(124, 58, 237, 0.05)' : 'transparent', cursor: 'pointer' }}
+        style={{ borderRight: '1px solid var(--color-border)', borderBottom: '1px solid var(--color-border)', padding: '0.5rem', minHeight: '120px', transition: 'background-color 0.2s', backgroundColor: isToday ? 'rgba(163, 20, 34, 0.05)' : 'transparent', cursor: 'pointer' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
            <span style={{ fontSize: '0.75rem', fontWeight: 700, width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', backgroundColor: isToday ? 'var(--color-primary)' : 'transparent', color: isToday ? 'white' : 'var(--color-text-muted)' }}>{d}</span>

@@ -159,7 +159,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
             borderRadius: 'var(--radius-md)'
           } : {}),
           ...((size === 'sm' && isOpen) ? {
-            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.1)'
+            boxShadow: '0 0 0 3px rgba(163, 20, 34, 0.1)'
           } : {})
         }}
       >

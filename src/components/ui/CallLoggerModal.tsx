@@ -24,7 +24,7 @@ export interface CallLog {
 const OUTCOMES = [
   { value: 'reached',      label: 'Đã kết nối',    color: '#10b981', icon: <CheckCircle size={16} /> },
   { value: 'no_answer',    label: 'Không nghe máy', color: '#f59e0b', icon: <PhoneOff size={16} /> },
-  { value: 'voicemail',    label: 'Hộp thư thoại',  color: '#8b5cf6', icon: <Voicemail size={16} /> },
+  { value: 'voicemail',    label: 'Hộp thư thoại',  color: '#BD1D2D', icon: <Voicemail size={16} /> },
   { value: 'busy',         label: 'Máy bận',         color: '#ef4444', icon: <Clock size={16} /> },
   { value: 'wrong_number', label: 'Sai số',           color: '#6b7280', icon: <XCircle size={16} /> },
 ];

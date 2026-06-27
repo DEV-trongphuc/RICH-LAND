@@ -85,7 +85,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                 if (rule.connection_id === null || rule.connection_id === 'all' || rule.connection_id === '') {
                   return (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, padding: '4px 8px', background: 'var(--color-bg)', borderRadius: 4, color: 'var(--color-text-muted)' }}>
-                      <Globe size={14} color="#6366f1" /> {t("Tất cả mọi kết nối (Sheet & API & Nhập tay)")}
+                      <Globe size={14} color="#BD1D2D" /> {t("Tất cả mọi kết nối (Sheet & API & Nhập tay)")}
                     </span>
                   );
                 }
@@ -175,7 +175,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
                           )}
                           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
                             <span style={{
-                              background: 'rgba(124, 58, 237, 0.08)', border: '1px solid var(--color-primary-light)', padding: '4px 10px', borderRadius: 8, fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6
+                              background: 'rgba(163, 20, 34, 0.08)', border: '1px solid var(--color-primary-light)', padding: '4px 10px', borderRadius: 8, fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: 6
                             }}>
                               <Server size={12} /> {c.col}
                             </span>
@@ -206,7 +206,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
           <div style={{ flex: '0 0 250px' }}>
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{t("Hành động xử lý")}</p>
             <div style={{
-              background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(124, 58, 237, 0.15))',
+              background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.05), rgba(163, 20, 34, 0.15))',
               border: '1px solid var(--color-primary)',
               color: 'var(--color-primary)',
               padding: '8px 16px',
@@ -214,7 +214,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
               fontWeight: 600,
               fontSize: '0.875rem',
               display: 'flex', alignItems: 'center', gap: 10,
-              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.15)'
+              boxShadow: '0 2px 8px rgba(163, 20, 34, 0.15)'
             }}>
               <div style={{ background: 'var(--color-primary)', padding: 6, borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <MapPin size={16} />
@@ -664,7 +664,7 @@ const RuleSettingsInner = () => {
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button className="btn outline" onClick={handleAIEvaluateRules} style={{ borderColor: '#a31422', color: '#a31422', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <img 
-              src="https://crm-domation.vercel.app/LOGO.jpg" 
+              src="/LOGO.jpg" 
               alt="Gemini" 
               style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} 
             /> {t("AI Đánh giá Quy tắc")}
@@ -679,7 +679,7 @@ const RuleSettingsInner = () => {
       </div>
 
       <div style={{
-        background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(124, 58, 237, 0.1) 100%)',
+        background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.05) 0%, rgba(163, 20, 34, 0.1) 100%)',
         border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem'
       }}>
@@ -707,7 +707,7 @@ const RuleSettingsInner = () => {
             <CustomSelect
               options={[
                 { value: 'all', label: t('Hiển thị tất cả nguồn'), icon: <Filter size={14} color="#64748b" /> },
-                { value: 'null', label: t('Chỉ các Quy tắc "Tất cả kết nối"'), icon: <Globe size={14} color="#6366f1" /> },
+                { value: 'null', label: t('Chỉ các Quy tắc "Tất cả kết nối"'), icon: <Globe size={14} color="#BD1D2D" /> },
                 { value: -1, label: t('Tất cả Google Sheets'), icon: <FileSpreadsheet size={14} color="#10b981" /> },
                 { value: -2, label: t('Tất cả API / Landing Pages'), icon: <Zap size={14} color="#f59e0b" /> },
                 { value: -3, label: t('Chỉ nhóm "Data Nhập tay"'), icon: <Keyboard size={14} color="#ec4899" /> },
@@ -798,7 +798,7 @@ const RuleSettingsInner = () => {
             <CustomSelect
               multiple
               options={[
-                { value: 'all', label: t('Tất cả mọi kết nối (Sheet & API & Nhập tay)'), icon: <Globe size={14} color="#6366f1" /> },
+                { value: 'all', label: t('Tất cả mọi kết nối (Sheet & API & Nhập tay)'), icon: <Globe size={14} color="#BD1D2D" /> },
                 { value: -1, label: t('Tất cả các Google Sheets'), icon: <FileSpreadsheet size={14} color="#10b981" /> },
                 { value: -2, label: t('Tất cả các API / Landing Pages'), icon: <Zap size={14} color="#f59e0b" /> },
                 { value: -3, label: t('Chỉ Data Nhập tay (Thêm Data Nhanh)'), icon: <Keyboard size={14} color="#ec4899" /> },
@@ -1225,7 +1225,7 @@ const RuleSettingsInner = () => {
                       <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Nguồn tích hợp")}</label>
                       <CustomSelect
                         options={[
-                          { value: 'all', label: t('Tất cả kết nối'), icon: <Globe size={14} color="#6366f1" /> },
+                          { value: 'all', label: t('Tất cả kết nối'), icon: <Globe size={14} color="#BD1D2D" /> },
                           ...connections
                             .filter(c => c.connection_type === simulateConnectionType)
                             .map(c => ({
@@ -1571,7 +1571,7 @@ const RuleSettingsInner = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '12px' }}>
               <img 
-                src="https://crm-domation.vercel.app/LOGO.jpg" 
+                src="/LOGO.jpg" 
                 alt="Gemini AI Logo" 
                 style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--color-primary-light)', boxShadow: 'var(--shadow-sm)' }} 
               />
@@ -1640,7 +1640,7 @@ const RuleSettingsInner = () => {
                           </span>
                           <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>&rarr;</span>
                           <span style={{ 
-                            background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(124, 58, 237, 0.12))',
+                            background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.05), rgba(163, 20, 34, 0.12))',
                             border: '1px solid var(--color-primary-light)',
                             color: 'var(--color-primary)',
                             padding: '4px 14px',
@@ -1650,7 +1650,7 @@ const RuleSettingsInner = () => {
                             whiteSpace: 'nowrap',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            boxShadow: '0 2px 4px rgba(124, 58, 237, 0.05)'
+                            boxShadow: '0 2px 4px rgba(163, 20, 34, 0.05)'
                           }}>
                             {r.round_name || `Vòng ${r.target_round_id}`}
                           </span>

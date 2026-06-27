@@ -19,7 +19,7 @@ interface Props {
 const TICKET_STATUSES = [
   { id: 'open', label: 'Mới mở', color: '#3b82f6' },
   { id: 'in_progress', label: 'Đang xử lý', color: '#f59e0b' },
-  { id: 'waiting', label: 'Chờ phản hồi', color: '#8b5cf6' },
+  { id: 'waiting', label: 'Chờ phản hồi', color: '#BD1D2D' },
   { id: 'resolved', label: 'Đã giải quyết', color: '#10b981' },
   { id: 'closed', label: 'Đã đóng', color: '#6b7280' },
 ];

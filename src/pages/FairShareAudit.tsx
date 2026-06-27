@@ -705,7 +705,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
     };
   }) : [];
 
-  const sourceColors = ['#6366f1', '#10b981', '#fbbf24', '#f43f5e', '#BD1D2D', '#06b6d4'];
+  const sourceColors = ['#BD1D2D', '#10b981', '#fbbf24', '#f43f5e', '#BD1D2D', '#06b6d4'];
 
   // Custom legend renderer for balanced charts - Styled exactly like Tỷ lệ Nguồn Data
   const renderCustomLegend = (props: any) => {
@@ -983,7 +983,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
       {/* Live Simulation Control Panel */}
       {isSimulating && (
         <div style={{
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(124, 58, 237, 0.1) 100%)',
+          background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.06) 0%, rgba(163, 20, 34, 0.1) 100%)',
           border: '1px solid var(--color-primary)',
           borderRadius: 'var(--radius-lg)',
           padding: '1.25rem 1.5rem',
@@ -1079,7 +1079,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'rgba(99, 102, 241, 0.05)', border: '1px solid rgba(99, 102, 241, 0.2)', padding: '10px 12px', borderRadius: '8px', fontSize: '0.75rem', color: 'var(--color-primary)' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'rgba(189, 29, 45, 0.05)', border: '1px solid rgba(189, 29, 45, 0.2)', padding: '10px 12px', borderRadius: '8px', fontSize: '0.75rem', color: 'var(--color-primary)' }}>
             <Info size={15} style={{ flexShrink: 0, marginTop: 1, color: 'var(--color-primary)' }} />
             <div>
               <span>{t("Các thay đổi về Ratio nhận và ca trực ở đây chỉ phục vụ mục đích giả lập trực quan để đối soát độ lệch chuẩn & Gini, không ảnh hưởng đến cấu hình thực tế của hệ thống.")}</span>
@@ -1087,7 +1087,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
           </div>
 
           {/* Quick Start Guide Section */}
-          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed rgba(99, 102, 241, 0.2)' }}>
+          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed rgba(189, 29, 45, 0.2)' }}>
             <div>
               <h5 style={{ fontWeight: 800, fontSize: '0.8125rem', color: 'var(--color-primary)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ display: 'inline-flex', width: 18, height: 18, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', alignItems: 'center', justifyContent: 'center', fontWeight: 900 }}>1</span>
@@ -1120,7 +1120,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
 
       {/* Intro explain card styled identically to RuleSettings */}
       <div className="hide-on-mobile responsive-hide-mobile" style={{
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.1) 100%)',
+        background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(189, 29, 45, 0.1) 100%)',
         border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', marginBottom: '1.5rem'
       }}>
@@ -1191,7 +1191,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                         padding: '5px 10px',
                         borderRadius: '8px',
                         fontWeight: 700,
-                        border: '1px solid rgba(124, 58, 237, 0.15)',
+                        border: '1px solid rgba(163, 20, 34, 0.15)',
                         width: 'fit-content'
                       }}>
                         <Sparkles size={12} className="spin" style={{ animationDuration: '3s' }} />
@@ -1457,8 +1457,8 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                       {t("Đã chia")}
                     </span>
                     <span style={{ opacity: 0.7 }}>+</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#6366f1' }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#6366f1' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#BD1D2D' }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#BD1D2D' }} />
                       {t("Bù")}
                     </span>
                   </span>
@@ -1492,7 +1492,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                     textTransform: 'uppercase',
                     fontWeight: 800,
                     letterSpacing: '0.04em',
-                    background: isSimulating ? 'rgba(99, 102, 241, 0.06)' : 'var(--color-border-light)'
+                    background: isSimulating ? 'rgba(189, 29, 45, 0.06)' : 'var(--color-border-light)'
                   }}>
                     {isSimulating ? t("Trực ca / Tư vấn viên (Nhập)") : t("Tư vấn viên")}
                   </th>
@@ -1506,7 +1506,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                     letterSpacing: '0.04em',
                     textAlign: 'center',
                     width: isSimulating ? '180px' : 'auto',
-                    background: isSimulating ? 'rgba(99, 102, 241, 0.06)' : 'var(--color-border-light)'
+                    background: isSimulating ? 'rgba(189, 29, 45, 0.06)' : 'var(--color-border-light)'
                   }}>
                     Ratio {isSimulating && t("(Nhập)")}
                   </th>
@@ -1550,7 +1550,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                       style={{
                         borderBottom: '1px solid var(--color-border-light)',
                         transition: 'all 0.25s ease',
-                        background: isSimulating ? 'rgba(99, 102, 241, 0.01)' : 'transparent',
+                        background: isSimulating ? 'rgba(189, 29, 45, 0.01)' : 'transparent',
                         cursor: !isSimulating ? 'pointer' : 'default'
                       }}
                       className="audit-table-row"
@@ -1563,7 +1563,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                       <td style={{
                         padding: '14px 18px',
                         borderLeft: isSimulating ? '3px solid var(--color-primary)' : 'none',
-                        background: isSimulating ? 'rgba(99, 102, 241, 0.02)' : 'transparent'
+                        background: isSimulating ? 'rgba(189, 29, 45, 0.02)' : 'transparent'
                       }}>
                         <div
                           style={{
@@ -1601,7 +1601,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                         padding: '14px 18px',
                         textAlign: 'center',
                         verticalAlign: 'middle',
-                        background: isSimulating ? 'rgba(99, 102, 241, 0.04)' : 'transparent'
+                        background: isSimulating ? 'rgba(189, 29, 45, 0.04)' : 'transparent'
                       }}>
                         {isSimulating ? (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%' }}>
@@ -1651,7 +1651,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                             </span>
                           </div>
                         ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderRadius: 20, background: 'rgba(99, 102, 241, 0.06)', border: '1px dashed rgba(99, 102, 241, 0.3)', fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.8125rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', borderRadius: 20, background: 'rgba(189, 29, 45, 0.06)', border: '1px dashed rgba(189, 29, 45, 0.3)', fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.8125rem' }}>
                             Ratio: {c.receive_ratio}
                           </span>
                         )}
@@ -1730,7 +1730,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                       </td>
                       <td style={{ padding: '14px 18px', textAlign: 'center' }}>
                         {c.compensation_count > 0 ? (
-                          <span style={{ color: '#6366f1', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(99, 102, 241, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(99, 102, 241, 0.15)' }}>
+                          <span style={{ color: '#BD1D2D', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.875rem', background: 'rgba(189, 29, 45, 0.08)', padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(189, 29, 45, 0.15)' }}>
                             <RotateCcw size={12} /> {c.compensation_count}
                           </span>
                         ) : (
@@ -1886,7 +1886,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
 
                 {/* Core Stats Overview */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div style={{ background: 'rgba(99, 102, 241, 0.04)', border: '1px solid rgba(99, 102, 241, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
+                  <div style={{ background: 'rgba(189, 29, 45, 0.04)', border: '1px solid rgba(189, 29, 45, 0.15)', borderRadius: '12px', padding: '12px 16px', textAlign: 'center' }}>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', textTransform: 'uppercase', marginBottom: '4px' }}>{t("Thành công")}</span>
                     <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-primary)' }}>{compensationDetails.total_assigned}</span>
                   </div>
@@ -2069,7 +2069,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(99, 102, 241, 0.1)', color: 'var(--color-primary)' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)' }}>
                             <RotateCcw size={14} />
                           </span>
                           <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Bù chủ động ")}</span>
@@ -2140,11 +2140,11 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
           border-bottom: 1px solid var(--color-border) !important;
         }
         .audit-table-row:hover {
-          background-color: rgba(99, 102, 241, 0.03) !important;
+          background-color: rgba(189, 29, 45, 0.03) !important;
           transform: translateX(4px);
         }
         [data-theme="dark"] .audit-table-row:hover {
-          background-color: rgba(99, 102, 241, 0.06) !important;
+          background-color: rgba(189, 29, 45, 0.06) !important;
         }
         
         /* Deviation Badges */

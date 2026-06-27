@@ -859,7 +859,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
         <style>{`
           .search-result-item:hover {
             background: var(--color-primary-light) !important;
-            border-color: rgba(99, 102, 241, 0.15) !important;
+            border-color: rgba(189, 29, 45, 0.15) !important;
           }
         `}</style>
       </CustomModal>

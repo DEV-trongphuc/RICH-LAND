@@ -1447,7 +1447,7 @@ const ConsultantsInner = () => {
                                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} {t('data')} ({sourcePercent}%)</span>
                                 </div>
                                 <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
-                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
+                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#BD1D2D', borderRadius: 2 }} />
                                 </div>
                               </div>
                             );

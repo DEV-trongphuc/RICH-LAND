@@ -11,7 +11,7 @@ import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 
-const COLORS = ['#a31422', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6'];
+const COLORS = ['#a31422', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#BD1D2D', '#BD1D2D'];
 const T_LABEL: Record<string, string> = {
   'call': 'Cuộc gọi',
   'email': 'Email',

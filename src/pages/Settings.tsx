@@ -846,7 +846,7 @@ const SettingsInner = () => {
               color: 'var(--color-primary)',
               padding: '6px 12px',
               borderRadius: 20,
-              border: '1px solid rgba(124, 58, 237, 0.2)',
+              border: '1px solid rgba(163, 20, 34, 0.2)',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6
@@ -1314,7 +1314,7 @@ const SettingsInner = () => {
                             >
                               <div style={{
                                 display: 'inline-flex',
-                                background: 'rgba(99, 102, 241, 0.1)',
+                                background: 'rgba(189, 29, 45, 0.1)',
                                 color: 'var(--color-primary)',
                                 padding: '8px',
                                 borderRadius: '50%'
@@ -1421,7 +1421,7 @@ const SettingsInner = () => {
                           height: 42,
                           fontWeight: 700,
                           borderRadius: 8,
-                          background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                          background: 'linear-gradient(135deg, #a31422 0%, #700913 100%)',
                           color: 'white',
                           border: 'none',
                           cursor: checking || localRows.length === 0 ? 'not-allowed' : 'pointer'
@@ -1990,7 +1990,7 @@ function doPost(e) {
                 {/* Báo cáo Tuần */}
                 <div className="card" style={{ padding: '1.5rem' }}>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1.25rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ display: 'inline-flex', background: '#8b5cf6', color: 'white', padding: 4, borderRadius: 6 }}><BarChart2 size={16} /></span>
+                    <span style={{ display: 'inline-flex', background: '#BD1D2D', color: 'white', padding: 4, borderRadius: 6 }}><BarChart2 size={16} /></span>
                     {t('Lịch gửi Báo cáo Tuần (cho Sale)')}
                   </h3>
                   <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
@@ -2970,7 +2970,7 @@ function doPost(e) {
                             {t('Số điện thoại')}
                             <span style={{
                               fontSize: '0.7rem',
-                              background: blacklistContactTab === 'phone' ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
+                              background: blacklistContactTab === 'phone' ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)',
                               color: blacklistContactTab === 'phone' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                               padding: '2px 8px',
                               borderRadius: '20px',
@@ -3001,7 +3001,7 @@ function doPost(e) {
                             {t('Email')}
                             <span style={{
                               fontSize: '0.7rem',
-                              background: blacklistContactTab === 'email' ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
+                              background: blacklistContactTab === 'email' ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)',
                               color: blacklistContactTab === 'email' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                               padding: '2px 8px',
                               borderRadius: '20px',
@@ -3116,7 +3116,7 @@ function doPost(e) {
               minWidth: 0,
               width: '100%'
             }}>
-              <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(124, 58, 237, 0.03))' }}>
+              <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), rgba(163, 20, 34, 0.03))' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Send size={18} color="var(--color-primary)" /> {t('Gửi Test Email')}
                 </h3>
@@ -3446,7 +3446,7 @@ function doPost(e) {
               alignItems: 'center', 
               justifyContent: 'center',
               padding: 0,
-              boxShadow: '0 4px 14px 0 rgba(124, 58, 237, 0.4)'
+              boxShadow: '0 4px 14px 0 rgba(163, 20, 34, 0.4)'
             }}
             title={t("Lưu cấu hình")}
           >

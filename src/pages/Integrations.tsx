@@ -1091,7 +1091,7 @@ const IntegrationsInner = () => {
               </div>
 
               {/* Instructions & Code Block */}
-              <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)', padding: '1.25rem', borderRadius: 12, fontSize: '0.85rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>
+              <div style={{ background: 'rgba(189, 29, 45,0.05)', border: '1px solid rgba(189, 29, 45,0.2)', padding: '1.25rem', borderRadius: 12, fontSize: '0.85rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>
                 <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, color: 'var(--color-primary)' }}>
                   <Info size={16} /> {t('Hướng dẫn cài đặt Google Apps Script cho Sheet Tổng:')}
                 </div>
@@ -2315,7 +2315,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
                       </span>
                     </div>
 
-                    <div style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.2)', padding: '1rem', borderRadius: 12, fontSize: '0.8rem', color: 'var(--color-text-light)', lineHeight: 1.5 }}>
+                    <div style={{ background: 'rgba(189, 29, 45,0.05)', border: '1px solid rgba(189, 29, 45,0.2)', padding: '1rem', borderRadius: 12, fontSize: '0.8rem', color: 'var(--color-text-light)', lineHeight: 1.5 }}>
                       <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: 'var(--color-primary)' }}>
                         <Info size={14} /> {t('Hướng dẫn cài đặt Google Apps Script:')}
                       </div>

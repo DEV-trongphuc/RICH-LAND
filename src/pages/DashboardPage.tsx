@@ -106,7 +106,7 @@ export const DashboardPage: React.FC = () => {
       setLeadSources([
         { source: 'Facebook', count: 45, color: '#3b82f6' },
         { source: 'Website', count: 32, color: '#10b981' },
-        { source: 'Referral', count: 18, color: '#8b5cf6' },
+        { source: 'Referral', count: 18, color: '#BD1D2D' },
         { source: 'Other', count: 5, color: '#6b7280' }
       ]);
 
@@ -146,7 +146,7 @@ export const DashboardPage: React.FC = () => {
       setStats(s.data.data || MOCK_STATS);
       setRevenueChart(rev.data.data || []);
       setPipelineFunnel(pipe.data.data || []);
-      const srcColors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6b7280'];
+      const srcColors = ['#3b82f6', '#BD1D2D', '#10b981', '#f59e0b', '#ef4444', '#6b7280'];
       const srcData = (src.data.data || []).map((x: any, i: number) => ({ ...x, color: srcColors[i % srcColors.length] }));
       setLeadSources(srcData);
       setLeaderboard(lead.data.data || []);
@@ -293,7 +293,7 @@ export const DashboardPage: React.FC = () => {
 
         return (
           <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(139, 92, 246, 0.08))', border: '1px solid rgba(124, 58, 237, 0.15)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+            <div style={{ background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08), rgba(189, 29, 45, 0.08))', border: '1px solid rgba(163, 20, 34, 0.15)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
               <div style={{ width: 36, height: 36, background: 'var(--color-primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Zap size={18} color="white" fill="white" />
               </div>
@@ -495,7 +495,7 @@ export const DashboardPage: React.FC = () => {
                 <div key={sale.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: i < leaderboard.length - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <Avatar name={sale.full_name} src={sale.avatar_url} size={38} />
-                    <div style={{ position: 'absolute', top: -5, right: -5, width: 20, height: 20, background: i === 0 ? 'var(--color-primary)' : i === 1 ? '#8b5cf6' : 'var(--color-border)', color: i < 2 ? 'white' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.65rem', borderRadius: '50%', border: '2px solid white', boxShadow: 'var(--shadow-sm)', zIndex: 1 }}>
+                    <div style={{ position: 'absolute', top: -5, right: -5, width: 20, height: 20, background: i === 0 ? 'var(--color-primary)' : i === 1 ? '#BD1D2D' : 'var(--color-border)', color: i < 2 ? 'white' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.65rem', borderRadius: '50%', border: '2px solid white', boxShadow: 'var(--shadow-sm)', zIndex: 1 }}>
                       {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
                     </div>
                   </div>

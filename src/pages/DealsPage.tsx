@@ -477,7 +477,7 @@ export const DealsPage: React.FC = () => {
               initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
               style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--color-primary)', color: 'white', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-lg)', boxShadow: '0 4px 12px rgba(124,58,237,0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--color-primary)', color: 'white', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-lg)', boxShadow: '0 4px 12px rgba(163, 20, 34,0.2)' }}>
                 <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>{selected.size} đã chọn</span>
                 {selected.size > 0 && selected.size < totalVisibleCount && (
                   <button className="btn ghost sm" style={{ color: 'white', textDecoration: 'underline', padding: '0 4px' }} onClick={selectAllEntireQuery}>

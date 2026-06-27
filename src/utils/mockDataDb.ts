@@ -36,21 +36,21 @@ export const INITIAL_MOCK_DB = {
       { id: 1, name: 'Hải Đăng', email: 'haidang@domation.net', data: 450, percent: 85, color: '#3b82f6' },
       { id: 2, name: 'Thanh Thảo', email: 'thanhthao@domation.net', data: 380, percent: 70, color: '#10b981' },
       { id: 3, name: 'Việt Dũng', email: 'vietdung@domation.net', data: 310, percent: 60, color: '#f59e0b' },
-      { id: 4, name: 'Minh Tuấn', email: 'minhtuan@domation.net', data: 220, percent: 45, color: '#8b5cf6' },
+      { id: 4, name: 'Minh Tuấn', email: 'minhtuan@domation.net', data: 220, percent: 45, color: '#BD1D2D' },
       { id: 5, name: 'Ngọc Mai', email: 'ngocmai@domation.net', data: 150, percent: 30, color: '#ef4444' }
     ],
     roundRatio: [
       { round: 'Vòng Phân Bổ: Facebook & TikTok Ads', count: 850, percent: 55, color: '#3b82f6' },
-      { round: 'Vòng Ưu Tiên: Zalo ZCA & Hotline', count: 420, percent: 30, color: '#8b5cf6' },
+      { round: 'Vòng Ưu Tiên: Zalo ZCA & Hotline', count: 420, percent: 30, color: '#BD1D2D' },
       { round: 'Vòng Hỗ Trợ: Organic Search', count: 272, percent: 15, color: '#10b981' }
     ],
     sourceStats: [
-      { name: 'Form Đăng Ký Tư Vấn Facebook', value: 850, color: '#8b5cf6' },
+      { name: 'Form Đăng Ký Tư Vấn Facebook', value: 850, color: '#BD1D2D' },
       { name: 'Landing Page Ưu Đãi Tháng 5', value: 420, color: '#3b82f6' },
       { name: 'Form Đăng Ký Học Thử Google (Demo Lỗi)', value: 272, color: '#ec4899' }
     ],
     leadSourceStats: [
-      { name: 'Facebook Ads', value: 680, color: '#8b5cf6' },
+      { name: 'Facebook Ads', value: 680, color: '#BD1D2D' },
       { name: 'Google Ads', value: 320, color: '#3b82f6' },
       { name: 'Website Direct', value: 150, color: '#ec4899' },
       { name: 'Excel Import', value: 70, color: '#f59e0b' }

@@ -877,12 +877,12 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         {/* Animated Background Elements */}
         <div style={{
           position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw',
-          background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, rgba(0,0,0,0) 70%)',
+          background: 'radial-gradient(circle, rgba(163, 20, 34,0.15) 0%, rgba(0,0,0,0) 70%)',
           borderRadius: '50%', filter: 'blur(60px)', animation: 'float 12s ease-in-out infinite'
         }} />
         <div style={{
           position: 'absolute', bottom: '-20%', right: '-10%', width: '60vw', height: '60vw',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(0,0,0,0) 70%)',
+          background: 'radial-gradient(circle, rgba(189, 29, 45,0.15) 0%, rgba(0,0,0,0) 70%)',
           borderRadius: '50%', filter: 'blur(80px)', animation: 'float 15s ease-in-out infinite reverse'
         }} />
 
@@ -902,13 +902,13 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           {/* Header/Logo */}
           <div style={{
             width: 64, height: 64, margin: '0 auto 1.5rem', borderRadius: '50%',
-            background: 'linear-gradient(135deg, #a31422 0%, #6d28d9 100%)',
+            background: 'linear-gradient(135deg, #a31422 0%, #8a0f1b 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 12px rgba(124,58,237,0.3)', overflow: 'hidden',
+            boxShadow: '0 4px 12px rgba(163, 20, 34,0.3)', overflow: 'hidden',
             border: '2px solid rgba(255,255,255,0.9)'
           }}>
             <img
-              src="https://crm-domation.vercel.app/LOGO.jpg"
+              src="/LOGO.jpg"
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               alt="logo"
@@ -1014,7 +1014,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   </button>
                 )}
 
-                {googleLoading && <div style={{ fontSize: '0.85rem', color: '#6366f1' }}>{t('Đang kết nối Google API...')}</div>}
+                {googleLoading && <div style={{ fontSize: '0.85rem', color: '#BD1D2D' }}>{t('Đang kết nối Google API...')}</div>}
 
                 {googleError && (
                   <div style={{
@@ -1048,7 +1048,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   // Active Sale Portal View
   const renderDashboardView = () => {
     const kpis = [
-      { key: 'data', status: 'all', label: t('DATA KHÁCH HÀNG'), value: data.stats.total_received, sub: t('Tổng nhận được bàn giao'), color: '#a31422', bg: 'rgba(124, 58, 237, 0.08)', icon: FileText },
+      { key: 'data', status: 'all', label: t('DATA KHÁCH HÀNG'), value: data.stats.total_received, sub: t('Tổng nhận được bàn giao'), color: '#a31422', bg: 'rgba(163, 20, 34, 0.08)', icon: FileText },
       { key: 'tickets', status: 'pending', label: t('TICKET BÁO LỖI'), value: data.stats.tickets_total, sub: `${data.stats.tickets_pending} đang chờ duyệt`, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', icon: AlertCircle },
       { key: 'data', status: 'approved_ticket', label: t('ĐÃ DUYỆT BÙ'), value: data.stats.tickets_approved, sub: t('Hợp lệ & Đã được bù'), color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', icon: CheckCircle2 },
       { key: 'data', status: 'rejected_ticket', label: t('TỪ CHỐI BÙ'), value: data.stats.tickets_rejected, sub: t('Bị từ chối / Không đền bù'), color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', icon: XCircle }
@@ -1311,7 +1311,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   const percentage = data.stats.total_received > 0
                     ? ((r.count / data.stats.total_received) * 100).toFixed(1)
                     : '0.0';
-                  const colors = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#6366f1'];
+                  const colors = ['#BD1D2D', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#BD1D2D'];
                   const themeColor = colors[idx % colors.length];
 
                   return (
@@ -1339,7 +1339,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px' }}>
               <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)', margin: 0 }}>
-                <GitBranch size={18} color="#8b5cf6" /> {t('Tỷ lệ Nguồn Data')}
+                <GitBranch size={18} color="#BD1D2D" /> {t('Tỷ lệ Nguồn Data')}
               </h3>
               <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
                 <button
@@ -1387,7 +1387,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     const name = lead.connection_name || t('Nhập tay');
                     counts[name] = (counts[name] || 0) + 1;
                   });
-                  const colors = ['#8b5cf6', '#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#06b6d4'];
+                  const colors = ['#BD1D2D', '#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#BD1D2D', '#06b6d4'];
                   return Object.entries(counts)
                     .map(([name, value], idx) => ({
                       name,
@@ -1403,7 +1403,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     const name = lead.source?.trim() || t('Không xác định');
                     counts[name] = (counts[name] || 0) + 1;
                   });
-                  const colors = ['#8b5cf6', '#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#6366f1', '#06b6d4'];
+                  const colors = ['#BD1D2D', '#3b82f6', '#ec4899', '#f59e0b', '#10b981', '#BD1D2D', '#06b6d4'];
                   return Object.entries(counts)
                     .map(([name, value], idx) => ({
                       name,
@@ -1683,7 +1683,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '8px', background: '#e0e7ff', color: '#4338ca', fontSize: '0.675rem', fontWeight: 700 }}>
+                          <span style={{ display: 'inline-flex', padding: '3px 8px', borderRadius: '8px', background: '#ffe3e8', color: '#8a0f1b', fontSize: '0.675rem', fontWeight: 700 }}>
                             {lead.round_name || t('Mặc định')}
                           </span>
                           {lead.status === 'compensation' && (
@@ -2302,7 +2302,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             justifyContent: 'space-between',
             transition: 'all 0.2s',
             backgroundColor: isToday
-              ? 'rgba(99, 102, 241, 0.08)'
+              ? 'rgba(189, 29, 45, 0.08)'
               : isWeekend
                 ? 'var(--color-calendar-weekend)'
                 : 'var(--color-surface)',
@@ -2351,7 +2351,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 alignItems: 'center',
                 padding: '2px 4px',
                 borderRadius: '4px',
-                background: theme === 'dark' ? 'var(--color-primary-light)' : '#f5f3ff',
+                background: theme === 'dark' ? 'var(--color-primary-light)' : '#fff5f6',
                 color: theme === 'dark' ? 'var(--color-primary)' : '#a31422',
                 fontSize: '0.6875rem',
                 fontWeight: 600,
@@ -2574,7 +2574,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   background: 'var(--color-primary)', color: 'white',
                   width: 34, height: 34, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.3)',
                   transition: 'all 0.2s', border: '2px solid var(--color-surface)'
                 }} className="hover-lift active-press" title={t('Tải lên ảnh đại diện mới')}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2945,7 +2945,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             overflow: 'hidden',
             border: '2px solid rgba(192, 132, 252, 0.8)'
           }}>
-            <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               alt="logo" />
           </div>
@@ -2984,7 +2984,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 width: 44, height: 44, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+                cursor: 'pointer', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
@@ -3003,15 +3003,15 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+                boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(168, 85, 247, 0.5)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(189, 29, 45, 0.5)';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(168, 85, 247, 0.4)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.4)';
               }}
             >
               <Cpu size={18} /> {t("AI Infinity")}
@@ -3705,7 +3705,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   </summary>
                   <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'default' }}>
                     {rList.map((item: any, idx: number) => {
-                      const borderColors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6'];
+                      const borderColors = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#BD1D2D'];
                       const borderColor = borderColors[idx % borderColors.length];
                       const cleanNote = (item.note || '').replace(/{n}/g, String(data.duplicate_check_months || 6));
                       if (!cleanNote) return null;
@@ -3856,7 +3856,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     <div style={{
                       width: 24, height: 24, borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)',
+                      background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       color: 'white', fontWeight: 800, fontSize: '0.65rem'
                     }}>

@@ -14,7 +14,7 @@
 }
 
 .emptyCard:hover {
-  box-shadow: 0 8px 32px rgba(124, 58, 237, 0.08);
+  box-shadow: 0 8px 32px rgba(163, 20, 34, 0.08);
   border-color: var(--color-primary-light);
   transform: translateY(-2px);
 }

@@ -1109,7 +1109,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               transition: 'background 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+              e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
               const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
               if (label) label.style.color = 'var(--color-primary)';
             }}
@@ -1181,7 +1181,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           style={{
             marginLeft: 'auto',
             padding: '6px 12px', borderRadius: 8, border: '1px solid var(--color-primary)',
-            background: 'rgba(124,58,237,0.08)', cursor: 'pointer',
+            background: 'rgba(163, 20, 34,0.08)', cursor: 'pointer',
             color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 5,
             fontSize: '0.8rem', fontWeight: 600, transition: 'all 0.15s'
           }}
@@ -1199,9 +1199,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           {pendingCount} {t('chờ duyệt')}
         </div>
 
-        <div style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)', marginLeft: 8 }} />
+        <div style={{ width: 1, height: 16, background: 'rgba(163, 20, 34,0.15)', marginLeft: 8 }} />
 
-        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)', marginLeft: 4 }}>
+        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(163, 20, 34,0.1)', marginLeft: 4 }}>
           {t('Tổng cộng:')} {totalCount} {t('tickets')}
         </span>
       </div>
@@ -1253,7 +1253,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               padding: 0,
               borderRadius: 8,
               border: '1px solid var(--color-primary)',
-              background: 'rgba(124,58,237,0.08)',
+              background: 'rgba(163, 20, 34,0.08)',
               color: 'var(--color-primary)',
               cursor: 'pointer',
               display: 'flex',
@@ -1274,18 +1274,18 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           position: 'relative', zIndex: 100,
           display: 'flex', gap: 12, marginTop: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center',
           padding: '14px 18px',
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.06) 0%, rgba(99,102,241,0.04) 100%)',
-          border: '1px solid rgba(124,58,237,0.15)',
+          background: 'linear-gradient(135deg, rgba(163, 20, 34,0.06) 0%, rgba(189, 29, 45,0.04) 100%)',
+          border: '1px solid rgba(163, 20, 34,0.15)',
           borderRadius: 16,
           backdropFilter: 'blur(8px)',
-          boxShadow: '0 2px 12px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
+          boxShadow: '0 2px 12px rgba(163, 20, 34,0.06), inset 0 1px 0 rgba(255,255,255,0.8)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#a31422', fontWeight: 700, fontSize: '0.8rem' }}>
             <Filter size={14} />
             <span>{t('Bộ lọc')}</span>
           </div>
 
-          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(163, 20, 34,0.2)', margin: '0 4px' }} />
 
           {/* Sale filter */}
           <div className="responsive-filter-item" style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
@@ -1377,7 +1377,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
             justifyContent: 'space-between',
             marginTop: '4px',
             paddingTop: '8px',
-            borderTop: '1px dashed rgba(124,58,237,0.1)'
+            borderTop: '1px dashed rgba(163, 20, 34,0.1)'
           }}>
             {/* Auto duyệt Toggle */}
             <div
@@ -1393,7 +1393,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 transition: 'background 0.2s',
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+                e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
                 const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
                 if (label) label.style.color = 'var(--color-primary)';
               }}
@@ -1432,7 +1432,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               </div>
             </div>
 
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(124,58,237,0.1)' }}>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(163, 20, 34,0.1)' }}>
               {t('Tổng cộng:')} {totalCount} {t('tickets')}
             </span>
           </div>
@@ -1523,7 +1523,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       </td>
                       <td style={{ padding: '1.25rem 1.5rem' }}>
                         {r.round_name && (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(163, 20, 34,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
                             <Zap size={12} /> {r.round_name}
                           </div>
                         )}
@@ -1545,7 +1545,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                             </div>
                           )}
                           {(r.status === 'approved' || r.status === 'approved_no_comp') && r.approval_reason && (
-                            <div style={{ fontSize: '0.75rem', color: r.status === 'approved' ? 'var(--color-success)' : '#2563eb', background: r.status === 'approved' ? 'var(--color-success-light)' : '#e0e7ff', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
+                            <div style={{ fontSize: '0.75rem', color: r.status === 'approved' ? 'var(--color-success)' : '#2563eb', background: r.status === 'approved' ? 'var(--color-success-light)' : '#ffe3e8', padding: '3px 8px', borderRadius: 6, fontWeight: 600 }}>
                               {t('Lý do:')} {r.approval_reason}
                             </div>
                           )}
@@ -1648,7 +1648,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         {new Date(r.created_at).toLocaleDateString('vi-VN')}
                       </div>
                       {r.round_name && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(163, 20, 34,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
                           <Zap size={10} /> {r.round_name}
                         </div>
                       )}
@@ -1707,7 +1707,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       </div>
                     )}
                     {(r.status === 'approved' || r.status === 'approved_no_comp') && r.approval_reason && (
-                      <div style={{ fontSize: '0.75rem', color: r.status === 'approved' ? 'var(--color-success)' : '#2563eb', fontWeight: 600, background: r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : '#e0e7ff', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
+                      <div style={{ fontSize: '0.75rem', color: r.status === 'approved' ? 'var(--color-success)' : '#2563eb', fontWeight: 600, background: r.status === 'approved' ? 'rgba(16, 185, 129, 0.04)' : '#ffe3e8', padding: '4px 8px', borderRadius: 4, marginTop: 4 }}>
                         {t('Ghi chú duyệt:')} {r.approval_reason}
                       </div>
                     )}
@@ -1936,9 +1936,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   {/* Lead & Issue details */}
                   <div style={{
                     padding: '12px 16px',
-                    background: 'rgba(124, 58, 237, 0.03)',
+                    background: 'rgba(163, 20, 34, 0.03)',
                     borderRadius: 12,
-                    border: '1.5px dashed rgba(124, 58, 237, 0.12)',
+                    border: '1.5px dashed rgba(163, 20, 34, 0.12)',
                     fontSize: '0.85rem',
                     display: 'flex',
                     flexDirection: 'column',
@@ -2066,15 +2066,15 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                             width: '240px',
                             outline: 'none',
                             transition: 'all 0.2s ease-in-out',
-                            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.08)'
+                            boxShadow: '0 0 0 3px rgba(163, 20, 34, 0.08)'
                           }}
                           onFocus={e => {
                             e.currentTarget.style.borderColor = 'var(--color-primary)';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.15)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(163, 20, 34, 0.15)';
                           }}
                           onBlur={e => {
                             e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.08)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(163, 20, 34, 0.08)';
                           }}
                         />
                       ) : (
@@ -2181,22 +2181,22 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                             title={t("Sửa thông tin")}
                             className="detail-action-btn"
                             style={{
-                              background: 'rgba(124, 58, 237, 0.08)',
+                              background: 'rgba(163, 20, 34, 0.08)',
                               border: '1px solid var(--color-primary-light)',
                               color: 'var(--color-primary)',
-                              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
+                              boxShadow: '0 2px 6px rgba(163, 20, 34, 0.05)'
                             }}
                             onMouseOver={e => {
                               e.currentTarget.style.background = 'var(--color-primary)';
                               e.currentTarget.style.color = '#ffffff';
                               e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(124, 58, 237, 0.2)';
+                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(163, 20, 34, 0.2)';
                             }}
                             onMouseOut={e => {
-                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                              e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                               e.currentTarget.style.color = 'var(--color-primary)';
                               e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(124, 58, 237, 0.05)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(163, 20, 34, 0.05)';
                             }}
                           >
                             <Edit size={14} />
@@ -2285,7 +2285,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     onMouseEnter={e => {
                       if (!isAdminEditingLead) {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                        e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                       }
                     }}
                     onMouseLeave={e => {
@@ -2330,7 +2330,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -2341,10 +2341,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -2384,7 +2384,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     onMouseEnter={e => {
                       if (!isAdminEditingLead) {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                        e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                       }
                     }}
                     onMouseLeave={e => {
@@ -2405,7 +2405,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -2416,10 +2416,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -2457,7 +2457,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -2468,10 +2468,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -2484,7 +2484,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     <div>
                       {selectedLead.status === 'assigned' && (
                         selectedLead.report_status === 'pending' ? (
-                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t("Ticket Review")}</span>
+                          <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(189, 29, 45, 0.12)', color: '#a31422', border: '1px solid rgba(189, 29, 45, 0.2)' }}>{t("Ticket Review")}</span>
                         ) : selectedLead.report_status === 'approved_no_comp' ? (
                           <span style={{ padding: '4px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: '#dbeafe', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)' }}>{t("Lỗi không bù")}</span>
                         ) : (
@@ -2848,7 +2848,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                                   fontWeight: 600,
                                   color: 'var(--color-text)',
                                   background: 'var(--color-surface)',
-                                  border: '1px solid rgba(124, 58, 237, 0.15)',
+                                  border: '1px solid rgba(163, 20, 34, 0.15)',
                                   borderRadius: '10px',
                                   padding: '8px 12px',
                                   flex: 1,
@@ -2858,10 +2858,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                                 }}
                                 onFocus={e => {
                                   e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                                 }}
                                 onBlur={e => {
-                                  e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                                  e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                                   e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                                 }}
                               />
@@ -3186,7 +3186,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 {selectedLead.ai_screener_status === 'passed' && selectedLead.ai_evaluation && (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)', marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-                      <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={36} />
+                      <Avatar src="/LOGO.jpg" name="Domation AI" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>{t('Đánh giá')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</div>
@@ -3445,7 +3445,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           style={{
                             marginTop: '0.75rem',
                             width: '100%',
-                            background: 'rgba(124, 58, 237, 0.08)',
+                            background: 'rgba(163, 20, 34, 0.08)',
                             border: '1px solid var(--color-primary-light)',
                             borderRadius: '10px',
                             padding: '8px 12px',
@@ -3463,10 +3463,10 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                             e.currentTarget.style.background = 'var(--color-primary)';
                             e.currentTarget.style.color = '#ffffff';
                             e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 10px rgba(124, 58, 237, 0.15)';
+                            e.currentTarget.style.boxShadow = '0 4px 10px rgba(163, 20, 34, 0.15)';
                           }}
                           onMouseOut={e => {
-                            e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                            e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                             e.currentTarget.style.color = 'var(--color-primary)';
                             e.currentTarget.style.transform = 'none';
                             e.currentTarget.style.boxShadow = 'none';
@@ -4223,8 +4223,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   padding: '8px 18px',
                   fontSize: '0.85rem',
                   fontWeight: 700,
-                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)',
-                  boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)',
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)',
+                  boxShadow: '0 4px 12px rgba(163, 20, 34, 0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
@@ -4232,11 +4232,11 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 }}
                 onMouseOver={e => {
                   e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 6px 15px rgba(124, 58, 237, 0.3)';
+                  e.currentTarget.style.boxShadow = '0 6px 15px rgba(163, 20, 34, 0.3)';
                 }}
                 onMouseOut={e => {
                   e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.2)';
                 }}
               >
                 {isSendingReminder ? <RefreshCw size={14} className="spin" /> : <Bell size={14} />}
@@ -4642,7 +4642,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} {t('data')} ({sourcePercent}%)</span>
                                 </div>
                                 <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
-                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
+                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#BD1D2D', borderRadius: 2 }} />
                                 </div>
                               </div>
                             );
@@ -4730,8 +4730,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               {/* Step 1 */}
               <div style={{ 
                 flex: 1, minWidth: 160, 
-                background: theme === 'dark' ? 'rgba(124, 58, 237, 0.04)' : 'rgba(124, 58, 237, 0.02)', 
-                border: '1.5px solid rgba(124, 58, 237, 0.15)', borderRadius: 10, padding: '0.75rem',
+                background: theme === 'dark' ? 'rgba(163, 20, 34, 0.04)' : 'rgba(163, 20, 34, 0.02)', 
+                border: '1.5px solid rgba(163, 20, 34, 0.15)', borderRadius: 10, padding: '0.75rem',
                 display: 'flex', flexDirection: 'column', gap: 4
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -4828,7 +4828,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 borderRadius: 12, padding: '1rem',
                 display: 'flex', gap: 12, alignItems: 'flex-start'
               }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#8b5cf6' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#BD1D2D' }}>
                   <Copy size={16} />
                 </div>
                 <div>
@@ -5041,7 +5041,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                       {/* Role badge */}
                       <span style={{
                         fontSize: '0.7rem', fontWeight: 600, padding: '4px 8px', borderRadius: 'var(--radius-md)', flexShrink: 0,
-                        background: (acc.role === 'admin' || acc.role === 'superadmin') ? 'rgba(124,58,237,0.1)' : 'rgba(16,185,129,0.1)',
+                        background: (acc.role === 'admin' || acc.role === 'superadmin') ? 'rgba(163, 20, 34,0.1)' : 'rgba(16,185,129,0.1)',
                         color: (acc.role === 'admin' || acc.role === 'superadmin') ? 'var(--color-primary)' : '#10b981'
                       }}>
                         {(acc.role === 'admin' || acc.role === 'superadmin') ? t('Admin') : t('Assistant')}

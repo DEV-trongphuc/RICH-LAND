@@ -212,9 +212,9 @@ const SpaceCanvasBackground: React.FC<{
 
   // Floating Nebula Clouds
   const nebulasRef = useRef([
-    { x: 0.18, y: 0.28, r: 0.38, color: 'rgba(124, 58, 237, 0.10)', vx: 0.0018, vy: 0.0009 },
-    { x: 0.82, y: 0.72, r: 0.46, color: 'rgba(168, 85, 247, 0.08)', vx: -0.0012, vy: 0.0016 },
-    { x: 0.48, y: 0.42, r: 0.32, color: 'rgba(168, 85, 247, 0.09)', vx: 0.0014, vy: -0.0008 }
+    { x: 0.18, y: 0.28, r: 0.38, color: 'rgba(163, 20, 34, 0.10)', vx: 0.0018, vy: 0.0009 },
+    { x: 0.82, y: 0.72, r: 0.46, color: 'rgba(189, 29, 45, 0.08)', vx: -0.0012, vy: 0.0016 },
+    { x: 0.48, y: 0.42, r: 0.32, color: 'rgba(189, 29, 45, 0.09)', vx: 0.0014, vy: -0.0008 }
   ]);
 
   // Core Shockwaves
@@ -459,7 +459,7 @@ const SpaceCanvasBackground: React.FC<{
         radius: 6,
         maxRadius: 180,
         opacity: 0.8,
-        color: 'rgba(168, 85, 247, 0.45)',
+        color: 'rgba(189, 29, 45, 0.45)',
         style: 'solid'
       });
     };
@@ -515,7 +515,7 @@ const SpaceCanvasBackground: React.FC<{
     // Initialize Accretion Disk particles
     if (accretionDiskRef.current.length === 0) {
       const diskParticles = [];
-      const colors = ['#e63946', '#ffffff', '#BD1D2D', '#8b5cf6', '#ffccd5'];
+      const colors = ['#e63946', '#ffffff', '#BD1D2D', '#BD1D2D', '#ffccd5'];
       for (let i = 0; i < 120; i++) {
         // Varying orbit radius from 58px to 142px
         const orbitRadius = 58 + Math.random() * 84;
@@ -735,7 +735,7 @@ const SpaceCanvasBackground: React.FC<{
           const angle = Math.random() * Math.PI * 2;
           const velocity = 250 + Math.random() * 650; // high speed blowout
           const size = 1.2 + Math.random() * 3.5;
-          const colors = ['#BD1D2D', '#8b5cf6', '#e63946', '#3b82f6', '#10b981', '#ffffff', '#ef4444'];
+          const colors = ['#BD1D2D', '#BD1D2D', '#e63946', '#3b82f6', '#10b981', '#ffffff', '#ef4444'];
           const color = colors[Math.floor(Math.random() * colors.length)];
           stardustRef.current.push({
             x: coreX,
@@ -811,7 +811,7 @@ const SpaceCanvasBackground: React.FC<{
 
         // Randomly draw full screen lightning strikes directly on canvas
         if (Math.random() < 0.35) {
-          ctx.fillStyle = Math.random() > 0.5 ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255, 255, 255, 0.35)';
+          ctx.fillStyle = Math.random() > 0.5 ? 'rgba(189, 29, 45, 0.25)' : 'rgba(255, 255, 255, 0.35)';
           ctx.fillRect(0, 0, width, height);
 
           // Random lightning bolts from core to window edge
@@ -866,7 +866,7 @@ const SpaceCanvasBackground: React.FC<{
       });
 
       // 2. Tactical Warped Grid (BATCHED FOR 120HZ FEEL)
-      ctx.strokeStyle = 'rgba(139, 92, 246, 0.03)';
+      ctx.strokeStyle = 'rgba(189, 29, 45, 0.03)';
       ctx.lineWidth = 0.8;
       const gridSize = 90;
 
@@ -974,7 +974,7 @@ const SpaceCanvasBackground: React.FC<{
         ctx.fill();
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.size * 2.3, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(168, 85, 247, ${s.opacity * 0.08})`; // Dimmed layer 2 star glow
+        ctx.fillStyle = `rgba(189, 29, 45, ${s.opacity * 0.08})`; // Dimmed layer 2 star glow
         ctx.fill();
       });
 
@@ -1028,7 +1028,7 @@ const SpaceCanvasBackground: React.FC<{
       ctx.lineWidth = 0.65;
       if (linesBin1.length > 0) {
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(139, 92, 246, 0.04)';
+        ctx.strokeStyle = 'rgba(189, 29, 45, 0.04)';
         for (let k = 0; k < linesBin1.length; k += 4) {
           ctx.moveTo(linesBin1[k], linesBin1[k + 1]);
           ctx.lineTo(linesBin1[k + 2], linesBin1[k + 3]);
@@ -1037,7 +1037,7 @@ const SpaceCanvasBackground: React.FC<{
       }
       if (linesBin2.length > 0) {
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(139, 92, 246, 0.08)';
+        ctx.strokeStyle = 'rgba(189, 29, 45, 0.08)';
         for (let k = 0; k < linesBin2.length; k += 4) {
           ctx.moveTo(linesBin2[k], linesBin2[k + 1]);
           ctx.lineTo(linesBin2[k + 2], linesBin2[k + 3]);
@@ -1046,7 +1046,7 @@ const SpaceCanvasBackground: React.FC<{
       }
       if (linesBin3.length > 0) {
         ctx.beginPath();
-        ctx.strokeStyle = 'rgba(139, 92, 246, 0.12)';
+        ctx.strokeStyle = 'rgba(189, 29, 45, 0.12)';
         for (let k = 0; k < linesBin3.length; k += 4) {
           ctx.moveTo(linesBin3[k], linesBin3[k + 1]);
           ctx.lineTo(linesBin3[k + 2], linesBin3[k + 3]);
@@ -1088,7 +1088,7 @@ const SpaceCanvasBackground: React.FC<{
           mouseRef.current.x, mouseRef.current.y, 0,
           mouseRef.current.x, mouseRef.current.y, 110
         );
-        mGrad.addColorStop(0, 'rgba(139, 92, 246, 0.05)');
+        mGrad.addColorStop(0, 'rgba(189, 29, 45, 0.05)');
         mGrad.addColorStop(0.5, 'rgba(59, 130, 246, 0.015)');
         mGrad.addColorStop(1, 'transparent');
         ctx.fillStyle = mGrad;
@@ -1103,7 +1103,7 @@ const SpaceCanvasBackground: React.FC<{
           const p3d = [];
           for (let i = 0; i < 45; i++) {
             const tilt = (Math.random() - 0.5) * Math.PI * 0.35;
-            const color = Math.random() > 0.6 ? '#BD1D2D' : Math.random() > 0.3 ? '#8b5cf6' : '#e63946';
+            const color = Math.random() > 0.6 ? '#BD1D2D' : Math.random() > 0.3 ? '#BD1D2D' : '#e63946';
             p3d.push({
               angle: Math.random() * Math.PI * 2,
               speed: 0.15 + Math.random() * 0.25,
@@ -1241,7 +1241,7 @@ const SpaceCanvasBackground: React.FC<{
         // Outer glowing refraction ring
         ctx.beginPath();
         ctx.arc(coreX, coreY, 110, 0, Math.PI * 2);
-        ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.09)' : 'rgba(168, 85, 247, 0.09)';
+        ctx.strokeStyle = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.09)' : 'rgba(189, 29, 45, 0.09)';
         ctx.lineWidth = 6;
         ctx.stroke();
 
@@ -1306,8 +1306,8 @@ const SpaceCanvasBackground: React.FC<{
           ctx.save();
           ctx.globalCompositeOperation = 'screen';
           ctx.shadowBlur = 10 * flareAlpha;
-          ctx.shadowColor = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.8)' : 'rgba(139, 92, 246, 0.8)';
-          ctx.strokeStyle = isRetainedGlowRef.current ? `rgba(239, 68, 68, ${0.15 * flareAlpha})` : `rgba(139, 92, 246, ${0.15 * flareAlpha})`;
+          ctx.shadowColor = isRetainedGlowRef.current ? 'rgba(239, 68, 68, 0.8)' : 'rgba(189, 29, 45, 0.8)';
+          ctx.strokeStyle = isRetainedGlowRef.current ? `rgba(239, 68, 68, ${0.15 * flareAlpha})` : `rgba(189, 29, 45, ${0.15 * flareAlpha})`;
           ctx.lineWidth = 2.0;
           ctx.beginPath();
           ctx.arc(coreX, coreY, 150, 0, Math.PI * 2);
@@ -1349,8 +1349,8 @@ const SpaceCanvasBackground: React.FC<{
         ctx.moveTo(coreX, coreY);
         ctx.arc(coreX, coreY, 260, sweepAngle - 0.25, sweepAngle);
         ctx.lineTo(coreX, coreY);
-        const radarColor = isRetainedGlowRef.current ? '239, 68, 68' : '139, 92, 246';
-        const radarColor2 = isRetainedGlowRef.current ? '220, 38, 38' : '99, 102, 241';
+        const radarColor = isRetainedGlowRef.current ? '239, 68, 68' : '189, 29, 45';
+        const radarColor2 = isRetainedGlowRef.current ? '220, 38, 38' : '189, 29, 45';
         const radarGrad = ctx.createRadialGradient(coreX, coreY, 40, coreX, coreY, 260);
         radarGrad.addColorStop(0, `rgba(${radarColor}, 0.08)`);
         radarGrad.addColorStop(0.6, `rgba(${radarColor2}, 0.02)`);
@@ -1621,7 +1621,7 @@ const SpaceCanvasBackground: React.FC<{
               ctx.stroke();
               ctx.setLineDash([]);
             } else {
-              ctx.strokeStyle = 'rgba(168, 85, 247, 0.10)';
+              ctx.strokeStyle = 'rgba(189, 29, 45, 0.10)';
               ctx.lineWidth = 1.0;
               ctx.stroke();
             }
@@ -2120,8 +2120,8 @@ const SpaceCanvasBackground: React.FC<{
           if (p.stage === 2 && p.status === 'assigned') {
             ctx.shadowColor = '#BD1D2D';
             ctx.shadowBlur = 12 * opacity;
-            ctx.fillStyle = `rgba(168, 85, 247, ${0.95 * opacity})`;
-            ctx.strokeStyle = `rgba(168, 85, 247, ${opacity})`;
+            ctx.fillStyle = `rgba(189, 29, 45, ${0.95 * opacity})`;
+            ctx.strokeStyle = `rgba(189, 29, 45, ${opacity})`;
           } else {
             ctx.fillStyle = `rgba(4, 6, 16, ${0.96 * opacity})`;
             ctx.strokeStyle = p.color + Math.round(opacity * 255).toString(16).padStart(2, '0');
@@ -2268,13 +2268,13 @@ const SpaceCanvasBackground: React.FC<{
           ctx.fillText(`SHEETS_SYNC: ${sheetsStatus}`, coreX + 148 + offsetX2, coreY + 125 - breath + offsetY2);
         } else {
           ctx.font = 'bold 8px monospace';
-          ctx.fillStyle = 'rgba(139, 92, 246, 0.4)';
+          ctx.fillStyle = 'rgba(189, 29, 45, 0.4)';
           ctx.fillText(`FAIR_SHARE: ${fairShareEquity}`, coreX - 148, coreY - 115 + breath);
           ctx.fillText(`SHEETS_SYNC: ${sheetsStatus}`, coreX + 148, coreY + 125 - breath);
         }
         ctx.restore();
 
-        ctx.strokeStyle = 'rgba(124, 58, 237, 0.09)';
+        ctx.strokeStyle = 'rgba(163, 20, 34, 0.09)';
         ctx.lineWidth = 0.8;
         ctx.beginPath();
         ctx.moveTo(coreX - 132, coreY); ctx.lineTo(coreX - 118, coreY);
@@ -2310,14 +2310,14 @@ const SpaceCanvasBackground: React.FC<{
         coreSphereRef.current.style.transform = `scale(${scale}) translate(${shakeX}px, ${shakeY}px)`;
         
         if (isCoreHovered) {
-          coreSphereRef.current.style.background = 'linear-gradient(135deg, rgba(168, 85, 247, 0.95) 0%, rgba(124, 58, 237, 0.95) 100%)';
-          coreSphereRef.current.style.boxShadow = `0 0 ${shadowSpread}px rgba(168, 85, 247, 0.85), inset 0 0 20px rgba(255, 255, 255, 0.6)`;
+          coreSphereRef.current.style.background = 'linear-gradient(135deg, rgba(189, 29, 45, 0.95) 0%, rgba(163, 20, 34, 0.95) 100%)';
+          coreSphereRef.current.style.boxShadow = `0 0 ${shadowSpread}px rgba(189, 29, 45, 0.85), inset 0 0 20px rgba(255, 255, 255, 0.6)`;
         } else if (isRetainedGlowRef.current) {
           coreSphereRef.current.style.boxShadow = `0 0 ${shadowSpread}px rgba(239, 68, 68, ${0.5 + intensity * 0.5}), inset 0 0 20px rgba(255, 255, 255, 0.55)`;
           coreSphereRef.current.style.background = `linear-gradient(135deg, rgba(239, 68, 68, ${opacity}) 0%, rgba(185, 28, 28, ${opacity}) 100%)`;
         } else {
-          coreSphereRef.current.style.boxShadow = `0 0 ${shadowSpread}px rgba(168, 85, 247, ${0.5 + intensity * 0.5 + blast * 0.3}), inset 0 0 20px rgba(255, 255, 255, 0.45)`;
-          coreSphereRef.current.style.background = `linear-gradient(135deg, rgba(168, 85, 247, ${opacity}) 0%, rgba(124, 58, 237, ${opacity}) 100%)`;
+          coreSphereRef.current.style.boxShadow = `0 0 ${shadowSpread}px rgba(189, 29, 45, ${0.5 + intensity * 0.5 + blast * 0.3}), inset 0 0 20px rgba(255, 255, 255, 0.45)`;
+          coreSphereRef.current.style.background = `linear-gradient(135deg, rgba(189, 29, 45, ${opacity}) 0%, rgba(163, 20, 34, ${opacity}) 100%)`;
         }
       }
 
@@ -2528,7 +2528,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         style={{
           background: 'rgba(8, 12, 28, 0.95)',
           backdropFilter: 'blur(15px)',
-          border: `1px solid ${status === 'error' ? 'rgba(239, 68, 68, 0.18)' : 'rgba(168, 85, 247, 0.18)'}`,
+          border: `1px solid ${status === 'error' ? 'rgba(239, 68, 68, 0.18)' : 'rgba(189, 29, 45, 0.18)'}`,
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.45)',
           borderRadius: '30px',
           padding: '6px 14px',
@@ -3826,7 +3826,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 alignItems: 'center',
                 gap: '8px',
                 background: 'rgba(5, 7, 18, 0.55)',
-                border: '1px solid rgba(139, 92, 246, 0.28)',
+                border: '1px solid rgba(189, 29, 45, 0.28)',
                 borderRadius: '10px',
                 padding: '5px 8px',
                 backdropFilter: 'blur(15px)',
@@ -3893,7 +3893,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               className="war-room-header"
               style={{
                 height: '70px',
-                borderBottom: '1px solid rgba(139, 92, 246, 0.18)',
+                borderBottom: '1px solid rgba(189, 29, 45, 0.18)',
                 background: 'rgba(5, 7, 18, 0.45)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
@@ -3913,13 +3913,13 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   width: '38px',
                   height: '38px',
                   borderRadius: '50%',
-                  border: '1.8px solid rgba(139, 92, 246, 0.70)',
+                  border: '1.8px solid rgba(189, 29, 45, 0.70)',
                   overflow: 'hidden',
-                  boxShadow: '0 0 12px rgba(139, 92, 246, 0.50)',
-                  background: 'radial-gradient(circle, rgba(168, 85, 247, 0.40) 0%, rgba(5, 7, 18, 0.96) 100%)'
+                  boxShadow: '0 0 12px rgba(189, 29, 45, 0.50)',
+                  background: 'radial-gradient(circle, rgba(189, 29, 45, 0.40) 0%, rgba(5, 7, 18, 0.96) 100%)'
                 }}>
                   <img
-                    src="https://crm-domation.vercel.app/LOGO.jpg"
+                    src="/LOGO.jpg"
                     alt="DOMATION Logo"
                     style={{
                       width: '100%',
@@ -3931,10 +3931,10 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(124,58,237,0.6)' }}>DOMATION AI INFINITY</h2>
-                  <p style={{ fontSize: '0.7rem', color: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '3px', textShadow: '0 0 8px rgba(168,85,247,0.4)' }}>
+                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(163, 20, 34,0.6)' }}>DOMATION AI INFINITY</h2>
+                  <p style={{ fontSize: '0.7rem', color: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '3px', textShadow: '0 0 8px rgba(189, 29, 45,0.4)' }}>
                     <span>{t('Dữ liệu AI Pre-screener & Vòng xoay phân bổ')}</span>
-                    <span className="cursor-blink" style={{ display: 'inline-block', width: '6px', height: '10px', backgroundColor: '#BD1D2D', boxShadow: '0 0 8px rgba(168,85,247,0.7)' }} />
+                    <span className="cursor-blink" style={{ display: 'inline-block', width: '6px', height: '10px', backgroundColor: '#BD1D2D', boxShadow: '0 0 8px rgba(189, 29, 45,0.7)' }} />
                   </p>
                 </div>
               </div>
@@ -3956,23 +3956,23 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                         padding: '4px 28px',
                         minWidth: '160px',
                         borderRadius: '8px',
-                        border: '1px solid rgba(168, 85, 247, 0.25)',
-                        background: 'rgba(168, 85, 247, 0.06)',
-                        boxShadow: '0 0 10px rgba(168, 85, 247, 0.05)',
+                        border: '1px solid rgba(189, 29, 45, 0.25)',
+                        background: 'rgba(189, 29, 45, 0.06)',
+                        boxShadow: '0 0 10px rgba(189, 29, 45, 0.05)',
                         transition: 'all 0.2s',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center'
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = 'rgba(168, 85, 247, 0.15)';
-                        e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.55)';
-                        e.currentTarget.style.boxShadow = '0 0 12px rgba(168, 85, 247, 0.25)';
+                        e.currentTarget.style.background = 'rgba(189, 29, 45, 0.15)';
+                        e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.55)';
+                        e.currentTarget.style.boxShadow = '0 0 12px rgba(189, 29, 45, 0.25)';
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(168, 85, 247, 0.06)';
-                        e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.25)';
-                        e.currentTarget.style.boxShadow = '0 0 10px rgba(168, 85, 247, 0.05)';
+                        e.currentTarget.style.background = 'rgba(189, 29, 45, 0.06)';
+                        e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.25)';
+                        e.currentTarget.style.boxShadow = '0 0 10px rgba(189, 29, 45, 0.05)';
                       }}
                       title={t("Tùy chọn ngày tóm tắt")}
                     >
@@ -4020,8 +4020,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: isPlaying ? '1px solid rgba(168, 85, 247, 0.45)' : '1px solid rgba(255,255,255,0.12)',
-                    background: isPlaying ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255,255,255,0.06)',
+                    border: isPlaying ? '1px solid rgba(189, 29, 45, 0.45)' : '1px solid rgba(255,255,255,0.12)',
+                    background: isPlaying ? 'rgba(189, 29, 45, 0.15)' : 'rgba(255,255,255,0.06)',
                     color: isPlaying ? '#f45b69' : '#fff',
                     fontSize: '0.75rem',
                     display: 'flex',
@@ -4031,8 +4031,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     backdropFilter: 'blur(4px)',
                     transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = isPlaying ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255, 255, 255, 0.15)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = isPlaying ? 'rgba(168, 85, 247, 0.15)' : 'rgba(255, 255, 255, 0.06)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = isPlaying ? 'rgba(189, 29, 45, 0.25)' : 'rgba(255, 255, 255, 0.15)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isPlaying ? 'rgba(189, 29, 45, 0.15)' : 'rgba(255, 255, 255, 0.06)'; }}
                 >
                   {isPlaying ? (
                     <>
@@ -4067,8 +4067,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   style={{
                     padding: '6px 14px',
                     borderRadius: '8px',
-                    border: '1px solid rgba(168, 85, 247, 0.45)',
-                    background: isFocusMode ? 'rgba(168, 85, 247, 0.25)' : 'rgba(168, 85, 247, 0.12)',
+                    border: '1px solid rgba(189, 29, 45, 0.45)',
+                    background: isFocusMode ? 'rgba(189, 29, 45, 0.25)' : 'rgba(189, 29, 45, 0.12)',
                     color: '#f45b69',
                     fontSize: '0.75rem',
                     display: 'flex',
@@ -4077,10 +4077,10 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     cursor: 'pointer',
                     backdropFilter: 'blur(4px)',
                     transition: 'all 0.2s',
-                    boxShadow: isFocusMode ? '0 0 10px rgba(168, 85, 247, 0.3)' : 'none'
+                    boxShadow: isFocusMode ? '0 0 10px rgba(189, 29, 45, 0.3)' : 'none'
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = isFocusMode ? 'rgba(168, 85, 247, 0.35)' : 'rgba(168, 85, 247, 0.20)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = isFocusMode ? 'rgba(168, 85, 247, 0.25)' : 'rgba(168, 85, 247, 0.12)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = isFocusMode ? 'rgba(189, 29, 45, 0.35)' : 'rgba(189, 29, 45, 0.20)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isFocusMode ? 'rgba(189, 29, 45, 0.25)' : 'rgba(189, 29, 45, 0.12)'; }}
                   title={t("Bật/Tắt chế độ tập trung (Ẩn thanh HUD & nhật ký)")}
                 >
                   <Tv size={12} style={{ color: '#e63946' }} />
@@ -4280,7 +4280,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   top: '15%',
                   left: '10%',
                   fontSize: '0.55rem',
-                  color: isTelemetryGlitch ? '#f87171' : 'rgba(124, 58, 237, 0.3)',
+                  color: isTelemetryGlitch ? '#f87171' : 'rgba(163, 20, 34, 0.3)',
                   pointerEvents: 'none',
                   transition: 'color 0.15s ease'
                 }}
@@ -4294,7 +4294,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   bottom: '20%',
                   right: '8%',
                   fontSize: '0.55rem',
-                  color: isTelemetryGlitch ? '#f87171' : 'rgba(168, 85, 247, 0.3)',
+                  color: isTelemetryGlitch ? '#f87171' : 'rgba(189, 29, 45, 0.3)',
                   pointerEvents: 'none',
                   transition: 'color 0.15s ease'
                 }}
@@ -4312,7 +4312,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   borderRadius: '50%',
                   background: isRetainedGlow
                     ? 'radial-gradient(circle, rgba(239, 68, 68, 0.25) 0%, rgba(239, 68, 68, 0.01) 70%)'
-                    : 'radial-gradient(circle, rgba(139, 92, 246, 0.18) 0%, rgba(139, 92, 246, 0.01) 70%)',
+                    : 'radial-gradient(circle, rgba(189, 29, 45, 0.18) 0%, rgba(189, 29, 45, 0.01) 70%)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -4322,15 +4322,15 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 }}
               >
                 {/* Outer Concentric Rings centered with core */}
-                <div style={{ position: 'absolute', inset: isMobile ? '-20px' : '-35px', border: isRetainedGlow ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(139, 92, 246, 0.05)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
-                <div style={{ position: 'absolute', inset: isMobile ? '-45px' : '-85px', border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.12)' : '1px dashed rgba(99, 102, 241, 0.03)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
+                <div style={{ position: 'absolute', inset: isMobile ? '-20px' : '-35px', border: isRetainedGlow ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(189, 29, 45, 0.05)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
+                <div style={{ position: 'absolute', inset: isMobile ? '-45px' : '-85px', border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.12)' : '1px dashed rgba(189, 29, 45, 0.03)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0, transition: 'border 0.35s ease' }} />
                 {/* Concentric rotating outer rings */}
                 <div
                   style={{
                     position: 'absolute',
                     inset: 0,
                     borderRadius: '50%',
-                    border: isRetainedGlow ? '2px dashed rgba(239, 68, 68, 0.55)' : '2px dashed rgba(139, 92, 246, 0.38)',
+                    border: isRetainedGlow ? '2px dashed rgba(239, 68, 68, 0.55)' : '2px dashed rgba(189, 29, 45, 0.38)',
                     animation: 'spinCore 30s linear infinite',
                     transition: 'border 0.35s ease'
                   }}
@@ -4340,7 +4340,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     position: 'absolute',
                     inset: isMobile ? '-8px' : '-15px',
                     borderRadius: '50%',
-                    border: isRetainedGlow ? '1.2px solid rgba(239, 68, 68, 0.35)' : '1.2px solid rgba(139, 92, 246, 0.2)',
+                    border: isRetainedGlow ? '1.2px solid rgba(239, 68, 68, 0.35)' : '1.2px solid rgba(189, 29, 45, 0.2)',
                     animation: 'spinCoreInverse 20s linear infinite',
                     transition: 'border 0.35s ease'
                   }}
@@ -4350,7 +4350,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     position: 'absolute',
                     inset: isMobile ? '-18px' : '-32px',
                     borderRadius: '50%',
-                    border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.25)' : '1px dashed rgba(99, 102, 241, 0.12)',
+                    border: isRetainedGlow ? '1px dashed rgba(239, 68, 68, 0.25)' : '1px dashed rgba(189, 29, 45, 0.12)',
                     animation: 'spinCore 50s linear infinite',
                     transition: 'border 0.35s ease'
                   }}
@@ -4365,10 +4365,10 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     width: isMobile ? '76px' : '120px',
                     height: isMobile ? '76px' : '120px',
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.85) 0%, rgba(124, 58, 237, 0.98) 100%)',
+                    background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.85) 0%, rgba(163, 20, 34, 0.98) 100%)',
                     boxShadow: isRetainedGlow
                       ? '0 0 45px rgba(239, 68, 68, 0.85), inset 0 0 20px rgba(255, 255, 255, 0.55)'
-                      : '0 0 35px rgba(124, 58, 237, 0.55), inset 0 0 20px rgba(255,255,255,0.45)',
+                      : '0 0 35px rgba(163, 20, 34, 0.55), inset 0 0 20px rgba(255,255,255,0.45)',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
@@ -4403,11 +4403,11 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 style={{
                   marginTop: isMobile ? '3rem' : '7.5rem',
                   background: 'linear-gradient(135deg, rgba(8, 12, 28, 0.7) 0%, rgba(3, 5, 14, 0.9) 100%)',
-                  backgroundImage: 'linear-gradient(rgba(168, 85, 247, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(168, 85, 247, 0.035) 1px, transparent 1px)',
+                  backgroundImage: 'linear-gradient(rgba(189, 29, 45, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(189, 29, 45, 0.035) 1px, transparent 1px)',
                   backgroundSize: '12px 12px',
                   backgroundPosition: 'center',
                   backdropFilter: 'blur(25px)',
-                  border: '1px solid rgba(168, 85, 247, 0.16)',
+                  border: '1px solid rgba(189, 29, 45, 0.16)',
                   borderRadius: isMobile ? '12px' : '16px',
                   padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.75rem',
                   display: 'grid',
@@ -4415,7 +4415,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   gap: isMobile ? '8px' : '12px',
                   textAlign: 'center',
                   width: isMobile ? '300px' : '460px',
-                  boxShadow: '0 15px 50px rgba(0, 0, 0, 0.75), 0 0 25px rgba(168, 85, 247, 0.08), inset 0 0 24px rgba(139, 92, 246, 0.04)',
+                  boxShadow: '0 15px 50px rgba(0, 0, 0, 0.75), 0 0 25px rgba(189, 29, 45, 0.08), inset 0 0 24px rgba(189, 29, 45, 0.04)',
                   position: 'relative',
                   overflow: 'visible'
                 }}
@@ -4429,8 +4429,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       left: 0,
                       right: 0,
                       height: '1.5px',
-                      background: 'linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.35), transparent)',
-                      boxShadow: '0 0 6px rgba(168, 85, 247, 0.5)',
+                      background: 'linear-gradient(90deg, transparent, rgba(189, 29, 45, 0.35), transparent)',
+                      boxShadow: '0 0 6px rgba(189, 29, 45, 0.5)',
                       animation: 'scanlineSweep 7s linear infinite',
                       pointerEvents: 'none',
                       zIndex: 10
@@ -4481,10 +4481,10 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   style={{
                     position: 'relative',
                     transition: 'all 0.3s ease',
-                    background: isTotalGlow ? 'linear-gradient(180deg, rgba(168, 85, 247, 0.12) 0%, rgba(168, 85, 247, 0.02) 100%)' : 'transparent',
+                    background: isTotalGlow ? 'linear-gradient(180deg, rgba(189, 29, 45, 0.12) 0%, rgba(189, 29, 45, 0.02) 100%)' : 'transparent',
                     borderRadius: '8px',
                     padding: '8px 0',
-                    boxShadow: isTotalGlow ? '0 0 15px rgba(168, 85, 247, 0.25)' : 'none'
+                    boxShadow: isTotalGlow ? '0 0 15px rgba(189, 29, 45, 0.25)' : 'none'
                   }}
                 >
                   {/* Floating +1 Total bubble */}
@@ -4502,7 +4502,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                         borderRadius: '10px',
                         fontSize: '0.65rem',
                         fontWeight: 850,
-                        boxShadow: '0 0 12px rgba(168, 85, 247, 0.65)',
+                        boxShadow: '0 0 12px rgba(189, 29, 45, 0.65)',
                         animation: 'floatUpAndFade 1.6s ease-out forwards',
                         zIndex: 20
                       }}
@@ -4517,7 +4517,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       style={{
                         display: 'inline-block',
                         animation: 'counterPopTotal 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-                        textShadow: isTotalGlow ? '0 0 14px rgba(168, 85, 247, 0.95)' : '0 0 6px rgba(168, 85, 247, 0.3)'
+                        textShadow: isTotalGlow ? '0 0 14px rgba(189, 29, 45, 0.95)' : '0 0 6px rgba(189, 29, 45, 0.3)'
                       }}
                     >
                       {displayTotalCounter}
@@ -4707,7 +4707,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                             borderRadius: '10px',
                             fontSize: '0.65rem',
                             fontWeight: 850,
-                            boxShadow: '0 0 12px rgba(168, 85, 247, 0.65)',
+                            boxShadow: '0 0 12px rgba(189, 29, 45, 0.65)',
                             animation: 'floatUpAndFade 1.6s ease-out forwards',
                             zIndex: 20
                           }}
@@ -4832,7 +4832,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               className="war-room-bottom-feed"
               style={{
                 height: isMobile ? '110px' : '158px',
-                borderTop: '1px solid rgba(139, 92, 246, 0.18)',
+                borderTop: '1px solid rgba(189, 29, 45, 0.18)',
                 background: 'rgba(3, 5, 14, 0.55)',
                 backdropFilter: 'blur(20px)',
                 display: 'flex',
@@ -4865,8 +4865,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), rgba(2, 4, 10, 0.82)',
                   backgroundSize: '100% 4px',
                   borderRadius: '8px',
-                  border: '1px solid rgba(168, 85, 247, 0.18)',
-                  boxShadow: 'inset 0 0 10px rgba(168, 85, 247, 0.08)'
+                  border: '1px solid rgba(189, 29, 45, 0.18)',
+                  boxShadow: 'inset 0 0 10px rgba(189, 29, 45, 0.08)'
                 }}
               >
                 {localRecentFeed.slice(0, isMobile ? 3 : 4).map((feed) => {
@@ -4912,7 +4912,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                             : feed.status === 'reminder'
                               ? 'rgba(219, 39, 119, 0.15)'
                               : isAssigned
-                                ? 'rgba(168, 85, 247, 0.15)'
+                                ? 'rgba(189, 29, 45, 0.15)'
                                 : 'rgba(239, 68, 68, 0.15)',
                           color: feed.status === 'processing'
                             ? '#fbbf24'
@@ -4927,7 +4927,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                             : feed.status === 'reminder'
                               ? 'rgba(219, 39, 119, 0.25)'
                               : isAssigned
-                                ? 'rgba(168, 85, 247, 0.25)'
+                                ? 'rgba(189, 29, 45, 0.25)'
                                 : 'rgba(239, 68, 68, 0.25)'
                             }`,
                           lineHeight: '1.2'
@@ -4993,7 +4993,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           <div style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(168, 85, 247, 0.02) 1px, transparent 1px), linear-gradient(rgba(168, 85, 247, 0.02) 1px, transparent 1px)',
+            background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%), linear-gradient(90deg, rgba(189, 29, 45, 0.02) 1px, transparent 1px), linear-gradient(rgba(189, 29, 45, 0.02) 1px, transparent 1px)',
             backgroundSize: '100% 4px, 40px 40px, 40px 40px',
             pointerEvents: 'none',
             zIndex: 1
@@ -5005,8 +5005,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             left: 0,
             width: '100%',
             height: '2px',
-            background: 'linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.3), #ffffff, rgba(168, 85, 247, 0.3), transparent)',
-            boxShadow: '0 0 15px 4px rgba(168, 85, 247, 0.5)',
+            background: 'linear-gradient(90deg, transparent, rgba(189, 29, 45, 0.3), #ffffff, rgba(189, 29, 45, 0.3), transparent)',
+            boxShadow: '0 0 15px 4px rgba(189, 29, 45, 0.5)',
             top: 0,
             animation: 'globalScanLine 6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
             zIndex: 10,
@@ -5021,7 +5021,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               position: 'absolute',
               width: 320,
               height: 320,
-              background: 'radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%)',
+              background: 'radial-gradient(circle, rgba(189, 29, 45, 0.15) 0%, transparent 70%)',
               borderRadius: '50%',
               animation: 'pulseAura 3s ease-in-out infinite',
               pointerEvents: 'none',
@@ -5034,7 +5034,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               width: 250,
               height: 250,
               borderRadius: '50%',
-              border: '1px dashed rgba(168, 85, 247, 0.2)',
+              border: '1px dashed rgba(189, 29, 45, 0.2)',
               animation: 'spinCore 25s linear infinite'
             }} />
             <div style={{
@@ -5080,7 +5080,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 cy="110"
                 r="95"
                 fill="transparent"
-                stroke="rgba(168, 85, 247, 0.1)"
+                stroke="rgba(189, 29, 45, 0.1)"
                 strokeWidth="4"
               />
               {/* Main Progress Circle */}
@@ -5115,7 +5115,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               <defs>
                 <linearGradient id="reactorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#60a5fa" />
-                  <stop offset="50%" stopColor="#8b5cf6" />
+                  <stop offset="50%" stopColor="#BD1D2D" />
                   <stop offset="100%" stopColor="#ec4899" />
                 </linearGradient>
               </defs>
@@ -5128,8 +5128,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               height: 140,
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(10, 11, 30, 0.95) 0%, rgba(2, 4, 12, 0.98) 100%)',
-              border: '1.5px solid rgba(168, 85, 247, 0.4)',
-              boxShadow: 'inset 0 0 20px rgba(168, 85, 247, 0.3), 0 0 25px rgba(0, 0, 0, 0.6)',
+              border: '1.5px solid rgba(189, 29, 45, 0.4)',
+              boxShadow: 'inset 0 0 20px rgba(189, 29, 45, 0.3), 0 0 25px rgba(0, 0, 0, 0.6)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -5160,7 +5160,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
 
               <Cpu size={36} style={{ color: '#fff', filter: 'drop-shadow(0 0 8px rgba(96, 165, 250, 0.8))', animation: 'pulseGlow 1.8s ease-in-out infinite' }} />
               
-              <div style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff', marginTop: 8, fontFamily: 'monospace', textShadow: '0 0 12px rgba(168, 85, 247, 0.9)' }}>
+              <div style={{ fontSize: '2.1rem', fontWeight: 900, color: '#ffffff', marginTop: 8, fontFamily: 'monospace', textShadow: '0 0 12px rgba(189, 29, 45, 0.9)' }}>
                 {bootPercent}%
               </div>
               <div style={{ fontSize: '0.52rem', letterSpacing: '0.15em', color: '#e63946', textTransform: 'uppercase', marginTop: 2, fontWeight: 700 }}>
@@ -5222,7 +5222,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               fontWeight: 900,
               letterSpacing: '0.25em',
               color: '#ffffff',
-              textShadow: '0 0 15px rgba(168, 85, 247, 0.8), 0 0 2px rgba(168, 85, 247, 0.4)',
+              textShadow: '0 0 15px rgba(189, 29, 45, 0.8), 0 0 2px rgba(189, 29, 45, 0.4)',
               margin: 0,
               fontFamily: 'monospace',
               animation: 'glitchText 3s infinite'
@@ -5234,17 +5234,17 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             </div>
           </div>
 
-          <div className="loader-bar-wrap" style={{ width: 340, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden', marginBottom: 35, border: '1px solid rgba(168, 85, 247, 0.18)', position: 'relative', zIndex: 2 }}>
-            <div style={{ width: `${bootPercent}%`, height: '100%', background: 'linear-gradient(90deg, #60a5fa, #8b5cf6, #ec4899)', boxShadow: '0 0 12px #e63946', transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+          <div className="loader-bar-wrap" style={{ width: 340, height: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden', marginBottom: 35, border: '1px solid rgba(189, 29, 45, 0.18)', position: 'relative', zIndex: 2 }}>
+            <div style={{ width: `${bootPercent}%`, height: '100%', background: 'linear-gradient(90deg, #60a5fa, #BD1D2D, #ec4899)', boxShadow: '0 0 12px #e63946', transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)' }} />
           </div>
 
           {/* Loading logs console */}
           <div style={{
             width: 500,
             background: 'rgba(6, 8, 20, 0.85)',
-            border: '1.5px solid rgba(168, 85, 247, 0.35)',
+            border: '1.5px solid rgba(189, 29, 45, 0.35)',
             borderRadius: '12px',
-            boxShadow: '0 20px 50px rgba(0,0,0,0.7), inset 0 0 25px rgba(168, 85, 247, 0.08)',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.7), inset 0 0 25px rgba(189, 29, 45, 0.08)',
             backdropFilter: 'blur(20px)',
             overflow: 'hidden',
             zIndex: 2
@@ -5254,8 +5254,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
               display: 'flex',
               alignItems: 'center',
               padding: '10px 18px',
-              background: 'rgba(168, 85, 247, 0.06)',
-              borderBottom: '1px solid rgba(168, 85, 247, 0.18)',
+              background: 'rgba(189, 29, 45, 0.06)',
+              borderBottom: '1px solid rgba(189, 29, 45, 0.18)',
               position: 'relative'
             }}>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -5311,7 +5311,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       transition: 'transform 0.2s ease-out'
                     }}
                   >
-                    <span style={{ color: isLast ? '#10b981' : '#8b5cf6', fontWeight: 'bold' }}>&gt;</span>
+                    <span style={{ color: isLast ? '#10b981' : '#BD1D2D', fontWeight: 'bold' }}>&gt;</span>
                     <span>{msg}</span>
                     {isLast && <span className="cursor-blink" style={{ width: 6, height: 12, background: '#10b981', display: 'inline-block' }} />}
                   </div>
@@ -5470,11 +5470,11 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           100% { top: 105%; }
         }
         @keyframes glitchText {
-          0%, 95%, 100% { text-shadow: 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(0deg); }
-          96% { text-shadow: -2px 0 red, 2px 0 blue, 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(-1deg); }
-          97% { text-shadow: 2px 0 red, -2px 0 blue, 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(2deg); }
-          98% { text-shadow: -3px 0 green, 3px 0 purple, 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(-2deg); }
-          99% { text-shadow: 0 0 15px rgba(168, 85, 247, 0.8); transform: skew(0deg); }
+          0%, 95%, 100% { text-shadow: 0 0 15px rgba(189, 29, 45, 0.8); transform: skew(0deg); }
+          96% { text-shadow: -2px 0 red, 2px 0 blue, 0 0 15px rgba(189, 29, 45, 0.8); transform: skew(-1deg); }
+          97% { text-shadow: 2px 0 red, -2px 0 blue, 0 0 15px rgba(189, 29, 45, 0.8); transform: skew(2deg); }
+          98% { text-shadow: -3px 0 green, 3px 0 purple, 0 0 15px rgba(189, 29, 45, 0.8); transform: skew(-2deg); }
+          99% { text-shadow: 0 0 15px rgba(189, 29, 45, 0.8); transform: skew(0deg); }
         }
         .cursor-blink {
           animation: blink 1.2s steps(2, start) infinite;
@@ -5514,9 +5514,9 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           100% { top: 100%; opacity: 0; }
         }
         @keyframes counterPopTotal {
-          0% { transform: scale(0.8); filter: brightness(2.5); text-shadow: 0 0 16px rgba(168, 85, 247, 0.95); }
-          50% { transform: scale(1.22); filter: brightness(2.5); text-shadow: 0 0 28px rgba(168, 85, 247, 1); }
-          100% { transform: scale(1); filter: brightness(1); text-shadow: 0 0 6px rgba(168, 85, 247, 0.3); }
+          0% { transform: scale(0.8); filter: brightness(2.5); text-shadow: 0 0 16px rgba(189, 29, 45, 0.95); }
+          50% { transform: scale(1.22); filter: brightness(2.5); text-shadow: 0 0 28px rgba(189, 29, 45, 1); }
+          100% { transform: scale(1); filter: brightness(1); text-shadow: 0 0 6px rgba(189, 29, 45, 0.3); }
         }
         @keyframes counterPopShared {
           0% { transform: scale(0.8); filter: brightness(2.5); text-shadow: 0 0 16px rgba(16, 185, 129, 0.95); }
@@ -5557,7 +5557,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           top: -100px;
           width: 1.5px;
           height: 90px;
-          background: linear-gradient(180deg, transparent, rgba(168, 85, 247, 0.7), #ffffff);
+          background: linear-gradient(180deg, transparent, rgba(189, 29, 45, 0.7), #ffffff);
           animation: matrixFall 3s linear infinite;
         }
         @keyframes matrixFall {
@@ -5596,8 +5596,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
           }
         }
         @keyframes pulseGlow {
-          0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 2px rgba(168, 85, 247, 0.3)); }
-          50% { opacity: 1; filter: drop-shadow(0 0 10px rgba(168, 85, 247, 0.8)); }
+          0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 2px rgba(189, 29, 45, 0.3)); }
+          50% { opacity: 1; filter: drop-shadow(0 0 10px rgba(189, 29, 45, 0.8)); }
         }
 
         /* 1. Mobile Portrait Rotation */
@@ -5854,17 +5854,17 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         }}>
           <div style={{
             background: 'rgba(8, 12, 28, 0.95)',
-            border: '1px solid rgba(168, 85, 247, 0.45)',
+            border: '1px solid rgba(189, 29, 45, 0.45)',
             borderRadius: '20px',
             padding: '2rem',
             width: '600px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(168, 85, 247, 0.15)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(189, 29, 45, 0.15)',
             display: 'flex',
             flexDirection: 'column',
             gap: '20px',
             fontFamily: 'monospace',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(168, 85, 247, 0.25)', paddingBottom: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(189, 29, 45, 0.25)', paddingBottom: '10px' }}>
               <h3 style={{ color: '#fff', fontSize: '1.25rem', fontWeight: 800 }}>{t('CÀI ĐẶT THỜI GIAN MÔ PHỎNG')}</h3>
               <button
                 onClick={() => setIsDateModalOpen(false)}
@@ -5882,8 +5882,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   flex: 1,
                   padding: '8px 12px',
                   borderRadius: '6px',
-                  border: tempDateMode === 'preset' ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid transparent',
-                  background: tempDateMode === 'preset' ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+                  border: tempDateMode === 'preset' ? '1px solid rgba(189, 29, 45, 0.5)' : '1px solid transparent',
+                  background: tempDateMode === 'preset' ? 'rgba(189, 29, 45, 0.15)' : 'transparent',
                   color: tempDateMode === 'preset' ? '#f45b69' : 'rgba(255,255,255,0.6)',
                   fontSize: '0.9rem',
                   fontWeight: 700,
@@ -5898,8 +5898,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   flex: 1,
                   padding: '8px 12px',
                   borderRadius: '6px',
-                  border: tempDateMode === 'single' ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid transparent',
-                  background: tempDateMode === 'single' ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+                  border: tempDateMode === 'single' ? '1px solid rgba(189, 29, 45, 0.5)' : '1px solid transparent',
+                  background: tempDateMode === 'single' ? 'rgba(189, 29, 45, 0.15)' : 'transparent',
                   color: tempDateMode === 'single' ? '#f45b69' : 'rgba(255,255,255,0.6)',
                   fontSize: '0.9rem',
                   fontWeight: 700,
@@ -5914,8 +5914,8 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   flex: 1,
                   padding: '8px 12px',
                   borderRadius: '6px',
-                  border: tempDateMode === 'range' ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid transparent',
-                  background: tempDateMode === 'range' ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+                  border: tempDateMode === 'range' ? '1px solid rgba(189, 29, 45, 0.5)' : '1px solid transparent',
+                  background: tempDateMode === 'range' ? 'rgba(189, 29, 45, 0.15)' : 'transparent',
                   color: tempDateMode === 'range' ? '#f45b69' : 'rgba(255,255,255,0.6)',
                   fontSize: '0.9rem',
                   fontWeight: 700,
@@ -5938,7 +5938,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                         padding: '10px 8px',
                         borderRadius: '6px',
                         border: tempPreset === preset ? '1.2px solid #BD1D2D' : '1px solid rgba(255,255,255,0.06)',
-                        background: tempPreset === preset ? 'rgba(168, 85, 247, 0.1)' : 'rgba(255,255,255,0.02)',
+                        background: tempPreset === preset ? 'rgba(189, 29, 45, 0.1)' : 'rgba(255,255,255,0.02)',
                         color: tempPreset === preset ? '#ffffff' : 'rgba(255,255,255,0.7)',
                         fontSize: '0.95rem',
                         textAlign: 'center',
@@ -5977,12 +5977,12 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     style={{
                       padding: '10px 14px',
                       borderRadius: '8px',
-                      border: '1px solid rgba(168, 85, 247, 0.45)',
+                      border: '1px solid rgba(189, 29, 45, 0.45)',
                       background: 'rgba(5, 7, 18, 0.85)',
                       color: '#fff',
                       fontSize: '0.95rem',
                       outline: 'none',
-                      boxShadow: '0 0 10px rgba(168, 85, 247, 0.1)',
+                      boxShadow: '0 0 10px rgba(189, 29, 45, 0.1)',
                     }}
                   />
                 </div>
@@ -5999,7 +5999,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       style={{
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid rgba(168, 85, 247, 0.45)',
+                        border: '1px solid rgba(189, 29, 45, 0.45)',
                         background: 'rgba(5, 7, 18, 0.85)',
                         color: '#fff',
                         fontSize: '0.95rem',
@@ -6016,7 +6016,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                       style={{
                         padding: '10px 14px',
                         borderRadius: '8px',
-                        border: '1px solid rgba(168, 85, 247, 0.45)',
+                        border: '1px solid rgba(189, 29, 45, 0.45)',
                         background: 'rgba(5, 7, 18, 0.85)',
                         color: '#fff',
                         fontSize: '0.95rem',
@@ -6058,7 +6058,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   fontSize: '0.95rem',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: '0 0 12px rgba(168, 85, 247, 0.35)',
+                  boxShadow: '0 0 12px rgba(189, 29, 45, 0.35)',
                 }}
               >
                 {t('Áp dụng')}

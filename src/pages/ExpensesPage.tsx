@@ -34,7 +34,7 @@ const CATEGORIES = [
   { label: 'Ăn uống', icon: Coffee, color: '#f59e0b' },
   { label: 'Vận hành', icon: Home, color: '#10b981' },
   { label: 'Marketing', icon: Briefcase, color: '#ef4444' },
-  { label: 'Công cụ', icon: CreditCard, color: '#8b5cf6' },
+  { label: 'Công cụ', icon: CreditCard, color: '#BD1D2D' },
   { label: 'Nhân sự', icon: Tag, color: '#06b6d4' },
 ];
 
@@ -644,7 +644,7 @@ export const ExpensesPage: React.FC = () => {
                           form.related_user_ids.map((uid: number) => {
                             const u = users.find((x:any) => x.id === uid);
                             return (
-                              <span key={uid} style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(124, 58, 237, 0.2)' }}>
+                              <span key={uid} style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(163, 20, 34, 0.2)' }}>
                                 <Avatar name={u?.full_name} size={16} />
                                 {u?.full_name} 
                                 <X size={10} style={{cursor:'pointer'}} onClick={() => setForm({...form, related_user_ids: form.related_user_ids.filter((x: number) => x !== uid)})} />
@@ -685,7 +685,7 @@ export const ExpensesPage: React.FC = () => {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                     {form.entities.length === 0 ? <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Chưa áp dụng cho khách hàng nào</span> : 
                       form.entities.map((e: any) => (
-                        <span key={e.entity_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '6px 12px', borderRadius: 'var(--radius-lg)', fontSize: '0.8125rem', fontWeight: 600, border: '1px solid rgba(124, 58, 237, 0.2)' }}>
+                        <span key={e.entity_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '6px 12px', borderRadius: 'var(--radius-lg)', fontSize: '0.8125rem', fontWeight: 600, border: '1px solid rgba(163, 20, 34, 0.2)' }}>
                           <Avatar name={e.name} src={e.avatar_url} size={20} />
                           {e.name || `Khách hàng #${e.entity_id}`}
                           <X size={14} style={{ cursor: 'pointer', marginLeft: 4 }} onClick={() => setForm({ ...form, entities: form.entities.filter((x: any) => x.entity_id !== e.entity_id) })} />

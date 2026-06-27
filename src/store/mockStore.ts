@@ -1967,7 +1967,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.281Z",
     "due_date": "2026-05-12T12:42:49.281Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2072,7 +2072,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.281Z",
     "due_date": "2026-05-12T12:42:49.281Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2165,7 +2165,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2270,7 +2270,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2363,7 +2363,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2468,7 +2468,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2573,7 +2573,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2678,7 +2678,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2771,7 +2771,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2876,7 +2876,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -2981,7 +2981,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3086,7 +3086,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3179,7 +3179,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3284,7 +3284,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3377,7 +3377,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3482,7 +3482,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3587,7 +3587,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3680,7 +3680,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3785,7 +3785,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3890,7 +3890,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -3995,7 +3995,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4100,7 +4100,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4205,7 +4205,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4298,7 +4298,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4403,7 +4403,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4508,7 +4508,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4613,7 +4613,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4718,7 +4718,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4811,7 +4811,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -4916,7 +4916,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5009,7 +5009,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5114,7 +5114,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5219,7 +5219,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5324,7 +5324,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5429,7 +5429,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5534,7 +5534,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5639,7 +5639,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5732,7 +5732,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5837,7 +5837,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -5942,7 +5942,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6035,7 +6035,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6140,7 +6140,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6245,7 +6245,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6350,7 +6350,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6443,7 +6443,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6548,7 +6548,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6653,7 +6653,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6746,7 +6746,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6851,7 +6851,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -6944,7 +6944,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -7049,7 +7049,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 1,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -7154,7 +7154,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 2,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -7259,7 +7259,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -7352,7 +7352,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 3,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -7457,7 +7457,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -7550,7 +7550,7 @@ export const useMockStore = create<any>()((set) => ({
     "owner_id": 5,
     "created_at": "2026-05-12T12:42:49.282Z",
     "due_date": "2026-05-12T12:42:49.282Z",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "metadata": {
       "opens": 3,
       "last_open": "2026-05-14T12:42:49.281Z"
@@ -9737,7 +9737,7 @@ export const useMockStore = create<any>()((set) => ({
   {
     "id": "lead",
     "name": "Lead mới",
-    "color": "#8b5cf6",
+    "color": "#BD1D2D",
     "prob": 10
   },
   {

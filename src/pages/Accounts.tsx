@@ -363,7 +363,7 @@ const AccountsInner = () => {
 
   const getRoleBadge = (role: string) => {
     if (role === 'superadmin') return <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Super Admin</span>;
-    if (role === 'admin') return <span style={{ background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
+    if (role === 'admin') return <span style={{ background: 'rgba(163, 20, 34, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
     if (role === 'assistant') return <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Assistant</span>;
     return <span style={{ background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Viewer</span>;
   };
@@ -625,9 +625,9 @@ const AccountsInner = () => {
                                     display: 'inline-flex', 
                                     padding: '2px 8px', 
                                     borderRadius: '12px', 
-                                    background: Number(count) > 0 ? 'rgba(124, 58, 237, 0.1)' : 'var(--color-bg)',
+                                    background: Number(count) > 0 ? 'rgba(163, 20, 34, 0.1)' : 'var(--color-bg)',
                                     color: Number(count) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                    border: Number(count) > 0 ? '1px solid rgba(124, 58, 237, 0.2)' : '1px solid var(--color-border)',
+                                    border: Number(count) > 0 ? '1px solid rgba(163, 20, 34, 0.2)' : '1px solid var(--color-border)',
                                     fontSize: '0.7rem',
                                     fontWeight: 600
                                   }}>
@@ -788,7 +788,7 @@ const AccountsInner = () => {
                         </td>
                         <td data-label={t('Hành động')} style={{ padding: '1rem 1.5rem' }}>
                           <span style={{
-                            background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : isRolledBack ? 'var(--color-border)' : 'rgba(124, 58, 237, 0.1)',
+                            background: log.action === 'LOGIN' ? 'rgba(59, 130, 246, 0.1)' : isRolledBack ? 'var(--color-border)' : 'rgba(163, 20, 34, 0.1)',
                             color: log.action === 'LOGIN' ? '#3b82f6' : isRolledBack ? 'var(--color-text-muted)' : 'var(--color-primary)',
                             padding: '4px 10px',
                             borderRadius: 6,

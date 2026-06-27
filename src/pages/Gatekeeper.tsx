@@ -261,9 +261,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           borderRadius: '20px',
           fontSize: '0.72rem',
           fontWeight: 600,
-          background: 'rgba(99, 102, 241, 0.12)',
-          color: '#4f46e5',
-          border: '1px solid rgba(99, 102, 241, 0.2)',
+          background: 'rgba(189, 29, 45, 0.12)',
+          color: '#a31422',
+          border: '1px solid rgba(189, 29, 45, 0.2)',
           display: 'inline-flex',
           alignItems: 'center'
         }}>
@@ -1408,7 +1408,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
-            <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)' }}>
+            <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(163, 20, 34, 0.3)' }}>
               <Shield size={24} />
             </span>
             {t('AI Pre-screener')}
@@ -1438,7 +1438,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             <Sparkles size={14} color="var(--color-primary)" /> {t('Hướng dẫn')}
           </button>
 
-          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(163, 20, 34,0.15)' }} />
 
           {/* Settings Button */}
           <button
@@ -1465,7 +1465,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             <span className="mobile-only">{t('Cấu hình')}</span>
           </button>
 
-          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(124,58,237,0.15)' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(163, 20, 34,0.15)' }} />
 
           {/* Lọc AI Toggle */}
           <div
@@ -1484,7 +1484,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               transition: 'background 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(124,58,237,0.05)';
+              e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
               const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
               if (label) label.style.color = 'var(--color-primary)';
             }}
@@ -1529,7 +1529,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
       {/* Intro explain card styled identically to FairShareAudit */}
       <div className="hide-on-mobile" style={{
-        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.1) 100%)',
+        background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(189, 29, 45, 0.1) 100%)',
         border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem'
       }}>
@@ -1610,9 +1610,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     fontWeight: 600,
                     padding: '2px 8px',
                     borderRadius: '20px',
-                    background: 'rgba(124, 58, 237, 0.08)',
+                    background: 'rgba(163, 20, 34, 0.08)',
                     color: '#a31422',
-                    border: '1px solid rgba(124, 58, 237, 0.15)',
+                    border: '1px solid rgba(163, 20, 34, 0.15)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px'
@@ -1638,8 +1638,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     gap: '5px',
                     padding: '2px 8px',
                     borderRadius: '20px',
-                    background: aiScreenerEnabled ? 'rgba(16, 185, 129, 0.08)' : 'rgba(124, 58, 237, 0.08)',
-                    border: aiScreenerEnabled ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(124, 58, 237, 0.2)',
+                    background: aiScreenerEnabled ? 'rgba(16, 185, 129, 0.08)' : 'rgba(163, 20, 34, 0.08)',
+                    border: aiScreenerEnabled ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(163, 20, 34, 0.2)',
                     fontSize: '0.6875rem',
                     fontWeight: 700,
                     color: aiScreenerEnabled ? '#10b981' : '#a31422'
@@ -1747,9 +1747,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       fontWeight: 700,
                       padding: '2px 8px',
                       borderRadius: '20px',
-                      background: 'rgba(124, 58, 237, 0.08)',
+                      background: 'rgba(163, 20, 34, 0.08)',
                       color: '#a31422',
-                      border: '1px solid rgba(124, 58, 237, 0.2)',
+                      border: '1px solid rgba(163, 20, 34, 0.2)',
                       whiteSpace: 'nowrap'
                     }}>
                       {t('Ví dụ cấu hình')}
@@ -1858,9 +1858,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       fontWeight: 700,
                       padding: '2px 8px',
                       borderRadius: '20px',
-                      background: 'rgba(124, 58, 237, 0.08)',
+                      background: 'rgba(163, 20, 34, 0.08)',
                       color: '#a31422',
-                      border: '1px solid rgba(124, 58, 237, 0.2)',
+                      border: '1px solid rgba(163, 20, 34, 0.2)',
                       whiteSpace: 'nowrap'
                     }}>
                       {t('Ví dụ cấu hình')}
@@ -1899,8 +1899,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             display: 'flex',
             flexDirection: 'column',
             gap: '0.75rem',
-            background: theme === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.02)',
-            border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.15)' : '1px solid rgba(124, 58, 237, 0.08)',
+            background: theme === 'dark' ? 'rgba(163, 20, 34, 0.08)' : 'rgba(163, 20, 34, 0.02)',
+            border: theme === 'dark' ? '1px solid rgba(163, 20, 34, 0.15)' : '1px solid rgba(163, 20, 34, 0.08)',
             minHeight: '94px',
             height: 'auto',
             boxSizing: 'border-box'
@@ -1930,8 +1930,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             flexDirection: 'column',
             gap: '0.75rem',
             animation: 'fadeIn 0.3s ease-out',
-            background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
-            border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
+            background: theme === 'dark' ? 'rgba(163, 20, 34, 0.12)' : 'rgba(163, 20, 34, 0.04)',
+            border: theme === 'dark' ? '1px solid rgba(163, 20, 34, 0.25)' : '1px solid rgba(163, 20, 34, 0.12)',
             minHeight: '94px',
             height: 'auto',
             boxSizing: 'border-box',
@@ -1942,7 +1942,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <img
-                  src="https://crm-domation.vercel.app/LOGO.jpg"
+                  src="/LOGO.jpg"
                   alt="DOMATION AI Logo"
                   style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
                 />
@@ -2059,7 +2059,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               padding: 0,
               borderRadius: 8,
               border: '1px solid var(--color-primary)',
-              background: 'rgba(168, 85, 247, 0.08)',
+              background: 'rgba(189, 29, 45, 0.08)',
               color: 'var(--color-primary)',
               cursor: 'pointer',
               display: 'flex',
@@ -2081,7 +2081,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               padding: 0,
               borderRadius: 8,
               border: '1px solid var(--color-primary)',
-              background: 'rgba(124,58,237,0.08)',
+              background: 'rgba(163, 20, 34,0.08)',
               color: 'var(--color-primary)',
               cursor: 'pointer',
               display: 'flex',
@@ -2106,7 +2106,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               padding: 0,
               borderRadius: 8,
               border: '1px solid var(--color-primary)',
-              background: 'rgba(124,58,237,0.08)',
+              background: 'rgba(163, 20, 34,0.08)',
               color: 'var(--color-primary)',
               cursor: 'pointer',
               display: 'flex',
@@ -2141,7 +2141,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         <div style={{
           display: 'flex',
           borderBottom: '1px solid var(--color-border)',
-          background: 'rgba(124, 58, 237, 0.02)',
+          background: 'rgba(163, 20, 34, 0.02)',
           padding: '10px 18px',
           gap: '8px',
           alignItems: 'center',
@@ -2201,7 +2201,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
           position: 'relative', zIndex: 100,
           display: 'flex', gap: 12, padding: '14px 18px',
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.04) 0%, rgba(99,102,241,0.02) 100%)',
+          background: 'linear-gradient(135deg, rgba(163, 20, 34,0.04) 0%, rgba(189, 29, 45,0.02) 100%)',
           borderBottom: '1px solid var(--color-border)',
           flexWrap: 'wrap', alignItems: 'center'
         }}>
@@ -2209,7 +2209,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             <Filter size={14} />
             <span>{t('Bộ lọc')}</span>
           </div>
-          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(124,58,237,0.2)', margin: '0 4px' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(163, 20, 34,0.2)', margin: '0 4px' }} />
 
           <div className="mobile-stack" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 260 }}>
             {/* Search Input */}
@@ -2329,7 +2329,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                 color: '#fff',
                 border: 'none',
-                boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
+                boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 transition: 'all 0.2s ease'
@@ -2350,10 +2350,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 gap: '6px',
                 padding: '0 16px',
                 borderRadius: 'var(--radius-lg)',
-                background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)',
+                background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                 color: '#fff',
                 border: 'none',
-                boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+                boxShadow: '0 2px 6px rgba(163, 20, 34, 0.25)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 transition: 'all 0.2s ease'
@@ -2457,7 +2457,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               </div>
                             </div>
                           ) : (
-                            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, background: 'rgba(163, 20, 34,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
                               <Zap size={12} /> {l.round_name || '-'}
                             </div>
                           )}
@@ -2466,7 +2466,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {activeTab !== 'assigned' && (
                               activeTab === 'ai_pending' ? (
-                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(124, 58, 237, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(163, 20, 34, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <RefreshCw size={12} className="spin" /> {t('Chờ AI đánh giá')}
                                 </span>
                               ) : l.ai_screener_status === 'error' ? (
@@ -2726,7 +2726,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           {new Date(l.created_at).toLocaleDateString('vi-VN')}
                         </div>
                         {l.round_name && (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(124,58,237,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(163, 20, 34,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
                             <Zap size={10} /> {l.round_name}
                           </div>
                         )}
@@ -2738,7 +2738,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       background: activeTab === 'assigned'
                         ? 'var(--color-bg-alt)'
                         : activeTab === 'ai_pending'
-                          ? 'rgba(124, 58, 237, 0.04)'
+                          ? 'rgba(163, 20, 34, 0.04)'
                           : (l.ai_screener_status === 'error' || l.ai_screener_status === 'pending')
                             ? 'rgba(245, 158, 11, 0.04)'
                             : 'rgba(239, 68, 68, 0.04)',
@@ -3072,7 +3072,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, marginRight: '1.5rem' }}>
                                     <span style={{
-                                      background: 'rgba(124, 58, 237, 0.1)',
+                                      background: 'rgba(163, 20, 34, 0.1)',
                                       color: 'var(--color-primary)',
                                       fontWeight: 800,
                                       width: 24, height: 24,
@@ -3132,7 +3132,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                             border: '1px solid var(--color-primary)',
                                             background: 'var(--color-primary)',
                                             color: '#ffffff',
-                                            boxShadow: '0 2px 8px rgba(124, 58, 237, 0.2)',
+                                            boxShadow: '0 2px 8px rgba(163, 20, 34, 0.2)',
                                             transition: 'all 0.2s ease'
                                           }}
                                         >
@@ -3191,7 +3191,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                           fontSize: '0.8125rem',
                                           fontWeight: 600,
                                           border: '1px dashed var(--color-primary-light)',
-                                          background: 'rgba(124, 58, 237, 0.02)',
+                                          background: 'rgba(163, 20, 34, 0.02)',
                                           color: 'var(--color-primary)',
                                           cursor: 'pointer',
                                           transition: 'all 0.2s ease',
@@ -3199,12 +3199,12 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                           boxShadow: 'var(--shadow-sm)'
                                         }}
                                         onMouseEnter={(e) => {
-                                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                          e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                                           e.currentTarget.style.borderColor = 'var(--color-primary)';
                                           e.currentTarget.style.transform = 'translateY(-0.5px)';
                                         }}
                                         onMouseLeave={(e) => {
-                                          e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                                          e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                                           e.currentTarget.style.borderColor = 'var(--color-primary-light)';
                                           e.currentTarget.style.transform = 'none';
                                         }}
@@ -3224,7 +3224,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                             zIndex: 55,
                                             minWidth: '220px',
                                             background: 'var(--color-surface)',
-                                            border: '1px solid rgba(124, 58, 237, 0.15)',
+                                            border: '1px solid rgba(163, 20, 34, 0.15)',
                                             borderRadius: '12px',
                                             boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3)',
                                             maxHeight: '220px',
@@ -3282,7 +3282,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                                   }}
                                                   onMouseEnter={(e) => {
                                                     if (!selectedElsewhere && !isInactive) {
-                                                      e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                                                      e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                                                       e.currentTarget.style.color = 'var(--color-primary)';
                                                     }
                                                   }}
@@ -3691,7 +3691,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               padding: '1.25rem',
                               borderRadius: '12px',
                               border: '2px dashed var(--color-primary-light)',
-                              background: 'rgba(124, 58, 237, 0.02)',
+                              background: 'rgba(163, 20, 34, 0.02)',
                               color: 'var(--color-primary)',
                               fontWeight: 700,
                               fontSize: '0.875rem',
@@ -3700,11 +3700,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               width: '100%'
                             }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.06)';
+                              e.currentTarget.style.background = 'rgba(163, 20, 34, 0.06)';
                               e.currentTarget.style.borderColor = 'var(--color-primary)';
                             }}
                             onMouseLeave={e => {
-                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                              e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                               e.currentTarget.style.borderColor = 'var(--color-primary-light)';
                             }}
                           >
@@ -3872,8 +3872,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               justifyContent: 'space-between',
               alignItems: 'center',
               padding: '10px 14px',
-              background: 'rgba(124, 58, 237, 0.06)',
-              border: '1px solid rgba(124, 58, 237, 0.15)',
+              background: 'rgba(163, 20, 34, 0.06)',
+              border: '1px solid rgba(163, 20, 34, 0.15)',
               borderRadius: '10px',
               marginBottom: '4px',
               flexWrap: 'wrap',
@@ -3888,13 +3888,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   {t('Bộ lọc:')}
                 </span>
                 <span style={{
-                  background: 'linear-gradient(135deg, #a31422 0%, #4f46e5 100%)',
+                  background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                   color: '#fff',
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   padding: '3px 10px',
                   borderRadius: '20px',
-                  boxShadow: '0 2px 4px rgba(124, 58, 237, 0.2)'
+                  boxShadow: '0 2px 4px rgba(163, 20, 34, 0.2)'
                 }}>
                   {getDisplayDateFilterText(dateFilter)}
                 </span>
@@ -4309,7 +4309,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   fontWeight: 700,
                   padding: '3px 10px',
                   borderRadius: '20px',
-                  boxShadow: '0 2px 4px rgba(168, 85, 247, 0.2)'
+                  boxShadow: '0 2px 4px rgba(189, 29, 45, 0.2)'
                 }}>
                   {getDisplayDateFilterText(dateFilter)}
                 </span>
@@ -4375,10 +4375,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         <div style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t('Token phản hồi của AI')}</div>
                       </div>
 
-                      <div style={{ background: 'rgba(168, 85, 247, 0.05)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', padding: '12px' }}>
+                      <div style={{ background: 'rgba(189, 29, 45, 0.05)', border: '1px solid rgba(189, 29, 45, 0.2)', borderRadius: '10px', padding: '12px' }}>
                         <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase' }}>{t('Tổng Token / Chi phí')}</div>
                         <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '4px' }}>{stats.total_tokens.toLocaleString('vi-VN')}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px', background: 'rgba(168, 85, 247, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.6875rem', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px', background: 'rgba(189, 29, 45, 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
                           <span>~${costUsd.toFixed(4)}</span>
                           <span>~{Math.round(costVnd).toLocaleString('vi-VN')}đ</span>
                         </div>
@@ -4918,15 +4918,15 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                             width: '240px',
                             outline: 'none',
                             transition: 'all 0.2s ease-in-out',
-                            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.08)'
+                            boxShadow: '0 0 0 3px rgba(163, 20, 34, 0.08)'
                           }}
                           onFocus={e => {
                             e.currentTarget.style.borderColor = 'var(--color-primary)';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.15)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(163, 20, 34, 0.15)';
                           }}
                           onBlur={e => {
                             e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.08)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(163, 20, 34, 0.08)';
                           }}
                         />
                       ) : (
@@ -5033,22 +5033,22 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                             title={t("Sửa thông tin")}
                             className="detail-action-btn"
                             style={{
-                              background: 'rgba(124, 58, 237, 0.08)',
+                              background: 'rgba(163, 20, 34, 0.08)',
                               border: '1px solid var(--color-primary-light)',
                               color: 'var(--color-primary)',
-                              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
+                              boxShadow: '0 2px 6px rgba(163, 20, 34, 0.05)'
                             }}
                             onMouseOver={e => {
                               e.currentTarget.style.background = 'var(--color-primary)';
                               e.currentTarget.style.color = '#ffffff';
                               e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(124, 58, 237, 0.2)';
+                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(163, 20, 34, 0.2)';
                             }}
                             onMouseOut={e => {
-                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                              e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                               e.currentTarget.style.color = 'var(--color-primary)';
                               e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(124, 58, 237, 0.05)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(163, 20, 34, 0.05)';
                             }}
                           >
                             <Edit size={14} />
@@ -5113,7 +5113,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     onMouseEnter={e => {
                       if (!isAdminEditingLead) {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                        e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                       }
                     }}
                     onMouseLeave={e => {
@@ -5158,7 +5158,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -5169,10 +5169,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -5212,7 +5212,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     onMouseEnter={e => {
                       if (!isAdminEditingLead) {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                        e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                       }
                     }}
                     onMouseLeave={e => {
@@ -5233,7 +5233,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -5244,10 +5244,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -5285,7 +5285,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -5296,10 +5296,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -5426,7 +5426,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                   fontWeight: 600,
                                   color: 'var(--color-text)',
                                   background: 'var(--color-surface)',
-                                  border: '1px solid rgba(124, 58, 237, 0.15)',
+                                  border: '1px solid rgba(163, 20, 34, 0.15)',
                                   borderRadius: '10px',
                                   padding: '8px 12px',
                                   flex: 1,
@@ -5436,10 +5436,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                 }}
                                 onFocus={e => {
                                   e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                                 }}
                                 onBlur={e => {
-                                  e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                                  e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                                   e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                                 }}
                               />
@@ -5599,7 +5599,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     {selectedLead.status === 'rejected' ? (
                       <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1.5px solid var(--color-primary)', boxShadow: 'var(--shadow-sm)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                          <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
+                          <Avatar src="/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
                           <div>
                             <div style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Đánh giá')}</div>
                             <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
@@ -5899,7 +5899,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                             style={{
                               marginTop: '0.75rem',
                               width: '100%',
-                              background: 'rgba(124, 58, 237, 0.08)',
+                              background: 'rgba(163, 20, 34, 0.08)',
                               border: '1px solid var(--color-primary-light)',
                               borderRadius: '10px',
                               padding: '8px 12px',
@@ -5917,10 +5917,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               e.currentTarget.style.background = 'var(--color-primary)';
                               e.currentTarget.style.color = '#ffffff';
                               e.currentTarget.style.transform = 'translateY(-1px)';
-                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(124, 58, 237, 0.15)';
+                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(163, 20, 34, 0.15)';
                             }}
                             onMouseOut={e => {
-                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                              e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                               e.currentTarget.style.color = 'var(--color-primary)';
                               e.currentTarget.style.transform = 'none';
                               e.currentTarget.style.boxShadow = 'none';
@@ -6178,8 +6178,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   padding: '8px 18px',
                   fontSize: '0.85rem',
                   fontWeight: 700,
-                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)',
-                  boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)',
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)',
+                  boxShadow: '0 4px 12px rgba(163, 20, 34, 0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
@@ -6187,11 +6187,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 }}
                 onMouseOver={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(124, 58, 237, 0.35)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(163, 20, 34, 0.35)';
                 }}
                 onMouseOut={e => {
                   e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.2)';
                 }}
               >
                 {isSendingReminder ? (
@@ -6842,7 +6842,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} {t('data')} ({sourcePercent}%)</span>
                                 </div>
                                 <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
-                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
+                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#BD1D2D', borderRadius: 2 }} />
                                 </div>
                               </div>
                             );
@@ -6960,7 +6960,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           }
           15%, 35% {
             border-color: var(--color-primary);
-            box-shadow: 0 8px 24px rgba(124, 58, 237, 0.12), 0 2px 4px rgba(124, 58, 237, 0.06);
+            box-shadow: 0 8px 24px rgba(163, 20, 34, 0.12), 0 2px 4px rgba(163, 20, 34, 0.06);
             transform: translateY(-4px);
           }
           50% {
@@ -6972,7 +6972,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
         .flow-step-number {
           position: relative;
-          background: linear-gradient(135deg, #a31422 0%, #4f46e5 100%);
+          background: linear-gradient(135deg, #a31422 0%, #a31422 100%);
           color: #fff;
           font-weight: 800;
           width: 24px;
@@ -6982,7 +6982,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           align-items: center;
           justify-content: center;
           font-size: 0.75rem;
-          box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+          box-shadow: 0 2px 6px rgba(163, 20, 34, 0.25);
           flex-shrink: 0;
           z-index: 2;
         }

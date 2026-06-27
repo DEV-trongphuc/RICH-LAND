@@ -23,7 +23,7 @@ const T_ICON: Record<string, React.ReactNode> = {
   call: <Phone size={14} />, email: <Mail size={14} />, meeting: <Users size={14} />,
   task: <CheckCircle2 size={14} />, note: <AlignLeft size={14} />
 };
-const T_COLOR: Record<string, string> = { call: '#3b82f6', email: '#8b5cf6', meeting: '#10b981', task: '#f59e0b', note: '#6b7280' };
+const T_COLOR: Record<string, string> = { call: '#3b82f6', email: '#BD1D2D', meeting: '#10b981', task: '#f59e0b', note: '#6b7280' };
 
 const EMPTY = { type: 'call', subject: '', status: 'planned', priority: 'medium', due_date: '', related_type: '', related_id: '' };
 
@@ -282,7 +282,7 @@ export const ActivitiesPage: React.FC = () => {
             initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
             style={{ marginBottom: '1.25rem', overflow: 'hidden' }}
           >
-            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))', border: '1px solid var(--color-primary-light)', padding: '1.25rem' }}>
+            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05), rgba(189, 29, 45, 0.05))', border: '1px solid var(--color-primary-light)', padding: '1.25rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Zap size={18} fill="white" />

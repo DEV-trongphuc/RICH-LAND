@@ -392,7 +392,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                 className="btn primary lg" 
                 disabled={loading || cart.length === 0 || !selectedContact}
                 onClick={handleCheckout}
-                style={{ width: '100%', padding: '1.25rem', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)', fontSize: '1.05rem', fontWeight: 800, border: 'none', height: '64px', boxShadow: 'var(--shadow-lg)' }}
+                style={{ width: '100%', padding: '1.25rem', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)', fontSize: '1.05rem', fontWeight: 800, border: 'none', height: '64px', boxShadow: 'var(--shadow-lg)' }}
               >
                 {loading ? <Loader2 size={24} className="spin" /> : <CheckCircle2 size={22} />}
                 THANH TOÁN & XUẤT HÓA ĐƠN

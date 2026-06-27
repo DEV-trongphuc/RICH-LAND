@@ -52,10 +52,10 @@ export const GlobalConfirmModal: React.FC = () => {
           <div style={{ padding: '1.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
             <div style={{
               width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-              background: isDanger ? 'rgba(239, 68, 68, 0.08)' : 'rgba(124, 58, 237, 0.08)',
-              border: isDanger ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(124, 58, 237, 0.2)',
+              background: isDanger ? 'rgba(239, 68, 68, 0.08)' : 'rgba(163, 20, 34, 0.08)',
+              border: isDanger ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(163, 20, 34, 0.2)',
               color: isDanger ? '#ef4444' : '#a31422',
-              boxShadow: isDanger ? '0 0 12px rgba(239, 68, 68, 0.1)' : '0 0 12px rgba(124, 58, 237, 0.1)',
+              boxShadow: isDanger ? '0 0 12px rgba(239, 68, 68, 0.1)' : '0 0 12px rgba(163, 20, 34, 0.1)',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
               {isDanger ? <AlertTriangle size={20} /> : <Info size={20} />}

@@ -27,7 +27,7 @@ const getColorFromName = (name: string) => {
     '#10b981', // green
     '#f59e0b', // amber
     '#ef4444', // red
-    '#8b5cf6', // violet
+    '#BD1D2D', // violet
     '#ec4899', // pink
     '#06b6d4', // cyan
     '#f97316', // orange
@@ -61,7 +61,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
   if (!resolvedSrc && name) {
     const trimmedName = name.trim().toLowerCase();
     if (trimmedName === 'hệ thống' || trimmedName === 'system' || trimmedName === 'ht') {
-      resolvedSrc = 'https://crm-domation.vercel.app/LOGO.jpg';
+      resolvedSrc = '/LOGO.jpg';
     }
   }
 
@@ -101,7 +101,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
       <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
         {avatarEl}
         <img
-          src="https://crm-domation.vercel.app/LOGO.jpg"
+          src="/LOGO.jpg"
           alt="AI Evaluation"
           style={{
             position: 'absolute',

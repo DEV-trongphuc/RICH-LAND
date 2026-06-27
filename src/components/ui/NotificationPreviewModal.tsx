@@ -223,7 +223,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
             <div style={{
               width: '64px',
               height: '64px',
-              backgroundColor: '#e0e7ff',
+              backgroundColor: '#ffe3e8',
               borderRadius: '50%',
               display: 'inline-flex',
               alignItems: 'center',
@@ -413,8 +413,8 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
 
           {/* AI Block (purple background, purple left border) */}
           {aiStatus === 'passed' && aiEvaluation && (
-            <div style={{ backgroundColor: '#f5f3ff', borderLeft: '4px solid #a31422', padding: '24px', margin: '30px 0', borderRadius: '0 12px 12px 0' }}>
-              <p style={{ color: '#6d28d9', fontSize: '16px', margin: '0 0 12px 0', fontWeight: 'bold', lineHeight: 1.6, borderBottom: '1px solid #ddd6fe', paddingBottom: '8px' }}>
+            <div style={{ backgroundColor: '#fff5f6', borderLeft: '4px solid #a31422', padding: '24px', margin: '30px 0', borderRadius: '0 12px 12px 0' }}>
+              <p style={{ color: '#8a0f1b', fontSize: '16px', margin: '0 0 12px 0', fontWeight: 'bold', lineHeight: 1.6, borderBottom: '1px solid #ddd6fe', paddingBottom: '8px' }}>
                 🤖 Đánh giá AI:
               </p>
               <p style={{ color: '#5b21b6', fontSize: '15px', lineHeight: 1.6, margin: 0, fontWeight: 500 }}>
@@ -438,7 +438,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
         
         {/* Info Header */}
         <div style={{
-          background: isEmail ? '#f5f3ff' : '#e0f2fe',
+          background: isEmail ? '#fff5f6' : '#e0f2fe',
           border: isEmail ? '1px solid #ffccd5' : '1px solid #bae6fd',
           borderRadius: '8px',
           padding: '10px 14px',
@@ -551,7 +551,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
                         Xem danh sách dữ liệu tại Trang Tư vấn viên hoặc báo cáo lỗi (sai SĐT, trùng lặp...) để nhận data bù:
                       </p>
                       <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '12px' }}>
-                        <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#4f46e5', color: 'white', textDecoration: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)' }}>
+                        <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#a31422', color: 'white', textDecoration: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 4px 6px -1px rgba(163, 20, 34, 0.2)' }}>
                           DATA CỦA BẠN
                         </a>
                         <a href={reportUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: '#ef4444', color: 'white', textDecoration: 'none', padding: '10px 24px', borderRadius: '8px', fontWeight: 'bold', fontSize: '15px', boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.2)' }}>

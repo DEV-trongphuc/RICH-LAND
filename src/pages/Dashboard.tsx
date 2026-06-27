@@ -542,7 +542,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
         .stat-card.total-card:hover {
-          box-shadow: 0 6px 16px rgba(124, 58, 237, 0.15) !important;
+          box-shadow: 0 6px 16px rgba(163, 20, 34, 0.15) !important;
           border-color: #a31422 !important;
         }
         .stat-card.distributed-card:hover {
@@ -621,7 +621,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
               color: '#fff',
               border: 'none',
-              boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
+              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
               cursor: 'pointer',
               fontWeight: 600,
               flexShrink: 0
@@ -645,7 +645,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
               color: '#fff',
               border: 'none',
-              boxShadow: '0 2px 6px rgba(168, 85, 247, 0.25)',
+              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
               cursor: 'pointer',
               fontWeight: 600,
               flexShrink: 0
@@ -670,8 +670,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               display: 'flex',
               flexDirection: 'column',
               gap: '0.75rem',
-              background: theme === 'dark' ? 'rgba(124, 58, 237, 0.08)' : 'rgba(124, 58, 237, 0.02)',
-              border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.15)' : '1px solid rgba(124, 58, 237, 0.08)',
+              background: theme === 'dark' ? 'rgba(163, 20, 34, 0.08)' : 'rgba(163, 20, 34, 0.02)',
+              border: theme === 'dark' ? '1px solid rgba(163, 20, 34, 0.15)' : '1px solid rgba(163, 20, 34, 0.08)',
               minHeight: '94px',
               height: 'auto',
               boxSizing: 'border-box',
@@ -707,8 +707,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 gap: '0.75rem',
                 animation: 'slideUp 0.4s ease-out both',
                 animationDelay: '120ms',
-                background: theme === 'dark' ? 'rgba(124, 58, 237, 0.12)' : 'rgba(124, 58, 237, 0.04)',
-                border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid rgba(124, 58, 237, 0.12)',
+                background: theme === 'dark' ? 'rgba(163, 20, 34, 0.12)' : 'rgba(163, 20, 34, 0.04)',
+                border: theme === 'dark' ? '1px solid rgba(163, 20, 34, 0.25)' : '1px solid rgba(163, 20, 34, 0.12)',
                 cursor: 'pointer',
                 minHeight: '94px',
                 height: 'auto',
@@ -720,7 +720,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <img
-                    src="https://crm-domation.vercel.app/LOGO.jpg"
+                    src="/LOGO.jpg"
                     alt="DOMATION AI Logo"
                     style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
                   />
@@ -1194,7 +1194,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                           log.status === 'pending_approval'
                             ? '/imgs/warn_icon.png'
                             : log.status === 'rejected'
-                              ? 'https://crm-domation.vercel.app/LOGO.jpg'
+                              ? '/LOGO.jpg'
                               : log.status === 'blacklisted'
                                 ? '/imgs/angry_icon.jpg'
                                 : log.assigned_to_avatar
@@ -1235,7 +1235,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               const created = createdAt ? parseServerDate(createdAt) : now;
                               const diffMins = (now.getTime() - created.getTime()) / 60000;
                               if (diffMins >= -2 && diffMins < 5) {
-                                return { bg: 'rgba(99, 102, 241, 0.12)', color: '#4f46e5', text: t('Chờ AI đánh giá') };
+                                return { bg: 'rgba(189, 29, 45, 0.12)', color: '#a31422', text: t('Chờ AI đánh giá') };
                               }
                             }
                             switch (status) {
@@ -1388,7 +1388,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', gap: '8px' }}>
                 <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
-                  <GitBranch size={18} color="#8b5cf6" /> {t('Tỷ lệ Nguồn Data')}
+                  <GitBranch size={18} color="#BD1D2D" /> {t('Tỷ lệ Nguồn Data')}
                 </h3>
                 <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', flexShrink: 0 }}>
                   <button
@@ -1626,8 +1626,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '8px 10px',
-                    background: theme === 'dark' ? 'rgba(124, 58, 237, 0.05)' : 'rgba(124, 58, 237, 0.03)',
-                    border: theme === 'dark' ? '1px solid rgba(124, 58, 237, 0.12)' : '1px solid rgba(124, 58, 237, 0.08)',
+                    background: theme === 'dark' ? 'rgba(163, 20, 34, 0.05)' : 'rgba(163, 20, 34, 0.03)',
+                    border: theme === 'dark' ? '1px solid rgba(163, 20, 34, 0.12)' : '1px solid rgba(163, 20, 34, 0.08)',
                     borderRadius: 10,
                     fontSize: '0.8125rem'
                   }}>
@@ -1699,13 +1699,13 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     color: 'var(--color-primary)',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    background: 'rgba(124, 58, 237, 0.06)',
+                    background: 'rgba(163, 20, 34, 0.06)',
                     padding: '4px 10px',
                     borderRadius: '20px',
                     transition: 'all 0.2s'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.12)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.06)'}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(163, 20, 34, 0.12)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(163, 20, 34, 0.06)'}
                   onClick={() => navigate('/fair-share')}
                 >
                   {t('Chi tiết đối soát')}
@@ -2244,7 +2244,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} {t('data')} ({sourcePercent}%)</span>
                                 </div>
                                 <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
-                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
+                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#BD1D2D', borderRadius: 2 }} />
                                 </div>
                               </div>
                             );
@@ -2373,7 +2373,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     fontSize: '0.75rem',
                     fontWeight: 600,
                     color: 'var(--color-primary)',
-                    background: 'rgba(124, 58, 237, 0.08)',
+                    background: 'rgba(163, 20, 34, 0.08)',
                     padding: '3px 8px',
                     borderRadius: 6
                   }}>

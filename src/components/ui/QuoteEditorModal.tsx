@@ -237,7 +237,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
           {/* Header */}
           <div className="modal-header">
             <div className="flex items-center gap-4">
-              <div style={{ background: 'var(--color-primary)', color: '#fff', width: 48, height: 48, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(124, 58, 237, 0.25)' }}>
+              <div style={{ background: 'var(--color-primary)', color: '#fff', width: 48, height: 48, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(163, 20, 34, 0.25)' }}>
                 <FileText size={24} />
               </div>
               <div>
@@ -390,7 +390,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                   onMouseEnter={e => { if (!alreadyAdded) e.currentTarget.style.background = 'var(--color-primary-light)'; }}
                                   onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                                 >
-                                  <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'linear-gradient(135deg, var(--color-primary-light), rgba(124,58,237,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(124,58,237,0.1)' }}>
+                                  <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'linear-gradient(135deg, var(--color-primary-light), rgba(163, 20, 34,0.08))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(163, 20, 34,0.1)' }}>
                                     <Package size={16} style={{ color: 'var(--color-primary)' }} />
                                   </div>
                                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -643,7 +643,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                       <div style={{ fontSize: '1.625rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>{FMT(total)}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Đã bao gồm thuế & chiết khấu</div>
                       {total > 0 && (
-                        <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 700, fontStyle: 'italic', marginTop: '10px', lineHeight: 1.4, borderTop: '1px solid rgba(99, 102, 241, 0.1)', paddingTop: '8px' }}>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 700, fontStyle: 'italic', marginTop: '10px', lineHeight: 1.4, borderTop: '1px solid rgba(189, 29, 45, 0.1)', paddingTop: '8px' }}>
                           {numberToText(total)}
                         </div>
                       )}
@@ -773,7 +773,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
              <button className="btn ghost font-bold text-muted" onClick={onClose}>Hủy bỏ</button>
              <button 
                className="btn primary" 
-               style={{ minWidth: '220px', boxShadow: '0 10px 20px -5px rgba(124, 58, 237, 0.4)' }}
+               style={{ minWidth: '220px', boxShadow: '0 10px 20px -5px rgba(163, 20, 34, 0.4)' }}
                onClick={handleSave}
                disabled={loading}
              >

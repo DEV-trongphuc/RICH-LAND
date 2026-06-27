@@ -134,7 +134,7 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
             </ResultGroup>
           )}
           {results.companies && results.companies.length > 0 && (
-            <ResultGroup icon={<Building2 size={14} />} label="Công ty" color="#8b5cf6">
+            <ResultGroup icon={<Building2 size={14} />} label="Công ty" color="#BD1D2D">
               {results.companies.slice(0, 3).map((c: any) => (
                 <ResultItem 
                   key={c.id} 

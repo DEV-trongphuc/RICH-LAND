@@ -15,7 +15,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
-  '#3b82f6', '#8b5cf6', '#d946ef', '#ec4899', '#14b8a6', '#6366f1'
+  '#3b82f6', '#BD1D2D', '#d946ef', '#ec4899', '#14b8a6', '#BD1D2D'
 ];
 
 const getColorForName = (name: string) => {
@@ -447,7 +447,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     }));
   };
 
-  const ROUND_COLORS = ['var(--color-primary)', '#3b82f6', '#8b5cf6', '#10b981'];
+  const ROUND_COLORS = ['var(--color-primary)', '#3b82f6', '#BD1D2D', '#10b981'];
 
   return (
     <div className="fade-in-view">
@@ -2052,7 +2052,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             gap: 12, 
             padding: '1rem', 
             background: 'var(--color-primary-light)', 
-            border: '1px solid rgba(124, 58, 237, 0.15)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
             borderRadius: 12 
           }}>
             <HelpCircle size={28} color="var(--color-primary)" style={{ flexShrink: 0 }} />
@@ -2131,14 +2131,14 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 alignItems: 'center', 
                 gap: 12, 
                 padding: '0.875rem', 
-                background: theme === 'dark' ? 'rgba(139, 92, 246, 0.04)' : 'rgba(139, 92, 246, 0.02)', 
-                borderLeft: '4px solid #8b5cf6', 
+                background: theme === 'dark' ? 'rgba(189, 29, 45, 0.04)' : 'rgba(189, 29, 45, 0.02)', 
+                borderLeft: '4px solid #BD1D2D', 
                 borderTop: '1px solid var(--color-border-light)',
                 borderRight: '1px solid var(--color-border-light)',
                 borderBottom: '1px solid var(--color-border-light)',
                 borderRadius: '0 8px 8px 0' 
               }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#8b5cf6' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#BD1D2D' }}>
                   <Zap size={16} />
                 </div>
                 <div style={{ flex: 1 }}>

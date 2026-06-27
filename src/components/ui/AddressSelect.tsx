@@ -183,7 +183,7 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
                   marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px',
                   fontSize: '0.75rem', fontWeight: 700,
                   color: isForeign ? 'var(--color-primary)' : 'var(--color-text-light)',
-                  background: isForeign ? 'rgba(var(--color-primary-rgb, 124,58,237),0.08)' : 'var(--color-bg)',
+                  background: isForeign ? 'rgba(var(--color-primary-rgb, 163, 20, 34),0.08)' : 'var(--color-bg)',
                   border: `1px solid ${isForeign ? 'var(--color-primary)' : 'var(--color-border)'}`,
                   borderRadius: '999px', padding: '4px 12px', cursor: 'pointer', transition: 'all 0.15s',
                 }}

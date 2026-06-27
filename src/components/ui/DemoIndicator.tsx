@@ -79,7 +79,7 @@ export const DemoIndicator: React.FC = () => {
         <div style={{
           background: 'rgba(25, 10, 50, 0.95)',
           backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(139, 92, 246, 0.4)',
+          border: '1px solid rgba(189, 29, 45, 0.4)',
           padding: '6px 16px',
           borderRadius: '99px',
           display: 'flex',
@@ -94,9 +94,9 @@ export const DemoIndicator: React.FC = () => {
             justifyContent: 'center',
             width: 24,
             height: 24,
-            background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+            background: 'linear-gradient(135deg, #BD1D2D, #8a0f1b)',
             borderRadius: '50%',
-            boxShadow: '0 0 15px rgba(139, 92, 246, 0.5)'
+            boxShadow: '0 0 15px rgba(189, 29, 45, 0.5)'
           }}>
             <Terminal size={14} />
           </div>
@@ -193,7 +193,7 @@ export const DemoIndicator: React.FC = () => {
                 </div>
 
                 {/* Decorative Elements */}
-                <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', width: '200px', height: '200px', background: 'rgba(139, 92, 246, 0.2)', borderRadius: '50%', filter: 'blur(40px)', zIndex: 1 }} />
+                <div style={{ position: 'absolute', bottom: '-20px', right: '-20px', width: '200px', height: '200px', background: 'rgba(189, 29, 45, 0.2)', borderRadius: '50%', filter: 'blur(40px)', zIndex: 1 }} />
                 <div style={{ position: 'absolute', top: '20%', left: '-30px', width: '100px', height: '100px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '50%', filter: 'blur(30px)', zIndex: 1 }} />
               </div>
 
@@ -218,7 +218,7 @@ export const DemoIndicator: React.FC = () => {
                           placeholder="Nguyễn Văn A" required
                           value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
                         />
-                        <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#8b5cf6', opacity: 0.7 }} />
+                        <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#BD1D2D', opacity: 0.7 }} />
                       </div>
                     </div>
 
@@ -230,7 +230,7 @@ export const DemoIndicator: React.FC = () => {
                           placeholder="09xx xxx xxx"
                           value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})}
                         />
-                        <Phone size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#8b5cf6', opacity: 0.7 }} />
+                        <Phone size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#BD1D2D', opacity: 0.7 }} />
                       </div>
                     </div>
 
@@ -242,7 +242,7 @@ export const DemoIndicator: React.FC = () => {
                           type="email" placeholder="example@business.com" required
                           value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})}
                         />
-                        <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#8b5cf6', opacity: 0.7 }} />
+                        <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#BD1D2D', opacity: 0.7 }} />
                       </div>
                     </div>
 
@@ -254,7 +254,7 @@ export const DemoIndicator: React.FC = () => {
                           placeholder="Tên công ty của bạn..."
                           value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})}
                         />
-                        <Building size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#8b5cf6', opacity: 0.7 }} />
+                        <Building size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#BD1D2D', opacity: 0.7 }} />
                       </div>
                     </div>
 
@@ -281,7 +281,7 @@ export const DemoIndicator: React.FC = () => {
                           }
                         `}</style>
                         </div>
-                        <Users size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#8b5cf6', opacity: 0.7, pointerEvents: 'none', zIndex: 10 }} />
+                        <Users size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#BD1D2D', opacity: 0.7, pointerEvents: 'none', zIndex: 10 }} />
                       </div>
                     </div>
                   </div>
@@ -293,7 +293,7 @@ export const DemoIndicator: React.FC = () => {
                     style={{ 
                       width: '100%', height: '56px', marginTop: '1.5rem', 
                       fontWeight: 800, fontSize: '1.125rem', borderRadius: '16px', 
-                      background: 'linear-gradient(135deg, #6366f1, #4c1d95)',
+                      background: 'linear-gradient(135deg, #BD1D2D, #4c1d95)',
                       boxShadow: '0 10px 25px -5px rgba(88, 28, 135, 0.4)' 
                     }}
                   >

@@ -225,17 +225,17 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
   if (!selectedLead) return null;
   if (selectedLead.ai_screener_status === 'passed' && selectedLead.ai_evaluation) {
     return {
-      avatar: "https://crm-domation.vercel.app/LOGO.jpg",
+      avatar: "/LOGO.jpg",
       title: "Domation AI",
       badgeText: t("Đạt chuẩn"),
       badgeBg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
       badgeColor: '#ffffff',
       content: selectedLead.ai_evaluation,
-      accentColor: '#8b5cf6',
-      textAccentColor: theme === 'dark' ? '#a78bfa' : '#6d28d9',
-      topAccentGradient: 'linear-gradient(90deg, #8b5cf6 0%, #6366f1 100%)',
-      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%)' : 'linear-gradient(135deg, #fff8f9 0%, #eef2ff 100%)',
-      borderColor: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid rgba(139, 92, 246, 0.15)',
+      accentColor: '#BD1D2D',
+      textAccentColor: theme === 'dark' ? '#a78bfa' : '#8a0f1b',
+      topAccentGradient: 'linear-gradient(90deg, #BD1D2D 0%, #BD1D2D 100%)',
+      bgGradient: theme === 'dark' ? 'linear-gradient(135deg, rgba(189, 29, 45, 0.08) 0%, rgba(189, 29, 45, 0.08) 100%)' : 'linear-gradient(135deg, #fff8f9 0%, #fff0f3 100%)',
+      borderColor: theme === 'dark' ? '1px solid rgba(189, 29, 45, 0.25)' : '1px solid rgba(189, 29, 45, 0.15)',
     };
   } else if (selectedLead.status === 'pending_approval') {
     const isPendingEvaluation = selectedLead.ai_screener_status === 'pending' && (() => {
@@ -259,7 +259,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
     };
   } else if (selectedLead.status === 'rejected') {
     return {
-      avatar: "https://crm-domation.vercel.app/LOGO.jpg",
+      avatar: "/LOGO.jpg",
       title: "Domation AI",
       badgeText: t("Từ chối"),
       badgeBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
@@ -1097,7 +1097,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           justifyContent: 'space-between',
           transition: 'all 0.2s',
           backgroundColor: isToday
-            ? 'rgba(99, 102, 241, 0.08)'
+            ? 'rgba(189, 29, 45, 0.08)'
             : isWeekend
               ? 'var(--color-calendar-weekend)'
               : 'var(--color-surface)',
@@ -1162,7 +1162,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               alignItems: 'center',
               padding: '2px 4px',
               borderRadius: '4px',
-              background: theme === 'dark' ? 'var(--color-primary-light)' : '#f5f3ff',
+              background: theme === 'dark' ? 'var(--color-primary-light)' : '#fff5f6',
               color: theme === 'dark' ? 'var(--color-primary)' : '#a31422',
               fontSize: '0.6875rem',
               fontWeight: 600,
@@ -1758,12 +1758,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             </div>
                           ) : lead.status === 'fallback' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={20} />
+                              <Avatar src="/LOGO.jpg" name="Domation AI" size={20} />
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</span>
                             </div>
                           ) : lead.status === 'rejected' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={20} />
+                              <Avatar src="/LOGO.jpg" name="Domation AI - Evaluator" size={20} />
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</span>
                             </div>
                           ) : lead.status === 'blacklisted' ? (
@@ -1784,8 +1784,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           <span style={{
                             padding: '2px 8px',
                             borderRadius: '6px',
-                            background: '#e0e7ff',
-                            color: '#4338ca',
+                            background: '#ffe3e8',
+                            color: '#8a0f1b',
                             fontSize: '0.65rem',
                             fontWeight: 700
                           }}>
@@ -1878,7 +1878,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             </div>
                           ) : lead.status === 'fallback' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI" size={32} />
+                              <Avatar src="/LOGO.jpg" name="Domation AI" size={32} />
                               <div>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Fallback')}</div>
@@ -1886,7 +1886,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             </div>
                           ) : lead.status === 'rejected' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={32} />
+                              <Avatar src="/LOGO.jpg" name="Domation AI - Evaluator" size={32} />
                               <div>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Failed')}</div>
@@ -2019,15 +2019,15 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             width: '240px',
                             outline: 'none',
                             transition: 'all 0.2s ease-in-out',
-                            boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.08)'
+                            boxShadow: '0 0 0 3px rgba(163, 20, 34, 0.08)'
                           }}
                           onFocus={e => {
                             e.currentTarget.style.borderColor = 'var(--color-primary)';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.15)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(163, 20, 34, 0.15)';
                           }}
                           onBlur={e => {
                             e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.08)';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(163, 20, 34, 0.08)';
                           }}
                         />
                       ) : (
@@ -2134,22 +2134,22 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             title={t("Sửa thông tin")}
                             className="detail-action-btn"
                             style={{
-                              background: 'rgba(124, 58, 237, 0.08)',
+                              background: 'rgba(163, 20, 34, 0.08)',
                               border: '1px solid var(--color-primary-light)',
                               color: 'var(--color-primary)',
-                              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
+                              boxShadow: '0 2px 6px rgba(163, 20, 34, 0.05)'
                             }}
                             onMouseOver={e => {
                               e.currentTarget.style.background = 'var(--color-primary)';
                               e.currentTarget.style.color = '#ffffff';
                               e.currentTarget.style.transform = 'translateY(-2px)';
-                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(124, 58, 237, 0.2)';
+                              e.currentTarget.style.boxShadow = '0 6px 15px rgba(163, 20, 34, 0.2)';
                             }}
                             onMouseOut={e => {
-                              e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                              e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                               e.currentTarget.style.color = 'var(--color-primary)';
                               e.currentTarget.style.transform = 'none';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(124, 58, 237, 0.05)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(163, 20, 34, 0.05)';
                             }}
                           >
                             <Edit size={14} />
@@ -2213,7 +2213,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     onMouseEnter={e => {
                       if (!isAdminEditingLead) {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                        e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                       }
                     }}
                     onMouseLeave={e => {
@@ -2258,7 +2258,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -2269,10 +2269,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -2312,7 +2312,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     onMouseEnter={e => {
                       if (!isAdminEditingLead) {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        e.currentTarget.style.background = 'rgba(124, 58, 237, 0.02)';
+                        e.currentTarget.style.background = 'rgba(163, 20, 34, 0.02)';
                       }
                     }}
                     onMouseLeave={e => {
@@ -2333,7 +2333,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -2344,10 +2344,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -2385,7 +2385,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           fontWeight: 600,
                           color: 'var(--color-text)',
                           background: 'var(--color-surface)',
-                          border: '1px solid rgba(124, 58, 237, 0.15)',
+                          border: '1px solid rgba(163, 20, 34, 0.15)',
                           borderRadius: '10px',
                           padding: '8px 12px',
                           width: '100%',
@@ -2396,10 +2396,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         }}
                         onFocus={e => {
                           e.currentTarget.style.borderColor = 'var(--color-primary)';
-                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                          e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                         }}
                         onBlur={e => {
-                          e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                           e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                         }}
                       />
@@ -2493,7 +2493,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                   fontWeight: 600,
                                   color: 'var(--color-text)',
                                   background: 'var(--color-surface)',
-                                  border: '1px solid rgba(124, 58, 237, 0.15)',
+                                  border: '1px solid rgba(163, 20, 34, 0.15)',
                                   borderRadius: '10px',
                                   padding: '8px 12px',
                                   flex: 1,
@@ -2503,10 +2503,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 }}
                                 onFocus={e => {
                                   e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(124, 58, 237, 0.12)';
+                                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(163, 20, 34, 0.12)';
                                 }}
                                 onBlur={e => {
-                                  e.currentTarget.style.borderColor = 'rgba(124, 58, 237, 0.15)';
+                                  e.currentTarget.style.borderColor = 'rgba(163, 20, 34, 0.15)';
                                   e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.02)';
                                 }}
                               />
@@ -2986,7 +2986,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       padding: '1.25rem',
                       position: 'relative',
                       overflow: 'hidden',
-                      boxShadow: theme === 'dark' ? '0 8px 32px 0 rgba(0, 0, 0, 0.15)' : '0 10px 25px -5px rgba(139, 92, 246, 0.05), 0 8px 10px -6px rgba(139, 92, 246, 0.03)',
+                      boxShadow: theme === 'dark' ? '0 8px 32px 0 rgba(0, 0, 0, 0.15)' : '0 10px 25px -5px rgba(189, 29, 45, 0.05), 0 8px 10px -6px rgba(189, 29, 45, 0.03)',
                       transition: 'all 0.3s ease'
                     }}>
                       {/* Top glowing accent bar */}
@@ -3120,7 +3120,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 ) : selectedLead.status === 'rejected' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar src="https://crm-domation.vercel.app/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
+                      <Avatar src="/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
@@ -3409,7 +3409,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           style={{
                             marginTop: '0.75rem',
                             width: '100%',
-                            background: 'rgba(124, 58, 237, 0.08)',
+                            background: 'rgba(163, 20, 34, 0.08)',
                             border: '1px solid var(--color-primary-light)',
                             borderRadius: '10px',
                             padding: '8px 12px',
@@ -3427,10 +3427,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             e.currentTarget.style.background = 'var(--color-primary)';
                             e.currentTarget.style.color = '#ffffff';
                             e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 10px rgba(124, 58, 237, 0.15)';
+                            e.currentTarget.style.boxShadow = '0 4px 10px rgba(163, 20, 34, 0.15)';
                           }}
                           onMouseOut={e => {
-                            e.currentTarget.style.background = 'rgba(124, 58, 237, 0.08)';
+                            e.currentTarget.style.background = 'rgba(163, 20, 34, 0.08)';
                             e.currentTarget.style.color = 'var(--color-primary)';
                             e.currentTarget.style.transform = 'none';
                             e.currentTarget.style.boxShadow = 'none';
@@ -4517,8 +4517,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   padding: '8px 18px',
                   fontSize: '0.85rem',
                   fontWeight: 700,
-                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)',
-                  boxShadow: '0 4px 12px rgba(124, 58, 237, 0.2)',
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)',
+                  boxShadow: '0 4px 12px rgba(163, 20, 34, 0.2)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
@@ -4526,11 +4526,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 }}
                 onMouseOver={e => {
                   e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = '0 6px 15px rgba(124, 58, 237, 0.3)';
+                  e.currentTarget.style.boxShadow = '0 6px 15px rgba(163, 20, 34, 0.3)';
                 }}
                 onMouseOut={e => {
                   e.currentTarget.style.transform = 'none';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.2)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.2)';
                 }}
               >
                 {isSendingReminder ? <RefreshCw size={14} className="spin" /> : <Bell size={14} />}
@@ -4614,9 +4614,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
-                  background: theme === 'dark' ? 'rgba(139, 92, 246, 0.15)' : '#fff0f3',
+                  background: theme === 'dark' ? 'rgba(189, 29, 45, 0.15)' : '#fff0f3',
                   color: theme === 'dark' ? '#a78bfa' : '#700913',
-                  border: theme === 'dark' ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid #ffccd5',
+                  border: theme === 'dark' ? '1px solid rgba(189, 29, 45, 0.25)' : '1px solid #ffccd5',
                   padding: '3px 8px',
                   borderRadius: '12px',
                   fontSize: '0.72rem',
@@ -5384,7 +5384,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                   <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>{src.count} {t('data')} ({sourcePercent}%)</span>
                                 </div>
                                 <div style={{ width: '100%', height: 4, background: 'var(--color-border-light)', borderRadius: 2 }}>
-                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#8b5cf6', borderRadius: 2 }} />
+                                  <div style={{ width: `${sourcePercent}%`, height: '100%', background: '#BD1D2D', borderRadius: 2 }} />
                                 </div>
                               </div>
                             );
@@ -5487,7 +5487,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         }
         .calendar-day-cell:hover {
           background-color: var(--color-surface-hover) !important;
-          box-shadow: inset 0 0 0 2px var(--color-primary-light), 0 8px 24px rgba(99, 102, 241, 0.08);
+          box-shadow: inset 0 0 0 2px var(--color-primary-light), 0 8px 24px rgba(189, 29, 45, 0.08);
           z-index: 10;
           transform: translateY(-2px);
         }

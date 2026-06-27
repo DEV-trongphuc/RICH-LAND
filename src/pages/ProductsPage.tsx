@@ -227,7 +227,7 @@ export const ProductsPage: React.FC = () => {
                   </td>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div style={{ width:36, height:36, borderRadius:'10px', background:'rgba(124,58,237,0.1)', color:'var(--color-primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0 }}><Package size={16} /></div>
+                      <div style={{ width:36, height:36, borderRadius:'10px', background:'rgba(163, 20, 34,0.1)', color:'var(--color-primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0 }}><Package size={16} /></div>
                       <div>
                         <p className="text-sm font-semi" style={{ color: 'var(--color-text)' }}>{p.name}</p>
                         {p.description && <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)', marginBottom: '4px' }}>{p.description}</p>}
@@ -304,7 +304,7 @@ export const ProductsPage: React.FC = () => {
               
               <div className="modal-header" style={{ padding: '1.25rem 1.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'rgba(124,58,237,0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'rgba(163, 20, 34,0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Package size={20} />
                   </div>
                   <div>

@@ -59,6 +59,15 @@ const AGO = (iso: string) => {
   return `${Math.floor(s / 86400)} ngày trước`;
 };
 
+const overridePurpleColor = (c: string | null | undefined): string => {
+  if (!c) return 'var(--color-primary)';
+  const hex = c.toLowerCase().trim();
+  if (hex === '#6366f1' || hex === '#8b5cf6' || hex === '#7c3aed' || hex === '#6d28d9' || hex === '#4c1d95' || hex === '#a855f7' || hex === '#3b82f6') {
+    return 'var(--color-primary)';
+  }
+  return c;
+};
+
 const TABS = [
   { id: 'info', label: 'Thông tin chung', icon: <User size={16} /> },
   { id: 'tags', label: 'Tags', icon: <TagIcon size={16} /> },
@@ -333,7 +342,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <span
             key={i}
             onClick={(e) => showUserCard(e, name)}
-            style={{ color: '#8b5cf6', fontWeight: 700, cursor: 'pointer', background: '#f5f3ff', padding: '2px 6px', borderRadius: '4px', margin: '0 2px' }}
+            style={{ color: '#BD1D2D', fontWeight: 700, cursor: 'pointer', background: '#fff5f6', padding: '2px 6px', borderRadius: '4px', margin: '0 2px' }}
           >
             {part}
           </span>
@@ -462,7 +471,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           const stages = r.data.data || [];
           if (stages.length > 0) {
             const sorted = [...stages].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-            setPipelineStages(sorted.map((s: any) => ({ id: s.id, name: s.name, color: s.color || '#6366f1', order_index: s.order_index })));
+            setPipelineStages(sorted.map((s: any) => ({ id: s.id, name: s.name, color: s.color || '#BD1D2D', order_index: s.order_index })));
           }
         })
         .catch(() => { });
@@ -521,7 +530,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       type: a.type,
       user: a.user_name || 'Hệ thống',
       time: a.created_at,
-      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#8b5cf6' : '#10b981',
+      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : '#10b981',
       icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
       note: a.body || a.note || ''
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
@@ -807,18 +816,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         width: 220,
                         background: 'var(--color-surface)',
                         borderRadius: '16px',
-                        boxShadow: '0 20px 50px -12px rgba(99, 102, 241, 0.25)',
+                        boxShadow: '0 20px 50px -12px rgba(189, 29, 45, 0.25)',
                         border: '1px solid var(--color-primary-light)',
                         overflow: 'hidden'
                       }}
                     >
-                      <div style={{ height: 60, background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }} />
+                      <div style={{ height: 60, background: 'linear-gradient(135deg, #BD1D2D 0%, #8a0f1b 100%)' }} />
                       <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -30 }}>
-                        <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'var(--color-surface)', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid var(--color-surface)', fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6' }}>
+                        <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'var(--color-surface)', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid var(--color-surface)', fontSize: '1.5rem', fontWeight: 800, color: '#BD1D2D' }}>
                           {quickUserCard.name.charAt(0).toUpperCase()}
                         </div>
                         <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '4px' }}>{quickUserCard.name}</h4>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#BD1D2D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
                         {quickUserCard.email && (
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.8125rem', padding: '8px', background: 'var(--color-bg)', borderRadius: '10px' }}>
                             <Mail size={12} />
@@ -839,9 +848,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div
                       className="avatar-placeholder lg"
                       style={{
-                        background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #4338ca 100%)',
+                        background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)',
                         fontSize: '1.5rem', width: 80, height: 80, borderRadius: '24px',
-                        boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)',
+                        boxShadow: '0 10px 25px -5px rgba(189, 29, 45, 0.4)',
                         overflow: 'hidden',
                         cursor: 'pointer',
                         position: 'relative'
@@ -913,10 +922,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', cursor: 'pointer' }}
                         onClick={(e) => showUserCard(e, formData.owner_name)}
                       >
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
                           {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
                         </div>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#6d28d9' }}>{formData.owner_name || 'Sale phụ trách'}</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
                       </div>
                     </div>
                   </div>
@@ -966,7 +975,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     return pipelineStages.map((st, i) => {
                       const isActive = i <= safeIndex;
                       const isCurrent = i === safeIndex;
-                      const stColor = st.color || '#6366f1';
+                      const stColor = overridePurpleColor(st.color);
                       return (
                         <div
                           key={st.id}
@@ -1359,7 +1368,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button className="btn outline sm" onClick={() => setShowCallLogger(true)} style={{ color: '#3b82f6', borderColor: '#3b82f630', background: '#3b82f608', fontWeight: 600 }}><Phone size={14} /> Log Call</button>
-                          <button className="btn outline sm" onClick={() => setShowActivityModal(true)} style={{ color: '#8b5cf6', borderColor: '#8b5cf630', background: '#8b5cf608', fontWeight: 600 }}><Mail size={14} /> Email</button>
+                          <button className="btn outline sm" onClick={() => setShowActivityModal(true)} style={{ color: '#BD1D2D', borderColor: '#BD1D2D30', background: '#BD1D2D08', fontWeight: 600 }}><Mail size={14} /> Email</button>
                           <button className="btn outline sm" onClick={() => setShowTaskModal(true)} style={{ color: '#f59e0b', borderColor: '#f59e0b30', background: '#f59e0b08', fontWeight: 600 }}><CheckSquare size={14} /> Task</button>
                           <button className="btn primary sm" onClick={() => setShowActivityModal(true)} style={{ fontWeight: 600 }}><Plus size={14} /> Tương tác</button>
                         </div>
@@ -1484,7 +1493,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               {rules.map((r, i) => (
                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
                                   <div>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: r.type === 'Demographic' ? '#3b82f6' : '#8b5cf6', background: r.type === 'Demographic' ? '#3b82f615' : '#8b5cf615', padding: '2px 8px', borderRadius: '12px', marginRight: '8px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: r.type === 'Demographic' ? '#3b82f6' : '#BD1D2D', background: r.type === 'Demographic' ? '#3b82f615' : '#BD1D2D15', padding: '2px 8px', borderRadius: '12px', marginRight: '8px' }}>
                                       {r.type}
                                     </span>
                                     <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{r.rule}</span>
@@ -1841,7 +1850,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                         <button
                           className="btn primary sm"
-                          style={{ boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)' }}
+                          style={{ boxShadow: '0 4px 12px rgba(189, 29, 45, 0.2)' }}
                           onClick={() => {
                             setSelectedQuote(null);
                             setShowQuoteEditor(true);
@@ -1905,7 +1914,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Chi phí liên quan</h3>
-                        <button className="btn outline sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => setShowExpenseModal(true)}><Plus size={14} /> Nhập chi phí</button>
+                        <button className="btn outline sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#BD1D2D', borderColor: '#BD1D2D' }} onClick={() => setShowExpenseModal(true)}><Plus size={14} /> Nhập chi phí</button>
                       </div>
                       {drawerExpenses.length > 0 ? (
                         <div style={{ display: 'grid', gap: '1rem' }}>

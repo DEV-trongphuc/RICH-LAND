@@ -1043,9 +1043,9 @@ export const QuickAddLeadModal = () => {
         <div style={{
           marginBottom: '1.25rem',
           padding: '12px 14px',
-          background: theme === 'dark' ? 'linear-gradient(135deg, rgba(124, 58, 237, 0.08) 0%, rgba(237, 216, 252, 0.05) 100%)' : 'linear-gradient(135deg, #f5f3ff 0%, #edd8fc 100%)',
+          background: theme === 'dark' ? 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(237, 216, 252, 0.05) 100%)' : 'linear-gradient(135deg, #fff5f6 0%, #edd8fc 100%)',
           borderRadius: '12px',
-          border: theme === 'dark' ? '1px dashed rgba(168, 85, 247, 0.4)' : '1px dashed #e63946',
+          border: theme === 'dark' ? '1px dashed rgba(189, 29, 45, 0.4)' : '1px dashed #e63946',
           boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(192, 132, 252, 0.08)'
         }}>
           <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: '#a31422', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', letterSpacing: '0.5px' }}>
@@ -1262,7 +1262,7 @@ export const QuickAddLeadModal = () => {
                           transition: 'background-color 0.2s',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#f5f3ff';
+                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#fff5f6';
                           e.currentTarget.style.color = '#a31422';
                         }}
                         onMouseLeave={(e) => {

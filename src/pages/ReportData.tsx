@@ -33,7 +33,7 @@ const TEST_MOCK_CONTEXT = {
 };
 
 // Color hash for avatars
-const AVATAR_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', '#3b82f6', '#8b5cf6', '#d946ef', '#ec4899', '#14b8a6'];
+const AVATAR_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9', '#3b82f6', '#BD1D2D', '#d946ef', '#ec4899', '#14b8a6'];
 const getColor = (name: string) => {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
@@ -143,7 +143,7 @@ export const ReportData = () => {
   return (
     <div className="report-wrapper">
       {/* Blobs */}
-      <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(139,92,246,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: -80, left: -80, width: 320, height: 320, borderRadius: '50%', background: 'rgba(189, 29, 45,0.12)', filter: 'blur(60px)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: -80, right: -60, width: 260, height: 260, borderRadius: '50%', background: 'rgba(236,72,153,0.1)', filter: 'blur(60px)', pointerEvents: 'none' }} />
 
       <div style={{ flex: 1, minHeight: '20px' }} /> {/* Safe top spacer */}
@@ -170,7 +170,7 @@ export const ReportData = () => {
 
           {loadingCtx ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 0' }}>
-              <Loader2 size={40} className="spin" style={{ color: '#8b5cf6' }} />
+              <Loader2 size={40} className="spin" style={{ color: '#BD1D2D' }} />
               <ResponsiveStyle />
             </div>
           ) : ctxError ? (
@@ -206,7 +206,7 @@ export const ReportData = () => {
                 {context && (
                   <>
                     {/* Customer avatar block */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'linear-gradient(135deg, #f8faff, #f0f4ff)', borderRadius: 14, border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #e0e7ff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px', background: theme === 'dark' ? 'rgba(59, 130, 246, 0.1)' : 'linear-gradient(135deg, #f8faff, #f0f4ff)', borderRadius: 14, border: theme === 'dark' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid #ffe3e8' }}>
                       <div style={{ width: 48, height: 48, borderRadius: '50%', background: getColor(context.lead_name), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem', flexShrink: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.15)' }}>
                         {initials(context.lead_name)}
                       </div>
@@ -336,17 +336,17 @@ export const ReportData = () => {
                           alignItems: 'stretch',
                           gap: reason === r.reason ? 8 : 0,
                           padding: '12px 14px',
-                          border: '1.5px solid', borderColor: reason === r.reason ? '#8b5cf6' : 'transparent',
-                          background: reason === r.reason ? (theme === 'dark' ? 'rgba(124, 58, 237, 0.15)' : 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.12))') : 'var(--color-bg)',
+                          border: '1.5px solid', borderColor: reason === r.reason ? '#BD1D2D' : 'transparent',
+                          background: reason === r.reason ? (theme === 'dark' ? 'rgba(163, 20, 34, 0.15)' : 'linear-gradient(135deg, rgba(189, 29, 45,0.08), rgba(163, 20, 34,0.12))') : 'var(--color-bg)',
                           borderRadius: 12, cursor: 'pointer',
                           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                          boxShadow: reason === r.reason ? '0 4px 12px rgba(139,92,246,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
+                          boxShadow: reason === r.reason ? '0 4px 12px rgba(189, 29, 45,0.15)' : '0 2px 4px rgba(0,0,0,0.02)',
                           flexShrink: 0
                         }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <input type="radio" name="reason" value={r.reason} checked={reason === r.reason}
                               onChange={() => setReason(r.reason)}
-                              style={{ width: 16, height: 16, accentColor: '#8b5cf6', flexShrink: 0 }} />
+                              style={{ width: 16, height: 16, accentColor: '#BD1D2D', flexShrink: 0 }} />
                             <span style={{ fontSize: '0.85rem', color: reason === r.reason ? (theme === 'dark' ? '#a78bfa' : '#5b21b6') : 'var(--color-text-light)', fontWeight: reason === r.reason ? 700 : 500 }}>{t(r.reason)}</span>
                           </div>
 
@@ -356,7 +356,7 @@ export const ReportData = () => {
                               fontSize: '0.78rem',
                               lineHeight: 1.4,
                               color: theme === 'dark' ? 'rgba(255, 255, 255, 0.65)' : '#4b5563',
-                              borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(139, 92, 246, 0.15)',
+                              borderTop: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(189, 29, 45, 0.15)',
                               paddingTop: 8,
                               animation: 'fadeIn 0.2s ease-out',
                               whiteSpace: 'pre-wrap'
@@ -379,12 +379,12 @@ export const ReportData = () => {
                     <button type="submit" disabled={submitting}
                       style={{
                         width: '100%', flexShrink: 0, marginTop: 'auto',
-                        background: params.isTest ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #a31422, #6d28d9)',
+                        background: params.isTest ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #a31422, #8a0f1b)',
                         color: 'white', padding: '14px', borderRadius: 12, border: 'none',
                         fontSize: '0.95rem', fontWeight: 700,
                         cursor: submitting || params.isTest ? 'not-allowed' : 'pointer',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: params.isTest ? '0 4px 16px rgba(245,158,11,0.3)' : '0 4px 16px rgba(109,40,217,0.4)',
+                        boxShadow: params.isTest ? '0 4px 16px rgba(245,158,11,0.3)' : '0 4px 16px rgba(138, 15, 27,0.4)',
                         opacity: submitting ? 0.7 : 1, transition: 'all 0.2s'
                       }}>
                       {submitting ? <><Loader2 size={17} className="spin" /> {t("Đang gửi...")}</>

@@ -94,8 +94,33 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   }, [user]);
 
   const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => {
-    if (item.superAdminOnly && user?.role !== 'superadmin') return false;
-    if (item.adminOnly && user?.role !== 'admin' && user?.role !== 'superadmin') return false;
+    const role = user?.role as string;
+    // 1. Superadmin check
+    if (item.superAdminOnly) {
+      return role === 'superadmin' || role === 'super_admin';
+    }
+    
+    // 2. Admin check
+    if (item.adminOnly) {
+      return role === 'admin' || role === 'superadmin' || role === 'super_admin';
+    }
+    
+    // 3. Marketing checks
+    if (role === 'marketing') {
+      const allowedMarketingPaths = [
+        '/', '/data', '/contacts', '/companies', '/activities', '/reports-crm', '/files', '/gatekeeper'
+      ];
+      return allowedMarketingPaths.includes(item.href);
+    }
+    
+    // 4. Sales checks (in case they view admin layout)
+    if (role === 'sales' || role === 'sale') {
+      const allowedSalesPaths = [
+        '/', '/contacts', '/companies', '/deals', '/activities', '/products', '/files'
+      ];
+      return allowedSalesPaths.includes(item.href);
+    }
+    
     return true;
   });
 
@@ -146,7 +171,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             overflow: 'hidden',
             border: '2px solid rgba(192, 132, 252, 0.8)'
           }}>
-            <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               alt="logo" />
           </div>
@@ -186,7 +211,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   width: 44, height: 44, borderRadius: '50%',
                   background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
@@ -205,15 +230,15 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(168, 85, 247, 0.4)', transition: 'all 0.2s'
+                  boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(168, 85, 247, 0.5)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(189, 29, 45, 0.5)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(168, 85, 247, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.4)';
                 }}
               >
                 <Cpu size={18} /> {t("AI Infinity")}
@@ -228,9 +253,9 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 }}
                 style={{
                   width: 44, height: 44, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #a31422 100%)',
+                  background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
+                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
@@ -246,18 +271,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 }}
                 style={{
                   width: '100%', height: 44, borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #a31422 100%)',
+                  background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                   color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.4)', transition: 'all 0.2s'
+                  boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(79, 70, 229, 0.5)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.5)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(79, 70, 229, 0.4)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.4)';
                 }}
               >
                 <Plus size={18} /> {t("Thêm Data Nhanh")}

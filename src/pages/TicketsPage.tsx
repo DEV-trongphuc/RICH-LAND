@@ -15,7 +15,7 @@ import { Pagination } from '../components/ui/Pagination';
 const TICKET_STATUSES = [
   { id: 'open', label: 'Mới mở', color: '#3b82f6' },
   { id: 'in_progress', label: 'Đang xử lý', color: '#f59e0b' },
-  { id: 'waiting', label: 'Chờ phản hồi', color: '#8b5cf6' },
+  { id: 'waiting', label: 'Chờ phản hồi', color: '#BD1D2D' },
   { id: 'urgent', label: 'Khẩn cấp', color: '#ef4444' },
   { id: 'resolved', label: 'Đã giải quyết', color: '#10b981' },
 ];
@@ -418,7 +418,7 @@ export const TicketsPage: React.FC = () => {
                           <div key={uid} style={{ 
                             display: 'flex', alignItems: 'center', gap: '8px', 
                             padding: '4px 10px', paddingRight: '6px',
-                            background: 'rgba(124, 58, 237, 0.05)', border: '1px solid rgba(124, 58, 237, 0.15)',
+                            background: 'rgba(163, 20, 34, 0.05)', border: '1px solid rgba(163, 20, 34, 0.15)',
                             borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
                             color: 'var(--color-primary)'
                           }}>
@@ -427,7 +427,7 @@ export const TicketsPage: React.FC = () => {
                             <button 
                               onClick={() => setCreateForm({...createForm, related_users: createForm.related_users.filter(id => id !== uid)})}
                               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-primary)' }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.1)'}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(163, 20, 34, 0.1)'}
                               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                             >
                               <X size={14} />

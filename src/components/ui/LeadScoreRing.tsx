@@ -16,7 +16,7 @@ export const LeadScoreRing: React.FC<LeadScoreRingProps> = ({ score, size = 52, 
     score >= 80 ? '#10b981' :
     score >= 60 ? '#f59e0b' :
     score >= 40 ? '#3b82f6' :
-    score >= 20 ? '#8b5cf6' : '#ef4444';
+    score >= 20 ? '#BD1D2D' : '#ef4444';
 
   const label =
     score >= 80 ? 'Nóng' :

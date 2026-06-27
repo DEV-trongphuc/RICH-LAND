@@ -139,12 +139,12 @@ export const Login = () => {
       {/* Decorative Background Elements */}
       <div style={{
         position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw',
-        background: 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(0,0,0,0) 70%)',
+        background: 'radial-gradient(circle, rgba(189, 29, 45,0.15) 0%, rgba(0,0,0,0) 70%)',
         borderRadius: '50%', filter: 'blur(60px)', animation: 'float 10s ease-in-out infinite'
       }} />
       <div style={{
         position: 'absolute', bottom: '-20%', right: '-10%', width: '60vw', height: '60vw',
-        background: 'radial-gradient(circle, rgba(168,85,247,0.15) 0%, rgba(0,0,0,0) 70%)',
+        background: 'radial-gradient(circle, rgba(189, 29, 45,0.15) 0%, rgba(0,0,0,0) 70%)',
         borderRadius: '50%', filter: 'blur(80px)', animation: 'float 15s ease-in-out infinite reverse'
       }} />
       
@@ -188,7 +188,7 @@ export const Login = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{ background: 'rgba(99,102,241,0.2)', padding: '10px', borderRadius: '12px', color: '#818cf8' }}>
+              <div style={{ background: 'rgba(189, 29, 45,0.2)', padding: '10px', borderRadius: '12px', color: '#818cf8' }}>
                 <Share2 size={24} />
               </div>
               <div>
@@ -237,7 +237,7 @@ export const Login = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
           }}>
-            <img src="https://crm-domation.vercel.app/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} 
+            <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }} 
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               alt="logo" />
           </div>
@@ -379,8 +379,8 @@ export const Login = () => {
         }
         .login-input:focus {
           background: #fff;
-          border-color: #6366f1;
-          box-shadow: 0 0 0 4px rgba(99,102,241,0.1);
+          border-color: #BD1D2D;
+          box-shadow: 0 0 0 4px rgba(189, 29, 45,0.1);
         }
         [data-theme="dark"] .login-form-container {
           background: rgba(15, 20, 34, 0.85) !important;
@@ -389,7 +389,7 @@ export const Login = () => {
         }
         [data-theme="dark"] .login-input {
           background: rgba(6, 9, 19, 0.8) !important;
-          border-color: rgba(99, 102, 241, 0.25) !important;
+          border-color: rgba(189, 29, 45, 0.25) !important;
           color: #f8fafc !important;
         }
         [data-theme="dark"] .login-input:focus {
@@ -398,17 +398,17 @@ export const Login = () => {
           box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.15) !important;
         }
         .login-btn {
-          background: linear-gradient(135deg, #4f46e5 0%, #a31422 100%);
+          background: linear-gradient(135deg, #a31422 0%, #a31422 100%);
           color: white;
           border: none;
           border-radius: 12px;
           font-weight: 600;
           transition: all 0.3s ease;
-          box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+          box-shadow: 0 4px 12px rgba(189, 29, 45,0.3);
         }
         .login-btn:hover:not(:disabled) {
           transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(99,102,241,0.4);
+          box-shadow: 0 8px 20px rgba(189, 29, 45,0.4);
         }
         .login-btn:disabled {
           opacity: 0.7;
