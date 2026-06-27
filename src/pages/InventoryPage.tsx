@@ -266,8 +266,8 @@ export default function InventoryPage() {
     <div className="page-container anim-fade-up">
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title">Kho &amp; Lô hàng</h1>
-          <p className="page-subtitle">Quản lý nhập kho, theo dõi lô hàng và lịch sử biến động.</p>
+          <h1 className="page-title">Giỏ hàng &amp; Căn hộ</h1>
+          <p className="page-subtitle">Quản lý giỏ hàng căn hộ, lô đất dự án và lịch sử giao dịch.</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
           
@@ -277,31 +277,31 @@ export default function InventoryPage() {
               value={activeTab}
               onChange={e => setActiveTab(e.target.value as any)}
               className="form-select"
-              style={{ width: '100%', height: 40 }}
+              style={{ width: '100%', height: 38 }}
             >
-              <option value="batches">Danh sách lô</option>
-              <option value="history">Lịch sử biến động</option>
-              <option value="purchase_orders">Đơn nhập hàng</option>
+              <option value="batches">Danh sách căn / lô</option>
+              <option value="history">Lịch sử giao dịch</option>
+              <option value="purchase_orders">Hợp đồng/Bảng hàng</option>
             </select>
           </div>
 
           {/* Desktop Tab Buttons */}
           <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
-            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'batches' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'batches' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('batches')}>Danh sách lô</button>
-            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'history' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')}>Lịch sử biến động</button>
-            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'purchase_orders' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')}>Đơn nhập hàng</button>
+            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'batches' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'batches' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('batches')}>Danh sách căn / lô</button>
+            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'history' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')}>Lịch sử giao dịch</button>
+            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'purchase_orders' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')}>Hợp đồng/Bảng hàng</button>
           </div>
 
           <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
 
-          <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
-            <Download size={16} />
-            <span className="hide-on-mobile"> Nhập/Xuất</span>
+          <button className="btn outline" onClick={() => setShowImportExport(true)} style={{ height: '34px', fontSize: '0.8rem', padding: '0 12px' }} title="Nhập/Xuất Excel">
+            <Download size={14} />
+            <span className="hide-on-mobile"> Nhập/Xuất Excel</span>
           </button>
 
-          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} title="Tạo đơn nhập hàng">
-            <Plus size={16} />
-            <span className="hide-on-mobile"> Tạo đơn nhập hàng</span>
+          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} style={{ height: '34px', fontSize: '0.8rem', padding: '0 12px' }} title="Khai báo căn / lô">
+            <Plus size={14} />
+            <span className="hide-on-mobile"> Khai báo căn / lô</span>
           </button>
         </div>
       </div>
@@ -326,10 +326,10 @@ export default function InventoryPage() {
           {/* Stats Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
             {[
-              { label: 'Tổng vốn tồn kho', value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(stats.totalValue), icon: DollarSign, color: 'var(--color-primary)', sub: `${stats.totalBatches} lô hàng đang quản lý` },
-              { label: 'Số lô hàng', value: String(stats.totalBatches), icon: Layers, color: '#3b82f6', sub: `${batches.filter(b => b.current_qty > 0).length} lô còn hàng` },
-              { label: 'Sắp hết hàng', value: String(stats.lowStock), icon: AlertTriangle, color: 'var(--color-warning)', sub: 'Dưới 5 sản phẩm' },
-              { label: 'Sắp hết hạn (30d)', value: String(stats.expiringSoon), icon: Clock, color: 'var(--color-danger)', sub: 'Cần xử lý sớm' },
+              { label: 'Tổng số căn / lô', value: String(stats.totalBatches), icon: Layers, color: 'var(--color-primary)', sub: 'căn hộ / lô đất đang quản lý' },
+              { label: 'Căn còn trống (Available)', value: String(batches.filter(b => b.current_qty > 0).length), icon: CheckCircle, color: '#10b981', sub: 'sẵn sàng giao dịch' },
+              { label: 'Đã đặt chỗ / cọc (Booking)', value: String(stats.lowStock), icon: Clock, color: 'var(--color-warning)', sub: 'đang giữ chỗ/cọc tạm' },
+              { label: 'Đã bán (Sold)', value: String(stats.expiringSoon), icon: DollarSign, color: 'var(--color-danger)', sub: 'đã ký hợp đồng mua bán' },
             ].map((k, i) => (
               <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                 <div className="stat-kpi__header">
@@ -345,68 +345,37 @@ export default function InventoryPage() {
             ))}
           </div>
 
-      {/* Critical Alerts */}
-      <AnimatePresence>
-        {(stats.lowStock > 0 || stats.expiringSoon > 0) && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            style={{ marginBottom: '1.5rem' }}
-          >
-            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 'var(--radius-xl)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'var(--color-warning)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}>
-                <AlertTriangle size={24} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-warning)', margin: 0, marginBottom: 2 }}>Cảnh báo vận hành kho</h4>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-warning)', margin: 0, lineHeight: 1.5 }}>
-                  Có <strong>{stats.lowStock}</strong> lô hàng sắp hết và <strong>{stats.expiringSoon}</strong> lô hàng sắp hết hạn trong 30 ngày tới. Vui lòng kiểm tra và lên kế hoạch nhập hàng hoặc xả kho.
-                </p>
-              </div>
-              <button 
-                onClick={() => setStatusFilter('low_stock')}
-                style={{ padding: '6px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-warning)', color: 'var(--color-warning)', fontSize: '0.8125rem', fontWeight: 700, borderRadius: 'var(--radius-lg)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
-              >
-                Xem ngay →
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
         <div className="filter-search" style={{ flex: 1, minWidth: 0 }}>
           <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
           <input 
-            placeholder="Tìm theo tên sản phẩm, SKU hoặc mã lô..." 
+            placeholder="Tìm theo tên căn, mã căn (Block - Số tầng), dự án..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-          <div style={{ width: 160 }}>
+          <div style={{ width: 180 }}>
             <CustomSelect
               options={[
                 { value: 'all', label: 'Tất cả trạng thái' },
-                { value: 'in_stock', label: 'Còn hàng' },
-                { value: 'low_stock', label: 'Sắp hết hàng' },
-                { value: 'out_of_stock', label: 'Đã hết hàng' }
+                { value: 'in_stock', label: 'Căn còn trống (Available)' },
+                { value: 'low_stock', label: 'Đã đặt chỗ / Cọc (Booking)' },
+                { value: 'out_of_stock', label: 'Đã bán (Sold)' }
               ]}
               value={statusFilter}
               onChange={(val) => { setStatusFilter(String(val)); setPage(1); }}
             />
           </div>
-          <div style={{ width: 150 }}>
+          <div style={{ width: 160 }}>
             <CustomSelect
               options={[
                 { value: 'date_desc', label: 'Mới nhất trước' },
                 { value: 'date_asc', label: 'Cũ nhất trước' },
-                { value: 'qty_desc', label: 'Tồn kho giảm dần' },
-                { value: 'qty_asc', label: 'Tồn kho tăng dần' }
+                { value: 'qty_desc', label: 'Giá trị giảm dần' },
+                { value: 'qty_asc', label: 'Giá trị tăng dần' }
               ]}
               value={sortBy}
               onChange={(val) => { setSortBy(String(val)); setPage(1); }}
@@ -514,10 +483,10 @@ export default function InventoryPage() {
                 <table>
                   <thead>
                     <tr>
-                      <th>LÔ HÀNG & SKU <Tooltip content="Hệ thống áp dụng phương pháp nhập trước xuất trước (FIFO) để tính giá vốn và trừ kho tự động khi bán hàng." /></th>
-                      <th>NGÀY NHẬP / HSD</th>
-                      <th style={{ textAlign: 'right' }}>GIÁ VỐN</th>
-                      <th style={{ textAlign: 'center' }}>TỒN KHO</th>
+                      <th>MÃ CĂN / DỰ ÁN <Tooltip content="Bảng giỏ hàng dự án bất động sản được đồng bộ theo dòng tiền cọc và giỏ hàng của Chủ đầu tư." /></th>
+                      <th>NGÀY KHAI BÁO / BÀN GIAO</th>
+                      <th style={{ textAlign: 'right' }}>GIÁ BÁN (VND)</th>
+                      <th style={{ textAlign: 'center' }}>DIỆN TÍCH (M²)</th>
                       <th>TRẠNG THÁI</th>
                       <th style={{ textAlign: 'right' }}>THAO TÁC</th>
                     </tr>
@@ -556,52 +525,49 @@ export default function InventoryPage() {
                               <td>
                                 <div className="font-bold text-sm">{new Date(b.import_date).toLocaleDateString('vi-VN')}</div>
                                 {b.expiry_date && (
-                                  <div className={`text-xs flex items-center gap-1 ${new Date(b.expiry_date) < new Date() ? 'font-bold' : ''}`} style={{ marginTop: '0.25rem', color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
-                                    <Clock size={12} /> HSD: {new Date(b.expiry_date).toLocaleDateString('vi-VN')}
+                                  <div className="text-xs flex items-center gap-1" style={{ marginTop: '0.25rem', color: 'var(--color-text-muted)' }}>
+                                    <Clock size={12} /> Bàn giao: {new Date(b.expiry_date).toLocaleDateString('vi-VN')}
                                   </div>
                                 )}
                               </td>
                               <td style={{ textAlign: 'right' }}>
                                 <div className="font-bold text-sm">{(b.import_price || 0).toLocaleString()} đ</div>
-                                <div className="text-muted" style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 600, marginTop: '2px' }}>{b.unit}</div>
+                                <div className="text-muted" style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 600, marginTop: '2px' }}>{b.unit || 'm²'}</div>
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
-                                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)', whiteSpace: 'nowrap' }}>
-                                    {b.current_qty} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-light)' }}>/ {b.initial_qty}</span>
-                                  </div>
-                                  <div style={{ width: '80px', height: '10px', borderRadius: '100px', background: 'var(--color-border)', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
-                                    <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', borderRadius: '100px', width: `${Math.max(pct, pct > 0 ? 6 : 0)}%`, minWidth: pct > 0 ? '6px' : '0', background: pct <= 10 ? 'var(--color-danger)' : pct <= 30 ? 'var(--color-warning)' : 'var(--color-primary)', transition: 'width 0.5s' }} />
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>
+                                    {b.current_qty} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-light)' }}>m²</span>
                                   </div>
                                 </div>
                               </td>
                               <td>
                                 {b.current_qty <= 0 ? (
-                                <span className="badge danger">Hết hàng</span>
-                              ) : b.current_qty <= 5 ? (
-                                <span className="badge warning">Sắp hết</span>
-                              ) : (
-                                <span className="badge success">Còn hàng</span>
-                              )}
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div className="flex gap-2 justify-end group-hover-visible">
-                                <button className="btn-icon sm text-warning" title="Xuất nội bộ" onClick={() => { setSelectedBatch(b); setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' }); setShowExportModal(true); }}>
-                                  <Share size={14} />
-                                </button>
-                                <button className="btn-icon sm text-primary" title="Lịch sử lô hàng" onClick={() => { setSelectedBatch(b); fetchBatchLogs(b.id); setShowHistoryModal(true); }}>
-                                  <History size={14} />
-                                </button>
-                                <button className="btn-icon sm text-info" title="Điều chỉnh tồn kho" onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' }); setShowAdjustModal(true); }}>
-                                  <Edit size={14} />
-                                </button>
-                                {b.current_qty <= 0 && (
-                                  <button className="btn-icon sm text-danger" title="Lưu trữ lô hàng" onClick={() => archiveBatch(b.id)}>
-                                    <Trash2 size={14} />
-                                  </button>
+                                  <span className="badge danger">Đã bán (Sold)</span>
+                                ) : b.current_qty <= 5 ? (
+                                  <span className="badge warning">Đặt cọc (Booking)</span>
+                                ) : (
+                                  <span className="badge success">Còn trống (Available)</span>
                                 )}
-                              </div>
-                            </td>
+                              </td>
+                              <td style={{ textAlign: 'right' }}>
+                                <div className="flex gap-2 justify-end group-hover-visible">
+                                  <button className="btn-icon sm text-warning" title="Giữ chỗ / Lock căn" onClick={() => { setSelectedBatch(b); setExportForm({ qty: '', reason: 'Lock giữ chỗ', receiver_id: '' }); setShowExportModal(true); }}>
+                                    <Share size={14} />
+                                  </button>
+                                  <button className="btn-icon sm text-primary" title="Lịch sử giao dịch" onClick={() => { setSelectedBatch(b); fetchBatchLogs(b.id); setShowHistoryModal(true); }}>
+                                    <History size={14} />
+                                  </button>
+                                  <button className="btn-icon sm text-info" title="Cập nhật thông tin căn" onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Cập nhật diện tích/thông số' }); setShowAdjustModal(true); }}>
+                                    <Edit size={14} />
+                                  </button>
+                                  {b.current_qty <= 0 && (
+                                    <button className="btn-icon sm text-danger" title="Lưu trữ" onClick={() => archiveBatch(b.id)}>
+                                      <Trash2 size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
                           </tr>
                           )}
                         </React.Fragment>

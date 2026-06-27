@@ -17,9 +17,9 @@ const ALL_NAV_ITEMS = [
   { name: 'Hóa đơn', href: '/invoices', icon: Receipt },
   { name: 'Chi phí', href: '/expenses', icon: CreditCard },
   { name: 'Báo cáo CRM', href: '/reports-crm', icon: BarChart2 },
-  { name: 'Nhà cung cấp', href: '/suppliers', icon: Truck },
-  { name: 'Tệp tin', href: '/files', icon: File },
-  { name: 'Kho hàng', href: '/inventory', icon: Boxes },
+  { name: 'Chủ đầu tư', href: '/suppliers', icon: Truck },
+  { name: 'Tập tin', href: '/files', icon: File },
+  { name: 'Giỏ hàng', href: '/inventory', icon: Boxes },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
@@ -27,7 +27,7 @@ const ALL_NAV_ITEMS = [
   { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
   { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
   { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
-  { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, superAdminOnly: true },
+  { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
   { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
 ];
 
@@ -96,7 +96,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => {
     const role = user?.role as string;
     // 1. Superadmin check
-    if (item.superAdminOnly) {
+    if ((item as any).superAdminOnly) {
       return role === 'superadmin' || role === 'super_admin';
     }
     
