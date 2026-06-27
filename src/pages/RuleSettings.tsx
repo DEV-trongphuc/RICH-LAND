@@ -1576,7 +1576,7 @@ const RuleSettingsInner = () => {
                 style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--color-primary-light)', boxShadow: 'var(--shadow-sm)' }} 
               />
               <div>
-                <h4 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)' }}>{t("Trợ lý Domation AI Đánh giá")}</h4>
+                <h4 style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)' }}>{t("Trợ lý Rich Land AI Đánh giá")}</h4>
                 <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t("Phân tích xung đột, tối ưu thứ tự ưu tiên và phát hiện kẽ hở định tuyến")}</p>
               </div>
             </div>

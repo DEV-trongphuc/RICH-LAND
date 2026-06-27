@@ -11,7 +11,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/backend': {
-        target: 'http://open.domation.net/richland',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       }
     }

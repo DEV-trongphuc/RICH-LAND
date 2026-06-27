@@ -44,7 +44,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   direction = 'down',
   multiple = false,
   align = 'left',
-  size = 'md'
+  size = 'sm'
 }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -153,9 +153,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         style={{
           ...(size === 'sm' ? {
-            minHeight: '32px',
-            padding: '4px 10px',
-            fontSize: '0.8rem',
+            minHeight: '38px',
+            height: '38px',
+            padding: '6px 12px',
+            fontSize: '0.875rem',
             borderRadius: 'var(--radius-md)'
           } : {}),
           ...((size === 'sm' && isOpen) ? {

@@ -1,9 +1,9 @@
-const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
+const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.richland.net/sale_data/api.php';
 import { processMockRequest } from './mockEngine';
 import { en, ja, zh } from './translations';
 
 function getTranslatedError(key: string, replacements?: Record<string, string | number>): string {
-  const lang = localStorage.getItem('domation_lang') || 'vi';
+  const lang = localStorage.getItem('richland_lang') || 'vi';
   if (lang === 'vi') return key;
   let translated = key;
   if (lang === 'en') translated = en[key] || key;
@@ -40,7 +40,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
   }
 
   const promise = (async () => {
-    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+    if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
       let payload;
       if (options.body) {
         try { payload = JSON.parse(options.body as string); } catch (e) {}
@@ -48,7 +48,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
       return processMockRequest(action, payload);
     }
 
-    const token = localStorage.getItem('domation_token');
+    const token = localStorage.getItem('richland_token');
     
     const headers: Record<string, string> = {
       ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -78,15 +78,15 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
         if (!response.ok) {
           if ((response.status === 401 || response.status === 403) && action !== 'login') {
             if (window.location.pathname === '/sale-portal') {
-              localStorage.removeItem('domation_token');
-              localStorage.removeItem('domation_user');
+              localStorage.removeItem('richland_token');
+              localStorage.removeItem('richland_user');
               throw new Error(json.message || 'Unauthorized');
             }
             // BUG-11 fix: Only redirect once even if multiple parallel requests all fail
             if (!_isRedirectingToLogin) {
               _isRedirectingToLogin = true;
-              localStorage.removeItem('domation_token');
-              localStorage.removeItem('domation_user');
+              localStorage.removeItem('richland_token');
+              localStorage.removeItem('richland_user');
               // Use replace to avoid back-button loop
               window.location.replace('/login');
             }
@@ -145,7 +145,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
  * KHÔNG gửi token, KHÔNG redirect về /login khi lỗi
  */
 export async function fetchPublicAPI(action: string, options: RequestInit = {}) {
-  if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+  if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
     let payload;
     if (options.body) {
       try { payload = JSON.parse(options.body as string); } catch (e) {}

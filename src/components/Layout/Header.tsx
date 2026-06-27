@@ -30,7 +30,7 @@ const maskPhone = (phone: string) => {
 };
 
 export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedClick: () => void; onMenuClick?: () => void }) => {
-  const isDemo = localStorage.getItem('DOMATION_DEMO_MODE') === 'true';
+  const isDemo = localStorage.getItem('RICH LAND_DEMO_MODE') === 'true';
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -55,7 +55,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
 
   // Listen to system changes if theme is not set and sync with external theme changes
   useEffect(() => {
-    const localTheme = localStorage.getItem('domation_theme') as 'light' | 'dark';
+    const localTheme = localStorage.getItem('richland_theme') as 'light' | 'dark';
     if (localTheme) {
       setTheme(localTheme);
       document.documentElement.setAttribute('data-theme', localTheme);
@@ -82,7 +82,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
     if (!(document as any).startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setTheme(nextTheme);
       document.documentElement.setAttribute('data-theme', nextTheme);
-      localStorage.setItem('domation_theme', nextTheme);
+      localStorage.setItem('richland_theme', nextTheme);
       window.dispatchEvent(new Event('theme-change'));
       return;
     }
@@ -99,7 +99,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
     const transition = (document as any).startViewTransition(() => {
       setTheme(nextTheme);
       document.documentElement.setAttribute('data-theme', nextTheme);
-      localStorage.setItem('domation_theme', nextTheme);
+      localStorage.setItem('richland_theme', nextTheme);
       window.dispatchEvent(new Event('theme-change'));
     });
 

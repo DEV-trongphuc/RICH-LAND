@@ -28,7 +28,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      const lang = localStorage.getItem('domation_lang') || 'vi';
+      const lang = localStorage.getItem('richland_lang') || 'vi';
       const t = (key: string) => {
         if (lang === 'vi') return key;
         return en[key] || key;

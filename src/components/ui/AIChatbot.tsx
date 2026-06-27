@@ -19,7 +19,7 @@ export const AIChatbot: React.FC = () => {
     {
       id: 'welcome',
       sender: 'bot',
-      text: t('Xin chào! Tôi là Trợ lý AI hỗ trợ hệ thống quản trị Domation. 🤖\n\nTôi có thể trả lời các câu hỏi về chỉ số thống kê hôm nay, cách cấu hình Zalo Bot, thiết lập Blacklist, quy tắc chia số, hoặc Ticket báo lỗi đền bù.\n\nBạn cần tôi hỗ trợ gì hôm nay?'),
+      text: t('Xin chào! Tôi là Trợ lý AI hỗ trợ hệ thống quản trị Rich Land. 🤖\n\nTôi có thể trả lời các câu hỏi về chỉ số thống kê hôm nay, cách cấu hình Zalo Bot, thiết lập Blacklist, quy tắc chia số, hoặc Ticket báo lỗi đền bù.\n\nBạn cần tôi hỗ trợ gì hôm nay?'),
       timestamp: new Date()
     }
   ]);
@@ -730,7 +730,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
               {renderBotAvatar(34, true)}
               <div>
                 <div style={{ fontSize: '0.9rem', fontWeight: 800, letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {t('Trợ lý AI Domation')}
+                  {t('Trợ lý AI Rich Land')}
                   <Sparkles size={12} style={{ color: '#fcd34d' }} />
                 </div>
                 <div style={{ fontSize: '0.6875rem', opacity: 0.85, display: 'flex', alignItems: 'center', gap: 4 }}>

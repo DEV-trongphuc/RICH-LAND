@@ -17,7 +17,7 @@ const viOverrides: Record<string, string> = {
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    return (localStorage.getItem('domation_lang') as Language) || 'vi';
+    return (localStorage.getItem('richland_lang') as Language) || 'vi';
   });
 
   const [loadedTranslations, setLoadedTranslations] = useState<Record<string, Record<string, string>> | null>(null);
@@ -53,13 +53,13 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('domation_lang', lang);
+    localStorage.setItem('richland_lang', lang);
     window.dispatchEvent(new Event('language-change'));
   }, []);
 
   useEffect(() => {
     const handleStorageChange = () => {
-      const storedLang = (localStorage.getItem('domation_lang') as Language) || 'vi';
+      const storedLang = (localStorage.getItem('richland_lang') as Language) || 'vi';
       if (storedLang !== language) {
         setLanguageState(storedLang);
       }

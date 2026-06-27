@@ -63,7 +63,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
+    return localStorage.getItem('richland_global_date') || getDefaultDateFilter();
   });
   const [showDateModal, setShowDateModal] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -71,7 +71,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const handleUpdateDateFilter = (val: string) => {
     setDateFilter(val);
-    localStorage.setItem('domation_global_date', val);
+    localStorage.setItem('richland_global_date', val);
     window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
   };
 
@@ -216,7 +216,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   useEffect(() => {
     if (isActive) {
-      const saved = localStorage.getItem('domation_global_date');
+      const saved = localStorage.getItem('richland_global_date');
       if (saved && saved !== dateFilter) {
         setDateFilter(saved);
       }
@@ -1328,7 +1328,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                         <label className="form-label">{t("Nhập CC email ngoài hệ thống")}</label>
                         <input
                           className="form-input"
-                          placeholder={t("VD: giamdoc@domation.vn, quanly@domation.vn")}
+                          placeholder={t("VD: giamdoc@richland.vn, quanly@richland.vn")}
                           value={externalCcEmails}
                           onChange={e => setExternalCcEmails(e.target.value)}
                         />

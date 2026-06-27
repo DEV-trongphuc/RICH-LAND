@@ -21,10 +21,10 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
             <div style="background: linear-gradient(135deg, #eab308, #ea580c); padding: 40px 20px; text-align: center;">
                 <div style="margin-bottom: 16px; text-align: center;">
                     <div style="display: inline-block; background: rgba(255,255,255,0.25); border-radius: 50%; width: 56px; height: 56px; line-height: 56px; text-align: center; vertical-align: middle;">
-                        <img src="https://open.domation.net/sale_data/Compress_ICON.png" alt="Domation Logo" style="width: 32px; height: 32px; vertical-align: middle; display: inline-block; border-radius: 50%;" />
+                        <img src="https://open.richland.net/sale_data/Compress_ICON.png" alt="Rich Land Logo" style="width: 32px; height: 32px; vertical-align: middle; display: inline-block; border-radius: 50%;" />
                     </div>
                 </div>
-                <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 900; letter-spacing: 2px; text-align: center;">DOMATION</h1>
+                <h1 style="color: #ffffff; font-size: 28px; margin: 0; font-weight: 900; letter-spacing: 2px; text-align: center;">RICH LAND</h1>
                 <p style="color: rgba(255,255,255,0.95); font-size: 14px; margin: 8px 0 0; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; text-align: center;">' . $headerSub . '</p>
             </div>
             
@@ -38,8 +38,8 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
             <!-- Footer -->
             <div style="background-color: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
                 <p style="color: #64748b; font-size: 13px; margin: 0; line-height: 1.6;">
-                    © ' . date("Y") . ' Domation Ecosystem. All rights reserved.<br/>
-                    Email này được gửi tự động từ hệ thống quản trị DOMATION.
+                    © ' . date("Y") . ' Rich Land Ecosystem. All rights reserved.<br/>
+                    Email này được gửi tự động từ hệ thống quản trị RICH LAND.
                 </p>
             </div>
         </div>
@@ -123,8 +123,8 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $mail->CharSet = 'UTF-8';
             $mail->Timeout = 15;
 
-            $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
-            $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';
+            $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@richland.net';
+            $senderName = $settings['ses_sender_name'] ?? 'RICH LAND TEAM';
 
             $mail->setFrom($senderEmail, $senderName);
             $mail->addAddress($to);
@@ -865,7 +865,7 @@ function sendWelcomeEmailToSale(
     string $zaloBotLink,
     bool $sync = false
 ) {
-    $subject = '🎉 Chào mừng bạn gia nhập Hệ thống Domation DATA';
+    $subject = '🎉 Chào mừng bạn gia nhập Hệ thống Rich Land DATA';
     $fName = htmlspecialchars($consultantName ?: 'Bạn');
 
     $content = '
@@ -923,7 +923,7 @@ function sendWelcomeEmailToAdminTicket(
                 <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">🛡️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
-            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được thiết lập để nhận thông báo từ hệ thống quản trị DOMATION.</p>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Bạn vừa được thiết lập để nhận thông báo từ hệ thống quản trị RICH LAND.</p>
         </div>
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
@@ -965,7 +965,7 @@ function sendAdminConfirmationEmail(
                 <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">✉️</span>
             </div>
             <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
-            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản Admin của bạn đã được tạo trên hệ thống Domation DATA.</p>
+            <p style="color: #64748b; font-size: 15px; margin: 0;">Tài khoản Admin của bạn đã được tạo trên hệ thống Rich Land DATA.</p>
         </div>
 
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px; text-align: center;">
@@ -1092,7 +1092,7 @@ function sendDailyReportEmailToAdmins(
                  <span style="font-size: 32px; line-height: 64px; vertical-align: middle;">&#128202;</span>
              </div>
              <h2 style="color: #0f172a; margin: 0 0 8px; font-size: 22px;">Chào ' . $fName . '</h2>
-             <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của hệ thống Domation DATA.</p>
+             <p style="color: #64748b; font-size: 15px; margin: 0;">Dưới đây là Báo cáo tổng kết ngày hôm nay của hệ thống Rich Land DATA.</p>
          </div>
  
           <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 24px;">
@@ -1154,7 +1154,7 @@ function sendCompensationAddedEmailToSale($consultantEmail, $consultantName, $ro
     if (empty($time))
         $time = date('H:i:s d/m/Y');
 
-    $subject = "[Domation DATA] Thông báo Bù Data Chủ Động - Vòng: $roundName";
+    $subject = "[Rich Land DATA] Thông báo Bù Data Chủ Động - Vòng: $roundName";
     $title = "BẠN VỪA ĐƯỢC BÙ DATA CHỦ ĐỘNG";
 
     $reasonStr = !empty($reason) ? "<p style='margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;'><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>" : "";
@@ -1185,7 +1185,7 @@ function sendActiveCompensationEmailToAdmins($adminEmail, $adminName, $consultan
     if (empty($time))
         $time = date('H:i:s d/m/Y');
 
-    $subject = "[Domation DATA] Báo cáo Bù Data Chủ Động — $consultantName";
+    $subject = "[Rich Land DATA] Báo cáo Bù Data Chủ Động — $consultantName";
     $title = "BÁO CÁO BÙ DATA CHỦ ĐỘNG";
 
     $reasonStr = !empty($reason) ? "<p style='margin: 8px 0 0 0; font-size: 15px; color: #1e1b4b;'><strong>Lý do:</strong> " . htmlspecialchars($reason) . "</p>" : "";

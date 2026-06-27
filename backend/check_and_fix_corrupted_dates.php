@@ -83,6 +83,6 @@ if ($confirm) {
     echo "Dự kiến sẽ khôi phục: $fixedCount / $total lead.\n";
     echo "Số lead có ngày khớp đúng sẵn (không cần sửa): $noChangeCount lead.\n";
     echo "Để thực hiện lưu thay đổi thực tế vào DB, vui lòng thêm tham số '?confirm=1' vào URL.\n";
-    echo "Ví dụ: https://open.domation.net/sale_data/check_and_fix_corrupted_dates.php?confirm=1\n";
+    echo "Ví dụ: https://open.richland.net/sale_data/check_and_fix_corrupted_dates.php?confirm=1\n";
 }
 ?>

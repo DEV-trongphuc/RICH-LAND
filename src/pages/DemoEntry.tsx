@@ -12,15 +12,15 @@ export const DemoEntry: React.FC = () => {
 
   useEffect(() => {
     // Set global demo mode flag
-    localStorage.setItem('DOMATION_DEMO_MODE', 'true');
+    localStorage.setItem('RICH LAND_DEMO_MODE', 'true');
     
     // Clear out old real tokens
-    localStorage.removeItem('domation_token');
-    localStorage.removeItem('domation_user');
+    localStorage.removeItem('richland_token');
+    localStorage.removeItem('richland_user');
     
     // Fake login
     const demoToken = 'demo_token_12345';
-    const demoUser = { id: 1, email: 'admin@domation.net', role: 'admin' as const, is_confirmed: 1, username: 'admin', name: 'Admin Demo' };
+    const demoUser = { id: 1, email: 'admin@richland.net', role: 'admin' as const, is_confirmed: 1, username: 'admin', name: 'Admin Demo' };
     
     login(demoToken, demoUser);
     

@@ -226,7 +226,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
   if (selectedLead.ai_screener_status === 'passed' && selectedLead.ai_evaluation) {
     return {
       avatar: "/LOGO.jpg",
-      title: "Domation AI",
+      title: "Rich Land AI",
       badgeText: t("Đạt chuẩn"),
       badgeBg: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
       badgeColor: '#ffffff',
@@ -246,7 +246,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
     })();
     return {
       avatar: "/imgs/warn_icon.png",
-      title: "Domation AI",
+      title: "Rich Land AI",
       badgeText: t("Chờ duyệt"),
       badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
       badgeColor: '#ffffff',
@@ -260,7 +260,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
   } else if (selectedLead.status === 'rejected') {
     return {
       avatar: "/LOGO.jpg",
-      title: "Domation AI",
+      title: "Rich Land AI",
       badgeText: t("Từ chối"),
       badgeBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
       badgeColor: '#ffffff',
@@ -274,7 +274,7 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
   } else if (selectedLead.status === 'blacklisted') {
     return {
       avatar: "/imgs/angry_icon.jpg",
-      title: "Domation AI",
+      title: "Rich Land AI",
       badgeText: t("Bị chặn"),
       badgeBg: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
       badgeColor: '#ffffff',
@@ -319,12 +319,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const searchTerm = searchParams.get('search') || '';
   const statusFilter = searchParams.get('status') || 'all';
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
+    return localStorage.getItem('richland_global_date') || getDefaultDateFilter();
   });
 
   const handleUpdateDateFilter = (val: string) => {
     setDateFilter(val);
-    localStorage.setItem('domation_global_date', val);
+    localStorage.setItem('richland_global_date', val);
     window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
   };
   const consultantFilter = searchParams.get('consultant') || 'all';
@@ -504,7 +504,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   useEffect(() => {
     if (isActive) {
-      const saved = localStorage.getItem('domation_global_date') || getDefaultDateFilter();
+      const saved = localStorage.getItem('richland_global_date') || getDefaultDateFilter();
       if (saved && saved !== dateFilter) {
         setDateFilter(saved);
       }
@@ -915,7 +915,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   // BUG-05 fix: Implement CSV export using Backend Stream to prevent browser/server OOM
   const handleExportCSV = () => {
-    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+    if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
       toast.loading(t('Đang chuẩn bị dữ liệu xuất CSV (Demo)...'), { id: 'export' });
       try {
         if (leads.length === 0) {
@@ -980,8 +980,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
     toast.loading(t('Đang chuẩn bị dữ liệu xuất CSV...'), { id: 'export' });
     try {
-      const token = localStorage.getItem('domation_token') || '';
-      const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.domation.net/sale_data/api.php';
+      const token = localStorage.getItem('richland_token') || '';
+      const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'https://open.richland.net/sale_data/api.php';
       const exportUrl = `${baseUrl}?action=export_csv&token=${encodeURIComponent(token)}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&round=${encodeURIComponent(roundFilter)}&search=${encodeURIComponent(searchTerm)}`;
 
       const link = document.createElement('a');
@@ -1753,23 +1753,23 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           <span style={{ color: 'var(--color-text-muted)' }}>{t('Giao cho')}:</span>
                           {lead.status === 'pending_approval' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={20} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Screener</span>
+                              <Avatar src="/imgs/warn_icon.png" name="Rich Land AI - Screener" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Screener</span>
                             </div>
                           ) : lead.status === 'fallback' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Avatar src="/LOGO.jpg" name="Domation AI" size={20} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI</span>
+                              <Avatar src="/LOGO.jpg" name="Rich Land AI" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI</span>
                             </div>
                           ) : lead.status === 'rejected' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Avatar src="/LOGO.jpg" name="Domation AI - Evaluator" size={20} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</span>
+                              <Avatar src="/LOGO.jpg" name="Rich Land AI - Evaluator" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Evaluator</span>
                             </div>
                           ) : lead.status === 'blacklisted' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={20} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Angry</span>
+                              <Avatar src="/imgs/angry_icon.jpg" name="Rich Land AI - Angry" size={20} />
+                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Angry</span>
                             </div>
                           ) : lead.assigned_to_name !== '-' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1870,33 +1870,33 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>
                           {lead.status === 'pending_approval' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={32} />
+                              <Avatar src="/imgs/warn_icon.png" name="Rich Land AI - Screener" size={32} />
                               <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Screener</div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Screener</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Chờ duyệt')}</div>
                               </div>
                             </div>
                           ) : lead.status === 'fallback' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/LOGO.jpg" name="Domation AI" size={32} />
+                              <Avatar src="/LOGO.jpg" name="Rich Land AI" size={32} />
                               <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI</div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Fallback')}</div>
                               </div>
                             </div>
                           ) : lead.status === 'rejected' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/LOGO.jpg" name="Domation AI - Evaluator" size={32} />
+                              <Avatar src="/LOGO.jpg" name="Rich Land AI - Evaluator" size={32} />
                               <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Evaluator</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Failed')}</div>
                               </div>
                             </div>
                           ) : lead.status === 'blacklisted' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={32} />
+                              <Avatar src="/imgs/angry_icon.jpg" name="Rich Land AI - Angry" size={32} />
                               <div>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Domation AI - Angry</div>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Rich Land AI - Angry</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
                               </div>
                             </div>
@@ -3097,10 +3097,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     borderRadius: 12
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar src="/imgs/warn_icon.png" name="Domation AI - Screener" size={36} />
+                      <Avatar src="/imgs/warn_icon.png" name="Rich Land AI - Screener" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Screener</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Screener</div>
                       </div>
                     </div>
 
@@ -3120,10 +3120,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 ) : selectedLead.status === 'rejected' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar src="/LOGO.jpg" name="Domation AI - Evaluator" size={36} />
+                      <Avatar src="/LOGO.jpg" name="Rich Land AI - Evaluator" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Evaluator</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Evaluator</div>
                       </div>
                     </div>
 
@@ -3143,10 +3143,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 ) : selectedLead.status === 'blacklisted' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                      <Avatar src="/imgs/angry_icon.jpg" name="Domation AI - Angry" size={36} />
+                      <Avatar src="/imgs/angry_icon.jpg" name="Rich Land AI - Angry" size={36} />
                       <div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}>{t('Người tiếp nhận')}</div>
-                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Domation AI - Angry</div>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Angry</div>
                       </div>
                     </div>
 

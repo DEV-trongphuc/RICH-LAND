@@ -513,13 +513,13 @@ const KeyboardShortcutsController = () => {
 
 export default function App() {
   useEffect(() => {
-    const localTheme = localStorage.getItem('domation_theme') as 'light' | 'dark';
+    const localTheme = localStorage.getItem('richland_theme') as 'light' | 'dark';
     if (localTheme) {
       document.documentElement.setAttribute('data-theme', localTheme);
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
     }
-    localStorage.setItem('domation_global_date', getDefaultDateFilter());
+    localStorage.setItem('richland_global_date', getDefaultDateFilter());
   }, []);
 
   return (

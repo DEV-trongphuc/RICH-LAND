@@ -401,7 +401,7 @@ export const ReportData = () => {
 
         {/* Footer */}
         <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '0.7rem', paddingTop: 24, flexShrink: 0 }}>
-          Powered by DOMATION · DATA ROUTING ENGINE
+          Powered by RICH LAND · DATA ROUTING ENGINE
         </div>
       </div>
 

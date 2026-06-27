@@ -19,7 +19,7 @@ const SYSTEM_FIELDS = [
   { value: 'saleperson', label: 'Salesperson (Tên/Email Sale)' },
 ];
 
-const BASE_WEBHOOK = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/webhook.php` : "https://open.domation.net/sale_data/webhook.php";
+const BASE_WEBHOOK = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/webhook.php` : "https://open.richland.net/sale_data/webhook.php";
 
 type Connection = {
   id: number;
@@ -87,7 +87,7 @@ const generateDefaultTemplate = (
 };
 
 const masterAppsScriptCode = `/**
- * DOMATION CRM - Google Apps Script Two-Way Synchronization Script
+ * RICH LAND CRM - Google Apps Script Two-Way Synchronization Script
  * 
  * HƯỚNG DẪN CẤU HÌNH:
  * 1. Mở trang Google Sheet của bạn.
@@ -1924,7 +1924,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Cấu hình Trường dữ liệu')}</h2>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Ánh xạ các cột trên Google Sheets của bạn vào hệ thống Domation DATA.')}</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>{t('Ánh xạ các cột trên Google Sheets của bạn vào hệ thống Rich Land DATA.')}</p>
               </div>
 
               {/* Add Mapping Row at the TOP */}

@@ -19,7 +19,7 @@ export const DemoIndicator: React.FC = () => {
     phone: '',
     company: '',
     size: '1-10',
-    note: 'Đăng ký trải nghiệm DOMATION CRM'
+    note: 'Đăng ký trải nghiệm RICH LAND CRM'
   });
 
   if (!DEV_MODE) return null;
@@ -42,7 +42,7 @@ export const DemoIndicator: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          source: 'DOMATION CRM Demo',
+          source: 'RICH LAND CRM Demo',
           timestamp: new Date().toLocaleString('vi-VN')
         })
       });
@@ -167,7 +167,7 @@ export const DemoIndicator: React.FC = () => {
                   <div style={{ width: 48, height: 48, borderRadius: '14px', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <Building size={24} />
                   </div>
-                  <h3 style={{ fontSize: '1.875rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-0.02em' }}>Nâng tầm quản trị cùng DOMATION</h3>
+                  <h3 style={{ fontSize: '1.875rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-0.02em' }}>Nâng tầm quản trị cùng RICH LAND</h3>
                   <p style={{ fontSize: '1rem', opacity: 0.8, lineHeight: 1.6, marginBottom: '2.5rem' }}>Hệ thống quản trị khách hàng tối ưu nhất cho doanh nghiệp vừa và nhỏ.</p>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

@@ -119,7 +119,7 @@ export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, cus
         onClick={() => setIsOpen(!isOpen)}
         style={{ 
           display: 'flex', alignItems: 'center', gap: '10px', minWidth: '180px', justifyContent: 'space-between',
-          padding: '0 1.25rem', height: 44, fontSize: '0.9375rem', borderRadius: 'var(--radius-lg)',
+          padding: '0 1rem', height: 38, fontSize: '0.875rem', borderRadius: 'var(--radius-md)',
           background: isOpen ? 'var(--color-bg)' : 'white',
           boxShadow: 'var(--shadow-sm)',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'

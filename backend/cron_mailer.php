@@ -94,8 +94,8 @@ function runMailerCron($conn) {
             $mail->Timeout = 10;
             $mail->SMTPKeepAlive = true; // Giữ kết nối SMTP sống để tái sử dụng
 
-            $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@domation.net';
-            $senderName = $settings['ses_sender_name'] ?? 'DOMATION TEAM';
+            $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@richland.net';
+            $senderName = $settings['ses_sender_name'] ?? 'RICH LAND TEAM';
 
             $mail->setFrom($senderEmail, $senderName);
         } catch (Exception $e) {

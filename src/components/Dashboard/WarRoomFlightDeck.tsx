@@ -2609,7 +2609,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
       prevThemeRef.current = currentTheme;
       if (currentTheme === 'light') {
         document.documentElement.setAttribute('data-theme', 'dark');
-        localStorage.setItem('domation_theme', 'dark');
+        localStorage.setItem('richland_theme', 'dark');
         window.dispatchEvent(new Event('theme-change'));
       }
     }
@@ -2624,7 +2624,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
         const nextTheme = 'light';
         const triggerThemeChange = () => {
           document.documentElement.setAttribute('data-theme', nextTheme);
-          localStorage.setItem('domation_theme', nextTheme);
+          localStorage.setItem('richland_theme', nextTheme);
           window.dispatchEvent(new Event('theme-change'));
         };
 
@@ -3273,7 +3273,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
     const newFeedItem = {
       id: particleId,
       lead_name: name,
-      assigned_to_name: status === 'rejected' ? 'Domation AI' : salesList[saleIdx]?.name || 'Hệ thống',
+      assigned_to_name: status === 'rejected' ? 'Rich Land AI' : salesList[saleIdx]?.name || 'Hệ thống',
       status: 'processing',
       created_at: log.created_at || new Date().toISOString()
     };
@@ -3920,7 +3920,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                 }}>
                   <img
                     src="/LOGO.jpg"
-                    alt="DOMATION Logo"
+                    alt="RICH LAND Logo"
                     style={{
                       width: '100%',
                       height: '100%',
@@ -3931,7 +3931,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                   />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(163, 20, 34,0.6)' }}>DOMATION AI INFINITY</h2>
+                  <h2 style={{ fontSize: '1.22rem', fontWeight: 800, letterSpacing: '0.08em', color: '#fff', textShadow: '0 0 12px rgba(163, 20, 34,0.6)' }}>RICH LAND AI INFINITY</h2>
                   <p style={{ fontSize: '0.7rem', color: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '3px', textShadow: '0 0 8px rgba(189, 29, 45,0.4)' }}>
                     <span>{t('Dữ liệu AI Pre-screener & Vòng xoay phân bổ')}</span>
                     <span className="cursor-blink" style={{ display: 'inline-block', width: '6px', height: '10px', backgroundColor: '#BD1D2D', boxShadow: '0 0 8px rgba(189, 29, 45,0.7)' }} />
@@ -4393,7 +4393,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
                     }}
                   />
                   <Cpu size={isMobile ? 22 : 36} style={{ color: '#fff', filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.85))', zIndex: 1 }} />
-                  <div style={{ fontSize: isMobile ? '0.5rem' : '0.6rem', fontWeight: 900, letterSpacing: '0.12em', marginTop: '6px', opacity: 0.95, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.5)', zIndex: 1 }}>DOMATION AI</div>
+                  <div style={{ fontSize: isMobile ? '0.5rem' : '0.6rem', fontWeight: 900, letterSpacing: '0.12em', marginTop: '6px', opacity: 0.95, color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.5)', zIndex: 1 }}>RICH LAND AI</div>
                 </div>
               </div>
 
@@ -4845,7 +4845,7 @@ export const WarRoomFlightDeck: React.FC<WarRoomProps> = ({
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 3 : 6 }}>
                 <div style={{ fontSize: isMobile ? '0.55rem' : '0.68rem', color: '#e63946', textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}>
-                  <Terminal size={isMobile ? 10 : 12} /> Live Feed: DOMATION AI VIRTUAL DISPATCH CONSOLE
+                  <Terminal size={isMobile ? 10 : 12} /> Live Feed: RICH LAND AI VIRTUAL DISPATCH CONSOLE
                 </div>
                 <div style={{ fontSize: isMobile ? '0.5rem' : '0.625rem', color: 'rgba(255,255,255,0.3)', display: 'flex', gap: '15px' }}>
                   <span>SECURE CHANNEL: SSLv3</span>

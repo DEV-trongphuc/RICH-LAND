@@ -97,7 +97,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         . "  • Loại: Quan tâm dịch vụ\n\n"
                         . "❖ GHI CHÚ:\n"
                         . "  Khách gọi cần tư vấn gấp vào buổi sáng.\n\n"
-                        . "Báo lỗi Data tại đây: https://open.domation.net/...";
+                        . "Báo lỗi Data tại đây: https://open.richland.net/...";
                     sendZaloMessage($botToken, $chatId, $zaloMsg);
                 } else if ($textLower === 'test_data_admin') {
                     $zaloMsg = "[ YÊU CẦU DUYỆT TICKET ]\n\n"
@@ -1675,7 +1675,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
             // Xử lý trùng lặp Email giữa Sale và Admin
             if ($sale && $admin && $targetType === '') {
-                $errorMsg = "[ HỆ THỐNG DOMATION DATA ]\n\nEmail này đang được dùng cho cả tài khoản Quản trị viên và Tư vấn viên.\nĐể đảm bảo chính xác, vui lòng sử dụng Mã ID thay vì Email để xác thực:\n\n- Nếu bạn muốn liên kết Admin: Gửi A + Mã ID (Ví dụ: A" . $admin['id'] . ")\n- Nếu bạn muốn liên kết Tư vấn viên: Gửi Mã ID (Ví dụ: " . $sale['id'] . ")";
+                $errorMsg = "[ HỆ THỐNG RICH LAND DATA ]\n\nEmail này đang được dùng cho cả tài khoản Quản trị viên và Tư vấn viên.\nĐể đảm bảo chính xác, vui lòng sử dụng Mã ID thay vì Email để xác thực:\n\n- Nếu bạn muốn liên kết Admin: Gửi A + Mã ID (Ví dụ: A" . $admin['id'] . ")\n- Nếu bạn muốn liên kết Tư vấn viên: Gửi Mã ID (Ví dụ: " . $sale['id'] . ")";
                 sendZaloMessage($botToken, $chatId, $errorMsg);
                 exit;
             }
@@ -1750,7 +1750,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             }
 
             if ($linkedAny) {
-                $msg = "[ HỆ THỐNG DOMATION DATA ]\n\n"
+                $msg = "[ HỆ THỐNG RICH LAND DATA ]\n\n"
                     . "Chúc mừng bạn đã xác thực hệ thống thành công:\n";
                 foreach ($successMessages as $sm) {
                     $msg .= "  • $sm\n";
@@ -1765,7 +1765,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             }
         } else {
             // Hướng dẫn lại
-            $guideMsg = "[ HỆ THỐNG DOMATION DATA ]\n\n"
+            $guideMsg = "[ HỆ THỐNG RICH LAND DATA ]\n\n"
                 . "Chào $fromName!\n"
                 . "Để liên kết tài khoản nhận dữ liệu tự động, vui lòng soạn tin nhắn theo cú pháp đơn giản:\n\n"
                 . "- Nhập mã ID của bạn (Ví dụ: 12)\n"

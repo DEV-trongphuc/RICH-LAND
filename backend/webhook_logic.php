@@ -919,7 +919,7 @@ function getNextConsultantInRound($conn, $roundId)
     $cRes = $cStmt->get_result();
 
     if ($cRes->num_rows === 0) {
-        error_log("DOMATION ERROR: Round ID $roundId has no active consultants!");
+        error_log("RICH LAND ERROR: Round ID $roundId has no active consultants!");
         $cStmt->close();
         return null;
     }
@@ -1900,7 +1900,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null)
                     ]);
                     curl_setopt($ch, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
                     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+                    curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 RICH LAND CRM Client");
                     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
 
                     $response = curl_exec($ch);
@@ -1990,7 +1990,7 @@ function executeTwoWaySyncActual($conn, $leadId, &$errorMsg = null)
         ]);
         curl_setopt($chM, CURLOPT_TIMEOUT, 3); // Timeout 3s tối đa
         curl_setopt($chM, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($chM, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+        curl_setopt($chM, CURLOPT_USERAGENT, "Mozilla/5.0 RICH LAND CRM Client");
         curl_setopt($chM, CURLOPT_SSL_VERIFYPEER, true);
 
         $responseM = curl_exec($chM);
@@ -2907,7 +2907,7 @@ function sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customer
         . "  - Sale phụ trách: " . $saleName . "\n"
         . "  - Chi tiết: " . ($distData['message'] ?? 'Không có');
 
-    $emailSubj = "[Domation API] Báo cáo Lead mới từ API - " . (!empty($customerData['name']) ? $customerData['name'] : 'Ẩn danh');
+    $emailSubj = "[Rich Land API] Báo cáo Lead mới từ API - " . (!empty($customerData['name']) ? $customerData['name'] : 'Ẩn danh');
     $emailBody = "<h3>Báo cáo Lead mới nhận từ API</h3>"
         . "<p><strong>Nguồn API:</strong> " . htmlspecialchars($connData['sheet_name'] ?? 'Không rõ') . " (Token: <code>" . htmlspecialchars($connData['webhook_token'] ?? '') . "</code>)</p>"
         . "<h4>Thông tin khách hàng:</h4>"

@@ -11,7 +11,7 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const mockUsers = useMockStore(state => state.users);
-  const [form, setForm] = useState({ email: 'admin@domation.crm', password: 'password' });
+  const [form, setForm] = useState({ email: 'admin@richland.crm', password: 'password' });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -126,7 +126,7 @@ export const LoginPage: React.FC = () => {
 
         {!DEV_MODE && (
           <div className={styles.demoHint}>
-            <p>Demo: admin@domation.crm / password</p>
+            <p>Demo: admin@richland.crm / password</p>
           </div>
         )}
       </div>

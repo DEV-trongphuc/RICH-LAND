@@ -22,10 +22,10 @@ export const processMockRequest = async (action: string, payload?: any): Promise
         if (email.includes('sale') || email.includes('haidang') || email.includes('thao') || email.includes('dung') || email.includes('tuan')) {
           let cId = 1;
           let name = 'Hải Đăng';
-          let cEmail = 'haidang@domation.net';
-          if (email.includes('thao')) { cId = 2; name = 'Thanh Thảo'; cEmail = 'thanhthao@domation.net'; }
-          else if (email.includes('dung')) { cId = 3; name = 'Việt Dũng'; cEmail = 'vietdung@domation.net'; }
-          else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@domation.net'; }
+          let cEmail = 'haidang@richland.net';
+          if (email.includes('thao')) { cId = 2; name = 'Thanh Thảo'; cEmail = 'thanhthao@richland.net'; }
+          else if (email.includes('dung')) { cId = 3; name = 'Việt Dũng'; cEmail = 'vietdung@richland.net'; }
+          else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@richland.net'; }
 
           return {
             success: true,
@@ -38,7 +38,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
         return {
           success: true,
           token: 'demo_token_12345',
-          user: { id: 1, email: email || 'admin@domation.net', name: 'Admin Demo', role: 'admin', is_confirmed: 1 }
+          user: { id: 1, email: email || 'admin@richland.net', name: 'Admin Demo', role: 'admin', is_confirmed: 1 }
         };
       }
 
@@ -500,7 +500,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
               queued: true,
               status: isPendingWorkHours ? 'pending' : 'sent',
               id: null,
-              target: 'haidang@domation.net',
+              target: 'haidang@richland.net',
               sent_at: isPendingWorkHours ? null : new Date().toISOString()
             },
             zalo: {
@@ -564,7 +564,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
         const roundIdFilter = params.get('round_id');
         const saleIdFilter = params.get('sale_id');
 
-        const userStr = localStorage.getItem('domation_user');
+        const userStr = localStorage.getItem('richland_user');
         const user = userStr ? JSON.parse(userStr) : null;
         const currentSaleId = user?.role === 'sale' ? user?.consultant_id || user?.id : null;
         const targetSaleId = saleIdFilter ? Number(saleIdFilter) : currentSaleId;
@@ -613,7 +613,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
             last_interaction_date: l.created_at,
             round_name: l.round_name,
             sale_name: l.assigned_to_name,
-            sale_email: `${l.assigned_to_name.toLowerCase().replace(/\s+/g, '')}@domation.net`,
+            sale_email: `${l.assigned_to_name.toLowerCase().replace(/\s+/g, '')}@richland.net`,
             sale_avatar: consultant.avatar,
             report_status: ticket ? ticket.status : null,
             report_id: ticket ? ticket.id : null,
@@ -825,7 +825,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
 
     case 'update_consultant_self_profile':
       {
-        const userStr = localStorage.getItem('domation_user');
+        const userStr = localStorage.getItem('richland_user');
         const user = userStr ? JSON.parse(userStr) : null;
         const currentSaleId = user?.role === 'sale' ? user?.consultant_id || user?.id : null;
         if (currentSaleId) {
@@ -838,7 +838,7 @@ export const processMockRequest = async (action: string, payload?: any): Promise
             (consultant as any).work_schedule = payload?.work_schedule ? JSON.parse(payload.work_schedule) : (consultant as any).work_schedule;
             
             user.name = consultant.name;
-            localStorage.setItem('domation_user', JSON.stringify(user));
+            localStorage.setItem('richland_user', JSON.stringify(user));
           }
         }
         return { success: true, message: 'Cập nhật thông tin cá nhân thành công (Demo)' };

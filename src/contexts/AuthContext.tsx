@@ -20,33 +20,33 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // One-time forced relogin trigger
-  if (!localStorage.getItem('domation_relogin_done')) {
-    localStorage.setItem('domation_relogin_done', 'true');
-    localStorage.removeItem('domation_token');
-    localStorage.removeItem('domation_user');
+  if (!localStorage.getItem('richland_relogin_done')) {
+    localStorage.setItem('richland_relogin_done', 'true');
+    localStorage.removeItem('richland_token');
+    localStorage.removeItem('richland_user');
   }
 
   const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem('domation_user');
+    const storedUser = localStorage.getItem('richland_user');
     return storedUser ? JSON.parse(storedUser) : null;
   });
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('domation_token');
+    return localStorage.getItem('richland_token');
   });
 
   const login = useCallback((newToken: string, newUser: User) => {
     setToken(newToken);
     setUser(newUser);
-    localStorage.setItem('domation_token', newToken);
-    localStorage.setItem('domation_user', JSON.stringify(newUser));
+    localStorage.setItem('richland_token', newToken);
+    localStorage.setItem('richland_user', JSON.stringify(newUser));
   }, []);
 
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
-    localStorage.removeItem('domation_token');
-    localStorage.removeItem('domation_user');
-    localStorage.removeItem('DOMATION_DEMO_MODE');
+    localStorage.removeItem('richland_token');
+    localStorage.removeItem('richland_user');
+    localStorage.removeItem('RICH LAND_DEMO_MODE');
   }, []);
 
   const contextValue = React.useMemo(() => ({ user, token, login, logout }), [user, token, login, logout]);

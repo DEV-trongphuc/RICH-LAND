@@ -17,16 +17,16 @@ export const Login = () => {
     setLoading(true);
     setError('');
 
-    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+    if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
       await new Promise(resolve => setTimeout(resolve, 500));
-      login('demo_token_12345', { username: 'admin', email: 'admin@domation.net', name: 'Admin Demo', role: 'admin' });
+      login('demo_token_12345', { username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
       navigate('/');
       setLoading(false);
       return;
     }
 
     try {
-      const res = await fetch('https://open.domation.net/sale_data/api.php?action=login_google', {
+      const res = await fetch('https://open.richland.net/sale_data/api.php?action=login_google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: response.credential })
@@ -61,7 +61,7 @@ export const Login = () => {
           client_id: '641158233158-nsg8a8tdsj3fdgb34dc9tugm8god7tho.apps.googleusercontent.com',
           callback: handleGoogleLoginResponse
         });
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || localStorage.getItem('domation_theme') === 'dark';
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || localStorage.getItem('richland_theme') === 'dark';
         (window as any).google.accounts.id.renderButton(
           googleBtnRef.current,
           { theme: isDark ? 'filled_blue' : 'outline', size: 'large', width: 320, text: 'signin_with', shape: 'rectangular' }
@@ -82,22 +82,22 @@ export const Login = () => {
     setLoading(true);
     setError('');
 
-    if (localStorage.getItem('DOMATION_DEMO_MODE') === 'true') {
+    if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
       await new Promise(resolve => setTimeout(resolve, 500));
       // Support matching roles based on email input
       const isSale = email.includes('sale') || email.includes('haidang') || email.includes('thao') || email.includes('dung') || email.includes('tuan');
       if (isSale) {
         let cId = 1;
         let name = 'Hải Đăng';
-        let cEmail = 'haidang@domation.net';
-        if (email.includes('thao')) { cId = 2; name = 'Thanh Thảo'; cEmail = 'thanhthao@domation.net'; }
-        else if (email.includes('dung')) { cId = 3; name = 'Việt Dũng'; cEmail = 'vietdung@domation.net'; }
-        else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@domation.net'; }
+        let cEmail = 'haidang@richland.net';
+        if (email.includes('thao')) { cId = 2; name = 'Thanh Thảo'; cEmail = 'thanhthao@richland.net'; }
+        else if (email.includes('dung')) { cId = 3; name = 'Việt Dũng'; cEmail = 'vietdung@richland.net'; }
+        else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@richland.net'; }
 
         login(`demo_token_sale_${cId}`, { username: cEmail.split('@')[0], email: cEmail, name: name, role: 'sale', consultant_id: cId });
         navigate('/sale-portal');
       } else {
-        login('demo_token_12345', { username: (email || 'admin@domation.net').split('@')[0], email: email || 'admin@domation.net', name: 'Admin Demo', role: 'admin' });
+        login('demo_token_12345', { username: (email || 'admin@richland.net').split('@')[0], email: email || 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
         navigate('/');
       }
       setLoading(false);
@@ -105,7 +105,7 @@ export const Login = () => {
     }
 
     try {
-      const res = await fetch('https://open.domation.net/sale_data/api.php?action=login', {
+      const res = await fetch('https://open.richland.net/sale_data/api.php?action=login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -168,7 +168,7 @@ export const Login = () => {
               <span style={{ fontSize: '0.875rem', fontWeight: 600, letterSpacing: '0.5px' }}>{t("HỆ THỐNG AUTO CHIA DATA LOGIC")}</span>
             </div>
             <h1 style={{ fontSize: '3rem', fontWeight: 800, lineHeight: 1.2, marginBottom: '1rem', letterSpacing: '-1px' }}>
-              DOMATION <span style={{ background: 'linear-gradient(to right, #818cf8, #e63946)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
+              RICH LAND <span style={{ background: 'linear-gradient(to right, #818cf8, #e63946)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>DATA</span>
             </h1>
             <p style={{ fontSize: '1.125rem', color: '#cbd5e1', lineHeight: 1.6, maxWidth: 480 }}>
               {t("Giải pháp toàn diện giúp tự động hóa quy trình phân bổ khách hàng, theo dõi hiệu suất và tăng tỷ lệ chuyển đổi.")}
@@ -266,7 +266,7 @@ export const Login = () => {
                 style={{ paddingLeft: 44, height: 48, borderRadius: 12 }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("VD: ten@domation.net")}
+                placeholder={t("VD: ten@richland.net")}
                 autoComplete="email"
                 required
               />
@@ -299,13 +299,13 @@ export const Login = () => {
             {loading ? t('Đang xác thực...') : <><LogIn size={18} /> {t("Đăng nhập")}</>}
           </button>
 
-          {localStorage.getItem('DOMATION_DEMO_MODE') === 'true' && (
+          {localStorage.getItem('RICH LAND_DEMO_MODE') === 'true' && (
             <button
               type="button"
               onClick={() => {
                 setLoading(true);
                 setTimeout(() => {
-                  login('demo_token_12345', { username: 'admin', email: 'admin@domation.net', name: 'Admin Demo', role: 'admin' });
+                  login('demo_token_12345', { username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
                   navigate('/');
                   setLoading(false);
                 }, 500);
@@ -343,6 +343,41 @@ export const Login = () => {
 
         <div style={{ display: 'flex', justifyContent: 'center' }}>
           <div ref={googleBtnRef} style={{ width: '100%', display: 'flex', justifyContent: 'center', minHeight: 44 }}></div>
+        </div>
+
+        {/* Dev Login Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '1.25rem' }}>
+          <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', margin: 0 }}>Dành cho Nhà phát triển (Developer Quick Login)</p>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ flex: 1, height: '36px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              onClick={async () => {
+                setLoading(true);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                login('demo_token_12345', { username: 'admin', email: 'admin@richland.net', name: 'Admin Dev', role: 'admin' });
+                navigate('/');
+                setLoading(false);
+              }}
+            >
+              Dev Admin
+            </button>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ flex: 1, height: '36px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+              onClick={async () => {
+                setLoading(true);
+                await new Promise(resolve => setTimeout(resolve, 300));
+                login('demo_token_sale_1', { username: 'haidang', email: 'haidang@richland.net', name: 'Hải Đăng', role: 'sale', consultant_id: 1 });
+                navigate('/sale-portal');
+                setLoading(false);
+              }}
+            >
+              Dev Sale
+            </button>
+          </div>
         </div>
       </div>
       </div>

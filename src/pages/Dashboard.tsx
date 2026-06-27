@@ -62,12 +62,12 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
     return cached === null ? true : cached === '1';
   });
   const [dateFilter, setDateFilter] = useState(() => {
-    return localStorage.getItem('domation_global_date') || getDefaultDateFilter();
+    return localStorage.getItem('richland_global_date') || getDefaultDateFilter();
   });
 
   const handleUpdateDateFilter = (val: string) => {
     setDateFilter(val);
-    localStorage.setItem('domation_global_date', val);
+    localStorage.setItem('richland_global_date', val);
     window.dispatchEvent(new CustomEvent('global-date-change', { detail: val }));
   };
 
@@ -269,7 +269,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
   useEffect(() => {
     if (isActive) {
-      const savedDate = localStorage.getItem('domation_global_date');
+      const savedDate = localStorage.getItem('richland_global_date');
       if (savedDate && savedDate !== dateFilter) {
         setDateFilter(savedDate);
       }
@@ -721,7 +721,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <img
                     src="/LOGO.jpg"
-                    alt="DOMATION AI Logo"
+                    alt="RICH LAND AI Logo"
                     style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover', flexShrink: 0 }}
                   />
                   <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -1201,11 +1201,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         }
                         name={
                           log.status === 'pending_approval'
-                            ? 'Domation AI - Screener'
+                            ? 'Rich Land AI - Screener'
                             : log.status === 'rejected'
-                              ? 'Domation AI - Evaluator'
+                              ? 'Rich Land AI - Evaluator'
                               : log.status === 'blacklisted'
-                                ? 'Domation AI - Angry'
+                                ? 'Rich Land AI - Angry'
                                 : (log.assigned_to_name || t('Hệ thống'))
                         }
                         size={32}
@@ -1213,11 +1213,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontWeight: 800, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                           {log.status === 'pending_approval'
-                            ? 'Domation AI - Screener'
+                            ? 'Rich Land AI - Screener'
                             : log.status === 'rejected'
-                              ? 'Domation AI - Evaluator'
+                              ? 'Rich Land AI - Evaluator'
                               : log.status === 'blacklisted'
-                                ? 'Domation AI - Angry'
+                                ? 'Rich Land AI - Angry'
                                 : (log.assigned_to_name || t('Hệ thống'))}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

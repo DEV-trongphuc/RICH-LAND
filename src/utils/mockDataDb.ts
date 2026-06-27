@@ -33,11 +33,11 @@ export const INITIAL_MOCK_DB = {
       { time: '20:00', volume: 20 },
     ],
     topConsultants: [
-      { id: 1, name: 'Hải Đăng', email: 'haidang@domation.net', data: 450, percent: 85, color: '#3b82f6' },
-      { id: 2, name: 'Thanh Thảo', email: 'thanhthao@domation.net', data: 380, percent: 70, color: '#10b981' },
-      { id: 3, name: 'Việt Dũng', email: 'vietdung@domation.net', data: 310, percent: 60, color: '#f59e0b' },
-      { id: 4, name: 'Minh Tuấn', email: 'minhtuan@domation.net', data: 220, percent: 45, color: '#BD1D2D' },
-      { id: 5, name: 'Ngọc Mai', email: 'ngocmai@domation.net', data: 150, percent: 30, color: '#ef4444' }
+      { id: 1, name: 'Hải Đăng', email: 'haidang@richland.net', data: 450, percent: 85, color: '#3b82f6' },
+      { id: 2, name: 'Thanh Thảo', email: 'thanhthao@richland.net', data: 380, percent: 70, color: '#10b981' },
+      { id: 3, name: 'Việt Dũng', email: 'vietdung@richland.net', data: 310, percent: 60, color: '#f59e0b' },
+      { id: 4, name: 'Minh Tuấn', email: 'minhtuan@richland.net', data: 220, percent: 45, color: '#BD1D2D' },
+      { id: 5, name: 'Ngọc Mai', email: 'ngocmai@richland.net', data: 150, percent: 30, color: '#ef4444' }
     ],
     roundRatio: [
       { round: 'Vòng Phân Bổ: Facebook & TikTok Ads', count: 850, percent: 55, color: '#3b82f6' },
@@ -64,11 +64,11 @@ export const INITIAL_MOCK_DB = {
   },
   
   consultants: [
-    { id: 1, name: 'Hải Đăng', email: 'haidang@domation.net', status: 'active', zalo_chat_id: '9082348234', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: true, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
-    { id: 2, name: 'Thanh Thảo', email: 'thanhthao@domation.net', status: 'active', zalo_chat_id: '9183492834', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
-    { id: 3, name: 'Việt Dũng', email: 'vietdung@domation.net', status: 'leave', zalo_chat_id: '9843573845', leave_start: '2026-05-18', leave_end: '2026-05-25', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150', vacation_mode: 1, work_start_time: '08:30', work_end_time: '18:00', work_schedule: { "1": { active: true, start: "08:30", end: "18:00" }, "2": { active: true, start: "08:30", end: "18:00" }, "3": { active: true, start: "08:30", end: "18:00" }, "4": { active: true, start: "08:30", end: "18:00" }, "5": { active: true, start: "08:30", end: "18:00" }, "6": { active: true, start: "08:30", end: "18:00" }, "7": { active: false, start: "08:30", end: "18:00" } } },
-    { id: 4, name: 'Minh Tuấn', email: 'minhtuan@domation.net', status: 'active', zalo_chat_id: '9238472938', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
-    { id: 5, name: 'Ngọc Mai', email: 'ngocmai@domation.net', status: 'inactive', zalo_chat_id: '9123847283', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } }
+    { id: 1, name: 'Hải Đăng', email: 'haidang@richland.net', status: 'active', zalo_chat_id: '9082348234', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: true, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
+    { id: 2, name: 'Thanh Thảo', email: 'thanhthao@richland.net', status: 'active', zalo_chat_id: '9183492834', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
+    { id: 3, name: 'Việt Dũng', email: 'vietdung@richland.net', status: 'leave', zalo_chat_id: '9843573845', leave_start: '2026-05-18', leave_end: '2026-05-25', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&w=150', vacation_mode: 1, work_start_time: '08:30', work_end_time: '18:00', work_schedule: { "1": { active: true, start: "08:30", end: "18:00" }, "2": { active: true, start: "08:30", end: "18:00" }, "3": { active: true, start: "08:30", end: "18:00" }, "4": { active: true, start: "08:30", end: "18:00" }, "5": { active: true, start: "08:30", end: "18:00" }, "6": { active: true, start: "08:30", end: "18:00" }, "7": { active: false, start: "08:30", end: "18:00" } } },
+    { id: 4, name: 'Minh Tuấn', email: 'minhtuan@richland.net', status: 'active', zalo_chat_id: '9238472938', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } },
+    { id: 5, name: 'Ngọc Mai', email: 'ngocmai@richland.net', status: 'inactive', zalo_chat_id: '9123847283', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150', vacation_mode: 0, work_start_time: '08:00', work_end_time: '17:30', work_schedule: { "1": { active: true, start: "08:00", end: "17:30" }, "2": { active: true, start: "08:00", end: "17:30" }, "3": { active: true, start: "08:00", end: "17:30" }, "4": { active: true, start: "08:00", end: "17:30" }, "5": { active: true, start: "08:00", end: "17:30" }, "6": { active: false, start: "08:00", end: "17:30" }, "7": { active: false, start: "08:00", end: "17:30" } } }
   ],
 
   rounds: [
@@ -240,26 +240,26 @@ export const INITIAL_MOCK_DB = {
   ],
 
   settings: {
-    company_name: 'DOMATION DEMO COMPANY',
-    admin_email: 'admin@domation.net',
+    company_name: 'RICH LAND DEMO COMPANY',
+    admin_email: 'admin@richland.net',
     auto_compensate: '1',
     zalo_daily_report_time: '17:00',
     email_provider: 'appscript',
     appscript_webhook_url: 'https://script.google.com/macros/s/AKfycby.../exec',
-    frontend_url: 'https://domation.net',
+    frontend_url: 'https://richland.net',
     ses_host: 'email-smtp.us-east-1.amazonaws.com',
     ses_username: 'AKIA...',
-    ses_sender_email: 'noreply@domation.net',
-    ses_sender_name: 'DOMATION TEAM',
+    ses_sender_email: 'noreply@richland.net',
+    ses_sender_name: 'RICH LAND TEAM',
     zalo_bot_token: 'demo_zalo_bot_token',
     zalo_webhook_secret: 'demo_wh_secret',
     zalo_bot_link: 'https://zalo.me/1234567890'
   },
 
   accounts: [
-    { id: 1, name: 'Hải Đăng (Admin)', email: 'admin@domation.net', role: 'admin', is_confirmed: 1, zalo_chat_id: '12345678' },
-    { id: 2, name: 'Thanh Thảo (Trợ lý)', email: 'assistant@domation.net', role: 'assistant', is_confirmed: 1, zalo_chat_id: '' },
-    { id: 3, name: 'Việt Dũng (Kế toán)', email: 'viewer@domation.net', role: 'viewer', is_confirmed: 0, zalo_chat_id: '' },
+    { id: 1, name: 'Hải Đăng (Admin)', email: 'admin@richland.net', role: 'admin', is_confirmed: 1, zalo_chat_id: '12345678' },
+    { id: 2, name: 'Thanh Thảo (Trợ lý)', email: 'assistant@richland.net', role: 'assistant', is_confirmed: 1, zalo_chat_id: '' },
+    { id: 3, name: 'Việt Dũng (Kế toán)', email: 'viewer@richland.net', role: 'viewer', is_confirmed: 0, zalo_chat_id: '' },
   ],
 
   report_context: {
@@ -270,7 +270,7 @@ export const INITIAL_MOCK_DB = {
     lead_type: 'Tư vấn khóa học',
     lead_note: 'Quan tâm: Khóa Marketing\nNgân sách: 5–10 triệu',
     consultant_name: 'Hải Đăng',
-    consultant_email: 'haidang@domation.net',
+    consultant_email: 'haidang@richland.net',
     round_name: 'Vòng Phân Bổ: Facebook & TikTok Ads',
     assigned_at: new Date().toISOString(),
     existing_report: null,

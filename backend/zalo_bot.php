@@ -521,7 +521,7 @@ function sendCompensationAddedZaloMessageToSale($consultantId, $consultantName, 
         . "  • Thời gian: $time\n"
         . $reasonStr
         . "\n💡 Khi hệ thống có khách hàng mới phù hợp, data sẽ tự động ưu tiên phân bổ thêm cho bạn.\n\n"
-        . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+        . "Trân trọng,\nHệ thống Quản lý Rich Land DATA\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $msg, $sync);

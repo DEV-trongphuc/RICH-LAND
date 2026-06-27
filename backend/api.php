@@ -44,7 +44,7 @@ if (!empty($httpOrigin)) {
 }
 header("Access-Control-Allow-Origin: " . $originToSet);
 
-$JWT_SECRET = $_ENV['JWT_SECRET'] ?? "DOMATION_SECRET_KEY_2026";
+$JWT_SECRET = $_ENV['JWT_SECRET'] ?? "RICH LAND_SECRET_KEY_2026";
 
 function getSafeErrorMsg($e)
 {
@@ -4560,7 +4560,7 @@ switch ($action) {
                     $ccList = array_map(fn($a) => $a['email'], $adminEmails);
                     $ccString = implode(',', array_filter($ccList));
 
-                    $emailSubjAdmin = "[Domation DATA] Thông báo Ticket Tự động duyệt - Sale: $cName";
+                    $emailSubjAdmin = "[Rich Land DATA] Thông báo Ticket Tự động duyệt - Sale: $cName";
                     $emailBodyAdmin = "<h3>Thông báo Ticket Tự động duyệt</h3>
                                       <p>Hệ thống đã tự động duyệt báo cáo lỗi của Sale <strong>$cName</strong> đối với khách hàng <strong>$lName ($lPhone)</strong>.</p>
                                       <p><strong>Lý do lỗi:</strong> $reason</p>
@@ -7195,7 +7195,7 @@ switch ($action) {
                 'search_col_phone' => 'Số điện thoại',
                 'search_val_phone' => '0999999999',
                 'search_col_email' => 'Email',
-                'search_val_email' => 'test@domation.net',
+                'search_val_email' => 'test@richland.net',
                 'allow_insert' => true,
                 'updates' => [
                     'Thời gian' => date('Y-m-d H:i:s'),
@@ -7204,7 +7204,7 @@ switch ($action) {
                     'Sale phụ trách' => 'Sale Test',
                     'Họ tên' => 'Khách hàng Thử nghiệm',
                     'Số điện thoại' => '0999999999',
-                    'Email' => 'test@domation.net',
+                    'Email' => 'test@richland.net',
                     'Ghi chú' => 'Đồng bộ thử nghiệm thành công! Kết nối hoạt động tốt.',
                     'Trạng thái' => 'Kiểm thử'
                 ]
@@ -7222,7 +7222,7 @@ switch ($action) {
             ]);
             curl_setopt($ch, CURLOPT_TIMEOUT, 6); // Timeout 6s tối đa cho kiểm thử
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 DOMATION CRM Client");
+            curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 RICH LAND CRM Client");
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -7378,7 +7378,7 @@ switch ($action) {
             };
 
             // Enhanced system instruction detailing database schemas
-            $systemInstruction = "Bạn là Trợ lý AI Domation, một chatbot hỗ trợ đắc lực tích hợp sẵn trong hệ thống quản trị phân chia lead dữ liệu Domation.\n" .
+            $systemInstruction = "Bạn là Trợ lý AI Rich Land, một chatbot hỗ trợ đắc lực tích hợp sẵn trong hệ thống quản trị phân chia lead dữ liệu Rich Land.\n" .
                 "Hãy trả lời người dùng một cách thân thiện, chuyên nghiệp, bằng tiếng Việt. Sử dụng markdown (in đậm, danh sách, bảng biểu) để câu trả lời rõ ràng.\n\n" .
                 "QUY TẮC PHẢN HỒI (BẮT BUỘC): BẠN KHÔNG ĐƯỢC CHÀO HỎI LAN MAN HOẶC HỎI LẠI NGƯỜI DÙNG TRƯỚC KHI TRUY VẤN. BẤT KỲ CÂU HỎI NÀO CÓ THỂ CẦN TRA CỨU DỮ LIỆU, BẠN PHẢI GỌI CÔNG CỤ `execute_readonly_query` NGAY LẬP TỨC TRONG LƯỢT ĐẦU TIÊN ĐỂ TRA CỨU. NẾU BẠN KHÔNG GỌI CÔNG CỤ MÀ TRẢ LỜI NGAY HOẶC HỎI LẠI, ĐÓ LÀ LỖI VẬN HÀNH NGHIÊM TRỌNG.\n\n" .
                 "QUY TẮC HIỂU NGÔN NGỮ VIẾT TẮT TIẾNG VIỆT:\n" .
@@ -7723,14 +7723,14 @@ switch ($action) {
             sendQuickMessageEmailToSale($email, "Sale Test", "Admin ĐÃ TỪ CHỐI Ticket của bạn cho khách hàng Nguyễn Văn A. Lý do: Số điện thoại vẫn đổ chuông bình thường.");
             $success = true;
         } else if ($type === 'admin_confirm') {
-            sendAdminConfirmationEmail($email, "Admin Test", "https://open.domation.net/confirm?token=123456");
+            sendAdminConfirmationEmail($email, "Admin Test", "https://open.richland.net/confirm?token=123456");
             $success = true;
         } else if ($type === 'daily_report') {
             $statsHtml = "<li>Sale Test 1: <b>15</b> data</li><li>Sale Test 2: <b>12</b> data</li>";
             sendDailyReportEmailToAdmins($email, "Admin Test", 27, $statsHtml, 3);
             $success = true;
         } else {
-            $subject = "Test Cấu hình Email từ DOMATION";
+            $subject = "Test Cấu hình Email từ RICH LAND";
             $body = "<p>Nếu bạn nhận được email này, nghĩa là cấu hình gửi mail của bạn (Amazon SES hoặc AppScript) đang hoạt động hoàn hảo!</p><p style='color:#64748b;font-size:14px;'>Gửi lúc: " . date('d/m/Y H:i:s') . "</p>";
             $success = sendEmailNotification($email, $subject, "Kết nối thành công ✅", $body, '', true);
         }
@@ -9131,7 +9131,7 @@ switch ($action) {
                                 $zName = $admin['name'] ?: 'Quản trị viên';
                                 $zaloMsg = "[ PHÂN QUYỀN TICKET ]\n\n"
                                     . "Chào $zName,\n"
-                                    . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống Domation DATA.\n\n"
+                                    . "Bạn vừa được cấp quyền xử lý Báo cáo lỗi (Ticket) từ hệ thống Rich Land DATA.\n\n"
                                     . "Từ bây giờ, hệ thống sẽ tự động gửi thông báo cho bạn mỗi khi có Ticket mới chờ duyệt.";
                                 sendZaloMessage($botToken, $admin['zalo_chat_id'], $zaloMsg, false);
                             }
@@ -10812,14 +10812,14 @@ switch ($action) {
                                         . "Chào $oldCName,\n\n"
                                         . "Data \"$lName\" của bạn đã được giao lại cho TVV $new_cons_name.\n"
                                         . "Hệ thống đã bù lại 1 lượt nhận data cho bạn tại vòng: $roundNameStr.\n\n"
-                                        . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+                                        . "Trân trọng,\nHệ thống Quản lý Rich Land DATA\n"
                                         . "━━━━━━━━━━━━━━━━━━━━━";
                                 } else {
                                     $zaloMsg = "🔄 [ THÔNG BÁO CHUYỂN GIAO DATA ] 🔄\n"
                                         . "━━━━━━━━━━━━━━━━━━━━━\n"
                                         . "Chào $oldCName,\n\n"
                                         . "Data \"$lName\" của bạn đã được chuyển giao cho TVV $new_cons_name.\n\n"
-                                        . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+                                        . "Trân trọng,\nHệ thống Quản lý Rich Land DATA\n"
                                         . "━━━━━━━━━━━━━━━━━━━━━";
                                 }
                                 sendZaloMessage($botToken, $oldCZalo, $zaloMsg, false);
@@ -10831,13 +10831,13 @@ switch ($action) {
                         if (!empty($oldCEmail)) {
                             try {
                                 if ($compensate_old_sale) {
-                                    $emailSubj = "[Domation DATA] Thông báo đền bù Data - $lName";
+                                    $emailSubj = "[Rich Land DATA] Thông báo đền bù Data - $lName";
                                     $emailBody = "<h3>Đền bù Data do chuyển giao lại</h3>
                                                   <p>Chào $oldCName,</p>
                                                   <p>Lead <strong>$lName</strong> của bạn đã được giao lại cho TVV <strong>$new_cons_name</strong>.</p>
                                                   <p>Hệ thống đã tự động cộng thêm 1 lượt đền bù cho bạn trong vòng phân bổ <strong>$roundNameStr</strong>.</p>";
                                 } else {
-                                    $emailSubj = "[Domation DATA] Thông báo chuyển giao Data - $lName";
+                                    $emailSubj = "[Rich Land DATA] Thông báo chuyển giao Data - $lName";
                                     $emailBody = "<h3>Chuyển giao Data</h3>
                                                   <p>Chào $oldCName,</p>
                                                   <p>Lead <strong>$lName</strong> của bạn đã được chuyển giao cho TVV <strong>$new_cons_name</strong>.</p>";
@@ -11433,7 +11433,7 @@ switch ($action) {
                         $ccEmailsArr = array_filter($ccEmailsArr, fn($e) => $e !== $saleEmail);
                         $ccString = implode(',', $ccEmailsArr);
 
-                        $emailSubj = "[Domation DATA] Thông báo đền bù do chặn Lead - $lead_name";
+                        $emailSubj = "[Rich Land DATA] Thông báo đền bù do chặn Lead - $lead_name";
                         $emailBody = "<h3>Đền bù Data do chặn Blacklist</h3>
                                       <p>Chào $old_consultant_name,</p>
                                       <p>Khách hàng của bạn đã bị Admin <strong>$adminName</strong> đưa vào Danh sách đen (Blacklist).</p>
@@ -11459,7 +11459,7 @@ switch ($action) {
                         $ccList = array_map(fn($a) => $a['email'], $adminEmailsCopy);
                         $ccString = implode(',', array_filter($ccList));
 
-                        $emailSubj = "[Domation DATA] Thông báo Chặn Lead (Không Bù) - $lead_name";
+                        $emailSubj = "[Rich Land DATA] Thông báo Chặn Lead (Không Bù) - $lead_name";
                         $emailBody = "<h3>Thông báo Chặn Lead - Blacklist</h3>
                                       <p>Kính gửi Ban quản trị,</p>
                                       <p>Admin <strong>$adminName</strong> đã chặn khách hàng và đưa vào danh sách đen (không đền bù cho Sale).</p>

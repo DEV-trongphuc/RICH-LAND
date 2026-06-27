@@ -833,7 +833,7 @@ if (!function_exists('recallInactiveLeads')) {
                                    . "Chào $oldConsultantName,\n\n"
                                    . "Data \"$lName\" đã bị hệ thống THU HỒI do bạn không tiếp nhận trong vòng " . $row['lead_recall_minutes'] . " phút.\n"
                                    . "Hệ thống đã bù lại 1 lượt nhận data cho bạn tại vòng: $roundName.\n\n"
-                                   . "Trân trọng,\nHệ thống Quản lý Domation DATA\n"
+                                   . "Trân trọng,\nHệ thống Quản lý Rich Land DATA\n"
                                    . "━━━━━━━━━━━━━━━━━━━━━";
                         sendZaloMessage($botToken, $oldCZalo, $recallMsg);
                     }

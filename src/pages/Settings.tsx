@@ -108,7 +108,7 @@ const SettingsInner = () => {
   const [sesUser, setSesUser] = useState('');
   const [sesPass, setSesPass] = useState('');
   const [sesSenderEmail, setSesSenderEmail] = useState('');
-  const [sesSenderName, setSesSenderName] = useState('DOMATION TEAM');
+  const [sesSenderName, setSesSenderName] = useState('RICH LAND TEAM');
 
   const [testEmail, setTestEmail] = useState('');
   const [testType, setTestType] = useState('system');
@@ -1781,7 +1781,7 @@ const SettingsInner = () => {
                     <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('🔗 URL Frontend (Dùng trong link Email báo cáo lỗi)')}</label>
                     <input
                       className="form-input"
-                      placeholder={t("Ví dụ: https://sale.domation.net")}
+                      placeholder={t("Ví dụ: https://sale.richland.net")}
                       value={frontendUrl}
                       onChange={e => setFrontendUrl(e.target.value)}
                     />
@@ -1889,7 +1889,7 @@ function doPost(e) {
                         </div>
                         <div>
                           <label className="form-label">{t('Tên Người Gửi (From Name)')}</label>
-                          <input className="form-input" placeholder="DOMATION TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
+                          <input className="form-input" placeholder="RICH LAND TEAM" value={sesSenderName} onChange={e => setSesSenderName(e.target.value)} />
                         </div>
                       </div>
                     </div>
@@ -1948,7 +1948,7 @@ function doPost(e) {
                     <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                        https://open.domation.net/sale_data/zalo_webhook.php
+                        https://open.richland.net/sale_data/zalo_webhook.php
                       </code>
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
