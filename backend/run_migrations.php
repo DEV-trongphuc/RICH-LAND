@@ -1296,6 +1296,46 @@ try {
         $logMsg("Hoàn thành cập nhật phiên bản 146.", "success");
     }
 
+    // --------------------------------------------------
+    // Step 18: Version 147 (Create teams table and add team_id column to consultants / users)
+    // --------------------------------------------------
+    if ($currentVersion < 147) {
+        $logMsg("Đang chạy cập nhật phiên bản 147 (Khởi tạo bảng quản lý Team hierarchy)...", "info");
+
+        // 1. Create teams table
+        $conn->query("CREATE TABLE IF NOT EXISTS `teams` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `name` varchar(255) NOT NULL,
+            `branch` varchar(255) DEFAULT NULL,
+            `leader_id` int(11) DEFAULT NULL,
+            `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+            `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+            PRIMARY KEY (`id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $logMsg("Đã tạo hoặc kiểm tra bảng teams.", "success");
+
+        // 2. Add team_id to consultants
+        $chkColTeamCon = $conn->query("SHOW COLUMNS FROM consultants LIKE 'team_id'");
+        if ($chkColTeamCon && $chkColTeamCon->num_rows === 0) {
+            $conn->query("ALTER TABLE consultants ADD COLUMN team_id int(11) DEFAULT NULL");
+            $logMsg("Đã thêm cột team_id vào bảng consultants.", "success");
+        }
+
+        // 3. Add team_id to users (if exists in unified schema)
+        $chkTableUsers = $conn->query("SHOW TABLES LIKE 'users'");
+        if ($chkTableUsers && $chkTableUsers->num_rows > 0) {
+            $chkColTeamUsers = $conn->query("SHOW COLUMNS FROM users LIKE 'team_id'");
+            if ($chkColTeamUsers && $chkColTeamUsers->num_rows === 0) {
+                $conn->query("ALTER TABLE users ADD COLUMN team_id int(11) DEFAULT NULL");
+                $logMsg("Đã thêm cột team_id vào bảng users.", "success");
+            }
+        }
+
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '147') ON DUPLICATE KEY UPDATE setting_value = '147'");
+        $currentVersion = 147;
+        $logMsg("Hoàn thành cập nhật phiên bản 147.", "success");
+    }
+
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");
 
 } catch (Throwable $e) {

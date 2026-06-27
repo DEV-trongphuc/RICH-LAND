@@ -858,6 +858,20 @@ CREATE TABLE `ticket_comments` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `teams`
+--
+
+CREATE TABLE `teams` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `leader_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `users`
 --
 
@@ -874,7 +888,8 @@ CREATE TABLE `users` (
   `last_login_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `bio` text DEFAULT NULL
+  `bio` text DEFAULT NULL,
+  `team_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1284,13 +1299,22 @@ ALTER TABLE `ticket_comments`
   ADD KEY `idx_tc_ticket` (`ticket_id`);
 
 --
+-- Chỉ mục cho bảng `teams`
+--
+ALTER TABLE `teams`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_teams_tenant` (`tenant_id`),
+  ADD KEY `idx_teams_leader` (`leader_id`);
+
+--
 -- Chỉ mục cho bảng `users`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_email_per_tenant` (`email`,`tenant_id`),
   ADD KEY `idx_users_tenant` (`tenant_id`),
-  ADD KEY `idx_users_role` (`role`);
+  ADD KEY `idx_users_role` (`role`),
+  ADD KEY `idx_users_team` (`team_id`);
 
 --
 -- Chỉ mục cho bảng `workflows`
@@ -1542,6 +1566,12 @@ ALTER TABLE `tickets`
 -- AUTO_INCREMENT cho bảng `ticket_comments`
 --
 ALTER TABLE `ticket_comments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `teams`
+--
+ALTER TABLE `teams`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1832,10 +1862,18 @@ ALTER TABLE `ticket_comments`
   ADD CONSTRAINT `ticket_comments_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
+-- Ràng buộc cho bảng `teams`
+--
+ALTER TABLE `teams`
+  ADD CONSTRAINT `teams_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `teams_ibfk_2` FOREIGN KEY (`leader_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
 -- Ràng buộc cho bảng `users`
 --
 ALTER TABLE `users`
-  ADD CONSTRAINT `users_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `users_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `users_ibfk_2` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE SET NULL;
 
 --
 -- Ràng buộc cho bảng `workflows`
