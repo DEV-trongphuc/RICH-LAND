@@ -788,11 +788,11 @@ ul {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   font-weight: 700;
-  font-size: 0.9375rem;
-  padding: 0 1.5rem;
-  height: 44px;
+  font-size: 0.875rem;
+  padding: 0 1.125rem;
+  height: 38px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   line-height: 1;
@@ -803,10 +803,10 @@ ul {
 }
 
 .btn.sm {
-  height: 38px;
-  padding: 0 1rem;
-  font-size: 0.8125rem;
-  border-radius: var(--radius-md);
+  height: 32px;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  border-radius: var(--radius-sm);
 }
 
 .btn.lg {
