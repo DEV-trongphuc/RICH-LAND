@@ -6,7 +6,14 @@ CREATE TABLE IF NOT EXISTS `tenants` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
   `slug` varchar(100) NOT NULL UNIQUE,
+  `plan` enum('free','pro','enterprise') NOT NULL DEFAULT 'free',
+  `logo_url` text DEFAULT NULL,
+  `primary_color` varchar(20) DEFAULT '#BD1D2D',
+  `currency` char(3) DEFAULT 'VND',
+  `timezone` varchar(50) DEFAULT 'Asia/Ho_Chi_Minh',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -1108,6 +1115,46 @@ CREATE TABLE IF NOT EXISTS `activity_comments` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Table: admin_logs (Imported from GIAO_DATA schema.sql - unified layout)
+CREATE TABLE IF NOT EXISTS `admin_logs` (
+  `id` int(11) NOT NULL,
+  `account_id` int(11) NOT NULL, -- references users.id (physical table)
+  `action` varchar(100) NOT NULL,
+  `details` longtext DEFAULT NULL COMMENT 'JSON details',
+  `log_type` varchar(50) GENERATED ALWAYS AS (JSON_VALUE(details, '$.type')) VIRTUAL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `is_rolled_back` tinyint(1) DEFAULT 0 COMMENT 'Đánh dấu log đã được hoàn tác'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: data_reports (Imported from GIAO_DATA schema.sql - unified layout)
+CREATE TABLE IF NOT EXISTS `data_reports` (
+  `id` int(11) NOT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `consultant_id` int(11) DEFAULT NULL, -- references users.id (physical table)
+  `round_id` int(11) DEFAULT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'pending',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `resolved_at` datetime DEFAULT NULL,
+  `resolved_by` varchar(100) DEFAULT NULL COMMENT 'Tên admin duyệt ticket',
+  `reject_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do từ chối ticket',
+  `approval_reason` varchar(255) DEFAULT NULL COMMENT 'Lý do duyệt ticket'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table: sync_queue (Imported from GIAO_DATA schema.sql - unified layout)
+CREATE TABLE IF NOT EXISTS `sync_queue` (
+  `id` int(11) NOT NULL,
+  `lead_id` int(11) DEFAULT NULL,
+  `connection_id` int(11) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'pending',
+  `attempts` int(11) DEFAULT 0,
+  `next_retry_at` datetime DEFAULT NULL,
+  `last_error` text DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 ALTER TABLE `activities` ADD PRIMARY KEY (`id`),
   ADD KEY `idx_activity_tenant` (`tenant_id`),
   ADD KEY `idx_activity_user` (`user_id`),
@@ -1396,3 +1443,78 @@ ALTER TABLE `activity_comments` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 ALTER TABLE `activity_comments` ADD CONSTRAINT `activity_comments_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `activity_comments_ibfk_2` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `activity_comments_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+-- Indices & Primary Keys for admin_logs, data_reports, sync_queue
+ALTER TABLE `admin_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `account_id` (`account_id`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_action_created` (`action`,`created_at`),
+  ADD KEY `idx_action_log_type_created` (`action`,`log_type`,`created_at`);
+
+ALTER TABLE `data_reports`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `consultant_id` (`consultant_id`),
+  ADD KEY `idx_round_id` (`round_id`),
+  ADD KEY `idx_report_lookup` (`lead_id`,`consultant_id`,`round_id`),
+  ADD KEY `idx_created_at` (`created_at`),
+  ADD KEY `idx_status` (`status`);
+
+ALTER TABLE `sync_queue`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `lead_id` (`lead_id`),
+  ADD KEY `connection_id` (`connection_id`),
+  ADD KEY `idx_status_retry` (`status`,`next_retry_at`);
+
+-- AUTO_INCREMENTs
+ALTER TABLE `admin_logs` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `data_reports` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+ALTER TABLE `sync_queue` MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+-- Foreign Keys (pointing directly to physical users table to prevent view referencing error)
+ALTER TABLE `admin_logs`
+  ADD CONSTRAINT `admin_logs_ibfk_1` FOREIGN KEY (`account_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `data_reports`
+  ADD CONSTRAINT `data_reports_ibfk_1` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `data_reports_ibfk_2` FOREIGN KEY (`consultant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `data_reports_ibfk_3` FOREIGN KEY (`round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `sync_queue`
+  ADD CONSTRAINT `sync_queue_ibfk_1` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `sync_queue_ibfk_2` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE SET NULL;
+
+-- ────────────────────────────────────────────────────────
+-- INITIAL SEED DATA
+-- ────────────────────────────────────────────────────────
+
+-- 1. Default Tenant
+INSERT INTO `tenants` (`id`, `name`, `slug`, `plan`, `logo_url`, `primary_color`, `currency`, `timezone`, `is_active`, `created_at`) 
+VALUES (1, 'Richland', 'richland', 'enterprise', 'LOGO.webp', '#BD1D2D', 'VND', 'Asia/Ho_Chi_Minh', 1, CURRENT_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+
+-- 2. Default Superadmin User (password: admin123)
+INSERT INTO `users` (`id`, `tenant_id`, `email`, `password_hash`, `full_name`, `role`, `is_active`, `created_at`) 
+VALUES (1, 1, 'admin@richland.vn', '$2b$10$1X4NT1kNF2s/YCJCnmpvauhI8/p292oUacNu6Y2z0wBs8T10lEdZS', 'Super Admin', 'superadmin', 1, CURRENT_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `email` = VALUES(`email`);
+
+-- 3. Default System Settings
+INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
+('db_version', '146'),
+('frontend_url', 'http://localhost:5173'),
+('ai_screener_model', 'gemini-2.5-flash-lite'),
+('report_error_reasons', '[\"Sai số điện thoại / Số ảo\", \"Trùng của tôi (Trùng Saleperson)\", \"Trùng của người khác (Saleperson khác đã chăm)\", \"Spam ảo / Junk lead\", \"Khác (Vui lòng ghi rõ ở phần ghi chú)\"]')
+ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`);
+
+-- 4. Mark migrations as applied
+CREATE TABLE IF NOT EXISTS `schema_migrations` (
+    `migration` varchar(255) NOT NULL,
+    `applied_at` timestamp NOT NULL DEFAULT current_timestamp(),
+    PRIMARY KEY (`migration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `schema_migrations` (`migration`, `applied_at`) VALUES 
+('migrate_2026_05_06_v3_files.sql', CURRENT_TIMESTAMP()), 
+('migrate_activity_comments.sql', CURRENT_TIMESTAMP()), 
+('migrate_fractional_quantities.sql', CURRENT_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `migration` = VALUES(`migration`);
