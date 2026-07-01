@@ -235,7 +235,7 @@ CREATE TABLE IF NOT EXISTS `lead_offers` (
   `user_id` int(11) NOT NULL, -- FK to users
   `round_id` int(11) NOT NULL,
   `offered_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `expires_at` timestamp NOT NULL DEFAULT '1970-01-01 00:00:01',
+  `expires_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` enum('pending','accepted','expired','rejected') NOT NULL DEFAULT 'pending',
   `action_reason` varchar(255) DEFAULT NULL,
   `responded_at` timestamp NULL DEFAULT NULL,
