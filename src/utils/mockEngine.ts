@@ -886,7 +886,15 @@ export const processMockRequest = async (action: string, payload?: any, method =
             }
           }
 
-          if (dateParam && dateParam !== 'all') {
+          const monthParam = params.get('month');
+          const yearParam = params.get('year') || '2026';
+
+          if (monthParam) {
+            list = list.filter(c => {
+              const dParts = c.check_in_date.split('-');
+              return Number(dParts[0]) === Number(yearParam) && Number(dParts[1]) === Number(monthParam);
+            });
+          } else if (dateParam && dateParam !== 'all') {
             list = list.filter(c => c.check_in_date === dateParam);
           }
 

@@ -43,7 +43,11 @@ class CheckInController {
             }
         }
 
-        if (isset($_GET['date']) && !empty($_GET['date']) && $_GET['date'] !== 'all') {
+        if (isset($_GET['month']) && !empty($_GET['month'])) {
+            $sql .= " AND YEAR(c.check_in_date) = ? AND MONTH(c.check_in_date) = ?";
+            $params[] = (int)($_GET['year'] ?? date('Y'));
+            $params[] = (int)$_GET['month'];
+        } elseif (isset($_GET['date']) && !empty($_GET['date']) && $_GET['date'] !== 'all') {
             $sql .= " AND c.check_in_date = ?";
             $params[] = $_GET['date'];
         }
