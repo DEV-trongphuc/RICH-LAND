@@ -392,7 +392,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 )}
                 {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
-                  const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href);
+                  const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href && location.search === '');
 
                   return (
                     <NavLink
