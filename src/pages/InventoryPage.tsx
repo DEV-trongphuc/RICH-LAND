@@ -16,6 +16,7 @@ import { ImportExportModal } from '../components/ui/ImportExportModal';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { DEV_MODE } from '../config/env';
 import { Tooltip } from '../components/ui/Tooltip';
+import { useAuth } from '../contexts/AuthContext';
 
 const PAGE_SIZE = 20;
 
@@ -48,6 +49,8 @@ interface InventoryLog {
 }
 
 export default function InventoryPage() {
+  const { user } = useAuth();
+  const isSale = user?.role === 'sale';
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
@@ -292,17 +295,21 @@ export default function InventoryPage() {
             <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'purchase_orders' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')}>Hợp đồng/Bảng hàng</button>
           </div>
 
-          <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
+          {!isSale && (
+            <>
+              <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
 
-          <button className="btn outline" onClick={() => setShowImportExport(true)} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Nhập/Xuất Excel">
-            <Download size={14} />
-            <span> Nhập/Xuất Excel</span>
-          </button>
+              <button className="btn outline" onClick={() => setShowImportExport(true)} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Nhập/Xuất Excel">
+                <Download size={14} />
+                <span> Nhập/Xuất Excel</span>
+              </button>
 
-          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Khai báo căn / lô">
-            <Plus size={14} />
-            <span> Khai báo căn / lô</span>
-          </button>
+              <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Khai báo căn / lô">
+                <Plus size={14} />
+                <span> Khai báo căn / lô</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -558,13 +565,17 @@ export default function InventoryPage() {
                                   <button className="btn-icon sm text-primary" title="Lịch sử giao dịch" onClick={() => { setSelectedBatch(b); fetchBatchLogs(b.id); setShowHistoryModal(true); }}>
                                     <History size={14} />
                                   </button>
-                                  <button className="btn-icon sm text-info" title="Cập nhật thông tin căn" onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Cập nhật diện tích/thông số' }); setShowAdjustModal(true); }}>
-                                    <Edit size={14} />
-                                  </button>
-                                  {b.current_qty <= 0 && (
-                                    <button className="btn-icon sm text-danger" title="Lưu trữ" onClick={() => archiveBatch(b.id)}>
-                                      <Trash2 size={14} />
-                                    </button>
+                                  {!isSale && (
+                                    <>
+                                      <button className="btn-icon sm text-info" title="Cập nhật thông tin căn" onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Cập nhật diện tích/thông số' }); setShowAdjustModal(true); }}>
+                                        <Edit size={14} />
+                                      </button>
+                                      {b.current_qty <= 0 && (
+                                        <button className="btn-icon sm text-danger" title="Lưu trữ" onClick={() => archiveBatch(b.id)}>
+                                          <Trash2 size={14} />
+                                        </button>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               </td>
@@ -647,14 +658,16 @@ export default function InventoryPage() {
                         >
                           <History size={14} />
                         </button>
-                        <button 
-                          onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' }); setShowAdjustModal(true); }}
-                          className="btn secondary"
-                          style={{ width: '36px', height: '36px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Điều chỉnh"
-                        >
-                          <Edit size={14} />
-                        </button>
+                        {!isSale && (
+                          <button 
+                            onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' }); setShowAdjustModal(true); }}
+                            className="btn secondary"
+                            style={{ width: '36px', height: '36px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Điều chỉnh"
+                          >
+                            <Edit size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </motion.div>
