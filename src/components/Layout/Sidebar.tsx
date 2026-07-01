@@ -399,7 +399,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                       key={name + href}
                       to={href}
                       end={end}
-                      className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                      className={() => `sidebar-nav-item ${isActive ? 'active' : ''}`}
                       title={isCollapsed ? t(name) : undefined}
                       onClick={(e) => {
                         if (location.pathname + location.search === href) {
