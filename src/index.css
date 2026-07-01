@@ -1922,10 +1922,10 @@ input[type="radio"]:hover:not(:checked) {
    ================================================ */
 .stat-kpi {
   background: var(--color-surface);
-  border: 1px solid var(--color-border-light);
-  border-radius: var(--radius-xl);
-  padding: 1.5rem 1.25rem;
-  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-xs);
   transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;
@@ -1933,28 +1933,26 @@ input[type="radio"]:hover:not(:checked) {
 
 .stat-kpi:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.06), 0 4px 10px -3px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--shadow-md);
 }
 
 .stat-kpi__header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
 
 .stat-kpi__icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .stat-kpi__label {
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1962,12 +1960,11 @@ input[type="radio"]:hover:not(:checked) {
 }
 
 .stat-kpi__value {
-  font-size: 1.85rem;
-  font-weight: 900;
+  font-size: 1.875rem;
+  font-weight: 800;
   color: var(--color-text);
-  letter-spacing: -0.04em;
-  line-height: 1.1;
-  margin-bottom: 0.75rem;
+  line-height: 1.2;
+  margin: 0.25rem 0;
 }
 
 .stat-kpi__sub {

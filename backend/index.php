@@ -757,7 +757,7 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'documents' && $method === 'GET') $ctrl->getDocuments($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'documents' && $method === 'POST') $ctrl->uploadDocument($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'DELETE') $ctrl->deleteDocument($auth, (int)$resourceId, (int)$segments[3]);
-        elseif ($resourceId && $subResource === 'documents' && $segments[3] && $subResource === 'download') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'documents' && $segments[3] && ($segments[4] ?? '') === 'download') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'GET') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]); // fallback direct link download
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);

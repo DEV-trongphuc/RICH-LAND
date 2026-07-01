@@ -323,8 +323,8 @@ export const ReportsPage: React.FC = () => {
               return (
                 <motion.div key={card.label} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                   <div className="stat-kpi__header">
-                    <div className="stat-kpi__icon" style={{ background: `${card.color}12`, color: card.color }}><Icon size={16} /></div>
                     <div className="stat-kpi__label">{card.label}</div>
+                    <div className="stat-kpi__icon" style={{ color: card.color }}><Icon size={20} /></div>
                   </div>
                   {loading ? (
                     <div style={{ padding: '0.5rem 0' }}>
@@ -425,6 +425,48 @@ export const ReportsPage: React.FC = () => {
 
       {tab === 'pipeline' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* KPI Cards */}
+          <div className="grid grid-3">
+            {[
+              {
+                label: 'Giá trị trung bình mỗi deal',
+                value: FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0) / (pipelineData.reduce((s,d) => s+Number(d.count),0) || 1)),
+                icon: TrendingUp,
+                color: '#a31422'
+              },
+              {
+                label: 'Tổng cơ hội đang mở',
+                value: String(pipelineData.reduce((s,d) => s+Number(d.count),0)),
+                icon: Briefcase,
+                color: '#10b981'
+              },
+              {
+                label: 'Tổng giá trị Pipeline',
+                value: FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0)),
+                icon: BarChart3,
+                color: '#3b82f6'
+              }
+            ].map((card, i) => {
+              const Icon = card.icon;
+              return (
+                <motion.div key={card.label} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                  <div className="stat-kpi__header">
+                    <div className="stat-kpi__label">{card.label}</div>
+                    <div className="stat-kpi__icon" style={{ color: card.color }}><Icon size={20} /></div>
+                  </div>
+                  {loading ? (
+                    <div style={{ padding: '0.5rem 0' }}>
+                      <Skeleton height="2rem" width="80%" style={{ marginBottom: '0.5rem' }} />
+                    </div>
+                  ) : (
+                    <div className="stat-kpi__value">{card.value}</div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Charts */}
           <div className="grid grid-2" style={{ gap: '1.25rem' }}>
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -486,21 +528,6 @@ export const ReportsPage: React.FC = () => {
                     </PieChart>
                  </ResponsiveContainer>
                </div>
-            </div>
-          </div>
-
-          <div className="grid grid-3" style={{ gap: '1.25rem' }}>
-            <div className="card" style={{ padding: '0.875rem' }}>
-               <p style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Giá trị trung bình mỗi deal</p>
-               <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-primary)' }}>{FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0) / (pipelineData.reduce((s,d) => s+Number(d.count),0) || 1))}</p>
-            </div>
-            <div className="card" style={{ padding: '0.875rem' }}>
-               <p style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Tổng cơ hội đang mở</p>
-               <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)' }}>{pipelineData.reduce((s,d) => s+Number(d.count),0)}</p>
-            </div>
-            <div className="card" style={{ padding: '0.875rem' }}>
-               <p style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Tổng giá trị Pipeline</p>
-               <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-success)' }}>{FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0))}</p>
             </div>
           </div>
         </div>

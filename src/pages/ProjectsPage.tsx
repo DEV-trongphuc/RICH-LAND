@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle } from 'lucide-react';
@@ -11,6 +12,8 @@ interface Project {
   description: string;
   status: string;
   created_at: string;
+  roster_count?: number;
+  doc_count?: number;
 }
 
 interface RosterMember {
@@ -316,7 +319,15 @@ export default function ProjectsPage() {
                     {proj.status === 'active' ? 'Đang bán' : 'Tạm dừng'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-400 line-clamp-3 mb-6" style={{ color: 'var(--color-text-muted)' }}>{proj.description || 'Không có mô tả'}</p>
+                <p className="text-sm text-gray-400 line-clamp-3 mb-4" style={{ color: 'var(--color-text-muted)' }}>{proj.description || 'Không có mô tả'}</p>
+                <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '4px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                    <Users size={12} /> {proj.roster_count || 0} nhân sự
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '4px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                    <FileText size={12} /> {proj.doc_count || 0} tài liệu
+                  </span>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
@@ -363,7 +374,7 @@ export default function ProjectsPage() {
       )}
 
       {/* Edit Modal */}
-      {isEditModalOpen && (
+      {isEditModalOpen && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="modal-sheet modal-sm" style={{ animation: 'scaleUp 0.2s ease-out' }}>
             <div className="modal-header">
@@ -419,11 +430,12 @@ export default function ProjectsPage() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Roster Modal */}
-      {isRosterModalOpen && (
+      {isRosterModalOpen && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out' }}>
             <div className="modal-header">
@@ -479,11 +491,12 @@ export default function ProjectsPage() {
               <button type="button" className="btn primary" onClick={handleSaveRoster}>Lưu thay đổi</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Documents Modal */}
-      {isDocsModalOpen && (
+      {isDocsModalOpen && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out' }}>
             <div className="modal-header">
@@ -565,7 +578,8 @@ export default function ProjectsPage() {
               <button type="button" className="btn" onClick={() => setIsDocsModalOpen(false)}>Đóng</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

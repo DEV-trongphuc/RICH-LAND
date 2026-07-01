@@ -340,10 +340,10 @@ export default function InventoryPage() {
             ].map((k, i) => (
               <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                 <div className="stat-kpi__header">
-                  <div className="stat-kpi__icon" style={{ background: `${k.color}15`, color: k.color }}>
-                    <k.icon size={16} />
-                  </div>
                   <div className="stat-kpi__label">{k.label}</div>
+                  <div className="stat-kpi__icon" style={{ color: k.color }}>
+                    <k.icon size={20} />
+                  </div>
                 </div>
                 {loading ? <div className="skeleton" style={{ height: 36, width: '85%', borderRadius: 6, marginBottom: 12 }} />
                   : <div className="stat-kpi__value">{k.value}</div>}
