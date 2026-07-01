@@ -217,9 +217,9 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
             <Avatar name="Bạn" size="sm" />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ position: 'relative' }}>
-                <textarea 
+                <MentionInput 
                   className="form-input" 
-                  style={{ minHeight: '60px', padding: '8px 12px', fontSize: '0.875rem', paddingRight: '40px', opacity: submitting ? 0.7 : 1 }} 
+                  style={{ minHeight: '60px', padding: '8px 12px', fontSize: '0.875rem', paddingRight: '40px', opacity: submitting ? 0.7 : 1, width: '100%' }} 
                   placeholder="Viết bình luận..."
                   value={text}
                   disabled={submitting}
@@ -279,6 +279,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
   const [newNote, setNewNote] = useState('');
+  const [noteChannel, setNoteChannel] = useState<'text' | 'call' | 'meet'>('text');
+  const [noteType, setNoteType] = useState<'normal' | 'quality'>('normal');
+  const [noteDuration, setNoteDuration] = useState<string>('');
+  const [noteDocsSent, setNoteDocsSent] = useState<string>('');
+  const [noteObstacle, setNoteObstacle] = useState<string>('');
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string }[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
@@ -767,12 +772,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const addNote = async () => {
     if (!newNote.trim() || isSubmitting) return;
     setIsSubmitting(true);
-    const text = newNote.trim();
+    let text = `[${noteChannel === 'text' ? 'Nồi Đất (Text/Chat)' : noteChannel === 'call' ? 'Nồi Đồng (Call)' : 'Nồi Áp Suất (Gặp mặt)'} - Tương tác ${noteType === 'normal' ? 'Thường' : 'Chất lượng'}]\n`;
+    if (noteChannel === 'call' && noteDuration.trim()) {
+      text += `Thời lượng cuộc gọi: ${noteDuration} giây\n`;
+    }
+    if (noteDocsSent.trim()) {
+      text += `Tài liệu đã gửi: ${noteDocsSent}\n`;
+    }
+    if (noteObstacle) {
+      const obstacleLabels: Record<string, string> = {
+        'trust': '🧑 Chưa tin mình',
+        'project': '🏙️ Chưa ưng dự án',
+        'unit': '🏠 Chưa chọn căn',
+        'smooth': '✓ Đang xuôi'
+      };
+      text += `Trạng thái vướng mắc: ${obstacleLabels[noteObstacle] || noteObstacle}\n`;
+    }
+    text += `Nội dung: ${newNote.trim()}`;
     try {
       await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
         body: text, type: 'internal'
       });
       setNewNote('');
+      setNoteChannel('text');
+      setNoteType('normal');
+      setNoteDuration('');
+      setNoteDocsSent('');
+      setNoteObstacle('');
       fetchData(); // Reload all to stay in sync
       addToast('Đã lưu ghi chú', 'success');
     } catch (err: any) {
@@ -1175,6 +1201,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           key={st.id}
                           onClick={() => {
                             if (isCurrent) return;
+
+                            // Guard: Only owner or admin can change pipeline status
+                            const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
+                            const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+                            if (currentUser?.role === 'sale' && !isOwner && !isAdmin) {
+                              addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
+                              return;
+                            }
                             
                             // Check interaction guardrail: if transitioning to 'churned' (Đã rời bỏ/Đóng), must have at least 1 activity
                             if (st.id === 'churned' && drawerActivities.length === 0) {
@@ -1498,22 +1532,29 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                           <div className="form-group">
                             <label className="form-label">Người đang chăm sóc (Sale)</label>
-                            <CustomSelect
-                              options={users.map(u => ({
-                                value: u.id,
-                                label: u.full_name,
-                                avatar: u.avatar_url,
-                                sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
-                              }))}
-                              value={formData.owner_id || ''}
-                              onChange={val => {
-                                const u = users.find(x => x.id === Number(val));
-                                setFormData({ ...formData, owner_id: val, owner_name: u?.full_name || '' });
-                              }}
-                              placeholder="Chọn sale phụ trách..."
-                              searchable
-                              showAvatars
-                            />
+                            {currentUser?.role === 'sale' ? (
+                              <div style={{ padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Avatar src={formData.owner_avatar} name={formData.owner_name} size="sm" />
+                                <span>{formData.owner_name || 'Chưa giao'}</span>
+                              </div>
+                            ) : (
+                              <CustomSelect
+                                options={users.map(u => ({
+                                  value: u.id,
+                                  label: u.full_name,
+                                  avatar: u.avatar_url,
+                                  sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
+                                }))}
+                                value={formData.owner_id || ''}
+                                onChange={val => {
+                                  const u = users.find(x => x.id === Number(val));
+                                  setFormData({ ...formData, owner_id: val, owner_name: u?.full_name || '' });
+                                }}
+                                placeholder="Chọn sale phụ trách..."
+                                searchable
+                                showAvatars
+                              />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2136,15 +2177,160 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Ghi chú nội bộ</h3>
                       </div>
-                      <div className="card-panel" style={{ marginBottom: '1.5rem', background: 'var(--color-surface)' }}>
-                        <MentionInput
-                          value={newNote || ''}
-                          onChange={e => setNewNote(e.target.value)}
-                          placeholder="Nhập nội dung ghi chú về khách hàng này (Sử dụng @ để tag user/sale)..."
-                          style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 140, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)', marginBottom: '1rem' }}
-                          onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
-                          onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
-                        />
+                      <div className="card-panel" style={{ marginBottom: '1.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
+                        {/* 1. Channel & Type Row */}
+                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                          {/* Channel Select */}
+                          <div style={{ flex: '1 0 200px' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Kênh tương tác (Nồi)</label>
+                            <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                              <button
+                                type="button"
+                                onClick={() => setNoteChannel('text')}
+                                style={{
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  background: noteChannel === 'text' ? 'var(--color-surface)' : 'transparent',
+                                  color: noteChannel === 'text' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                  boxShadow: noteChannel === 'text' ? 'var(--shadow-sm)' : 'none',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                📝 Nồi Đất
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNoteChannel('call')}
+                                style={{
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  background: noteChannel === 'call' ? 'var(--color-surface)' : 'transparent',
+                                  color: noteChannel === 'call' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                  boxShadow: noteChannel === 'call' ? 'var(--shadow-sm)' : 'none',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                📞 Nồi Đồng
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNoteChannel('meet')}
+                                style={{
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  background: noteChannel === 'meet' ? 'var(--color-surface)' : 'transparent',
+                                  color: noteChannel === 'meet' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                  boxShadow: noteChannel === 'meet' ? 'var(--shadow-sm)' : 'none',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                🤝 Nồi Áp Suất
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Interaction Type Select */}
+                          <div style={{ flex: '1 0 150px' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Loại tương tác</label>
+                            <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                              <button
+                                type="button"
+                                onClick={() => setNoteType('normal')}
+                                style={{
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  background: noteType === 'normal' ? 'var(--color-surface)' : 'transparent',
+                                  color: noteType === 'normal' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                                  boxShadow: noteType === 'normal' ? 'var(--shadow-sm)' : 'none',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                Thường
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setNoteType('quality')}
+                                style={{
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  background: noteType === 'quality' ? 'var(--color-surface)' : 'transparent',
+                                  color: noteType === 'quality' ? 'var(--color-success)' : 'var(--color-text-muted)',
+                                  boxShadow: noteType === 'quality' ? 'var(--shadow-sm)' : 'none',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                Chất lượng
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* 2. Optional Fields (Call Duration, Documents Sent) */}
+                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                          {noteChannel === 'call' && (
+                            <div style={{ flex: '1 0 150px' }}>
+                              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Thời lượng cuộc gọi (giây)</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                placeholder="Ví dụ: 45"
+                                value={noteDuration}
+                                onChange={e => setNoteDuration(e.target.value)}
+                                style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                              />
+                            </div>
+                          )}
+
+                          <div style={{ flex: '1 0 200px' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Tài liệu đã gửi (Tùy chọn)</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Ví dụ: Bảng giá block A, Sơ đồ căn..."
+                              value={noteDocsSent}
+                              onChange={e => setNoteDocsSent(e.target.value)}
+                              style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 3. Obstacle Tags Row ("Khách đang vướng ở đâu?") */}
+                        <div style={{ marginBottom: '1.25rem' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Khách đang vướng ở đâu?</label>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {[
+                              { id: 'trust', label: '🧑 Chưa tin mình', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
+                              { id: 'project', label: '🏙️ Chưa ưng dự án', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
+                              { id: 'unit', label: '🏠 Chưa chọn căn', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
+                              { id: 'smooth', label: '✓ Đang xuôi', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' }
+                            ].map(item => {
+                              const isSelected = noteObstacle === item.id;
+                              return (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => setNoteObstacle(noteObstacle === item.id ? '' : item.id)}
+                                  style={{
+                                    padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                    background: isSelected ? item.color : 'var(--color-bg)',
+                                    color: isSelected ? item.text : 'var(--color-text-muted)',
+                                    border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
+                                    boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                                  }}
+                                >
+                                  {item.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 4. Text Input Area */}
+                        <div style={{ marginBottom: '1rem' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Nội dung chi tiết tương tác</label>
+                          <MentionInput
+                            value={newNote || ''}
+                            onChange={e => setNewNote(e.target.value)}
+                            placeholder="Nhập ghi chú phản hồi khách hàng (Sử dụng @ để nhắc tên)..."
+                            style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 100, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)' }}
+                          />
+                        </div>
+
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <button className="btn primary" onClick={addNote} disabled={isSubmitting || !newNote.trim()}>
                             {isSubmitting ? <Loader2 size={14} className="spin" /> : <Send size={14} />} 
