@@ -45,7 +45,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
       if (options.body) {
         try { payload = JSON.parse(options.body as string); } catch (e) {}
       }
-      return processMockRequest(action, payload);
+      return processMockRequest(action, payload, options.method || 'GET');
     }
 
     const token = localStorage.getItem('richland_token');

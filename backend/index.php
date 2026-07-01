@@ -306,6 +306,7 @@ require_once __DIR__ . '/controllers/ProjectController.php';
 require_once __DIR__ . '/controllers/DepositController.php';
 require_once __DIR__ . '/controllers/CooperationController.php';
 require_once __DIR__ . '/controllers/CapiController.php';
+require_once __DIR__ . '/controllers/CheckInController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -767,6 +768,17 @@ switch ($resource) {
         if ($resourceId === 'settings' && $method === 'GET') $ctrl->getSettings($auth);
         elseif ($resourceId === 'settings' && $method === 'POST') $ctrl->saveSettings($auth);
         elseif ($resourceId === 'logs' && $method === 'GET') $ctrl->getLogs($auth);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // CHECK-INS
+    case 'check-ins':
+        $auth = requireAuth();
+        $ctrl = new CheckInController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

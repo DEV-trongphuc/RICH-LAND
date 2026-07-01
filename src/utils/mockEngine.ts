@@ -4,14 +4,15 @@ import { MOCK_DB, resetMockDb } from './mockDataDb';
 // Utility to simulate network latency
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
-export const processMockRequest = async (action: string, payload?: any): Promise<any> => {
+export const processMockRequest = async (action: string, payload?: any, method = 'GET'): Promise<any> => {
   await delay(300 + Math.random() * 400); // 300-700ms latency
 
   console.log('[MOCK API INTERCEPT]', action, payload);
 
   const actionName = action.split('&')[0];
+  const normalizedAction = actionName.split('/')[0];
 
-  switch (actionName) {
+  switch (normalizedAction) {
     case 'reset_demo':
       resetMockDb();
       return { success: true, message: 'Đã thiết lập lại cơ sở dữ liệu demo thành công.' };
@@ -842,6 +843,133 @@ export const processMockRequest = async (action: string, payload?: any): Promise
           }
         }
         return { success: true, message: 'Cập nhật thông tin cá nhân thành công (Demo)' };
+      }
+
+    case 'check-ins':
+      {
+        const params = new URLSearchParams(action.includes('&') ? action.substring(action.indexOf('&') + 1) : '');
+        const todayOnly = params.get('today_only') === '1';
+        const dateParam = params.get('date');
+        const statusParam = params.get('status');
+        const userIdParam = params.get('user_id');
+
+        const userStr = localStorage.getItem('richland_user');
+        const userObj = userStr ? JSON.parse(userStr) : null;
+        const currentUserId = userObj ? userObj.id : null;
+
+        const actionPath = actionName; 
+        const pathSegments = actionPath.split('/');
+        const idFromPath = pathSegments[1] ? Number(pathSegments[1]) : null;
+
+        if (method === 'GET') {
+          if (todayOnly) {
+            const row = MOCK_DB.check_ins.find(c => c.user_id === currentUserId && c.check_in_date === '2026-07-01');
+            return { success: true, data: row || null };
+          }
+
+          let list = (MOCK_DB.check_ins as any[]).map(c => {
+            const consultant = MOCK_DB.consultants.find(cons => cons.id === c.user_id);
+            return {
+              ...c,
+              user_name: consultant ? consultant.name : 'Nhân viên Demo',
+              user_email: consultant ? consultant.email : 'demo@richland.net',
+              user_avatar: consultant ? consultant.avatar : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150',
+              work_start_time: consultant ? consultant.work_start_time : '08:00'
+            };
+          });
+
+          if (userObj && userObj.role === 'sale') {
+            list = list.filter(c => c.user_id === currentUserId);
+          } else {
+            if (userIdParam) {
+              list = list.filter(c => String(c.user_id) === String(userIdParam));
+            }
+          }
+
+          if (dateParam && dateParam !== 'all') {
+            list = list.filter(c => c.check_in_date === dateParam);
+          }
+
+          if (statusParam && statusParam !== 'all') {
+            list = list.filter(c => c.status === statusParam);
+          }
+
+          return { success: true, data: list };
+        }
+
+        if (method === 'POST') {
+          const selfieUrl = payload?.selfie_url || '';
+          const reason = payload?.reason || '';
+
+          if (!selfieUrl) return { success: false, message: 'Ảnh selfie check-in là bắt buộc' };
+
+          const exists = MOCK_DB.check_ins.find(c => c.user_id === currentUserId && c.check_in_date === '2026-07-01');
+          if (exists) return { success: false, message: 'Bạn đã thực hiện check-in hôm nay rồi' };
+
+          const consultant = MOCK_DB.consultants.find(c => c.id === currentUserId);
+          const workStartTime = consultant ? consultant.work_start_time : '08:00';
+
+          const now = new Date();
+          const curHM = now.toTimeString().substring(0, 5);
+          const isLate = curHM > workStartTime;
+
+          let status = 'approved';
+          if (isLate) {
+            if (!reason) {
+              return { success: false, message: 'Bạn đi làm trễ giờ làm việc (' + workStartTime + '). Vui lòng gửi lý do "Xin nhận lead hôm nay" để quản lý phê duyệt.' };
+            }
+            status = 'pending_approval';
+          }
+
+          const newRow = {
+            id: MOCK_DB.check_ins.length + 1,
+            user_id: currentUserId,
+            check_in_date: '2026-07-01',
+            check_in_time: now.toTimeString().substring(0, 8),
+            selfie_url: selfieUrl,
+            status: status,
+            reason: reason || null
+          };
+
+          MOCK_DB.check_ins.push(newRow);
+
+          return {
+            success: true,
+            data: {
+              id: newRow.id,
+              check_in_date: newRow.check_in_date,
+              check_in_time: newRow.check_in_time,
+              status: newRow.status,
+              is_late: isLate
+            },
+            message: 'Check-in thành công' + (isLate ? ' (Đang chờ quản lý duyệt vì đi trễ)' : '')
+          };
+        }
+
+        if (method === 'PUT') {
+          if (!idFromPath) return { success: false, message: 'ID check-in không hợp lệ' };
+          const status = payload?.status || '';
+          const reason = payload?.reason || '';
+
+          const row = MOCK_DB.check_ins.find(c => c.id === idFromPath);
+          if (!row) return { success: false, message: 'Không tìm thấy bản ghi check-in' };
+
+          row.status = status;
+          if (reason) row.reason = reason;
+
+          return { success: true, message: 'Cập nhật trạng thái check-in thành công (Demo)' };
+        }
+
+        if (method === 'DELETE') {
+          if (!idFromPath) return { success: false, message: 'ID check-in không hợp lệ' };
+          const index = MOCK_DB.check_ins.findIndex(c => c.id === idFromPath);
+          if (index === -1) return { success: false, message: 'Không tìm thấy bản ghi check-in' };
+
+          MOCK_DB.check_ins.splice(index, 1);
+          return { success: true, message: 'Đã xóa bản ghi check-in thành công (Demo)' };
+        }
+
+        return { success: false, message: 'Phương thức không được hỗ trợ' };
       }
 
     case 'get_calendar_stats':

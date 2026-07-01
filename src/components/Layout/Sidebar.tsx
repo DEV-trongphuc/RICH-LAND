@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
@@ -52,7 +52,8 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2 },
       { name: 'Team', href: '/consultants?tab=teams', icon: Users },
-      { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, adminOnly: true }
+      { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, adminOnly: true },
+      { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, adminOnly: true }
     ]
   },
   {

@@ -7,7 +7,8 @@ import {
   XCircle, Clock, FileText,
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
-  LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu
+  LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
+  Camera, Video
 } from 'lucide-react';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import {
@@ -234,6 +235,17 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [vacationConfirmOpen, setVacationConfirmOpen] = useState(false);
 
+  // Check-in state variables
+  const [checkInModalOpen, setCheckInModalOpen] = useState(false);
+  const [checkInSubmitting, setCheckInSubmitting] = useState(false);
+  const [checkInReason, setCheckInReason] = useState('');
+  const [todayCheckIn, setTodayCheckIn] = useState<any>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
   // Sliding tab indicator
   const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
   const navContainerRef = useRef<HTMLDivElement>(null);
@@ -436,6 +448,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const loadPortalData = async () => {
     if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
     setLoading(true);
+    loadCheckInStatus();
     try {
       let query = `get_sale_portal_data&search=${encodeURIComponent(search)}&round_id=${roundId}&date_mode=${dateMode}&sale_id=${saleIdFilter}`;
       if (dateMode === 'custom') {
@@ -472,6 +485,154 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       toast.error(t('Lỗi kết nối: ') + err.message);
     }
   };
+
+  const loadCheckInStatus = async () => {
+    if (!token) return;
+    try {
+      const res = await fetchAPI('check-ins&today_only=1');
+      if (res.success) {
+        setTodayCheckIn(res.data);
+      }
+    } catch (err) {
+      console.error("Error loading check-in status:", err);
+    }
+  };
+
+  const startCamera = async () => {
+    setCameraError(null);
+    setCapturedImage(null);
+    setIsCameraActive(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 480, facingMode: 'user' }
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      setCameraError(t('Không thể truy cập camera. Vui lòng cấp quyền hoặc tải ảnh lên thay thế.'));
+      setIsCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setCapturedImage(dataUrl);
+        stopCamera();
+      }
+    }
+  };
+
+  const checkIsLate = () => {
+    const workStart = impersonatedSale
+      ? (impersonatedSale.work_start_time || '08:00')
+      : (data.consultant_profile?.work_start_time || '08:00');
+    const now = new Date();
+    const curHM = now.toTimeString().substring(0, 5); 
+    return curHM > workStart;
+  };
+  const isLate = checkIsLate();
+
+  const handleSubmitCheckIn = async (fileToUpload?: File) => {
+    setCheckInSubmitting(true);
+    try {
+      let selfieUrl = '';
+      
+      if (fileToUpload) {
+        const formData = new FormData();
+        formData.append('file', fileToUpload);
+        const uploadRes = await fetchAPI('upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (uploadRes.success && uploadRes.data?.url) {
+          selfieUrl = uploadRes.data.url;
+        } else {
+          toast.error(uploadRes.message || t('Lỗi tải ảnh lên'));
+          setCheckInSubmitting(false);
+          return;
+        }
+      } else if (capturedImage) {
+        const blob = await (await fetch(capturedImage)).blob();
+        const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await fetchAPI('upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (uploadRes.success && uploadRes.data?.url) {
+          selfieUrl = uploadRes.data.url;
+        } else {
+          toast.error(uploadRes.message || t('Lỗi tải ảnh lên'));
+          setCheckInSubmitting(false);
+          return;
+        }
+      } else {
+        toast.error(t('Vui lòng chụp hình selfie hoặc tải ảnh lên.'));
+        setCheckInSubmitting(false);
+        return;
+      }
+
+      if (isLate && !checkInReason.trim()) {
+        toast.error(t('Bạn đi trễ. Vui lòng điền lý do để quản lý duyệt.'));
+        setCheckInSubmitting(false);
+        return;
+      }
+
+      const res = await fetchAPI('check-ins', {
+        method: 'POST',
+        body: JSON.stringify({
+          selfie_url: selfieUrl,
+          reason: isLate ? checkInReason : null
+        })
+      });
+
+      if (res.success) {
+        toast.success(res.message || t('Check-in thành công!'));
+        setCheckInModalOpen(false);
+        setCapturedImage(null);
+        setCheckInReason('');
+        loadCheckInStatus();
+        loadPortalData();
+      } else {
+        toast.error(res.message || t('Check-in thất bại'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi check-in: ') + err.message);
+    }
+    setCheckInSubmitting(false);
+  };
+
+  useEffect(() => {
+    if (checkInModalOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [checkInModalOpen]);
 
   const handleAcceptLead = async (leadId: number) => {
     try {
@@ -3422,6 +3583,79 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               )}
             </div>
 
+            {/* Check-in Button */}
+            <div style={{ marginRight: '0.75rem', display: 'flex', alignItems: 'center' }}>
+              {todayCheckIn ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: todayCheckIn.status === 'rejected' ? 'pointer' : 'default',
+                    border: '1px solid',
+                    backgroundColor: 
+                      todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' :
+                      todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.1)' :
+                      'rgba(239, 68, 68, 0.1)',
+                    color: 
+                      todayCheckIn.status === 'approved' ? 'var(--color-success)' :
+                      todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
+                      'var(--color-danger)',
+                    borderColor: 
+                      todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' :
+                      todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.2)' :
+                      'rgba(239, 68, 68, 0.2)',
+                  }}
+                  onClick={() => {
+                    if (todayCheckIn.status === 'rejected') {
+                      setCheckInModalOpen(true);
+                    }
+                  }}
+                  title={
+                    todayCheckIn.status === 'approved' ? t('Đã chấm công thành công') :
+                    todayCheckIn.status === 'pending_approval' ? t('Đang chờ quản lý phê duyệt đi trễ') :
+                    t('Bị từ chối chấm công. Click để thử lại.')
+                  }
+                >
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: 
+                      todayCheckIn.status === 'approved' ? 'var(--color-success)' :
+                      todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
+                      'var(--color-danger)',
+                  }} />
+                  {todayCheckIn.status === 'approved' && `${t('Đã Check-in')} (${todayCheckIn.check_in_time.substring(0, 5)})`}
+                  {todayCheckIn.status === 'pending_approval' && `${t('Chờ duyệt trễ')} (${todayCheckIn.check_in_time.substring(0, 5)})`}
+                  {todayCheckIn.status === 'rejected' && t('Chấm công bị từ chối')}
+                </div>
+              ) : (
+                <button
+                  className="btn primary sm"
+                  style={{
+                    borderRadius: '20px',
+                    padding: '6px 12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    height: 'auto',
+                    backgroundColor: '#BD1D2D',
+                  }}
+                  onClick={() => setCheckInModalOpen(true)}
+                >
+                  <Camera size={14} />
+                  {t('Chấm công')}
+                </button>
+              )}
+            </div>
+
             {/* Hoverable Profile Dropdown */}
             <div
               onMouseEnter={() => setIsProfileMenuOpen(true)}
@@ -3592,6 +3826,204 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           </div>
         </main>
       </div>
+
+      {/* Check-in Modal */}
+      {checkInModalOpen && (
+        <CustomModal
+          isOpen={checkInModalOpen}
+          onClose={() => setCheckInModalOpen(false)}
+          title={t("CHẤM CÔNG HÀNG NGÀY")}
+          width="500px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              {t('Vui lòng chụp ảnh selfie khuôn mặt của bạn để thực hiện chấm công và nhận data hôm nay.')}
+            </p>
+
+            <div style={{
+              position: 'relative',
+              width: '100%',
+              height: '320px',
+              backgroundColor: '#000',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid var(--color-border)',
+            }}>
+              {capturedImage ? (
+                <img
+                  src={capturedImage}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  alt="Captured Selfie"
+                />
+              ) : isCameraActive ? (
+                <video
+                  ref={videoRef}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  playsInline
+                  muted
+                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#fff', padding: '20px', textAlign: 'center' }}>
+                  <Camera size={48} style={{ opacity: 0.5 }} />
+                  <span style={{ fontSize: '0.875rem' }}>
+                    {cameraError || t('Camera chưa được kích hoạt')}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn primary sm"
+                    onClick={startCamera}
+                    style={{ backgroundColor: '#BD1D2D', border: 'none' }}
+                  >
+                    {t('Kích hoạt Camera')}
+                  </button>
+                </div>
+              )}
+
+              <div style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                backgroundColor: 'rgba(0,0,0,0.6)',
+                color: '#fff',
+                padding: '4px 8px',
+                borderRadius: '4px',
+                fontSize: '0.7rem',
+                fontWeight: 600
+              }}>
+                {t('Giờ vào làm quy định:')} {impersonatedSale ? (impersonatedSale.work_start_time || '08:00') : (data.consultant_profile?.work_start_time || '08:00')}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              {isCameraActive && !capturedImage && (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={capturePhoto}
+                  style={{
+                    backgroundColor: '#BD1D2D',
+                    color: '#fff',
+                    borderRadius: '20px',
+                    padding: '8px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Camera size={16} />
+                  {t('Chụp ảnh selfie')}
+                </button>
+              )}
+              {capturedImage && (
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={startCamera}
+                  style={{
+                    borderRadius: '20px',
+                    padding: '8px 20px'
+                  }}
+                >
+                  {t('Chụp lại')}
+                </button>
+              )}
+              
+              <label
+                className="btn outline"
+                style={{
+                  borderRadius: '20px',
+                  padding: '8px 20px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Video size={16} />
+                {t('Tải tệp ảnh')}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setCapturedImage(reader.result as string);
+                        stopCamera();
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+
+            {isLate && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.05)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '8px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', color: 'var(--color-danger)', fontSize: '0.8125rem', fontWeight: 700 }}>
+                  <AlertTriangle size={16} />
+                  {t('Bạn đã trễ giờ làm việc!')}
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: 0 }}>
+                  {t('Vui lòng gửi lý do "Xin nhận lead hôm nay" để Quản lý duyệt mở cổng nhận data.')}
+                </p>
+                <textarea
+                  className="form-control"
+                  style={{
+                    width: '100%',
+                    height: '70px',
+                    fontSize: '0.8125rem',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--color-border)',
+                    resize: 'none'
+                  }}
+                  placeholder={t('Ví dụ: Kẹt xe tại ngã tư Thủ Đức, hỏng xe...')}
+                  value={checkInReason}
+                  onChange={(e) => setCheckInReason(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '12px', marginTop: '4px' }}>
+              <button
+                type="button"
+                className="btn secondary sm"
+                onClick={() => setCheckInModalOpen(false)}
+              >
+                {t('Đóng')}
+              </button>
+              <button
+                type="button"
+                className="btn primary sm"
+                disabled={checkInSubmitting || !capturedImage || (isLate && !checkInReason.trim())}
+                onClick={() => handleSubmitCheckIn()}
+                style={{
+                  backgroundColor: '#BD1D2D',
+                  color: '#fff',
+                }}
+              >
+                {checkInSubmitting ? t('Đang gửi...') : t('Xác nhận Chấm công')}
+              </button>
+            </div>
+          </div>
+        </CustomModal>
+      )}
 
       {/* Vacation Confirm Modal */}
       {vacationConfirmOpen && (

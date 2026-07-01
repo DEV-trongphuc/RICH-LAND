@@ -42,6 +42,7 @@ const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const CooperationSlipsPage = lazy(() => import('./pages/CooperationSlipsPage'));
 const DepositsPage = lazy(() => import('./pages/DepositsPage'));
 const CapiPage = lazy(() => import('./pages/CapiPage'));
+const AttendancePage = lazy(() => import('./pages/AttendancePage').then(module => ({ default: module.AttendancePage })));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -81,7 +82,7 @@ const AppTabs = () => {
   }, [currentPath, visitedPaths]);
 
   // Route protection mapping
-  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper', '/capi'];
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper', '/capi', '/attendance'];
   const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
@@ -276,6 +277,13 @@ const AppTabs = () => {
             {visitedPaths.includes('/capi') && (
               <Suspense fallback={<PageLoader />}>
                 <CapiPage />
+              </Suspense>
+            )}
+          </div>
+          <div style={{ display: currentPath === '/attendance' ? 'block' : 'none' }} className={currentPath === '/attendance' ? 'page-enter-active' : ''}>
+            {visitedPaths.includes('/attendance') && (
+              <Suspense fallback={<PageLoader />}>
+                <AttendancePage />
               </Suspense>
             )}
           </div>
