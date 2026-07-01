@@ -642,6 +642,18 @@ if (!function_exists('recallInactiveLeads')) {
 
             $conn->begin_transaction();
             try {
+                // Lock and re-verify that the lead is still unaccepted to avoid race conditions
+                $verifyStmt = $conn->prepare("SELECT is_accepted FROM leads WHERE id = ? FOR UPDATE");
+                $verifyStmt->bind_param("i", $leadId);
+                $verifyStmt->execute();
+                $vRes = $verifyStmt->get_result()->fetch_assoc();
+                $verifyStmt->close();
+
+                if (!$vRes || (int)$vRes['is_accepted'] !== 0) {
+                    $conn->commit();
+                    continue;
+                }
+
                 // Find latest distribution log for this lead
                 $logStmt = $conn->prepare("SELECT id, round_id FROM distribution_logs WHERE lead_id = ? AND assigned_to = ? AND status IN ('assigned', 'compensation') ORDER BY id DESC LIMIT 1");
                 $logStmt->bind_param("ii", $leadId, $oldConsultantId);

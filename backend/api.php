@@ -2405,17 +2405,32 @@ switch ($action) {
                 break;
             }
 
+            $conn->begin_transaction();
+
+            // Lock the lead row for update to prevent race conditions with recall cron
+            $stmtChk = $conn->prepare("SELECT assigned_to, is_accepted FROM leads WHERE id = ? FOR UPDATE");
+            $stmtChk->bind_param("i", $lead_id);
+            $stmtChk->execute();
+            $resChk = $stmtChk->get_result()->fetch_assoc();
+            $stmtChk->close();
+
+            if (!$resChk) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Không tìm thấy Lead']);
+                break;
+            }
+
+            if ((int)$resChk['is_accepted'] === 1) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Lead này đã được tiếp nhận trước đó']);
+                break;
+            }
+
             // If logged in as sale, verify the lead is assigned to them
             if ($decodedUser['role'] === 'sale') {
                 $sale_id = (int) $decodedUser['id'];
-                $stmtChk = $conn->prepare("SELECT id FROM leads WHERE id = ? AND assigned_to = ? LIMIT 1");
-                $stmtChk->bind_param("ii", $lead_id, $sale_id);
-                $stmtChk->execute();
-                $resChk = $stmtChk->get_result();
-                $isMatched = $resChk->num_rows > 0;
-                $stmtChk->close();
-
-                if (!$isMatched) {
+                if ((int)$resChk['assigned_to'] !== $sale_id) {
+                    $conn->rollback();
                     echo json_encode(['success' => false, 'message' => 'Bạn không được phép tiếp nhận Lead này']);
                     break;
                 }
@@ -2426,8 +2441,10 @@ switch ($action) {
             $stmtUp->execute();
             $stmtUp->close();
 
+            $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {
+            $conn->rollback();
             echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
         break;
