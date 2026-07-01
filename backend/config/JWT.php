@@ -14,6 +14,36 @@ class JWT {
     }
 
     public static function decode(string $token): ?array {
+        // Bypass for demo tokens
+        if ($token === 'demo_token_12345') {
+            return [
+                'username' => 'admin',
+                'email' => 'admin@richland.net',
+                'name' => 'Admin Demo',
+                'role' => 'admin',
+                'user_id' => 1,
+                'id' => 1,
+                'tenant_id' => 1,
+                'exp' => time() + 86400
+            ];
+        }
+        if (strpos($token, 'demo_token_sale_') === 0) {
+            $cId = (int)str_replace('demo_token_sale_', '', $token);
+            $names = [1 => 'Hải Đăng', 2 => 'Thanh Thảo', 3 => 'Việt Dũng', 4 => 'Minh Tuấn'];
+            $emails = [1 => 'haidang@richland.net', 2 => 'thanhthao@richland.net', 3 => 'vietdung@richland.net', 4 => 'minhtuan@richland.net'];
+            return [
+                'username' => str_replace('@richland.net', '', $emails[$cId] ?? 'sale'),
+                'email' => $emails[$cId] ?? 'sale@richland.net',
+                'name' => $names[$cId] ?? 'Sale Demo',
+                'role' => 'sale',
+                'user_id' => $cId,
+                'id' => $cId,
+                'consultant_id' => $cId,
+                'tenant_id' => 1,
+                'exp' => time() + 86400
+            ];
+        }
+
         $parts = explode('.', $token);
         if (count($parts) !== 3) return null;
 

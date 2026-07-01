@@ -66,7 +66,7 @@ export default function CooperationSlipsPage() {
       if (resSlips.success) setSlips(resSlips.data || []);
       if (resUsers.success) {
         // Only keep sales accounts
-        const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales');
+        const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
         setSalesAccounts(sales);
       }
     } catch (e: any) {

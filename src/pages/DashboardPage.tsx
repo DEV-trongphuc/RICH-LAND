@@ -484,7 +484,7 @@ export const DashboardPage: React.FC = () => {
       <div className={styles.bottomRow}>
 
         {/* Sales Leaderboard */}
-        {user?.role !== 'sales' && (
+        {user?.role !== 'sale' && user?.role !== 'sales' && (
           <div className="card" style={{ padding: '1.25rem' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '0.25rem' }}>
               <Trophy size={16} color="var(--color-warning)" /> Top Sales
@@ -542,7 +542,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Tag Stats chart */}
-        {user?.role !== 'sales' && (
+        {user?.role !== 'sale' && user?.role !== 'sales' && (
           <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
               <div>

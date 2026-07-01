@@ -139,7 +139,7 @@ export const ProfileModal = () => {
       });
       if (res.success) {
         toast.success(t('Cập nhật thông tin thành công!'));
-        const token = localStorage.getItem('richland_token') || '';
+        const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
         if (user) {
           login(token, { ...user, name: profileData.name, avatar: profileData.avatar } as any);
         }

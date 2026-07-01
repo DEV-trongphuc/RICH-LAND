@@ -46,7 +46,7 @@ export const processMockRequest = async (action: string, payload?: any, method =
     case 'get_dashboard_stats':
       return { success: true, data: MOCK_DB.dashboard };
 
-    case 'get_logs':
+    case 'get_logs': {
       let logs = [...MOCK_DB.logs];
       if (payload?.search) {
         const s = payload.search.toLowerCase();
@@ -60,6 +60,7 @@ export const processMockRequest = async (action: string, payload?: any, method =
         data: logs.slice(0, 50), // paginate
         total: logs.length
       };
+    }
 
     case 'get_consultants':
       return { success: true, data: MOCK_DB.consultants };

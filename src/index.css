@@ -1093,8 +1093,8 @@ select:focus {
 }
 
 [data-theme="dark"] .filter-search:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light), 0 0 12px rgba(167, 139, 250, 0.1);
+  border-color: rgba(37, 99, 235, 0.7);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25), 0 0 12px rgba(37, 99, 235, 0.15);
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
@@ -1422,17 +1422,21 @@ select:focus {
 }
 
 .filter-search:focus-within {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light), var(--shadow-md);
+  border-color: rgba(37, 99, 235, 0.6);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), var(--shadow-md);
 }
 
 .filter-search input {
-  border: none;
-  background: transparent;
-  outline: none;
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
   font-size: 0.875rem;
   color: var(--color-text);
   width: 100%;
+  height: 100%;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Empty state */
@@ -3308,6 +3312,17 @@ tbody tr td:first-child::before {
 
 tbody tr:hover td:first-child::before {
   transform: scaleY(1);
+}
+
+/* Disable hover effects and indicator for empty/no-hover table rows */
+tbody tr.empty-row:hover td,
+tbody tr.no-hover:hover td {
+  background-color: transparent !important;
+}
+
+tbody tr.empty-row td:first-child::before,
+tbody tr.no-hover td:first-child::before {
+  display: none !important;
 }
 
 /* ================================================

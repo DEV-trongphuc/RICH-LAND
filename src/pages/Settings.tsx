@@ -700,7 +700,7 @@ const SettingsInner = () => {
               if (val.includes('@') && /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(val)) {
                 foundContacts.push(val);
               } else {
-                const cleanedPhone = val.replace(/[\s\.\-\(\)]/g, '');
+                const cleanedPhone = val.replace(/[\s.()-]/g, '');
                 if (/^\+?\d{8,15}$/.test(cleanedPhone)) {
                   foundContacts.push(cleanedPhone);
                 }

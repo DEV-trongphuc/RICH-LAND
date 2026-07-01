@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
   Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
-  Pencil, Copy, Send, FileCheck, XCircle, Calendar, RefreshCw, User
+  Pencil, Copy, Send, FileCheck, XCircle, Calendar, RefreshCw, User,
+  ChevronDown, Filter
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
@@ -13,6 +14,7 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { CustomModal } from '../components/ui/CustomModal';
+import { EmptyCard } from '../components/ui/EmptyCard';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
@@ -36,6 +38,8 @@ export const QuotesPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editorQuote, setEditorQuote] = useState<any>(null);
@@ -43,6 +47,16 @@ export const QuotesPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ total_val: 0, accepted_val: 0, sent_count: 0, accepted_count: 0, total_count: 0 });
   const [previewItem, setPreviewItem] = useState<any>(null);
+
+  useEffect(() => {
+    const handleClose = (e: MouseEvent) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target as Node)) {
+        setIsStatusDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClose);
+    return () => document.removeEventListener('mousedown', handleClose);
+  }, []);
 
   const fetchQuotes = useCallback(async () => {
     if (DEV_MODE) {
@@ -211,7 +225,7 @@ export const QuotesPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="card-panel mb-4">
+      <div className="card-panel mb-4" style={{ padding: '1rem' }}>
         <div className="flex items-center gap-4 flex-wrap" style={{ display: 'flex', width: '100%' }}>
           <div className="filter-search flex-1" style={{ minWidth: '200px' }}>
             <Search size={18} className="text-muted" />
@@ -222,34 +236,111 @@ export const QuotesPage: React.FC = () => {
             />
           </div>
 
-          {/* Mobile Status Select */}
-          <div className="mobile-only" style={{ width: '100%' }}>
-            <select
-              value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-              className="form-select"
-              style={{ width: '100%', height: 40 }}
+          {/* Premium Status Dropdown Filter */}
+          <div style={{ position: 'relative' }} ref={statusDropdownRef}>
+            <button
+              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+              className="btn secondary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                minWidth: '190px',
+                justifyContent: 'space-between',
+                padding: '0 1.25rem',
+                height: 38,
+                fontSize: '0.875rem',
+                borderRadius: '10px',
+                background: isStatusDropdownOpen ? 'var(--color-bg)' : 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                fontWeight: 600,
+                color: 'var(--color-text)'
+              }}
             >
-              <option value="">Tất cả trạng thái</option>
-              <option value="draft">Nháp</option>
-              <option value="sent">Đã gửi</option>
-              <option value="accepted">Đã duyệt</option>
-              <option value="rejected">Từ chối</option>
-              <option value="expired">Hết hạn</option>
-            </select>
-          </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Filter size={15} style={{ color: 'var(--color-text-muted)' }} />
+                <span>
+                  {statusFilter === '' ? 'Tất cả trạng thái' : STATUS_CONFIG[statusFilter].label}
+                </span>
+              </span>
+              <ChevronDown size={14} style={{ 
+                color: 'var(--color-text-muted)',
+                transform: isStatusDropdownOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform 0.2s'
+              }} />
+            </button>
 
-          {/* Desktop Status Tabs */}
-          <div className="hide-on-mobile flex gap-2">
-            {['', 'draft', 'sent', 'accepted', 'rejected', 'expired'].map(s => (
-              <button 
-                key={s}
-                onClick={() => { setStatusFilter(s); setPage(1); }}
-                className={`btn sm ${statusFilter === s ? 'primary' : 'ghost'}`}
-              >
-                {s === '' ? 'Tất cả' : STATUS_CONFIG[s].label}
-              </button>
-            ))}
+            <AnimatePresence>
+              {isStatusDropdownOpen && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.15 }}
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                    padding: '6px',
+                    zIndex: 30,
+                    minWidth: '200px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '2px'
+                  }}
+                >
+                  {['', 'draft', 'sent', 'accepted', 'rejected', 'expired'].map(s => {
+                    const label = s === '' ? 'Tất cả trạng thái' : STATUS_CONFIG[s].label;
+                    const isActive = statusFilter === s;
+                    return (
+                      <div
+                        key={s}
+                        onClick={() => {
+                          setStatusFilter(s);
+                          setPage(1);
+                          setIsStatusDropdownOpen(false);
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontSize: '0.875rem',
+                          fontWeight: isActive ? 700 : 500,
+                          background: isActive ? 'rgba(189, 29, 45, 0.08)' : 'transparent',
+                          color: isActive ? 'var(--color-primary)' : 'var(--color-text)',
+                          transition: 'all 0.15s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                        onMouseEnter={e => {
+                          if (!isActive) e.currentTarget.style.background = 'var(--color-bg)';
+                        }}
+                        onMouseLeave={e => {
+                          if (!isActive) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <span>{label}</span>
+                        {isActive && (
+                          <div style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: 'var(--color-primary)'
+                          }} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
@@ -283,12 +374,15 @@ export const QuotesPage: React.FC = () => {
                   </tr>
                 ))
               ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '4rem' }}>
-                    <div className="flex flex-col items-center gap-2 opacity-40">
-                      <FileText size={48} />
-                      <p className="font-bold">Không tìm thấy báo giá nào</p>
-                    </div>
+                <tr className="empty-row">
+                  <td colSpan={8} style={{ padding: '2rem 1rem' }}>
+                    <EmptyCard
+                      icon={<FileText />}
+                      title="Không tìm thấy báo giá nào"
+                      description="Hệ thống không tìm thấy bản báo giá nào khớp với điều kiện lọc hiện tại. Hãy thử điều chỉnh bộ lọc hoặc tạo một báo giá mới."
+                      actionText="Tạo báo giá mới"
+                      onAction={() => handleOpenEditor()}
+                    />
                   </td>
                 </tr>
               ) : (

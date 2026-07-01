@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 146;
+$targetVersion = 151;
 $currentVersion = 0;
 
 // Query current DB version
@@ -1411,6 +1411,110 @@ try {
         $currentVersion = 151;
         $logMsg("Hoàn thành cập nhật phiên bản 151.", "success");
     }
+
+    // Self-healing database check (to repair databases where db_version was manually set but tables/columns were skipped)
+    $logMsg("Bắt đầu tự sửa đổi cấu trúc (Self-healing check)...", "info");
+
+    // 1. teams table
+    $conn->query("CREATE TABLE IF NOT EXISTS `teams` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `name` varchar(255) NOT NULL,
+        `branch` varchar(255) DEFAULT NULL,
+        `leader_id` int(11) DEFAULT NULL,
+        `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+        `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // 2. team_id in consultants
+    $chkCol = $conn->query("SHOW COLUMNS FROM consultants LIKE 'team_id'");
+    if ($chkCol && $chkCol->num_rows === 0) {
+        $conn->query("ALTER TABLE consultants ADD COLUMN team_id int(11) DEFAULT NULL");
+        $logMsg("Đã thêm team_id cho consultants", "success");
+    }
+
+    // 3. team_id in users
+    $chkCol = $conn->query("SHOW COLUMNS FROM users LIKE 'team_id'");
+    if ($chkCol && $chkCol->num_rows === 0) {
+        $conn->query("ALTER TABLE users ADD COLUMN team_id int(11) DEFAULT NULL");
+        $logMsg("Đã thêm team_id cho users", "success");
+    }
+
+    // 4. check_ins table
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `check_ins` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `user_id` int(11) NOT NULL,
+          `check_in_date` date NOT NULL,
+          `check_in_time` time NOT NULL,
+          `selfie_url` varchar(255) DEFAULT NULL,
+          `status` enum('approved', 'pending_approval', 'rejected') NOT NULL DEFAULT 'approved',
+          `reason` varchar(255) DEFAULT NULL,
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `user_date` (`user_id`, `check_in_date`),
+          FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+
+    // 5. ai_attempts in leads
+    $chkCol = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_attempts'");
+    if ($chkCol && $chkCol->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_attempts INT DEFAULT 0 AFTER ai_evaluation");
+        $logMsg("Đã thêm ai_attempts cho leads", "success");
+    }
+
+    // 5b. projects, project_roster, project_documents tables (Module 6)
+    $conn->query("CREATE TABLE IF NOT EXISTS `projects` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `tenant_id` int(11) NOT NULL DEFAULT 1,
+      `name` varchar(255) NOT NULL,
+      `code` varchar(100) NOT NULL UNIQUE,
+      `description` text DEFAULT NULL,
+      `status` enum('active','completed','draft') DEFAULT 'active',
+      `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+      `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+      PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+    $conn->query("CREATE TABLE IF NOT EXISTS `project_roster` (
+      `project_id` int(11) NOT NULL,
+      `user_id` int(11) NOT NULL,
+      `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+      PRIMARY KEY (`project_id`, `user_id`),
+      FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+      FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+
+    $conn->query("CREATE TABLE IF NOT EXISTS `project_documents` (
+      `id` int(11) NOT NULL AUTO_INCREMENT,
+      `project_id` int(11) NOT NULL,
+      `name` varchar(255) NOT NULL,
+      `file_path` varchar(500) NOT NULL,
+      `file_size` bigint(20) DEFAULT 0,
+      `mime_type` varchar(100) DEFAULT NULL,
+      `uploaded_by` int(11) NOT NULL,
+      `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+      PRIMARY KEY (`id`),
+      FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+      FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
+    $logMsg("Đã tạo hoặc kiểm tra cấu trúc bảng projects/roster/documents", "success");
+
+    // 6. Default Settings
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_shift_start_time', '18:00')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('night_shift_end_time', '06:00')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('golden_hours_start_time', '06:00')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('golden_hours_end_time', '08:30')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_day', '2')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '300')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('backpressure_limit', '5')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '151') ON DUPLICATE KEY UPDATE setting_value = '151'");
+
+    $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");
 

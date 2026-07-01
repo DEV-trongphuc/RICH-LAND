@@ -17,7 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $action = $_GET['action'] ?? '';
 $segments = explode('/', $action);
 $baseAction = explode('&', $segments[0])[0];
-if (in_array($baseAction, ['projects', 'deposits', 'cooperation-slips', 'capi', 'check-ins'])) {
+if (in_array($baseAction, [
+    'projects', 'deposits', 'cooperation-slips', 'capi', 'check-ins', 
+    'cloud-files', 'file-categories', 'tickets', 'suppliers', 'purchase-orders', 
+    'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
+    'users', 'reports', 'quotes', 'invoices', 'expenses', 
+    'contacts', 'companies', 'deals', 'activities', 'notes'
+], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action;
     require_once __DIR__ . '/index.php';
     exit;
@@ -158,33 +164,35 @@ function validateWorkSchedule($schedule)
     return true;
 }
 
-function getBearerToken()
-{
-    if (isset($_SERVER['HTTP_X_AUTH_TOKEN'])) {
-        return trim($_SERVER['HTTP_X_AUTH_TOKEN']);
-    }
-    if (isset($_GET['token'])) {
-        return trim($_GET['token']);
-    }
+if (!function_exists('getBearerToken')) {
+    function getBearerToken()
+    {
+        if (isset($_SERVER['HTTP_X_AUTH_TOKEN'])) {
+            return trim($_SERVER['HTTP_X_AUTH_TOKEN']);
+        }
+        if (isset($_GET['token'])) {
+            return trim($_GET['token']);
+        }
 
-    $headers = null;
-    if (isset($_SERVER['Authorization'])) {
-        $headers = trim($_SERVER["Authorization"]);
-    } else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
-    } elseif (function_exists('apache_request_headers')) {
-        $requestHeaders = apache_request_headers();
-        $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
-        if (isset($requestHeaders['Authorization'])) {
-            $headers = trim($requestHeaders['Authorization']);
+        $headers = null;
+        if (isset($_SERVER['Authorization'])) {
+            $headers = trim($_SERVER["Authorization"]);
+        } else if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
+        } elseif (function_exists('apache_request_headers')) {
+            $requestHeaders = apache_request_headers();
+            $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
+            if (isset($requestHeaders['Authorization'])) {
+                $headers = trim($requestHeaders['Authorization']);
+            }
         }
-    }
-    if (!empty($headers)) {
-        if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
-            return $matches[1];
+        if (!empty($headers)) {
+            if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+                return $matches[1];
+            }
         }
+        return null;
     }
-    return null;
 }
 
 function check_zalo_direct_log_for_lead($logFile, $createdDate, $phone, $name) {
@@ -303,6 +311,10 @@ if (!in_array($action, $publicActions)) {
         http_response_code(401);
         echo json_encode(['success' => false, 'message' => 'Unauthorized: Invalid or expired token']);
         exit();
+    }
+
+    if (isset($decodedUser['role']) && $decodedUser['role'] === 'sales') {
+        $decodedUser['role'] = 'sale';
     }
 
     if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants'])) {
@@ -732,7 +744,7 @@ switch ($action) {
                     'id' => $user['id'],
                     'username' => $user['username'],
                     'email' => $user['email'] ?? '',
-                    'role' => $user['role'],
+                    'role' => $user['role'] === 'sales' ? 'sale' : $user['role'],
                     'exp' => time() + 86400 * 30
                 ];
                 $token = create_jwt($payload, $JWT_SECRET);
@@ -742,7 +754,7 @@ switch ($action) {
                     'user' => [
                         'username' => $user['username'],
                         'email' => $user['email'] ?? '',
-                        'role' => $user['role'],
+                        'role' => $user['role'] === 'sales' ? 'sale' : $user['role'],
                         'name' => $user['name'],
                         'avatar' => $user['avatar'] ?? null
                     ]
@@ -825,7 +837,7 @@ switch ($action) {
                 'id' => $user['id'],
                 'username' => $user['username'],
                 'email' => $user['email'] ?? '',
-                'role' => $user['role'],
+                'role' => $user['role'] === 'sales' ? 'sale' : $user['role'],
                 'exp' => time() + 86400 * 30
             ];
             $token = create_jwt($payload, $JWT_SECRET);
@@ -835,7 +847,7 @@ switch ($action) {
                 'user' => [
                     'username' => $user['username'],
                     'email' => $user['email'] ?? '',
-                    'role' => $user['role'],
+                    'role' => $user['role'] === 'sales' ? 'sale' : $user['role'],
                     'name' => $user['name'],
                     'avatar' => $user['avatar'] ?? null
                 ]

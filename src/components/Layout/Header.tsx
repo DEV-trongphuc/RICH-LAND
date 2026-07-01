@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { SIDEBAR_GROUPS } from './Sidebar';
 import { Avatar } from '../ui/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
@@ -145,6 +146,9 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
   };
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAppLauncherOpen, setIsAppLauncherOpen] = useState(false);
+  const [launcherSearch, setLauncherSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('Tất cả');
   const [searchQuery, setSearchQuery] = useState('');
   const [leadResults, setLeadResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -266,9 +270,9 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           <Menu size={24} />
         </button>
 
-        {/* Keyboard Shortcuts Trigger Button */}
+        {/* App Launcher Button (4-frame icon) */}
         <button 
-          onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
+          onClick={() => setIsAppLauncherOpen(true)}
           style={{
             width: 36,
             height: 36,
@@ -280,19 +284,21 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
             border: 'none',
             background: 'none',
             cursor: 'pointer',
-            transition: 'color 0.2s',
+            transition: 'all 0.2s',
             outline: 'none'
           }}
           className="responsive-hide-mobile"
-          title={t("Bảng phím tắt điều hướng nhanh (?)")}
+          title={t("Menu điều hướng nhanh")}
           onMouseEnter={e => {
             e.currentTarget.style.color = 'var(--color-primary)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
           }}
           onMouseLeave={e => {
             e.currentTarget.style.color = 'var(--color-text-muted)';
+            e.currentTarget.style.background = 'none';
           }}
          >
-          <Keyboard size={20} />
+          <LayoutGrid size={20} />
         </button>
 
         {/* Search trigger */}
@@ -330,6 +336,37 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           }}>
             <Command size={12} />K
           </span>
+        </button>
+
+        {/* Keyboard Shortcuts Trigger Button */}
+        <button 
+          onClick={() => window.dispatchEvent(new CustomEvent('open-keyboard-shortcuts'))}
+          style={{
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-muted)',
+            borderRadius: 8,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            outline: 'none'
+          }}
+          className="responsive-hide-mobile"
+          title={t("Bảng phím tắt điều hướng nhanh (?)")}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = 'var(--color-primary)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = 'var(--color-text-muted)';
+            e.currentTarget.style.background = 'none';
+          }}
+         >
+          <Keyboard size={20} />
         </button>
       </div>
 
@@ -704,6 +741,248 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           </AnimatePresence>
         </div>
       </div>
+
+    {/* App Launcher Modal (SIDEBAR items in card format) */}
+    <CustomModal
+      isOpen={isAppLauncherOpen}
+      onClose={() => setIsAppLauncherOpen(false)}
+      title={t("Menu điều hướng nhanh")}
+      width="1160px"
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '70vh' }}>
+        {/* Search Input inside App Launcher */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: '12px', 
+          background: 'var(--color-bg-light)', 
+          border: '1px solid var(--color-border)', 
+          borderRadius: '12px', 
+          padding: '10px 16px',
+          flexShrink: 0
+        }}>
+          <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
+          <input
+            type="text"
+            value={launcherSearch}
+            onChange={(e) => setLauncherSearch(e.target.value)}
+            placeholder={t("Tìm kiếm nhanh chức năng, cài đặt...")}
+            style={{
+              flex: 1,
+              border: 'none',
+              background: 'transparent',
+              outline: 'none',
+              color: 'var(--color-text)',
+              fontSize: '0.9375rem'
+            }}
+          />
+          {launcherSearch && (
+            <button 
+              onClick={() => setLauncherSearch('')}
+              style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}
+            >
+              {t("Xóa")}
+            </button>
+          )}
+        </div>
+
+        {(() => {
+          const role = user?.role as string;
+          const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
+          
+          const ITEM_DESC: Record<string, string> = {
+            'Dashboard': 'Tổng quan số liệu kinh doanh & phễu chia lead',
+            'Báo cáo': 'Báo cáo chi tiết cuộc gọi, tags và hiệu suất',
+            'Khách hàng': 'Quản lý thông tin liên hệ và lịch sử KHTN',
+            'Kho Data': 'Danh sách lead công khai chờ khai thác (Databank)',
+            'Pipeline': 'Quản lý các thương vụ và trạng thái cơ hội',
+            'Quy tắc phân bổ': 'Cấu hình roster, lịch trực và thứ tự chia lead',
+            'Đối soát công bằng': 'Đối soát số lượng lead nhận và pending compensation',
+            'AI Pre-screener': 'Trạng thái lead chờ duyệt và chấm điểm AI',
+            'Ticket data lỗi': 'Báo cáo lỗi trùng lắp hoặc sai thông tin khách hàng',
+            'Dự án': 'Xem danh sách và roster các dự án phân phối',
+            'Chiến dịch': 'Chiến dịch marketing và nguồn phân bổ',
+            'Tài liệu': 'Kho tài liệu mật và biểu mẫu của công ty',
+            'Chi nhánh': 'Quản lý các văn phòng và chi nhánh',
+            'Team': 'Danh sách các đội nhóm kinh doanh',
+            'Nhân viên kinh doanh': 'Hồ sơ và lịch làm việc của tư vấn viên',
+            'Quản lý chấm công': 'Báo cáo check-in và xin nghỉ phép',
+            'Công ty': 'Quản lý danh mục đối tác doanh nghiệp',
+            'Chủ đầu tư': 'Danh mục các chủ đầu tư dự án',
+            'Giỏ hàng': 'Bảng giỏ hàng và danh mục căn hộ',
+            'Hóa đơn': 'Danh sách thu chi và hóa đơn khách hàng',
+            'Báo giá': 'Tạo và phê duyệt báo giá dịch vụ',
+            'Chi phí vận hành': 'Báo cáo chi phí phát sinh theo dự án',
+            'Tích hợp Data': 'Cấu hình webhook và liên kết Google Sheets',
+            'Vòng đời khách hàng': 'Cài đặt trạng thái và chu kỳ chăm sóc',
+            'Logic xử lý': 'Thiết lập quy định chặn, skip và check-in',
+            'CAPI': 'Cấu hình sự kiện Meta Conversion API',
+            'Quản lý tài khoản': 'Phân quyền tài khoản quản trị viên',
+            'Phân quyền': 'Quản lý vai trò và phân quyền chi tiết',
+            'Cài đặt hệ thống': 'Các thông số và cấu hình chung toàn hệ thống'
+          };
+
+          const CATEGORY_ICONS: Record<string, any> = {
+            'TỔNG QUAN': LayoutDashboard,
+            'KHÁCH HÀNG': Users,
+            'DỰ ÁN': Building2,
+            'NHÂN SỰ': Clock,
+            'ĐỐI TÁC': Truck,
+            'SẢN PHẨM': Boxes,
+            'TÀI CHÍNH': Receipt,
+            'CÀI ĐẶT HỆ THỐNG': Settings
+          };
+
+          const visibleGroups = SIDEBAR_GROUPS.map(group => {
+            const filteredItems = group.items.filter((item: any) => {
+              if (item.adminOnly && !isAdmin) return false;
+              if (item.hideForRoles && item.hideForRoles.includes(role)) return false;
+              return true;
+            });
+            return { ...group, items: filteredItems };
+          }).filter(group => group.items.length > 0);
+
+          // Flatten and filter items for global search
+          const allVisibleItems = visibleGroups.flatMap(g => 
+            g.items.map(item => ({ ...item, groupTitle: g.title }))
+          );
+          
+          const filteredItems = launcherSearch.trim()
+            ? allVisibleItems.filter(item => 
+                item.name.toLowerCase().includes(launcherSearch.toLowerCase()) ||
+                (ITEM_DESC[item.name] && ITEM_DESC[item.name].toLowerCase().includes(launcherSearch.toLowerCase())) ||
+                item.groupTitle.toLowerCase().includes(launcherSearch.toLowerCase())
+              )
+            : [];
+
+          return (
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+              {launcherSearch.trim() ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <h5 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                    {t("Kết quả tìm kiếm")} ({filteredItems.length})
+                  </h5>
+                  {filteredItems.length > 0 ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.875rem' }}>
+                      {filteredItems.map(item => {
+                        const IconComponent = item.icon;
+                        const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
+                        return (
+                          <div
+                            key={item.name}
+                            onClick={() => {
+                              navigate(item.href);
+                              setIsAppLauncherOpen(false);
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              padding: '12px 14px',
+                              background: 'var(--color-bg)',
+                              border: '1px solid var(--color-border)',
+                              borderRadius: '10px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease-in-out',
+                              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-primary)';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                              const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
+                              if (iconContainer) iconContainer.style.color = 'var(--color-primary)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-border)';
+                              e.currentTarget.style.transform = 'none';
+                                const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
+                                if (iconContainer) iconContainer.style.color = 'var(--color-text-muted)';
+                            }}
+                          >
+                            <div className="app-icon-container" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'color 0.2s' }}>
+                              <IconComponent size={18} strokeWidth={1.75} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.2 }}>{t(item.name)}</span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{t(desc)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                      {t("Không tìm thấy chức năng nào phù hợp.")}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  {visibleGroups.map(group => (
+                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, whiteSpace: 'nowrap' }}>
+                          {t(group.title)}
+                        </h4>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.875rem' }}>
+                        {group.items.map(item => {
+                          const IconComponent = item.icon;
+                          const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
+                          return (
+                            <div
+                              key={item.name}
+                              onClick={() => {
+                                navigate(item.href);
+                                setIsAppLauncherOpen(false);
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
+                                padding: '12px 14px',
+                                background: 'var(--color-bg)',
+                                border: '1px solid var(--color-border)',
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease-in-out',
+                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.borderColor = 'var(--color-primary)';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
+                                if (iconContainer) iconContainer.style.color = 'var(--color-primary)';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.borderColor = 'var(--color-border)';
+                                e.currentTarget.style.transform = 'none';
+                                const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
+                                if (iconContainer) iconContainer.style.color = 'var(--color-text-muted)';
+                              }}
+                            >
+                              <div className="app-icon-container" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'color 0.2s' }}>
+                                <IconComponent size={18} strokeWidth={1.75} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.2 }}>{t(item.name)}</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{t(desc)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+    </CustomModal>
 
     {/* Global Command/Search Palette Modal */}
     <CustomModal

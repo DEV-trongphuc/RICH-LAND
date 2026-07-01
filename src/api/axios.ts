@@ -167,6 +167,14 @@ const api = axios.create({
 
 // Attach access token
 api.interceptors.request.use((config) => {
+  // In production (not DEV_MODE), rewrite URL to api.php?action=... to bypass missing web server rewrite rules
+  if (!DEV_MODE && config.url && !config.url.startsWith('http') && !config.url.includes('api.php')) {
+    const cleanUrl = config.url.replace(/^\//, ''); // remove leading slash
+    config.params = config.params || {};
+    config.params.action = cleanUrl;
+    config.url = 'api.php';
+  }
+
   // Block mutations in DEV_MODE, but whitelist comments and upload for UI testing
   if (DEV_MODE && config.method && ['post', 'put', 'delete', 'patch'].includes(config.method.toLowerCase())) {
     const isWhitelisted = config.url && (config.url.includes('/comments') || config.url.includes('/upload'));
@@ -187,7 +195,7 @@ api.interceptors.request.use((config) => {
     }
   }
 
-  const token = localStorage.getItem('access_token');
+  const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

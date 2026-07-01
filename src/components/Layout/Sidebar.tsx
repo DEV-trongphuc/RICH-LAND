@@ -5,7 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
 import { fetchAPI } from '../../utils/api';
 
-interface SidebarItem {
+export interface SidebarItem {
   name: string;
   href: string;
   icon: any;
@@ -15,12 +15,12 @@ interface SidebarItem {
   hideForRoles?: string[];
 }
 
-interface SidebarGroup {
+export interface SidebarGroup {
   title: string;
   items: SidebarItem[];
 }
 
-const SIDEBAR_GROUPS: SidebarGroup[] = [
+export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'TỔNG QUAN',
     items: [

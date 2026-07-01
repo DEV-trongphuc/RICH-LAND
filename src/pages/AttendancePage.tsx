@@ -9,6 +9,8 @@ import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
+import type { Period, DateRange } from '../components/ui/PeriodFilter';
 
 const AttendancePageInner = () => {
   const { t } = useLanguage();
@@ -24,7 +26,11 @@ const AttendancePageInner = () => {
   const [calendarLoading, setCalendarLoading] = useState(false);
 
   // Filter states
-  const [filterDate, setFilterDate] = useState<string>('2026-07-01');
+  const [period, setPeriod] = useState<Period>('7d');
+  const [customRange, setCustomRange] = useState<DateRange>(() => {
+    // Default range (last 7 days from July 1, 2026 for demo integrity)
+    return { from: '2026-06-25', to: '2026-07-01' };
+  });
   const [filterUser, setFilterUser] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
@@ -53,7 +59,8 @@ const AttendancePageInner = () => {
   const fetchCheckInsList = async () => {
     setLoading(true);
     try {
-      const query = `check-ins&date=${filterDate}&status=${filterStatus}&user_id=${filterUser}`;
+      const range = period === 'custom' ? customRange : getDateRange(period);
+      const query = `check-ins&from=${range.from}&to=${range.to}&status=${filterStatus}&user_id=${filterUser}`;
       const res = await fetchAPI(query);
       if (res.success) {
         setCheckIns(res.data || []);
@@ -88,7 +95,7 @@ const AttendancePageInner = () => {
 
   useEffect(() => {
     fetchCheckInsList();
-  }, [filterDate, filterUser, filterStatus]);
+  }, [period, customRange, filterUser, filterStatus]);
 
   useEffect(() => {
     if (viewMode === 'calendar') {
@@ -190,7 +197,7 @@ const AttendancePageInner = () => {
       });
     }
     
-    const weekDays = [t('Thứ 2'), t('Thứ 3'), t('Thứ 4'), t('Thứ 5'), t('Thứ 6'), t('Thứ 7'), t('Chủ Nhật')];
+    const weekDays = [t('Thứ 2'), t('Thứ 3'), t('Thứ 4'), t('Thứ 5'), t('Thứ 6'), t('Thứ 7'), t('CN')];
 
     const getCellData = (dateStr: string) => {
       if (!dateStr) return null;
@@ -256,9 +263,10 @@ const AttendancePageInner = () => {
               padding: '10px 4px',
               textAlign: 'center',
               fontSize: '0.75rem',
-              fontWeight: 700,
-              color: idx === 6 ? 'var(--color-danger)' : 'var(--color-text-muted)',
-              borderBottom: '1px solid var(--color-border-light)'
+              fontWeight: 800,
+              color: idx === 6 ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRight: idx < 6 ? '1px solid var(--color-border-light)' : 'none'
             }}>
               {day}
             </div>
@@ -271,36 +279,53 @@ const AttendancePageInner = () => {
             const approved = dayCheckIns ? dayCheckIns.filter(c => c.status === 'approved') : [];
             const pending = dayCheckIns ? dayCheckIns.filter(c => c.status === 'pending_approval') : [];
             const rejected = dayCheckIns ? dayCheckIns.filter(c => c.status === 'rejected') : [];
+            const isToday = cell.dateStr && new Date().toDateString() === new Date(cell.dateStr).toDateString();
 
             return (
               <div
                 key={idx}
                 onClick={() => {
                   if (cell.dateStr) {
-                    setFilterDate(cell.dateStr);
+                    setPeriod('custom');
+                    setCustomRange({ from: cell.dateStr, to: cell.dateStr });
                     setViewMode('list');
                   }
                 }}
                 style={{
-                  backgroundColor: cell.isCurrentMonth ? 'var(--color-surface)' : 'var(--color-bg)',
+                  backgroundColor: isToday
+                    ? 'rgba(189, 29, 45, 0.08)'
+                    : cell.isCurrentMonth
+                      ? isWeekend
+                        ? 'var(--color-calendar-weekend)'
+                        : 'var(--color-surface)'
+                      : 'var(--color-bg)',
                   minHeight: '110px',
-                  padding: '8px',
+                  padding: '10px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   cursor: cell.dateStr ? 'pointer' : 'default',
                   opacity: cell.isCurrentMonth ? 1 : 0.4,
-                  transition: 'background 0.2s',
+                  borderRight: '1px solid var(--color-border)',
+                  borderBottom: '1px solid var(--color-border)',
+                  position: 'relative'
                 }}
-                className={cell.dateStr ? 'hover-bg-muted' : ''}
+                className={cell.dateStr ? 'calendar-day-cell' : ''}
               >
-                <div style={{
-                  fontSize: '0.8125rem',
-                  fontWeight: 700,
-                  color: isWeekend ? 'var(--color-danger)' : 'var(--color-text)',
-                  alignSelf: 'flex-start'
-                }}>
-                  {cell.day}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{
+                    fontSize: '0.8125rem',
+                    fontWeight: 700,
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: '50%',
+                    backgroundColor: isToday ? 'var(--color-primary)' : 'transparent',
+                    color: isToday ? 'white' : isWeekend ? 'var(--color-danger)' : 'var(--color-text-light)'
+                  }}>{cell.day}</span>
+                  {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-primary)' }}>{t('Hôm nay')}</span>}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
@@ -362,10 +387,9 @@ const AttendancePageInner = () => {
                               alignItems: 'center',
                               justifyContent: 'space-between'
                             }}>
-                              <span>{c.check_in_time.substring(0, 5)}</span>
-                              {checkInLate && <span style={{ fontSize: '0.55rem', fontWeight: 500, backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '1px 3px', borderRadius: '3px' }}>Trễ</span>}
+                              <span>{c.user_name}</span>
+                              <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>{c.check_in_time.substring(0, 5)}</span>
                             </div>
-                            
                             {c.selfie_url && (
                               <img
                                 src={c.selfie_url}
@@ -484,20 +508,23 @@ const AttendancePageInner = () => {
       {/* Filter Bar */}
       <div className="card" style={{ padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Date Picker (List View only) */}
+          {/* Period Filter (List View only) */}
           {viewMode === 'list' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '150px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Ngày chấm công')}</label>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <Calendar size={16} style={{ position: 'absolute', left: '10px', color: 'var(--color-text-light)', pointerEvents: 'none' }} />
-                <input
-                  type="date"
-                  className="form-control"
-                  style={{ paddingLeft: '32px', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.875rem' }}
-                  value={filterDate}
-                  onChange={(e) => setFilterDate(e.target.value)}
-                />
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '220px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Khoảng thời gian')}</label>
+              <PeriodFilter
+                value={period}
+                onChange={(p, r) => {
+                  setPeriod(p);
+                  if (p !== 'custom') {
+                    setCustomRange(r);
+                  }
+                }}
+                customRange={customRange}
+                onCustomRange={(r) => {
+                  setCustomRange(r);
+                }}
+              />
             </div>
           )}
 
@@ -533,7 +560,8 @@ const AttendancePageInner = () => {
 
           <button
             onClick={() => {
-              setFilterDate('2026-07-01');
+              setPeriod('7d');
+              setCustomRange({ from: '2026-06-25', to: '2026-07-01' });
               setCurrentMonth(7);
               setCurrentYear(2026);
               setFilterUser('all');

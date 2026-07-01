@@ -11,6 +11,7 @@ import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
+import { EmptyCard } from '../components/ui/EmptyCard';
 
 const TICKET_STATUSES = [
   { id: 'open', label: 'Mới mở', color: '#3b82f6' },
@@ -265,8 +266,16 @@ export const TicketsPage: React.FC = () => {
                   </td>
                 </motion.tr>
               ))}
-              {filteredTickets.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-light)' }}>Không tìm thấy Ticket nào</td></tr>
+               {filteredTickets.length === 0 && (
+                <tr className="empty-row">
+                  <td colSpan={6} style={{ padding: '2rem 1rem' }}>
+                    <EmptyCard
+                      icon={<LifeBuoy />}
+                      title="Không tìm thấy Ticket nào"
+                      description="Hệ thống không tìm thấy bất kỳ Ticket báo lỗi hoặc yêu cầu hỗ trợ nào khớp với bộ lọc hiện tại."
+                    />
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

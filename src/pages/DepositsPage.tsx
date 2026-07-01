@@ -155,7 +155,7 @@ export default function DepositsPage() {
     formData.append('file', file);
 
     try {
-      const token = localStorage.getItem('richland_token') || '';
+      const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
       const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=deposits/${depositId}/milestones/${milestoneId}/unc&token=${token}`;
 
       const response = await fetch(url, {

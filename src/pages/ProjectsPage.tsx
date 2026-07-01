@@ -188,7 +188,7 @@ export default function ProjectsPage() {
 
     setUploadingDoc(true);
     try {
-      const token = localStorage.getItem('richland_token') || '';
+      const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
       const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=projects/${selectedProjectId}/documents&token=${token}`;
       
       const response = await fetch(url, {
@@ -232,7 +232,7 @@ export default function ProjectsPage() {
 
   const handleDownloadDoc = (docId: number) => {
     if (!selectedProjectId) return;
-    const token = localStorage.getItem('richland_token') || '';
+    const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
     const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=projects/${selectedProjectId}/documents/${docId}/download&token=${token}`;
     window.open(url, '_blank');
   };

@@ -93,6 +93,10 @@ const AppTabs = () => {
   }
 
   // Admin & Superadmin route protection check
+  if ((user?.role as string) === 'sale' && currentPath === '/') {
+    return <Navigate to="/sale-portal" replace />;
+  }
+
   if (currentPath === '/accounts') {
     if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin') {
       return <Navigate to="/" replace />;

@@ -18,6 +18,24 @@ require_once __DIR__ . '/config/JWT.php';
 // ── CORS ──────────────────────────────────────────────────────
 $origin  = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowed = array_map('trim', explode(',', ALLOWED_ORIGINS));
+
+// Dynamically fetch and allow frontend_url from system_settings
+try {
+    $db = Database::getInstance();
+    $stmtSetting = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'frontend_url' LIMIT 1");
+    if ($stmtSetting) {
+        $feUrl = $stmtSetting->fetchColumn();
+        if (!empty($feUrl)) {
+            $parsed = parse_url($feUrl);
+            if (isset($parsed['scheme']) && isset($parsed['host'])) {
+                $allowed[] = $parsed['scheme'] . '://' . $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
+            }
+        }
+    }
+} catch (Throwable $e) {
+    // Avoid crashing on DB issues during CORS phase
+}
+
 // Also allow any localhost origin (any port) for local dev
 $isLocalhost = (bool) preg_match('#^https?://localhost(:\d+)?$#', $origin);
 if ($isLocalhost || in_array($origin, $allowed, true)) {
@@ -56,11 +74,13 @@ function getBody(): array {
     return json_decode(file_get_contents('php://input'), true) ?? [];
 }
 
-function getBearerToken(): ?string {
-    $h = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    if (preg_match('/Bearer\s+(.+)/i', $h, $m)) return $m[1];
-    if (isset($_GET['token']) && !empty($_GET['token'])) return $_GET['token'];
-    return null;
+if (!function_exists('getBearerToken')) {
+    function getBearerToken(): ?string {
+        $h = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+        if (preg_match('/Bearer\s+(.+)/i', $h, $m)) return $m[1];
+        if (isset($_GET['token']) && !empty($_GET['token'])) return $_GET['token'];
+        return null;
+    }
 }
 
 function requireAuth(): array {

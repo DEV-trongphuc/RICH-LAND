@@ -47,6 +47,10 @@ class CheckInController {
             $sql .= " AND YEAR(c.check_in_date) = ? AND MONTH(c.check_in_date) = ?";
             $params[] = (int)($_GET['year'] ?? date('Y'));
             $params[] = (int)$_GET['month'];
+        } elseif (isset($_GET['from']) && !empty($_GET['from']) && isset($_GET['to']) && !empty($_GET['to'])) {
+            $sql .= " AND c.check_in_date BETWEEN ? AND ?";
+            $params[] = $_GET['from'];
+            $params[] = $_GET['to'];
         } elseif (isset($_GET['date']) && !empty($_GET['date']) && $_GET['date'] !== 'all') {
             $sql .= " AND c.check_in_date = ?";
             $params[] = $_GET['date'];
