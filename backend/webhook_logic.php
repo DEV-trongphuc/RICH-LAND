@@ -1220,6 +1220,24 @@ function insertLead($conn, $data, $assignedConsultantId, $phone, $email, $name, 
     }
     if ($id > 0) {
         ensurePersonAndContact($conn, $id);
+        try {
+            $phoneClean = normalizePhone($phone);
+            if (!empty($phoneClean)) {
+                $cQuery = $conn->prepare("SELECT id FROM contacts WHERE phone = ? LIMIT 1");
+                $cQuery->bind_param("s", $phoneClean);
+                $cQuery->execute();
+                $cRes = $cQuery->get_result()->fetch_assoc();
+                $contactId = $cRes['id'] ?? null;
+                $cQuery->close();
+                
+                if ($contactId) {
+                    require_once __DIR__ . '/config/CapiHelper.php';
+                    CapiHelper::sendEvent(null, (int)$contactId, 'CompleteRegistration');
+                }
+            }
+        } catch (Exception $e) {
+            // silent catch
+        }
     }
     return $id;
 }

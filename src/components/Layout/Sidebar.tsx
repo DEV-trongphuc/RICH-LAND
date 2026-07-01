@@ -20,6 +20,10 @@ const ALL_NAV_ITEMS = [
   { name: 'Chủ đầu tư', href: '/suppliers', icon: Truck },
   { name: 'Tập tin', href: '/files', icon: File },
   { name: 'Giỏ hàng', href: '/inventory', icon: Boxes },
+  { name: 'Quản lý Dự án', href: '/projects', icon: Building2 },
+  { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: FileText },
+  { name: 'Quản lý Đặt cọc', href: '/deposits', icon: CreditCard },
+  { name: 'Meta CAPI Logs', href: '/capi', icon: Link2, adminOnly: true },
   { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
   { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
   { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
@@ -108,7 +112,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     // 3. Marketing checks
     if (role === 'marketing') {
       const allowedMarketingPaths = [
-        '/', '/data', '/contacts', '/companies', '/activities', '/reports-crm', '/files', '/gatekeeper'
+        '/', '/data', '/contacts', '/companies', '/activities', '/reports-crm', '/files', '/gatekeeper', '/projects', '/deposits', '/cooperation-slips'
       ];
       return allowedMarketingPaths.includes(item.href);
     }
@@ -116,7 +120,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     // 4. Sales checks (in case they view admin layout)
     if (role === 'sales' || role === 'sale') {
       const allowedSalesPaths = [
-        '/', '/contacts', '/companies', '/deals', '/activities', '/products', '/files'
+        '/', '/contacts', '/companies', '/deals', '/activities', '/products', '/files', '/projects', '/deposits', '/cooperation-slips'
       ];
       return allowedSalesPaths.includes(item.href);
     }

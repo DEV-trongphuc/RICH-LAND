@@ -99,6 +99,11 @@ const SettingsInner = () => {
   const [aiScreenerManualAction, setAiScreenerManualAction] = useState('hold');
   const [aiScreenerManualRules, setAiScreenerManualRules] = useState<any[]>([]);
 
+  // Pipeline status hierarchy state
+  const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
+    'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
+  ]);
+
   // States
   const [provider, setProvider] = useState('appscript');
   const [appscriptUrl, setAppscriptUrl] = useState('');
@@ -285,6 +290,11 @@ const SettingsInner = () => {
 
       const json = await fetchAPI('get_settings');
       if (json.success && json.data) {
+        if (json.data.pipeline_status_hierarchy) {
+          try {
+            setPipelineStatusHierarchy(JSON.parse(json.data.pipeline_status_hierarchy));
+          } catch(e) {}
+        }
         if (json.data.db_version) setDbVersion(json.data.db_version);
         if (json.data.email_provider) {
           setProvider(json.data.email_provider);
@@ -445,6 +455,7 @@ const SettingsInner = () => {
       ticket_auto_approve_keywords: ticketAutoApproveKeywords,
       ticket_auto_approve_rules: ticketAutoApproveRules,
       report_error_reasons: reportErrorReasons,
+      pipeline_status_hierarchy: JSON.stringify(pipelineStatusHierarchy),
       gemini_api_key: geminiApiKey,
       gemini_model: geminiModel,
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
@@ -2732,6 +2743,95 @@ function doPost(e) {
                       </p>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Cấu hình Vòng đời Khách hàng (Pipeline Status Hierarchy) */}
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <Activity size={16} />
+                  </span>
+                  {t('Cấu hình Vòng đời & Trạng thái Khách hàng')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  {t('Thiết lập thứ tự các bước chuyển trạng thái (State Machine) của khách hàng. Sales chỉ được phép chuyển trạng thái theo chiều tiến và tuần tự (Chống nhảy cóc và đi lùi).')}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {pipelineStatusHierarchy.map((status, index) => (
+                    <div
+                      key={index}
+                      style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--color-primary)', minWidth: '24px' }}>#{index + 1}</span>
+                        <input
+                          type="text"
+                          value={status}
+                          onChange={e => {
+                            const newHierarchy = [...pipelineStatusHierarchy];
+                            newHierarchy[index] = e.target.value;
+                            setPipelineStatusHierarchy(newHierarchy);
+                          }}
+                          className="form-input"
+                          style={{ margin: 0, padding: '4px 8px', fontSize: '0.8125rem', width: '200px', height: '30px' }}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          type="button"
+                          disabled={index === 0}
+                          onClick={() => {
+                            const newHierarchy = [...pipelineStatusHierarchy];
+                            const temp = newHierarchy[index];
+                            newHierarchy[index] = newHierarchy[index - 1];
+                            newHierarchy[index - 1] = temp;
+                            setPipelineStatusHierarchy(newHierarchy);
+                          }}
+                          className="btn outline"
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', opacity: index === 0 ? 0.3 : 1 }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          disabled={index === pipelineStatusHierarchy.length - 1}
+                          onClick={() => {
+                            const newHierarchy = [...pipelineStatusHierarchy];
+                            const temp = newHierarchy[index];
+                            newHierarchy[index] = newHierarchy[index + 1];
+                            newHierarchy[index + 1] = temp;
+                            setPipelineStatusHierarchy(newHierarchy);
+                          }}
+                          className="btn outline"
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', opacity: index === pipelineStatusHierarchy.length - 1 ? 0.3 : 1 }}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPipelineStatusHierarchy(prev => prev.filter((_, i) => i !== index));
+                          }}
+                          className="btn outline text-red-500"
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', color: '#ef4444', borderColor: '#ef4444/30' }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setPipelineStatusHierarchy(prev => [...prev, 'new_status'])}
+                    className="btn outline"
+                    style={{ alignSelf: 'flex-start', marginTop: '4px', fontSize: '0.8125rem', height: '32px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Plus size={14} /> {t('Thêm bước trạng thái mới')}
+                  </button>
                 </div>
               </div>
 

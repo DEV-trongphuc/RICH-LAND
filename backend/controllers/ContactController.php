@@ -205,11 +205,66 @@ class ContactController {
     public function update(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b = getBody();
+
+        // 1. Pre-fetch current contact state for lifecycle validation
+        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtCurr->execute([$id, $auth['tenant_id']]);
+        $currentContact = $stmtCurr->fetch();
+        if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
+
+        $currStatus = $currentContact['pipeline_status'] ?? 'chua_xac_dinh';
+        $currTtl1 = (int)($currentContact['ttl1_completed'] ?? 0);
+
+        // Fetch pipeline status hierarchy dynamically from system_settings
+        $stmtHierarchy = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
+        $stmtHierarchy->execute();
+        $hierarchySetting = $stmtHierarchy->fetchColumn();
+
+        $hierarchyList = [];
+        if ($hierarchySetting) {
+            $hierarchyList = json_decode($hierarchySetting, true) ?: [];
+        }
+
+        if (empty($hierarchyList)) {
+            $hierarchyList = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        }
+
+        $statusHierarchy = [];
+        foreach ($hierarchyList as $idxVal => $statusName) {
+            $statusHierarchy[trim($statusName)] = $idxVal;
+        }
+
+        $newStatus = $b['pipeline_status'] ?? null;
+        if ($newStatus && $newStatus !== $currStatus) {
+            // Exceptions: not_lead can be set from any state
+            if ($newStatus !== 'not_lead') {
+                $currIdx = $statusHierarchy[$currStatus] ?? 0;
+                $newIdx = $statusHierarchy[$newStatus] ?? 0;
+
+                // Enforce forward-only and no skipping stages
+                if ($newIdx < $currIdx) {
+                    respond(400, null, "Không được phép chuyển lùi trạng thái từ '$currStatus' về '$newStatus'", false);
+                }
+                if ($newIdx > $currIdx + 1) {
+                    respond(400, null, "Không được phép nhảy cóc trạng thái từ '$currStatus' sang '$newStatus' (Phải đi tuần tự)", false);
+                }
+
+                // Check TTL1 completion before moving to dong_y_gap
+                if ($newStatus === 'dong_y_gap') {
+                    $reqTtl1 = isset($b['ttl1_completed']) ? (int)$b['ttl1_completed'] : $currTtl1;
+                    if ($reqTtl1 !== 1) {
+                        respond(400, null, 'Trước khi sang giai đoạn Đồng ý gặp, bạn bắt buộc phải điền đầy đủ thông tin Form TTL1', false);
+                    }
+                }
+            }
+        }
+
         $fields = [
             'company_id','owner_id','first_name','last_name','email','phone',
             'mobile','job_title','department','source','status','notes',
             'birthday','address','city','ward',
-            'expected_revenue','win_probability','last_contact','stage_id'
+            'expected_revenue','win_probability','last_contact','stage_id',
+            'pipeline_status', 'ttl1_completed', 'ttl1_data'
         ];
         $sets = []; $params = [];
         
@@ -237,6 +292,8 @@ class ContactController {
                 // Fix date string strict mode crash
                 if (in_array($f, ['birthday', 'last_contact']) && $b[$f] === '') {
                     $params[] = null;
+                } else if ($f === 'ttl1_data' && is_array($b[$f])) {
+                    $params[] = json_encode($b[$f]);
                 } else {
                     $params[] = $b[$f];
                 }
@@ -282,6 +339,18 @@ class ContactController {
             $sql = "UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
+
+            // AUTO TRIGGER META CAPI EVENTS ON STATE TRANSITION
+            if ($newStatus && $newStatus !== $currStatus) {
+                require_once __DIR__ . '/../config/CapiHelper.php';
+                if ($newStatus === 'dong_y_gap' || $newStatus === 'da_gap') {
+                    CapiHelper::sendEvent($this->db, $id, 'Schedule');
+                } elseif ($newStatus === 'not_lead') {
+                    CapiHelper::sendEvent($this->db, $id, 'BAD');
+                } elseif ($newStatus === 'dat_coc') {
+                    CapiHelper::sendEvent($this->db, $id, 'Purchase');
+                }
+            }
         }
         
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {

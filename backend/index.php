@@ -297,6 +297,10 @@ require_once __DIR__ . '/controllers/PurchaseOrderController.php';
 require_once __DIR__ . '/controllers/CloudFileController.php';
 require_once __DIR__ . '/controllers/CustomFieldController.php';
 require_once __DIR__ . '/controllers/ExportController.php';
+require_once __DIR__ . '/controllers/ProjectController.php';
+require_once __DIR__ . '/controllers/DepositController.php';
+require_once __DIR__ . '/controllers/CooperationController.php';
+require_once __DIR__ . '/controllers/CapiController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -701,6 +705,63 @@ switch ($resource) {
             }
             respond(200, $results, 'Migration check completed');
         }
+        break;
+
+    // PROJECTS (Module 6)
+    case 'projects':
+        $auth = requireAuth();
+        $ctrl = new ProjectController($db);
+        if ($resourceId && $subResource === 'roster' && $method === 'GET') $ctrl->getRoster($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'roster' && $method === 'POST') $ctrl->updateRoster($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'documents' && $method === 'GET') $ctrl->getDocuments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'documents' && $method === 'POST') $ctrl->uploadDocument($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'DELETE') $ctrl->deleteDocument($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'documents' && $segments[3] && $subResource === 'download') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'GET') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]); // fallback direct link download
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // DEPOSITS (Module 8)
+    case 'deposits':
+        $auth = requireAuth();
+        $ctrl = new DepositController($db);
+        if ($resourceId && $subResource === 'milestones' && $segments[3] && $subResource === 'unc' && $method === 'POST') $ctrl->uploadUnc($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && $method === 'POST') {
+            // Upload UNC standard POST
+            $ctrl->uploadUnc($auth, (int)$resourceId, (int)$segments[3]);
+        }
+        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && $segments[4] === 'approve' && $method === 'POST') $ctrl->approveMilestone($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && $segments[4] === 'reject' && $method === 'POST') $ctrl->rejectMilestone($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'cancel' && $method === 'POST') $ctrl->cancelDeposit($auth, (int)$resourceId);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // COOPERATION SLIPS (Module 4)
+    case 'cooperation-slips':
+        $auth = requireAuth();
+        $ctrl = new CooperationController($db);
+        if ($resourceId && $subResource === 'shares' && $method === 'PUT') $ctrl->updateShares($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'sign' && $method === 'POST') $ctrl->signSlip($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'approve' && $method === 'POST') $ctrl->approveSlip($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'reject' && $method === 'POST') $ctrl->rejectSlip($auth, (int)$resourceId);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // META CAPI (Module 9)
+    case 'capi':
+        $auth = requireAuth();
+        $ctrl = new CapiController($db);
+        if ($resourceId === 'settings' && $method === 'GET') $ctrl->getSettings($auth);
+        elseif ($resourceId === 'settings' && $method === 'POST') $ctrl->saveSettings($auth);
+        elseif ($resourceId === 'logs' && $method === 'GET') $ctrl->getLogs($auth);
+        else respond(404, null, 'Route không tồn tại', false);
         break;
 
     default:

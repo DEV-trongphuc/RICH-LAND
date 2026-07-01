@@ -1503,7 +1503,8 @@ INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
 ('db_version', '146'),
 ('frontend_url', 'http://localhost:5173'),
 ('ai_screener_model', 'gemini-2.5-flash-lite'),
-('report_error_reasons', '[\"Sai số điện thoại / Số ảo\", \"Trùng của tôi (Trùng Saleperson)\", \"Trùng của người khác (Saleperson khác đã chăm)\", \"Spam ảo / Junk lead\", \"Khác (Vui lòng ghi rõ ở phần ghi chú)\"]')
+('report_error_reasons', '[\"Sai số điện thoại / Số ảo\", \"Trùng của tôi (Trùng Saleperson)\", \"Trùng của người khác (Saleperson khác đã chăm)\", \"Spam ảo / Junk lead\", \"Khác (Vui lòng ghi rõ ở phần ghi chú)\"]'),
+('pipeline_status_hierarchy', '[\"chua_xac_dinh\", \"quan_tam\", \"dong_y_gap\", \"da_gap\", \"booking\", \"dat_coc\", \"dong_deal\"]')
 ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`);
 
 -- 4. Mark migrations as applied

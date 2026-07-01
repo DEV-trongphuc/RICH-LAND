@@ -38,6 +38,10 @@ const ReportsPage = lazy(() => import('./pages/ReportsPage').then(module => ({ d
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage').then(module => ({ default: module.SuppliersPage })));
 const FilesPage = lazy(() => import('./pages/FilesPage').then(module => ({ default: module.FilesPage })));
 const InventoryPage = lazy(() => import('./pages/InventoryPage').then(module => ({ default: module.default })));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
+const CooperationSlipsPage = lazy(() => import('./pages/CooperationSlipsPage'));
+const DepositsPage = lazy(() => import('./pages/DepositsPage'));
+const CapiPage = lazy(() => import('./pages/CapiPage'));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -77,8 +81,8 @@ const AppTabs = () => {
   }, [currentPath, visitedPaths]);
 
   // Route protection mapping
-  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper'];
-  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory'];
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper', '/capi'];
+  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -268,8 +272,38 @@ const AppTabs = () => {
               </Suspense>
             )}
           </div>
+          <div style={{ display: currentPath === '/capi' ? 'block' : 'none' }} className={currentPath === '/capi' ? 'page-enter-active' : ''}>
+            {visitedPaths.includes('/capi') && (
+              <Suspense fallback={<PageLoader />}>
+                <CapiPage />
+              </Suspense>
+            )}
+          </div>
         </>
       )}
+
+      {/* User Dynamic Pages */}
+      <div style={{ display: currentPath === '/projects' ? 'block' : 'none' }} className={currentPath === '/projects' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/projects') && (
+          <Suspense fallback={<PageLoader />}>
+            <ProjectsPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/cooperation-slips' ? 'block' : 'none' }} className={currentPath === '/cooperation-slips' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/cooperation-slips') && (
+          <Suspense fallback={<PageLoader />}>
+            <CooperationSlipsPage />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/deposits' ? 'block' : 'none' }} className={currentPath === '/deposits' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/deposits') && (
+          <Suspense fallback={<PageLoader />}>
+            <DepositsPage />
+          </Suspense>
+        )}
+      </div>
     </div>
   );
 };
