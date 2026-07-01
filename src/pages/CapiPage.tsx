@@ -24,6 +24,13 @@ export default function CapiPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsLargeScreen(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Debug payload viewer modal
   const [viewPayload, setViewPayload] = useState<string | null>(null);
@@ -118,7 +125,7 @@ export default function CapiPage() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }} className="lg:grid-cols-3">
+      <div style={{ display: 'grid', gridTemplateColumns: isLargeScreen ? '1fr 2fr' : '1fr', gap: '1.5rem' }}>
         {/* Settings Form */}
         <div className="card" style={{ padding: '1.5rem', height: 'fit-content' }}>
           <h3 style={{ fontSize: '1.125rem', fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Cấu hình CAPI</h3>
@@ -156,7 +163,7 @@ export default function CapiPage() {
         </div>
 
         {/* Logs Table */}
-        <div className="card lg:col-span-2" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
           <div>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
               Nhật ký sự kiện gửi đi (CAPI Logs)
