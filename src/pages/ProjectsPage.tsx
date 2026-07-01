@@ -364,59 +364,59 @@ export default function ProjectsPage() {
 
       {/* Edit Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-800">
-              <h2 className="text-xl font-bold">{editingProject?.id ? 'Chỉnh sửa dự án' : 'Thêm dự án mới'}</h2>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="modal-sheet modal-sm" style={{ animation: 'scaleUp 0.2s ease-out' }}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{editingProject?.id ? 'Chỉnh sửa dự án' : 'Thêm dự án mới'}</h3>
+              <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
-            <form onSubmit={handleSaveProject} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Tên dự án</label>
-                <input
-                  type="text"
-                  required
-                  value={editingProject?.name || ''}
-                  onChange={e => setEditingProject(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
+            <form onSubmit={handleSaveProject}>
+              <div className="modal-body">
+                <div>
+                  <label className="form-label">Tên dự án</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingProject?.name || ''}
+                    onChange={e => setEditingProject(prev => ({ ...prev, name: e.target.value }))}
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Mã dự án</label>
+                  <input
+                    type="text"
+                    required
+                    value={editingProject?.code || ''}
+                    onChange={e => setEditingProject(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                    className="form-input"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Mô tả chi tiết</label>
+                  <textarea
+                    value={editingProject?.description || ''}
+                    onChange={e => setEditingProject(prev => ({ ...prev, description: e.target.value }))}
+                    className="form-textarea"
+                    style={{ minHeight: '80px' }}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Trạng thái bán</label>
+                  <select
+                    value={editingProject?.status || 'active'}
+                    onChange={e => setEditingProject(prev => ({ ...prev, status: e.target.value }))}
+                    className="form-input"
+                  >
+                    <option value="active">Đang mở bán</option>
+                    <option value="inactive">Tạm dừng bán</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Mã dự án</label>
-                <input
-                  type="text"
-                  required
-                  value={editingProject?.code || ''}
-                  onChange={e => setEditingProject(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                  className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                />
+              <div className="modal-footer">
+                <button type="button" className="btn" onClick={() => setIsEditModalOpen(false)}>Hủy</button>
+                <button type="submit" className="btn primary">Lưu dự án</button>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Mô tả chi tiết</label>
-                <textarea
-                  value={editingProject?.description || ''}
-                  onChange={e => setEditingProject(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm h-24 resize-none focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Trạng thái bán</label>
-                <select
-                  value={editingProject?.status || 'active'}
-                  onChange={e => setEditingProject(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                >
-                  <option value="active">Đang mở bán</option>
-                  <option value="inactive">Tạm dừng bán</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                className="w-full py-2 bg-primary hover:opacity-90 transition-opacity font-bold rounded-lg text-white"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              >
-                Lưu dự án
-              </button>
             </form>
           </div>
         </div>
@@ -424,111 +424,145 @@ export default function ProjectsPage() {
 
       {/* Roster Modal */}
       {isRosterModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-lg w-full p-6 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-800">
-              <h2 className="text-xl font-bold">Cấu hình Roster Nhân Sự Phân Phối</h2>
-              <button onClick={() => setIsRosterModalOpen(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out' }}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, color: 'var(--color-text)' }}>Cấu hình Roster Nhân Sự Phân Phối</h3>
+              <button onClick={() => setIsRosterModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
-            <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
-              {rosterMembers.length === 0 ? (
-                <div className="text-center py-6 text-gray-500">Không tìm thấy tài khoản Sales khả dụng</div>
-              ) : (
-                rosterMembers.map(member => (
-                  <div
-                    key={member.id}
-                    onClick={() => handleToggleRoster(member.id)}
-                    className={`flex justify-between items-center p-3 rounded-lg border cursor-pointer transition-colors ${
-                      member.is_assigned ? 'border-primary/50 bg-primary/5' : 'border-gray-800 bg-black/20 hover:border-gray-700'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="font-bold text-sm">{member.full_name}</h4>
-                      <p className="text-xs text-gray-500">{member.email}</p>
-                    </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {rosterMembers.length === 0 ? (
+                  <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>Không tìm thấy tài khoản Sales khả dụng</div>
+                ) : (
+                  rosterMembers.map(member => (
                     <div
-                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
-                        member.is_assigned ? 'bg-primary border-primary text-white' : 'border-gray-700'
-                      }`}
-                      style={member.is_assigned ? { backgroundColor: 'var(--color-primary)', borderColor: 'var(--color-primary)' } : {}}
+                      key={member.id}
+                      onClick={() => handleToggleRoster(member.id)}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '0.75rem 1rem',
+                        borderRadius: 'var(--radius-lg)',
+                        border: member.is_assigned ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        background: member.is_assigned ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                        cursor: 'pointer'
+                      }}
                     >
-                      {member.is_assigned === 1 && <Check size={14} />}
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
+                      </div>
+                      <div
+                        style={{
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '4px',
+                          border: member.is_assigned ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          backgroundColor: member.is_assigned ? 'var(--color-primary)' : 'transparent',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {member.is_assigned === 1 && <Check size={14} />}
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
-            <button
-              onClick={handleSaveRoster}
-              className="w-full py-2 bg-primary hover:opacity-90 font-bold rounded-lg text-white"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
-              Lưu thay đổi roster
-            </button>
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={() => setIsRosterModalOpen(false)}>Hủy</button>
+              <button type="button" className="btn primary" onClick={handleSaveRoster}>Lưu thay đổi</button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Documents Modal */}
       {isDocsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-xl w-full p-6 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-800">
-              <h2 className="text-xl font-bold">Kho Tài Liệu Dự Án (Mật)</h2>
-              <button onClick={() => setIsDocsModalOpen(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out' }}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, color: 'var(--color-text)' }}>Kho Tài Liệu Dự Án (Mật)</h3>
+              <button onClick={() => setIsDocsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
-
-            {/* Upload Area for Admins */}
-            {isAdmin && (
-              <div className="p-4 border border-dashed border-gray-800 rounded-lg flex items-center justify-between">
-                <div>
-                  <h4 className="font-bold text-sm">Tải tài liệu mới lên</h4>
-                  <p className="text-xs text-gray-500">Chấp nhận file PDF, Word, Excel, Hình ảnh</p>
-                </div>
-                <label className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg font-bold text-xs cursor-pointer text-white">
-                  <Upload size={14} />
-                  {uploadingDoc ? 'Đang tải...' : 'Chọn file'}
-                  <input type="file" disabled={uploadingDoc} onChange={handleUploadFile} className="hidden" />
-                </label>
-              </div>
-            )}
-
-            {/* List */}
-            <div className="max-h-72 overflow-y-auto space-y-2 pr-2">
-              {projectDocs.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">Chưa có tài liệu nào cho dự án này</div>
-              ) : (
-                projectDocs.map(doc => (
-                  <div
-                    key={doc.id}
-                    className="flex justify-between items-center p-3 bg-black/20 border border-gray-800 rounded-lg"
-                  >
-                    <div>
-                      <h4 className="font-bold text-sm text-gray-200 line-clamp-1">{doc.name}</h4>
-                      <p className="text-xs text-gray-500">
-                        {doc.uploaded_by_name} • {(doc.file_size / 1024 / 1024).toFixed(2)} MB • {new Date(doc.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button
-                        onClick={() => handleDownloadDoc(doc.id)}
-                        className="p-1.5 bg-gray-800 hover:bg-gray-700 text-primary rounded-md"
-                        style={{ color: 'var(--color-primary)' }}
-                      >
-                        <Download size={14} />
-                      </button>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDeleteDoc(doc.id)}
-                          className="p-1.5 bg-gray-800 hover:bg-red-500/20 text-red-500 rounded-md"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      )}
-                    </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', gap: '1rem' }}>
+              {/* Upload Area for Admins */}
+              {isAdmin && (
+                <div style={{
+                  padding: '1rem',
+                  border: '1px dashed var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'var(--color-surface-hover)'
+                }}>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>Tải tài liệu mới lên</h4>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Chấp nhận file PDF, Word, Excel, Hình ảnh</p>
                   </div>
-                ))
+                  <label className="btn secondary sm" style={{ cursor: 'pointer' }}>
+                    <Upload size={14} />
+                    {uploadingDoc ? 'Đang tải...' : 'Chọn file'}
+                    <input type="file" disabled={uploadingDoc} onChange={handleUploadFile} style={{ display: 'none' }} />
+                  </label>
+                </div>
               )}
+
+              {/* List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {projectDocs.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>Chưa có tài liệu nào cho dự án này</div>
+                ) : (
+                  projectDocs.map(doc => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '0.75rem 1rem',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: 'var(--radius-lg)',
+                        background: 'var(--color-surface)'
+                      }}
+                    >
+                      <div style={{ flex: 1, marginRight: '1rem', minWidth: 0 }}>
+                        <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</h4>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          {doc.uploaded_by_name} • {(doc.file_size / 1024 / 1024).toFixed(2)} MB • {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => handleDownloadDoc(doc.id)}
+                          className="btn secondary sm"
+                          style={{ minWidth: 'auto', padding: '0 0.5rem' }}
+                        >
+                          <Download size={14} />
+                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteDoc(doc.id)}
+                            className="btn danger sm"
+                            style={{ minWidth: 'auto', padding: '0 0.5rem', backgroundColor: 'var(--color-red-light)', borderColor: 'var(--color-red-light)', color: 'var(--color-red)' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={() => setIsDocsModalOpen(false)}>Đóng</button>
             </div>
           </div>
         </div>

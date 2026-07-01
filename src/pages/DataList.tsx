@@ -10,6 +10,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import { EmptyCard } from '../components/ui/EmptyCard';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -1843,9 +1844,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
                   ))
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
-                    {t('Không tìm thấy dữ liệu phù hợp.')}
-                  </div>
+                  <EmptyCard
+                    icon={<Database size={48} />}
+                    title={t("Không tìm thấy dữ liệu phù hợp")}
+                    description={t("Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm để xem kết quả.")}
+                  />
                 )}
               </div>
             ) : (

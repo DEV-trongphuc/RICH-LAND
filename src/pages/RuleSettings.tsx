@@ -19,6 +19,7 @@ import { fetchAPI } from '../utils/api';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { useLanguage } from '../contexts/LanguageContext';
+import { EmptyCard } from '../components/ui/EmptyCard';
 
 const OP_LABELS: Record<string, string> = {
   contains: 'Có chứa từ khóa',
@@ -747,14 +748,13 @@ const RuleSettingsInner = () => {
             {[1, 2, 3].map(i => <CardSkeleton key={i} height={90} />)}
           </div>
         ) : filteredRules.length === 0 ? (
-          <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-              <Filter size={32} color="var(--color-text-muted)" />
-            </div>
-            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t("Không tìm thấy Quy tắc nào")}</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t("Thử thay đổi bộ lọc hoặc thêm quy tắc mới.")}</p>
-            <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t("Thêm Quy tắc")}</button>
-          </div>
+          <EmptyCard
+            icon={<Filter size={48} />}
+            title={t("Không tìm thấy Quy tắc nào")}
+            description={t("Thử thay đổi bộ lọc hoặc thêm quy tắc mới.")}
+            actionText={t("Thêm Quy tắc")}
+            onAction={openAddModal}
+          />
         ) : (
           <div style={{ padding: '0.5rem' }}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

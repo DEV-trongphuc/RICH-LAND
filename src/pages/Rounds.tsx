@@ -12,6 +12,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
+import { EmptyCard } from '../components/ui/EmptyCard';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
@@ -704,13 +705,14 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             gap: '1.25rem'
           }}>
           {rounds.length === 0 ? (
-            <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: 12, border: '1px dashed var(--color-border)', gridColumn: '1 / -1' }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-                <Zap size={32} color="var(--color-text-muted)" />
-              </div>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t("Chưa có Vòng Phân Bổ")}</h3>
-              <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t("Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.")}</p>
-              <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t("Thêm Vòng ngay")}</button>
+            <div style={{ gridColumn: '1 / -1', width: '100%' }}>
+              <EmptyCard
+                icon={<Zap size={48} />}
+                title={t("Chưa có Vòng Phân Bổ")}
+                description={t("Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.")}
+                actionText={t("Thêm Vòng ngay")}
+                onAction={openAddModal}
+              />
             </div>
           ) : rounds.map((r, idx) => {
             const consList = r.consultants ? r.consultants.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
