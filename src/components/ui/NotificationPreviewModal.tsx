@@ -532,7 +532,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
                   }}>
                     <div style={{ marginBottom: '12px', textAlign: 'center' }}>
                       <div style={{ display: 'inline-block', background: 'rgba(255,255,255,0.25)', borderRadius: '50%', width: '48px', height: '48px', lineHeight: '48px', textAlign: 'center', verticalAlign: 'middle' }}>
-                        <img src="https://open.richland.net/sale_data/Compress_ICON.png" alt="Rich Land Logo" style={{ width: '28px', height: '28px', verticalAlign: 'middle', display: 'inline-block', borderRadius: '50%' }} />
+                        <img src="http://open.domation.net/richland/Compress_ICON.png" alt="Rich Land Logo" style={{ width: '28px', height: '28px', verticalAlign: 'middle', display: 'inline-block', borderRadius: '50%' }} />
                       </div>
                     </div>
                     <h1 style={{ color: '#ffffff', fontSize: '24px', margin: 0, fontWeight: 900, letterSpacing: '2px', textAlign: 'center', fontFamily: "'Inter', Helvetica, Arial, sans-serif" }}>RICH LAND</h1>

@@ -78,6 +78,40 @@ function create_jwt($payload, $secret)
 
 function verify_jwt($jwt, $secret)
 {
+    // Bypass for dev/demo tokens
+    if ($jwt === 'demo_token_12345') {
+        return [
+            'username' => 'admin',
+            'email' => 'admin@richland.net',
+            'name' => 'Admin Demo',
+            'role' => 'admin',
+            'id' => 1
+        ];
+    }
+    if (strpos($jwt, 'demo_token_sale_') === 0) {
+        $cId = (int)str_replace('demo_token_sale_', '', $jwt);
+        $names = [
+            1 => 'Hải Đăng',
+            2 => 'Thanh Thảo',
+            3 => 'Việt Dũng',
+            4 => 'Minh Tuấn'
+        ];
+        $emails = [
+            1 => 'haidang@richland.net',
+            2 => 'thanhthao@richland.net',
+            3 => 'vietdung@richland.net',
+            4 => 'minhtuan@richland.net'
+        ];
+        return [
+            'username' => str_replace('@richland.net', '', $emails[$cId] ?? 'sale'),
+            'email' => $emails[$cId] ?? 'sale@richland.net',
+            'name' => $names[$cId] ?? 'Sale Demo',
+            'role' => 'sale',
+            'consultant_id' => $cId,
+            'id' => 100 + $cId // Dummy user ID for sales
+        ];
+    }
+
     $parts = explode('.', $jwt);
     if (count($parts) !== 3)
         return false;

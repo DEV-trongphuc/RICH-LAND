@@ -1993,7 +1993,7 @@ function doPost(e) {
                     <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                        https://open.richland.net/sale_data/zalo_webhook.php
+                        {`${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/zalo_webhook.php`}
                       </code>
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>

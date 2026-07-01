@@ -156,7 +156,7 @@ export default function DepositsPage() {
 
     try {
       const token = localStorage.getItem('richland_token') || '';
-      const url = `${import.meta.env.VITE_API_URL || 'https://open.richland.net/sale_data'}/api.php?action=deposits/${depositId}/milestones/${milestoneId}/unc&token=${token}`;
+      const url = `${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/api.php?action=deposits/${depositId}/milestones/${milestoneId}/unc&token=${token}`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -369,7 +369,7 @@ export default function DepositsPage() {
                     <div className="pt-2 border-t border-gray-800/50 flex gap-2 items-center justify-between">
                       {m.unc_file_path ? (
                         <a
-                          href={`${import.meta.env.VITE_API_URL || 'https://open.richland.net/sale_data'}/uploads/${m.unc_file_path}`}
+                          href={`${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/uploads/${m.unc_file_path}`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs text-primary hover:underline flex items-center gap-1"

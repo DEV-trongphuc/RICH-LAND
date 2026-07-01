@@ -380,7 +380,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     }
 
     try {
-      const res = await fetch('https://open.richland.net/sale_data/api.php?action=login_google_sale', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/api.php?action=login_google_sale`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: response.credential })

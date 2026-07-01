@@ -1,0 +1,320 @@
+erDiagram
+    %% ==================== DANH TINH & LEAD VAO (Luong 1) ====================
+    PERSON {
+        string id PK
+        string sdt UK "dinh danh duy nhat - luat 1.4"
+        string ho_ten
+        boolean la_khach "da phat sinh doanh thu - tu dien 06-06"
+        boolean tu_choi_nhan_tin "opt-out broadcast - luat 1.13"
+        string tag_ly_do_dong "tep cho broadcast du an sau"
+    }
+    LEAD {
+        string id PK
+        string person_id FK
+        string nguon "R3_Fb R3 R2 messenger zalo_oa broadcast ca_nhan gioi_thieu"
+        string chien_dich_id FK
+        string du_an_id FK
+        string ad_id "attribution - luat 1.2"
+        string nguoi_gioi_thieu_id FK "Person cua nguoi gioi thieu - luat 1.14"
+        string broadcast_dot_id FK
+        string client_context "nhan dien theo nguon: FB fbp fbc - Google tu LP (dev 06-06)"
+        boolean nhap_bu "luat 1.6 - chi MKT"
+        datetime tao_luc "immutable - luat 1.3"
+    }
+    BROADCAST_DOT {
+        string id PK
+        string chien_dich_id FK
+        string tep_rule "luat loai tru 1.13"
+        string thong_diep
+        string kenh
+    }
+    BROADCAST_GUI {
+        string dot_id FK
+        string person_id FK
+        datetime gui_luc "mau so do response rate - luat 1.12"
+    }
+
+    PERSON ||--o{ LEAD : "1 nguoi n lan dang ky"
+    BROADCAST_DOT ||--o{ BROADCAST_GUI : "danh sach da gui"
+    PERSON ||--o{ BROADCAST_GUI : ""
+
+    %% ==================== TO CHUC & CHIEN DICH ====================
+    NHAN_VIEN {
+        string id PK
+        string ho_ten
+        string mat_khau_hash "bcrypt - het plaintext"
+        string trang_thai "lam_viec nghi"
+    }
+    VAI {
+        string id PK
+        string ten "theo 3 nhom chuc nang - file 09"
+    }
+    NHAN_VIEN_VAI {
+        string nhan_vien_id FK
+        string vai_id FK
+    }
+    CHIEN_DICH {
+        string id PK
+        string ten
+        string trang_thai
+    }
+    DU_AN {
+        string id PK
+        string ten
+        string chien_dich_id FK
+    }
+    ROSTER {
+        string chien_dich_id FK
+        string sale_id FK
+        string them_boi FK "GDKD Du An - luat 2.2"
+        boolean active
+    }
+    CONFIG_CHIEN_DICH {
+        string chien_dich_id FK "NULL = config toan san: lich lam viec, gio vang - luat 2.17"
+        string khoa "decay bao_mat_kho tran_song_song timeout nhiet_khoi_diem"
+        string gia_tri
+        datetime hieu_luc_tu "config theo thoi gian - luat 5.2"
+        datetime hieu_luc_den
+    }
+    CAU_HINH_TRANG_THAI {
+        string id PK
+        string ten "Chua XD Quan Tam... Thien Chi them sau"
+        int thu_tu
+        string dieu_kien_bang_chung "anh UNC checkin - luat 3.13"
+        string capi_event "mapping config - luat 7.8"
+        datetime hieu_luc_tu "state machine khong hardcode"
+    }
+
+    NHAN_VIEN ||--o{ NHAN_VIEN_VAI : ""
+    VAI ||--o{ NHAN_VIEN_VAI : ""
+    CHIEN_DICH ||--o{ DU_AN : ""
+    CHIEN_DICH ||--o{ ROSTER : ""
+    NHAN_VIEN ||--o{ ROSTER : ""
+    CHIEN_DICH ||--o{ CONFIG_CHIEN_DICH : ""
+    CHIEN_DICH ||--o{ BROADCAST_DOT : ""
+
+    %% ==================== KHTN & CHAM SOC (Luong 3-4) ====================
+    KHTN {
+        string id PK
+        string person_id FK
+        string chien_dich_id FK
+        string owner_id FK "1 owner duy nhat - luat 4.1"
+        string lead_goc_id FK
+        string nguon_sinh "chia databank ca_nhan gioi_thieu broadcast dieu_phoi"
+        string trang_thai "denormalized tu lich su"
+        string nhiet "Lanh Am Nong Soi - luat 3.2"
+        string ly_do_dong "not_lead hoac khong_phu_hop + ma ly do"
+    }
+    LICH_SU_TRANG_THAI {
+        string id PK
+        string khtn_id FK
+        string tu_trang_thai
+        string den_trang_thai
+        string boi FK
+        datetime luc "nguon tinh dong ho bao mat 5.2"
+        string bang_chung "dinh kem - luat 3.13"
+    }
+    QUYEN_TRUY_CAP {
+        string id PK
+        string khtn_id FK
+        string nhan_vien_id FK
+        string vai "owner ho_tro"
+        string moi_boi FK
+        datetime moi_luc
+        datetime thu_hoi_luc "lich su vinh vien - luat 4.4"
+    }
+    GHI_CHU {
+        string id PK
+        string khtn_id FK
+        string boi FK
+        string kenh "noi_dat noi_dong noi_ap_suat - luat 3.1"
+        string loai "thuong chat_luong"
+        int thoi_luong_phut
+        string noi_dung
+        string phan_hoi_kh
+        string tag_vuong "sales du_an can xuoi - luat 3.7"
+        string nhiet_may_de_xuat "luu ca 2 - luat 3.3"
+        string nhiet_sale_chot
+        string tai_lieu_da_gui "o tu do - luat 3.15"
+        boolean di_san "sale nghi viec - luat 2.27"
+    }
+    FORM_TTL1 {
+        string khtn_id FK
+        string nhom_1_den_5 "5 nhom - luat 3.11"
+        int do_day "gate thieu 2 nhom - luat 3.12"
+    }
+
+    PERSON ||--o{ KHTN : "1 nguoi n KHTN"
+    CHIEN_DICH ||--o{ KHTN : ""
+    NHAN_VIEN ||--o{ KHTN : "owner"
+    LEAD ||--o{ KHTN : "lead goc"
+    KHTN ||--o{ LICH_SU_TRANG_THAI : ""
+    KHTN ||--o{ QUYEN_TRUY_CAP : ""
+    KHTN ||--o{ GHI_CHU : ""
+    KHTN ||--o| FORM_TTL1 : ""
+
+    %% ==================== CHIA LEAD & DIEU KIEN NGAY (Luong 2) ====================
+    LOG_CHIA {
+        string id PK
+        string lead_id FK
+        string sale_id FK
+        datetime offer_luc
+        datetime het_han_luc "2 phut ngay - 5 phut dem"
+        string ket_qua "nhan tu_choi timeout bo_qua_cong_nao - luat 2.11"
+        string ca "ngay dem gio_vang"
+    }
+    DIEU_KIEN_NGAY {
+        string sale_id FK
+        date ngay
+        datetime checkin_luc "app la nguon su that - luat 2.12"
+        string trang_thai_checkin "dung_gio tre nghi_phep - luat 2.15"
+        boolean san_sang "nut tam vang - luat 2.7"
+        boolean dang_ky_dem "tu xoa 6h - luat 2.18"
+        boolean dang_ky_cuoi_tuan "CN - luat 2.16"
+        string xin_nhan "cho_duyet duyet tu_choi - luat 2.13"
+    }
+
+    LEAD ||--o{ LOG_CHIA : "moi nhip xoay vong"
+    NHAN_VIEN ||--o{ LOG_CHIA : ""
+    NHAN_VIEN ||--o{ DIEU_KIEN_NGAY : ""
+
+    %% ==================== KHO DATA (Luong 5) ====================
+    KHO_DATA {
+        string id PK
+        string person_id FK
+        string chien_dich_id FK
+        datetime ra_kho_luc "1 lan duy nhat - luat 5.3"
+        string ly_do "het_han dieu_phoi_thu_cong"
+        datetime rut_luc
+        string ly_do_rut "dat_coc - luat 5.5"
+    }
+    KHO_NHAN {
+        string kho_id FK
+        string sale_id FK
+        datetime nhan_luc "sinh KHTN nguon databank - luat 5.4"
+    }
+
+    PERSON ||--o{ KHO_DATA : ""
+    CHIEN_DICH ||--o{ KHO_DATA : ""
+    KHO_DATA ||--o{ KHO_NHAN : "han muc 5.9"
+
+    %% ==================== TIEN (Luong 6) ====================
+    GIO_HANG_CAN {
+        string id PK
+        string du_an_id FK
+        string ma_can UK
+        decimal gia
+        string trang_thai "con da_ban - luat 6.19"
+        string csbh
+        string pttt_options
+    }
+    GIAO_DICH {
+        string id PK
+        string khtn_id FK
+        string can_id FK "null neu chua co trong gio - luat 6.20"
+        string ma_can_tu_do
+        boolean cho_bo_sung_gio_hang
+        string trang_thai "dat_coc ttc dang_tt hdmb be_coc"
+        decimal gia_goc
+        string pttt
+        string doi_tu_giao_dich_id FK "doi can - luat 6.6"
+    }
+    PHIEU_COC {
+        string id PK
+        string giao_dich_id FK
+        int buoc "1-4 - luat 6.1"
+        string unc_dinh_kem
+        string cccd_vneid
+        string admin_xac_nhan FK
+    }
+    MOC_THANH_TOAN {
+        string id PK
+        string giao_dich_id FK
+        string loai "coc ttc dot_n hdmb - theo lich du an 6.3"
+        date den_han "nhac viec - luat 6.5"
+        string unc_dinh_kem "nguon su that - luat 6.4"
+        string xac_nhan_boi FK
+    }
+    PHIEU_HOP_TAC {
+        string id PK
+        string giao_dich_id FK
+        string trang_thai "nhap cho_ky cho_duyet da_duyet tu_choi"
+        string duyet_boi FK "GDKD - luat 4.11"
+        datetime khoa_luc "vinh vien - luat 4.12"
+        string dieu_chinh_tu_id FK "phieu dieu chinh tro ve phieu goc - luat 4.12"
+    }
+    DONG_PHIEU_HT {
+        string phieu_id FK
+        string nhan_vien_id FK
+        decimal phan_tram "tong 100 - luat 4.6"
+        datetime ky_luc "tung nguoi 1 cham - luat 4.8"
+        datetime tu_choi_luc
+    }
+    LICH_TT_DU_AN {
+        string id PK
+        string du_an_id FK
+        int thu_tu
+        string loai_moc "coc ttc dot_n hdmb"
+        string ky "TTC HDMB khong - luat 6.3"
+    }
+    HD_MOI_GIOI {
+        string id PK
+        string du_an_id FK
+        decimal phi_phan_tram "vd 5 - luat 6.8"
+        datetime hieu_luc_tu
+    }
+    DOT_PHI {
+        string id PK
+        string hd_id FK
+        string moc_kich_hoat "du dieu kien tinh phi"
+        decimal phan_tram_tra "vd 50-50"
+    }
+    DOI_CHIEU_PHI {
+        string id PK
+        string giao_dich_id FK
+        string dot_phi_id FK
+        string trang_thai "du_dk da_gui_hs tien_ve - luat 6.9"
+        decimal so_tien
+    }
+
+    DU_AN ||--o{ GIO_HANG_CAN : ""
+    DU_AN ||--o{ LICH_TT_DU_AN : "config tung du an"
+    DU_AN ||--o{ HD_MOI_GIOI : "config tung du an"
+    KHTN ||--o{ GIAO_DICH : ""
+    GIO_HANG_CAN ||--o{ GIAO_DICH : ""
+    GIAO_DICH ||--o{ PHIEU_COC : "4 buoc"
+    GIAO_DICH ||--o{ MOC_THANH_TOAN : ""
+    GIAO_DICH ||--o| PHIEU_HOP_TAC : ""
+    PHIEU_HOP_TAC ||--o{ DONG_PHIEU_HT : ""
+    HD_MOI_GIOI ||--o{ DOT_PHI : ""
+    GIAO_DICH ||--o{ DOI_CHIEU_PHI : ""
+    DOT_PHI ||--o{ DOI_CHIEU_PHI : ""
+
+    %% ==================== DU LIEU NGUOC (Luong 7) ====================
+    MOC_LEAD {
+        string lead_id FK
+        string moc "dang_ky quan_tam gap purchase"
+        datetime lan_dau "forward-only theo lead - luat 7.2 sua theo dev"
+    }
+    CAPI_LOG {
+        string id PK
+        string lead_id FK "khoa so khop chinh - Meta cap tu leadform"
+        string person_id FK "noi bo do luong - hash SDT email chi gui kem"
+        string event_name "CompleteRegistration CONVERTED Schedule Purchase BAD"
+        string event_id UK "dedup Meta"
+        string client_context "doc tu LEAD luc ban"
+        string trang_thai "ok cho_gui loi - canh bao stale 7.6"
+        datetime gui_luc
+    }
+    CHI_PHI_ADS {
+        date ngay
+        string ad_id "level thap nhat - luat 7.10 sua theo dev"
+        string adset_id
+        string campaign_ngoai
+        string chien_dich_id FK "map ve chien dich noi bo"
+        decimal chi_phi
+    }
+
+    LEAD ||--o{ MOC_LEAD : ""
+    LEAD ||--o{ CAPI_LOG : "ban theo lead"
+    CHIEN_DICH ||--o{ CHI_PHI_ADS : ""

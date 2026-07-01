@@ -19,7 +19,7 @@ const SYSTEM_FIELDS = [
   { value: 'saleperson', label: 'Salesperson (Tên/Email Sale)' },
 ];
 
-const BASE_WEBHOOK = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/webhook.php` : "https://open.richland.net/sale_data/webhook.php";
+const BASE_WEBHOOK = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/webhook.php` : "http://open.domation.net/richland/webhook.php";
 
 type Connection = {
   id: number;
