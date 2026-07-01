@@ -120,7 +120,7 @@ class FinanceController
 
     public function createInvoice(array $auth): void
     {
-        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền tạo hóa đơn', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) respond(403, null, 'Bạn không có quyền tạo hóa đơn', false);
         $tid = $auth['tenant_id'];
         $uid = $auth['user_id'];
         $data = getBody();
@@ -223,7 +223,7 @@ class FinanceController
 
     public function updateInvoice(array $auth, int $id): void
     {
-        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật hóa đơn', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) respond(403, null, 'Bạn không có quyền cập nhật hóa đơn', false);
         $data = getBody();
         $fields = ['title', 'status', 'issue_date', 'due_date', 'subtotal', 'discount', 'tax', 'total', 'notes', 'contact_id', 'company_id', 'deal_id', 'shipping_customer_pay', 'shipping_fee'];
         $sets = [];
@@ -319,7 +319,7 @@ class FinanceController
 
     public function deleteInvoice(array $auth, int $id): void
     {
-        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa hóa đơn', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) respond(403, null, 'Bạn không có quyền xóa hóa đơn', false);
         try {
             $this->db->beginTransaction();
 
@@ -362,7 +362,7 @@ class FinanceController
 
     public function markPaid(array $auth, int $id): void
     {
-        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xác nhận thanh toán', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) respond(403, null, 'Bạn không có quyền xác nhận thanh toán', false);
         try {
             $this->db->beginTransaction();
 

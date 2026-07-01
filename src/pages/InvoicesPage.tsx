@@ -109,6 +109,9 @@ export const InvoicesPage: React.FC = () => {
 
   // Client-side items match server-paginated data
 
+  const userRole = useAuthStore.getState().user?.role;
+  const canEditInvoice = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager';
+
   // KPIs from server summary
   const totalRev = Number(summary.total_rev);
   const paidAmt = Number(summary.paid_amt);
@@ -193,10 +196,12 @@ export const InvoicesPage: React.FC = () => {
             <Download size={16} />
             <span className="hide-on-mobile"> Xuất CSV</span>
           </button>
-          <button className="btn primary" onClick={() => useUIStore.getState().setShowPOS(true)} title="Tạo hóa đơn">
-            <Plus size={16} />
-            <span className="hide-on-mobile"> Tạo hóa đơn</span>
-          </button>
+          {canEditInvoice && (
+            <button className="btn primary" onClick={() => useUIStore.getState().setShowPOS(true)} title="Tạo hóa đơn">
+              <Plus size={16} />
+              <span className="hide-on-mobile"> Tạo hóa đơn</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -316,28 +321,32 @@ export const InvoicesPage: React.FC = () => {
                       <td>
                         <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn-icon sm" title="Xem nhanh" onClick={() => setPreviewItem(inv)}><Eye size={14} /></button>
-                          {inv.status !== 'paid' && (
+                          {canEditInvoice && inv.status !== 'paid' && (
                             <button className="btn-icon sm" title="Đánh dấu đã thanh toán" onClick={() => handleMarkPaid(inv)} style={{ color: 'var(--color-success)' }}><CheckCircle2 size={14} /></button>
                           )}
-                          <button className="btn-icon sm" title="Gửi nhắc nhở" onClick={() => handleSendReminder(inv)} style={{ color: 'var(--color-primary)' }}><Send size={14} /></button>
-                          <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
-                            showConfirm({
-                              title: `Xóa hóa đơn ${inv.invoice_number}?`,
-                              message: `Hóa đơn này sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác.`,
-                              confirmText: 'Xóa ngay',
-                              cancelText: 'Hủy',
-                              isDanger: true,
-                              onConfirm: async () => {
-                                try {
-                                  await api.delete(`/invoices/${inv.id}`);
-                                  setItems(prev => prev.filter(i => i.id !== inv.id));
-                                  addToast('Đã xóa hóa đơn', 'success');
-                                } catch (e: any) {
-                                  addToast(e.response?.data?.message || 'Không thể xóa hóa đơn', 'error');
+                          {canEditInvoice && (
+                            <button className="btn-icon sm" title="Gửi nhắc nhở" onClick={() => handleSendReminder(inv)} style={{ color: 'var(--color-primary)' }}><Send size={14} /></button>
+                          )}
+                          {canEditInvoice && (
+                            <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
+                              showConfirm({
+                                title: `Xóa hóa đơn ${inv.invoice_number}?`,
+                                message: `Hóa đơn này sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác.`,
+                                confirmText: 'Xóa ngay',
+                                cancelText: 'Hủy',
+                                isDanger: true,
+                                onConfirm: async () => {
+                                  try {
+                                    await api.delete(`/invoices/${inv.id}`);
+                                    setItems(prev => prev.filter(i => i.id !== inv.id));
+                                    addToast('Đã xóa hóa đơn', 'success');
+                                  } catch (e: any) {
+                                    addToast(e.response?.data?.message || 'Không thể xóa hóa đơn', 'error');
+                                  }
                                 }
-                              }
-                            });
-                          }}><Trash2 size={14} /></button>
+                              });
+                            }}><Trash2 size={14} /></button>
+                          )}
                         </div>
                       </td>
                     </motion.tr>

@@ -20,6 +20,7 @@ import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { useDebounce } from '../hooks/useDebounce';
+import { useAuth } from '../contexts/AuthContext';
 
 const PAGE_SIZE = 50;
 
@@ -50,6 +51,8 @@ const FMT_VND = (n: number) => n ? new Intl.NumberFormat('vi-VN',{style:'currenc
 const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime())/86400000) : 999;
 
 export const ContactsPage: React.FC = () => {
+  const { user } = useAuth();
+  const isSale = user?.role === 'sale';
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +67,15 @@ export const ContactsPage: React.FC = () => {
   const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
   const [creating, setCreating] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (showCreateModal && user) {
+      setCreateForm(prev => ({
+        ...prev,
+        owner_id: isSale ? String(user.id || '') : ''
+      }));
+    }
+  }, [showCreateModal, user, isSale]);
 
   // New Enterprise Features State
   const [viewMode, setViewMode] = useState<'list' | 'card'>(() => window.innerWidth <= 768 ? 'card' : 'list');
@@ -272,10 +284,12 @@ export const ContactsPage: React.FC = () => {
           <p className="page-subtitle">{loading ? '...' : `${total} liên hệ`}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
-            <Download size={14}/>
-            <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
-          </button>
+          {!isSale && (
+            <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
+              <Download size={14}/>
+              <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
+            </button>
+          )}
           <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
             <Plus size={15}/>
             <span className="hide-on-mobile"> Thêm liên hệ</span>
@@ -402,18 +416,22 @@ export const ContactsPage: React.FC = () => {
             {[
               { label:'Email', action:bulkEmail },
               { label:'Tag',   action:bulkTag   },
-              { label:'Gán',  action:bulkAssign},
-              { label:'Xuất', action:bulkExport },
+              ...(!isSale ? [
+                { label:'Gán',  action:bulkAssign},
+                { label:'Xuất', action:bulkExport },
+              ] : [])
             ].map(b=>(
               <button key={b.label} onClick={b.action}
                 style={{ padding:'0.375rem 0.875rem', background:'rgba(255,255,255,0.18)', border:'1px solid rgba(255,255,255,0.3)', borderRadius:'var(--radius-lg)', color:'white', fontWeight:600, fontSize:'0.8125rem', cursor:'pointer' }}>
                 {b.label}
               </button>
             ))}
-            <button onClick={bulkDelete}
-              style={{ padding:'0.375rem 0.875rem', background:'rgba(239,68,68,0.8)', border:'none', borderRadius:'var(--radius-lg)', color:'white', fontWeight:700, fontSize:'0.8125rem', cursor:'pointer' }}>
-              Xóa
-            </button>
+            {!isSale && (
+              <button onClick={bulkDelete}
+                style={{ padding:'0.375rem 0.875rem', background:'rgba(239,68,68,0.8)', border:'none', borderRadius:'var(--radius-lg)', color:'white', fontWeight:700, fontSize:'0.8125rem', cursor:'pointer' }}>
+                Xóa
+              </button>
+            )}
             <button onClick={() => setSelected(new Set())} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.7)', cursor:'pointer' }}><X size={16}/></button>
           </motion.div>
         )}
@@ -824,19 +842,29 @@ export const ContactsPage: React.FC = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 700 }}>Phụ trách bởi (Sale)</label>
-                    <CustomSelect 
-                      options={users.map(u => ({ 
-                        value: u.id, 
-                        label: u.full_name, 
-                        avatar: u.avatar_url,
-                        sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
-                      }))}
-                      value={createForm.owner_id}
-                      onChange={val => setCreateForm(f => ({ ...f, owner_id: val.toString() }))}
-                      placeholder="Chọn sale phụ trách..."
-                      searchable
-                      showAvatars
-                    />
+                    {isSale ? (
+                      <input 
+                        className="form-input lg" 
+                        value={user?.name || user?.username || ''} 
+                        readOnly 
+                        disabled 
+                        style={{ background: 'var(--color-bg)', cursor: 'not-allowed' }}
+                      />
+                    ) : (
+                      <CustomSelect 
+                        options={users.map(u => ({ 
+                          value: u.id, 
+                          label: u.full_name || u.name, 
+                          avatar: u.avatar_url,
+                          sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
+                        }))}
+                        value={createForm.owner_id}
+                        onChange={val => setCreateForm(f => ({ ...f, owner_id: val.toString() }))}
+                        placeholder="Chọn sale phụ trách..."
+                        searchable
+                        showAvatars
+                      />
+                    )}
                   </div>
                 </div>
 

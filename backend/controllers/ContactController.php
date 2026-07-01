@@ -153,7 +153,7 @@ class ContactController {
         ");
         $stmt->execute([
             $auth['tenant_id'],
-            $company_id, $b['owner_id'] ?? $auth['user_id'],
+            $company_id, ($auth['role'] === 'sales') ? $auth['user_id'] : ($b['owner_id'] ?? $auth['user_id']),
             $auth['user_id'], $b['first_name'], $b['last_name'] ?? '',
             $email, $b['phone'] ?? null, $b['mobile'] ?? null,
             $b['job_title'] ?? null, $b['department'] ?? null,

@@ -12,6 +12,7 @@ interface SidebarItem {
   end?: boolean;
   adminOnly?: boolean;
   badgeKey?: string;
+  hideForRoles?: string[];
 }
 
 interface SidebarGroup {
@@ -72,7 +73,7 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'TÀI CHÍNH',
     items: [
-      { name: 'Hóa đơn', href: '/invoices', icon: Receipt },
+      { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['sale', 'viewer'] },
       { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
       { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true }
     ]
@@ -154,12 +155,15 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   }, [user]);
 
   const visibleGroups = SIDEBAR_GROUPS.map(group => {
-    const filteredItems = group.items.filter(item => {
+    const filteredItems = group.items.filter((item: any) => {
       const role = user?.role as string;
       const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
 
-      if (item.adminOnly) {
-        return isAdmin;
+      if (item.adminOnly && !isAdmin) {
+        return false;
+      }
+      if (item.hideForRoles && item.hideForRoles.includes(role)) {
+        return false;
       }
       return true;
     });

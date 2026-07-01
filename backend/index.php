@@ -505,6 +505,7 @@ switch ($resource) {
     // QUOTES
     case 'quotes':
         $auth = requireAuth();
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
         $ctrl = new QuoteController($db);
         if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
@@ -587,6 +588,7 @@ switch ($resource) {
 
     case 'expenses':
         $auth = requireAuth();
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
         $ctrl = new FinanceController($db);
         if ($resourceId === 'entity' && $subResource && $method === 'GET') {
             $ctrl->listEntityExpenses($auth, $subResource, (int)($segments[3] ?? 0));

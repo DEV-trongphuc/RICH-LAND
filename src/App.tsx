@@ -97,6 +97,14 @@ const AppTabs = () => {
     if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin') {
       return <Navigate to="/" replace />;
     }
+  } else if (currentPath === '/invoices') {
+    if ((user?.role as string) === 'sale' || (user?.role as string) === 'viewer') {
+      return <Navigate to="/" replace />;
+    }
+  } else if (currentPath === '/quotes' || currentPath === '/expenses') {
+    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'manager') {
+      return <Navigate to="/" replace />;
+    }
   } else if (isAdminPath) {
     if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin') {
       return <Navigate to="/" replace />;
