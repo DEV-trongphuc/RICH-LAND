@@ -10,7 +10,7 @@ import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, LabelList
@@ -102,6 +102,18 @@ const ConsultantsInner = () => {
   const [statsStartDate, setStatsStartDate] = useState<string>('');
   const [statsEndDate, setStatsEndDate] = useState<string>('');
 
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const activeTab = queryParams.get('tab') || 'consultants';
+
+  const [teams, setTeams] = useState<any[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<any>(null);
+  const [teamFormData, setTeamFormData] = useState({ name: '', branch: '', leader_id: '' });
+  const [confirmDeleteTeamOpen, setConfirmDeleteTeamOpen] = useState(false);
+  const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
+
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [formData, setFormData] = useState<{
     name: string;
@@ -114,6 +126,7 @@ const ConsultantsInner = () => {
     work_end_time: string;
     work_schedule: any;
     avatar: string;
+    team_id: string;
   }>({
     name: '',
     email: '',
@@ -124,7 +137,8 @@ const ConsultantsInner = () => {
     work_start_time: '00:00',
     work_end_time: '23:59',
     work_schedule: null,
-    avatar: ''
+    avatar: '',
+    team_id: ''
   });
 
   const handleDayChange = (dayKey: string, field: 'active' | 'start' | 'end', value: any) => {
@@ -142,6 +156,17 @@ const ConsultantsInner = () => {
         }
       };
     });
+  };
+
+  const fetchTeams = async () => {
+    setTeamsLoading(true);
+    try {
+      const json = await fetchAPI('teams');
+      if (json.success) setTeams(json.data || []);
+    } catch (e: any) {
+      toast.error(t('Không thể tải danh sách nhóm: ') + e.message);
+    }
+    setTeamsLoading(false);
   };
 
   const fetchUsers = async () => {
@@ -172,7 +197,10 @@ const ConsultantsInner = () => {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    fetchUsers();
+    fetchTeams();
+  }, []);
 
   const openAddModal = () => {
     setEditingUser(null);
@@ -187,7 +215,8 @@ const ConsultantsInner = () => {
       work_start_time: '00:00',
       work_end_time: '23:59',
       work_schedule: null,
-      avatar: ''
+      avatar: '',
+      team_id: ''
     });
     setModalOpen(true);
   };
@@ -206,7 +235,8 @@ const ConsultantsInner = () => {
       work_start_time: user.work_start_time || '00:00',
       work_end_time: user.work_end_time || '23:59',
       work_schedule: user.work_schedule || null,
-      avatar: user.avatar || ''
+      avatar: user.avatar || '',
+      team_id: user.team_id || ''
     });
     setModalOpen(true);
   };
@@ -254,6 +284,71 @@ const ConsultantsInner = () => {
     } catch (e: any) { toast.error(t('Lỗi: ') + e.message); }
     setIsDeleting(false);
     setConfirmDeleteOpen(false);
+  };
+
+  const openAddTeamModal = () => {
+    setEditingTeam(null);
+    setTeamFormData({ name: '', branch: '', leader_id: '' });
+    setTeamModalOpen(true);
+  };
+
+  const openEditTeamModal = (team: any) => {
+    setEditingTeam(team);
+    setTeamFormData({
+      name: team.name,
+      branch: team.branch || '',
+      leader_id: team.leader_id || ''
+    });
+    setTeamModalOpen(true);
+  };
+
+  const handleSaveTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!teamFormData.name) return toast.error(t('Vui lòng nhập tên nhóm'));
+    
+    setIsSaving(true);
+    try {
+      const isEdit = !!editingTeam;
+      const url = isEdit ? `teams/${editingTeam.id}` : 'teams';
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      const res = await fetchAPI(url, {
+        method,
+        body: JSON.stringify(teamFormData)
+      });
+      
+      if (res.success) {
+        toast.success(isEdit ? t('Cập nhật nhóm thành công!') : t('Tạo nhóm mới thành công!'));
+        fetchTeams();
+        fetchUsers();
+        setTeamModalOpen(false);
+      } else {
+        toast.error(res.message || t('Lỗi khi lưu nhóm'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+    setIsSaving(false);
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!deleteTeamId) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetchAPI(`teams/${deleteTeamId}`, { method: 'DELETE' });
+      if (res.success) {
+        toast.success(t('Đã xóa nhóm thành công!'));
+        fetchTeams();
+        fetchUsers();
+      } else {
+        toast.error(res.message || t('Lỗi khi xóa nhóm'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+    setIsDeleting(false);
+    setConfirmDeleteTeamOpen(false);
+    setDeleteTeamId(null);
   };
 
   const confirmUnlinkZalo = (id: number) => {
@@ -402,55 +497,111 @@ const ConsultantsInner = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">{t('Quản lý Tư vấn viên')}</h1>
+          <h1 className="page-title">
+            {activeTab === 'teams' ? t('Quản lý Nhóm (Team)') : activeTab === 'branches' ? t('Chi nhánh Kinh doanh') : t('Quản lý Tư vấn viên')}
+          </h1>
           <p className="page-subtitle">
-            {t('Danh sách nhân sự tiếp nhận và xử lý data từ hệ thống')}
+            {activeTab === 'teams'
+              ? t('Danh sách nhóm phân chia công việc và chỉ tiêu dự án')
+              : activeTab === 'branches'
+              ? t('Cơ cấu chi nhánh văn phòng của công ty')
+              : t('Danh sách nhân sự tiếp nhận và xử lý data từ hệ thống')}
           </p>
         </div>
-        <button onClick={openAddModal} className="btn primary responsive-btn-full">
-          <Plus size={16} /> {t('Thêm TVV')}
+        {activeTab === 'teams' ? (
+          <button onClick={openAddTeamModal} className="btn primary responsive-btn-full">
+            <Plus size={16} /> {t('Thêm Nhóm')}
+          </button>
+        ) : activeTab === 'branches' ? null : (
+          <button onClick={openAddModal} className="btn primary responsive-btn-full">
+            <Plus size={16} /> {t('Thêm TVV')}
+          </button>
+        )}
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '1.5rem', paddingBottom: '0.25rem' }}>
+        <button
+          onClick={() => navigate('/consultants?tab=consultants')}
+          style={{
+            padding: '0.5rem 1rem', border: 'none', background: 'transparent',
+            fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+            color: activeTab === 'consultants' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            borderBottom: activeTab === 'consultants' ? '2px solid var(--color-primary)' : 'none',
+            transition: 'all 0.18s'
+          }}
+        >
+          {t('Tư vấn viên')}
+        </button>
+        <button
+          onClick={() => navigate('/consultants?tab=teams')}
+          style={{
+            padding: '0.5rem 1rem', border: 'none', background: 'transparent',
+            fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+            color: activeTab === 'teams' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            borderBottom: activeTab === 'teams' ? '2px solid var(--color-primary)' : 'none',
+            transition: 'all 0.18s'
+          }}
+        >
+          {t('Nhóm (Team)')}
+        </button>
+        <button
+          onClick={() => navigate('/consultants?tab=branches')}
+          style={{
+            padding: '0.5rem 1rem', border: 'none', background: 'transparent',
+            fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+            color: activeTab === 'branches' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+            borderBottom: activeTab === 'branches' ? '2px solid var(--color-primary)' : 'none',
+            transition: 'all 0.18s'
+          }}
+        >
+          {t('Chi nhánh')}
         </button>
       </div>
 
       {/* Summary Cards */}
-      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="stat-card hover-lift">
-          <div className="stat-label">{t('Tổng TVV')}</div>
-          <div className="stat-value">{users.length}</div>
+      {activeTab === 'consultants' && (
+        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+          <div className="stat-card hover-lift">
+            <div className="stat-label">{t('Tổng TVV')}</div>
+            <div className="stat-value">{users.length}</div>
+          </div>
+          <div className="stat-card hover-lift">
+            <div className="stat-label" style={{ color: 'var(--color-success)' }}>{t('Đang nhận Data')}</div>
+            <div className="stat-value" style={{ color: 'var(--color-success)' }}>{activeCount}</div>
+          </div>
+          <div className="stat-card hover-lift">
+            <div className="stat-label" style={{ color: 'var(--color-warning)' }}>{t('Đang nghỉ phép')}</div>
+            <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{leaveCount}</div>
+          </div>
+          <div className="stat-card hover-lift">
+            <div className="stat-label" style={{ color: 'var(--color-danger)' }}>{t('Ngừng hoạt động')}</div>
+            <div className="stat-value" style={{ color: 'var(--color-danger)' }}>{inactiveCount}</div>
+          </div>
         </div>
-        <div className="stat-card hover-lift">
-          <div className="stat-label" style={{ color: 'var(--color-success)' }}>{t('Đang nhận Data')}</div>
-          <div className="stat-value" style={{ color: 'var(--color-success)' }}>{activeCount}</div>
-        </div>
-        <div className="stat-card hover-lift">
-          <div className="stat-label" style={{ color: 'var(--color-warning)' }}>{t('Đang nghỉ phép')}</div>
-          <div className="stat-value" style={{ color: 'var(--color-warning)' }}>{leaveCount}</div>
-        </div>
-        <div className="stat-card hover-lift">
-          <div className="stat-label" style={{ color: 'var(--color-danger)' }}>{t('Ngừng hoạt động')}</div>
-          <div className="stat-value" style={{ color: 'var(--color-danger)' }}>{inactiveCount}</div>
-        </div>
-      </div>
+      )}
 
-      {/* Table */}
-      <div className="card" style={{ overflow: 'hidden' }}>
-        <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
-          <table className="mobile-table-compact">
-            <thead>
-              <tr>
-                <th>{t('Tên TVV')}</th>
-                <th>{t('Email')}</th>
-                <th>{t('Zalo Bot')}</th>
-                <th>{t('Trạng thái')}</th>
-                <th style={{ textAlign: 'right' }}>{t('Thao tác')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={4} />)
-              ) : users.length === 0 ? (
+      {/* Main Content Area */}
+      {activeTab === 'consultants' ? (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="mobile-table-compact">
+              <thead>
                 <tr>
-                  <td colSpan={5}>
+                  <th>{t('Tên TVV')}</th>
+                  <th>{t('Email')}</th>
+                  <th>{t('Nhóm (Team)')}</th>
+                  <th>{t('Zalo Bot')}</th>
+                  <th>{t('Trạng thái')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Thao tác')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={6} />)
+                ) : users.length === 0 ? (
+                  <tr>
+                    <td colSpan={6}>
                     <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                         <Users size={32} color="var(--color-text-muted)" />
@@ -528,6 +679,18 @@ const ConsultantsInner = () => {
                         <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
                         <span>{u.email}</span>
                       </div>
+                    </td>
+                    <td data-label={t('Nhóm (Team)')} style={{ fontWeight: 500, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
+                      {u.team_name ? (
+                        <div>
+                          <div style={{ fontWeight: 600 }}>{u.team_name}</div>
+                          {u.team_branch && (
+                            <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{u.team_branch}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+                      )}
                     </td>
                     <td data-label={t('Zalo Bot')}>
                       {u.zalo_chat_id ? (
@@ -633,6 +796,109 @@ const ConsultantsInner = () => {
           </table>
         </div>
       </div>
+      ) : activeTab === 'teams' ? (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
+            <table className="mobile-table-compact">
+              <thead>
+                <tr>
+                  <th>{t('Tên Nhóm')}</th>
+                  <th>{t('Chi nhánh')}</th>
+                  <th>{t('Trưởng nhóm')}</th>
+                  <th>{t('Số thành viên')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('Thao tác')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamsLoading ? (
+                  [...Array(3)].map((_, i) => <TableRowSkeleton key={i} cols={5} />)
+                ) : teams.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
+                        <Users size={32} color="var(--color-text-muted)" style={{ marginBottom: '1rem' }} />
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Chưa có Nhóm')}</h3>
+                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Nhấp thêm nhóm để bắt đầu quản lý phân cấp thành viên.')}</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : teams.map((team) => (
+                  <tr key={team.id} className="table-row-hover" style={{ cursor: 'pointer' }} onClick={() => openEditTeamModal(team)}>
+                    <td data-label={t('Tên Nhóm')}>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{team.name}</span>
+                    </td>
+                    <td data-label={t('Chi nhánh')} style={{ color: 'var(--color-text-muted)' }}>
+                      {team.branch || '—'}
+                    </td>
+                    <td data-label={t('Trưởng nhóm')} style={{ fontWeight: 500 }} onClick={e => e.stopPropagation()}>
+                      {team.leader_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>}
+                    </td>
+                    <td data-label={t('Số thành viên')}>
+                      <span className="badge info">{team.member_count} {t('thành viên')}</span>
+                    </td>
+                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                      <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
+                        <button className="btn sm outline" onClick={() => openEditTeamModal(team)}>{t('Sửa')}</button>
+                        <button
+                          className="btn sm"
+                          style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none' }}
+                          onClick={() => {
+                            setDeleteTeamId(team.id);
+                            setConfirmDeleteTeamOpen(true);
+                          }}
+                        >
+                          {t('Xóa')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+          {(() => {
+            const branchMap: Record<string, any[]> = {};
+            teams.forEach(t => {
+              const bName = t.branch || t('Không thuộc chi nhánh nào');
+              if (!branchMap[bName]) branchMap[bName] = [];
+              branchMap[bName].push(t);
+            });
+            const branchList = Object.entries(branchMap);
+            if (branchList.length === 0) {
+              return (
+                <div className="card" style={{ gridColumn: 'span 3', padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                  {t('Chưa có chi nhánh nào được cấu hình qua nhóm.')}
+                </div>
+              );
+            }
+            return branchList.map(([bName, bTeams], idx) => {
+              const totalMembers = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
+              return (
+                <div key={idx} className="card hover-lift" style={{ padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{bName}</h3>
+                    <span className="badge success">{bTeams.length} {t('nhóm')}</span>
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+                    {t('Tổng nhân sự:')} <strong style={{ color: 'var(--color-text)' }}>{totalMembers}</strong>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {bTeams.map(team => (
+                      <div key={team.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: 6, fontSize: '0.75rem' }}>
+                        <span style={{ fontWeight: 600 }}>{team.name}</span>
+                        <span style={{ color: 'var(--color-text-muted)' }}>{team.member_count} {t('sales')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            });
+          })()}
+        </div>
+      )}
 
       {/* MODAL */}
       {modalOpen && typeof document !== 'undefined' && createPortal(
@@ -729,6 +995,21 @@ const ConsultantsInner = () => {
                         onChange={e => setFormData({ ...formData, email: e.target.value })}
                         required
                       />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> {t('Nhóm (Team)')}</label>
+                      <select
+                        className="form-input"
+                        value={formData.team_id || ''}
+                        onChange={e => setFormData({ ...formData, team_id: e.target.value })}
+                        style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
+                      >
+                        <option value="">-- {t('Không thuộc nhóm nào')} --</option>
+                        {teams.map(t => (
+                          <option key={t.id} value={t.id}>{t.name} ({t.branch || t('Không có chi nhánh')})</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="form-group">
@@ -1535,6 +1816,83 @@ const ConsultantsInner = () => {
         title={t("Hủy liên kết Zalo Bot")}
         message={t("Bạn có chắc chắn muốn hủy liên kết Zalo của tư vấn viên này không? Hệ thống sẽ ngừng gửi data và mọi thông báo qua Zalo cho tài khoản này ngay lập tức.")}
         confirmText={t("Hủy liên kết")}
+      />
+
+      {/* Team Add/Edit Modal */}
+      {teamModalOpen && typeof document !== 'undefined' && createPortal(
+        <div className="overlay-backdrop" onClick={() => setTeamModalOpen(false)}>
+          <div
+            className="card"
+            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>
+                {editingTeam ? t('Cập nhật Nhóm (Team)') : t('Thêm Nhóm mới')}
+              </h3>
+              <button type="button" onClick={() => setTeamModalOpen(false)} style={{ color: 'var(--color-text-muted)', padding: 4, background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTeam} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên Nhóm')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                  <input
+                    className="form-input"
+                    placeholder={t('VD: Team Chiến Binh')}
+                    value={teamFormData.name}
+                    onChange={e => setTeamFormData({ ...teamFormData, name: e.target.value })}
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Chi nhánh')}</label>
+                  <input
+                    className="form-input"
+                    placeholder={t('VD: Chi nhánh Quận 1')}
+                    value={teamFormData.branch}
+                    onChange={e => setTeamFormData({ ...teamFormData, branch: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Trưởng nhóm')}</label>
+                  <select
+                    className="form-input"
+                    value={teamFormData.leader_id}
+                    onChange={e => setTeamFormData({ ...teamFormData, leader_id: e.target.value })}
+                  >
+                    <option value="">-- {t('Chọn Trưởng nhóm')} --</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ padding: '1rem 1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button type="button" className="btn outline sm" onClick={() => setTeamModalOpen(false)}>{t('Hủy')}</button>
+                <button type="submit" className="btn primary sm" disabled={isSaving}>
+                  {isSaving ? <RefreshCw size={14} className="spin" /> : t('Lưu lại')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      <ConfirmModal
+        isOpen={confirmDeleteTeamOpen}
+        onClose={() => setConfirmDeleteTeamOpen(false)}
+        onConfirm={handleDeleteTeam}
+        title={t("Xóa Nhóm")}
+        message={t("Bạn có chắc chắn muốn xóa nhóm này không? Các thành viên trong nhóm sẽ được đưa về trạng thái tự do (không thuộc nhóm nào).")}
+        confirmText={t("Xóa nhóm")}
       />
     </div>
   );

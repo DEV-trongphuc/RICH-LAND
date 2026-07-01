@@ -307,6 +307,7 @@ require_once __DIR__ . '/controllers/DepositController.php';
 require_once __DIR__ . '/controllers/CooperationController.php';
 require_once __DIR__ . '/controllers/CapiController.php';
 require_once __DIR__ . '/controllers/CheckInController.php';
+require_once __DIR__ . '/controllers/TeamController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -525,6 +526,18 @@ switch ($resource) {
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin', 'super_admin']); $ctrl->destroy($auth, (int)$resourceId); }
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // TEAMS
+    case 'teams':
+        $auth = requireAuth();
+        $ctrl = new TeamController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

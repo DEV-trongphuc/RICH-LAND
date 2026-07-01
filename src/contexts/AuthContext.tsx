@@ -27,19 +27,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('richland_user');
   }
 
+  const normalizeUser = (u: any): User | null => {
+    if (!u) return null;
+    return {
+      ...u,
+      role: u.role === 'sales' ? 'sale' : u.role
+    };
+  };
+
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem('richland_user');
-    return storedUser ? JSON.parse(storedUser) : null;
+    return storedUser ? normalizeUser(JSON.parse(storedUser)) : null;
   });
   const [token, setToken] = useState<string | null>(() => {
     return localStorage.getItem('richland_token');
   });
 
   const login = useCallback((newToken: string, newUser: User) => {
+    const normalized = normalizeUser(newUser);
     setToken(newToken);
-    setUser(newUser);
+    setUser(normalized);
     localStorage.setItem('richland_token', newToken);
-    localStorage.setItem('richland_user', JSON.stringify(newUser));
+    localStorage.setItem('richland_user', JSON.stringify(normalized));
   }, []);
 
   const logout = useCallback(() => {

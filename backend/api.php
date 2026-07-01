@@ -2022,7 +2022,12 @@ switch ($action) {
         break;
 
     case 'get_consultants':
-        $res = $conn->query("SELECT * FROM consultants ORDER BY created_at DESC");
+        $res = $conn->query("
+            SELECT c.*, t.name as team_name, t.branch as team_branch 
+            FROM consultants c 
+            LEFT JOIN teams t ON c.team_id = t.id 
+            ORDER BY c.created_at DESC
+        ");
         $data = [];
         while ($row = $res->fetch_assoc()) {
             if (isset($row['work_schedule']) && $row['work_schedule'] !== null) {
@@ -2127,6 +2132,7 @@ switch ($action) {
             $avatar = trim($input['avatar'] ?? '');
             if ($avatar === '')
                 $avatar = null;
+            $team_id = !empty($input['team_id']) ? (int)$input['team_id'] : null;
 
             // NEW-03 fix: validate required fields
             if (empty($name)) {
@@ -2163,8 +2169,8 @@ switch ($action) {
                 break;
             }
 
-            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar);
+            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssssi", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id);
             $stmt->execute();
             $newId = $conn->insert_id;
             $stmt->close();
@@ -2209,6 +2215,7 @@ switch ($action) {
             $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
             if ($avatar === '')
                 $avatar = null;
+            $team_id = !empty($input['team_id']) ? (int)$input['team_id'] : null;
 
             if (!$id) {
                 echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
@@ -2280,11 +2287,11 @@ switch ($action) {
             }
 
             // Fetch old consultant state for audit log rollback support
-            $oldRes = $conn->query("SELECT name, email, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar FROM consultants WHERE id = " . $id);
+            $oldRes = $conn->query("SELECT name, email, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id FROM consultants WHERE id = " . $id);
             $oldData = $oldRes ? $oldRes->fetch_assoc() : null;
 
-            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=? WHERE id=?");
-            $stmt->bind_param("ssssssssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $id);
+            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, team_id=? WHERE id=?");
+            $stmt->bind_param("ssssssssssii", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', [
                     'id' => $id,

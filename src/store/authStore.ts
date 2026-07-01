@@ -23,6 +23,14 @@ interface AuthStore {
   clearAuth: () => void;
 }
 
+const normalizeUser = (u: AuthUser | null): AuthUser | null => {
+  if (!u) return null;
+  return {
+    ...u,
+    role: u.role === 'sales' ? 'sale' : u.role
+  };
+};
+
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set) => ({
@@ -33,9 +41,13 @@ export const useAuthStore = create<AuthStore>()(
       setAuth: (user, accessToken, refreshToken) => {
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', refreshToken);
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
+        const normalized = normalizeUser(user);
+        set({ user: normalized, accessToken, refreshToken, isAuthenticated: true });
       },
-      setUser: (user) => set({ user }),
+      setUser: (user) => {
+        const normalized = normalizeUser(user);
+        set({ user: normalized });
+      },
       clearAuth: () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
