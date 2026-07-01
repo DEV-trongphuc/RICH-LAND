@@ -284,7 +284,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [noteDuration, setNoteDuration] = useState<string>('');
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
   const [noteObstacle, setNoteObstacle] = useState<string>('');
-  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string }[]>([]);
+  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number }[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
   const [users, setUsers] = useState<any[]>([]);
@@ -306,6 +306,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return { group1: false, group2: false, group3: false, group4: false, group5: false };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
+  const isOwnerOrAdmin = useMemo(() => {
+    const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+    return isOwner || isAdmin;
+  }, [currentUser, formData.owner_id, contact?.owner_id]);
   const [decayDays, setDecayDays] = useState<number>(5);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
@@ -552,7 +557,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         id: n.id,
         text: n.body,
         time: n.created_at,
-        user: n.user_name || 'Hệ thống'
+        user: n.user_name || 'Hệ thống',
+        user_id: n.user_id
       })));
 
       // Fetch Tasks (Activities)
@@ -767,6 +773,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const canDeleteNote = (noteCreatorId?: number) => {
+    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+    return isAdmin || Number(currentUser?.id) === Number(noteCreatorId);
   };
 
   const addNote = async () => {
@@ -1269,7 +1280,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                 {/* Sidebar Tabs */}
                 <div className={styles.sidebarTabs}>
-                  {TABS.map(tab => (
+                  {TABS.filter(tab => {
+                    if (currentUser?.role === 'sale') {
+                      return tab.id !== 'quotes' && tab.id !== 'expenses';
+                    }
+                    return true;
+                  }).map(tab => (
                     <button
                       key={tab.id}
                       className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
@@ -2348,30 +2364,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
                                 </p>
                               </div>
-                              <button
-                                className="btn-icon sm text-danger"
-                                style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  showConfirm(
-                                    'Xóa ghi chú?',
-                                    'Bạn có chắc chắn muốn xóa ghi chú này không?',
-                                    async () => {
-                                      try {
-                                        await api.delete(`/notes/${n.id}`);
-                                        setNotes(prev => prev.filter(x => x.id !== n.id));
-                                        addToast('Đã xóa ghi chú', 'success');
-                                      } catch (e: any) {
-                                        addToast('Lỗi khi xóa ghi chú', 'error');
+                              {canDeleteNote(n.user_id) && (
+                                <button
+                                  className="btn-icon sm text-danger"
+                                  style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    showConfirm(
+                                      'Xóa ghi chú?',
+                                      'Bạn có chắc chắn muốn xóa ghi chú này không?',
+                                      async () => {
+                                        try {
+                                          await api.delete(`/notes/${n.id}`);
+                                          setNotes(prev => prev.filter(x => x.id !== n.id));
+                                          addToast('Đã xóa ghi chú', 'success');
+                                        } catch (e: any) {
+                                          addToast('Lỗi khi xóa ghi chú', 'error');
+                                        }
                                       }
-                                    }
-                                  );
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                                    );
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                  onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -2384,16 +2402,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hồ sơ & Tài liệu</h3>
-                        <label className="btn outline sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <input type="file" style={{ display: 'none' }} onChange={(e) => {
-                            if (e.target.files?.[0]) {
-                              const file = e.target.files[0];
-                              setDocs(prev => [{ id: Date.now(), name: file.name, date: new Date().toLocaleDateString('vi-VN'), size: (file.size / 1024 / 1024).toFixed(1) + ' MB', type: file.name.split('.').pop() || 'file' }, ...prev]);
-                              addToast('Đã tải lên tài liệu mới.', 'success');
-                            }
-                          }} />
-                          <Plus size={14} /> Upload file
-                        </label>
+                        {isOwnerOrAdmin && (
+                          <label className="btn outline sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <input type="file" style={{ display: 'none' }} onChange={(e) => {
+                              if (e.target.files?.[0]) {
+                                const file = e.target.files[0];
+                                setDocs(prev => [{ id: Date.now(), name: file.name, date: new Date().toLocaleDateString('vi-VN'), size: (file.size / 1024 / 1024).toFixed(1) + ' MB', type: file.name.split('.').pop() || 'file' }, ...prev]);
+                                addToast('Đã tải lên tài liệu mới.', 'success');
+                              }
+                            }} />
+                            <Plus size={14} /> Upload file
+                          </label>
+                        )}
                       </div>
 
                       {docs.length === 0 ? (
@@ -2413,25 +2433,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</h4>
                                 <p className="text-xs text-light mt-1">Tải lên: {doc.date} • {doc.size}</p>
                               </div>
-                              <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                                <button className="btn-icon sm" title="Đổi tên" onClick={() => {
-                                  const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
-                                  if (newName && newName.trim()) {
-                                    setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name: newName.trim() } : d));
-                                    addToast('Đã đổi tên tài liệu.', 'success');
-                                  }
-                                }}><Pencil size={14} /></button>
-                                <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
-                                  showConfirm(
-                                    'Xóa tài liệu?',
-                                    `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
-                                    () => {
-                                      setDocs(prev => prev.filter(d => d.id !== doc.id));
-                                      addToast('Đã xóa tài liệu.', 'success');
+                              {isOwnerOrAdmin && (
+                                <div className="flex gap-2" style={{ flexShrink: 0 }}>
+                                  <button className="btn-icon sm" title="Đổi tên" onClick={() => {
+                                    const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
+                                    if (newName && newName.trim()) {
+                                      setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name: newName.trim() } : d));
+                                      addToast('Đã đổi tên tài liệu.', 'success');
                                     }
-                                  );
-                                }}><Trash2 size={14} /></button>
-                              </div>
+                                  }}><Pencil size={14} /></button>
+                                  <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
+                                    showConfirm(
+                                      'Xóa tài liệu?',
+                                      `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
+                                      () => {
+                                        setDocs(prev => prev.filter(d => d.id !== doc.id));
+                                        addToast('Đã xóa tài liệu.', 'success');
+                                      }
+                                    );
+                                  }}><Trash2 size={14} /></button>
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>

@@ -1093,60 +1093,62 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           )}
 
           {/* Auto duyệt Toggle */}
-          <div
-            onClick={() => setShowAutoApproveModal(true)}
-            title={t("Cấu hình quy tắc tự động duyệt")}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              cursor: 'pointer',
-              padding: '0 12px',
-              borderRadius: 8,
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-surface)',
-              height: 38,
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
-              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-              if (label) label.style.color = 'var(--color-primary)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'var(--color-surface)';
-              const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-              if (label) label.style.color = 'var(--color-text-muted)';
-            }}
-          >
-            <span
-              className="auto-approve-label"
-              style={{
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                color: 'var(--color-text-muted)',
-                transition: 'color 0.2s',
-                textDecoration: 'underline',
-                textDecorationStyle: 'dotted'
-              }}
-            >
-              {t('Auto duyệt')}
-            </span>
+          {user?.role !== 'sale' && (
             <div
+              onClick={() => setShowAutoApproveModal(true)}
+              title={t("Cấu hình quy tắc tự động duyệt")}
               style={{
-                width: 36, height: 20, borderRadius: 10,
-                background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
-                position: 'relative', transition: 'background 0.2s',
-                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                padding: '0 12px',
+                borderRadius: 8,
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                height: 38,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
+                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                if (label) label.style.color = 'var(--color-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--color-surface)';
+                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                if (label) label.style.color = 'var(--color-text-muted)';
               }}
             >
-              <div style={{
-                position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
-              }} />
+              <span
+                className="auto-approve-label"
+                style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: 'var(--color-text-muted)',
+                  transition: 'color 0.2s',
+                  textDecoration: 'underline',
+                  textDecorationStyle: 'dotted'
+                }}
+              >
+                {t('Auto duyệt')}
+              </span>
+              <div
+                style={{
+                  width: 36, height: 20, borderRadius: 10,
+                  background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                  position: 'relative', transition: 'background 0.2s',
+                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
+                }} />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -1380,57 +1382,59 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
             borderTop: '1px dashed rgba(163, 20, 34,0.1)'
           }}>
             {/* Auto duyệt Toggle */}
-            <div
-              onClick={() => setShowAutoApproveModal(true)}
-              title={t("Cấu hình quy tắc tự động duyệt")}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: 8,
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
-                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-                if (label) label.style.color = 'var(--color-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-                if (label) label.style.color = 'var(--color-text-muted)';
-              }}
-            >
-              <span
-                className="auto-approve-label"
-                style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  color: 'var(--color-text-muted)',
-                  transition: 'color 0.2s',
-                  textDecoration: 'underline',
-                  textDecorationStyle: 'dotted'
-                }}
-              >
-                {t('Auto duyệt')}
-              </span>
+            {user?.role !== 'sale' && (
               <div
+                onClick={() => setShowAutoApproveModal(true)}
+                title={t("Cấu hình quy tắc tự động duyệt")}
                 style={{
-                  width: 36, height: 20, borderRadius: 10,
-                  background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
-                  position: 'relative', transition: 'background 0.2s',
-                  boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 8,
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
+                  const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                  if (label) label.style.color = 'var(--color-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
+                  if (label) label.style.color = 'var(--color-text-muted)';
                 }}
               >
-                <div style={{
-                  position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
-                  background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                  left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
-                }} />
+                <span
+                  className="auto-approve-label"
+                  style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: 'var(--color-text-muted)',
+                    transition: 'color 0.2s',
+                    textDecoration: 'underline',
+                    textDecorationStyle: 'dotted'
+                  }}
+                >
+                  {t('Auto duyệt')}
+                </span>
+                <div
+                  style={{
+                    width: 36, height: 20, borderRadius: 10,
+                    background: ticketAutoApprove ? 'var(--color-success)' : 'rgba(148,163,184,0.3)',
+                    position: 'relative', transition: 'background 0.2s',
+                    boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+                  }}
+                >
+                  <div style={{
+                    position: 'absolute', top: 3, width: 14, height: 14, borderRadius: '50%',
+                    background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    left: ticketAutoApprove ? 19 : 3, transition: 'left 0.2s'
+                  }} />
+                </div>
               </div>
-            </div>
+            )}
 
             <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500, background: theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)', padding: '4px 10px', borderRadius: 8, border: '1px solid rgba(163, 20, 34,0.1)' }}>
               {t('Tổng cộng:')} {totalCount} {t('tickets')}
@@ -1565,8 +1569,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                           </div>
                         )}
                       </td>
-                      <td className="col-actions" style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                        {r.status === 'pending' ? (
+                       <td className="col-actions" style={{ padding: '1.25rem 1.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {r.status === 'pending' && user?.role !== 'sale' ? (
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                             <button onClick={(e) => { e.stopPropagation(); openRejectModal(r.id); }} disabled={isActioning === r.id} className="btn outline sm" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger)', boxShadow: 'none', minWidth: '85px' }}>
                               {t('Từ chối')}
@@ -1714,7 +1718,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   </div>
 
                   {/* Actions footer */}
-                  {r.status === 'pending' && (
+                  {r.status === 'pending' && user?.role !== 'sale' && (
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem', width: '100%' }} onClick={e => e.stopPropagation()}>
                       <button
                         onClick={(e) => {
