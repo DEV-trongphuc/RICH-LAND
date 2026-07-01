@@ -491,8 +491,8 @@
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Skeleton loaders */
-  --skeleton-base: oklch(92.5% 0.012 246);
-  --skeleton-shine: oklch(96.8% 0.009 246);
+  --skeleton-base: oklch(92.5% 0 0);
+  --skeleton-shine: oklch(96.8% 0 0);
 }
 
 [data-theme="dark"] {
@@ -558,8 +558,8 @@
   --shadow-primary: 0 8px 24px -4px oklch(68.5% 0.15 23.2 / 30%);
 
   /* Skeleton loaders */
-  --skeleton-base: oklch(15.9% 0.034 254);
-  --skeleton-shine: oklch(21% 0.034 254);
+  --skeleton-base: oklch(15.9% 0 0);
+  --skeleton-shine: oklch(21% 0 0);
 }
 
 [data-theme="dark"] th {
@@ -1564,7 +1564,7 @@ select:focus {
 
 /* Skeleton */
 .skeleton {
-  background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg) 50%, var(--color-border) 75%);
+  background: linear-gradient(90deg, var(--skeleton-base) 25%, var(--skeleton-shine) 50%, var(--skeleton-base) 75%);
   background-size: 200% 100%;
   animation: skeleton-load 1.5s infinite;
   border-radius: var(--radius-md);
@@ -1585,7 +1585,7 @@ select:focus {
   transform: none !important;
   transition: none !important;
   box-shadow: none !important;
-  border-color: var(--color-border-light) !important;
+  border-color: transparent !important;
 }
 
 
