@@ -99,6 +99,18 @@ const SettingsInner = () => {
   const [aiScreenerManualAction, setAiScreenerManualAction] = useState('hold');
   const [aiScreenerManualRules, setAiScreenerManualRules] = useState<any[]>([]);
 
+  // Business Configurations (Dynamic settings from markdown rules)
+  const [temperatureDecayDays, setTemperatureDecayDays] = useState<number>(5);
+  const [leadResponseTimeoutMinutes, setLeadResponseTimeoutMinutes] = useState<number>(2);
+  const [uncontactedLeadShareHours, setUncontactedLeadShareHours] = useState<number>(3);
+  const [nightShiftStartTime, setNightShiftStartTime] = useState<string>("18:00");
+  const [nightShiftEndTime, setNightShiftEndTime] = useState<string>("06:00");
+  const [goldenHoursStartTime, setGoldenHoursStartTime] = useState<string>("06:00");
+  const [goldenHoursEndTime, setGoldenHoursEndTime] = useState<string>("08:30");
+  const [databankLimitPerDay, setDatabankLimitPerDay] = useState<number>(2);
+  const [databankLimitPerHour, setDatabankLimitPerHour] = useState<number>(3);
+  const [databankLimitPerMonth, setDatabankLimitPerMonth] = useState<number>(300);
+
   // Pipeline status hierarchy state
   const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
     'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
@@ -337,6 +349,18 @@ const SettingsInner = () => {
         if (json.data.starvation_max_leads_per_hour !== undefined) {
           setStarvationMaxLeadsPerHour(Number(json.data.starvation_max_leads_per_hour));
         }
+
+        // Business configurations from markdown rules
+        if (json.data.temperature_decay_days !== undefined) setTemperatureDecayDays(Number(json.data.temperature_decay_days));
+        if (json.data.lead_response_timeout_minutes !== undefined) setLeadResponseTimeoutMinutes(Number(json.data.lead_response_timeout_minutes));
+        if (json.data.uncontacted_lead_share_hours !== undefined) setUncontactedLeadShareHours(Number(json.data.uncontacted_lead_share_hours));
+        if (json.data.night_shift_start_time !== undefined) setNightShiftStartTime(json.data.night_shift_start_time);
+        if (json.data.night_shift_end_time !== undefined) setNightShiftEndTime(json.data.night_shift_end_time);
+        if (json.data.golden_hours_start_time !== undefined) setGoldenHoursStartTime(json.data.golden_hours_start_time);
+        if (json.data.golden_hours_end_time !== undefined) setGoldenHoursEndTime(json.data.golden_hours_end_time);
+        if (json.data.databank_limit_per_day !== undefined) setDatabankLimitPerDay(Number(json.data.databank_limit_per_day));
+        if (json.data.databank_limit_per_hour !== undefined) setDatabankLimitPerHour(Number(json.data.databank_limit_per_hour));
+        if (json.data.databank_limit_per_month !== undefined) setDatabankLimitPerMonth(Number(json.data.databank_limit_per_month));
         setTicketAutoApproveEnabled(json.data.ticket_auto_approve_enabled === '1' || json.data.ticket_auto_approve_enabled === 1);
         setTicketAutoApproveKeywords(json.data.ticket_auto_approve_keywords || '');
         if (json.data.report_error_reasons) {
@@ -456,6 +480,16 @@ const SettingsInner = () => {
       ticket_auto_approve_rules: ticketAutoApproveRules,
       report_error_reasons: reportErrorReasons,
       pipeline_status_hierarchy: JSON.stringify(pipelineStatusHierarchy),
+      temperature_decay_days: temperatureDecayDays,
+      lead_response_timeout_minutes: leadResponseTimeoutMinutes,
+      uncontacted_lead_share_hours: uncontactedLeadShareHours,
+      night_shift_start_time: nightShiftStartTime,
+      night_shift_end_time: nightShiftEndTime,
+      golden_hours_start_time: goldenHoursStartTime,
+      golden_hours_end_time: goldenHoursEndTime,
+      databank_limit_per_day: databankLimitPerDay,
+      databank_limit_per_hour: databankLimitPerHour,
+      databank_limit_per_month: databankLimitPerMonth,
       gemini_api_key: geminiApiKey,
       gemini_model: geminiModel,
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
@@ -2307,6 +2341,158 @@ function doPost(e) {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Cấu hình Tham số Nghiệp vụ & Hạn mức */}
+              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
+                    <Clock size={16} />
+                  </span>
+                  {t('Cấu hình Nghiệp vụ & Hạn mức')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  {t('Thiết lập các mốc thời gian, trạng thái và hạn mức hoạt động động của hệ thống theo quy chuẩn vận hành (không hardcode).')}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Grid 1: Thresholds */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div>
+                      <label className="form-label">{t('Số ngày tự động rớt nhiệt (Decay)')}</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={temperatureDecayDays}
+                        onChange={e => setTemperatureDecayDays(Number(e.target.value))}
+                        min={1}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('Mặc định: 5 ngày không tương tác chất lượng.')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="form-label">{t('Thời gian chờ nhận lead (Phút)')}</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={leadResponseTimeoutMinutes}
+                        onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
+                        min={1}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('Thời gian phản hồi trước khi thu hồi lead.')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="form-label">{t('Chờ chia song song Chưa XĐ (Giờ)')}</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={uncontactedLeadShareHours}
+                        onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
+                        min={1}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Grid 2: Shifts & Golden Hours */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
+                    <div>
+                      <label className="form-label">{t('Bắt đầu ca đêm (Trực đêm)')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="HH:MM"
+                        value={nightShiftStartTime}
+                        onChange={e => setNightShiftStartTime(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">{t('Kết thúc ca đêm (Reset roster)')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="HH:MM"
+                        value={nightShiftEndTime}
+                        onChange={e => setNightShiftEndTime(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">{t('Bắt đầu giờ vàng')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="HH:MM"
+                        value={goldenHoursStartTime}
+                        onChange={e => setGoldenHoursStartTime(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="form-label">{t('Kết thúc giờ vàng')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="HH:MM"
+                        value={goldenHoursEndTime}
+                        onChange={e => setGoldenHoursEndTime(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Grid 3: Databank limits */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
+                    <div>
+                      <label className="form-label">{t('Hạn mức nhận Databank / Ngày')}</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={databankLimitPerDay}
+                        onChange={e => setDatabankLimitPerDay(Number(e.target.value))}
+                        min={0}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('Số lead databank tối đa Sale được nhận/ngày.')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="form-label">{t('Hạn mức nhận Databank / Giờ')}</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={databankLimitPerHour}
+                        onChange={e => setDatabankLimitPerHour(Number(e.target.value))}
+                        min={0}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('Số lead databank tối đa Sale được nhận/giờ.')}
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="form-label">{t('Hạn mức nhận Databank / Tháng')}</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        value={databankLimitPerMonth}
+                        onChange={e => setDatabankLimitPerMonth(Number(e.target.value))}
+                        min={0}
+                      />
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('Số lead databank tối đa Sale được nhận/tháng.')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Cấu hình Tự động duyệt Ticket */}

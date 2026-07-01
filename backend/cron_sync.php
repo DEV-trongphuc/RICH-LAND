@@ -604,18 +604,18 @@ if (!function_exists('recallInactiveLeads')) {
         logSync("Checking for inactive unaccepted leads to recall...");
         
         // Query all leads that have been assigned but not yet accepted, joining sheet_connections to check their specific recall duration
+        // Falls back to system_settings 'lead_response_timeout_minutes' if connection-level timeout is 0
         $sql = "SELECT l.id as lead_id, l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        l.assigned_to as old_consultant_id, l.connection_id,
                        c.name as old_consultant_name, c.email as old_consultant_email,
-                       sc.lead_recall_minutes
+                       COALESCE(NULLIF(sc.lead_recall_minutes, 0), (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes'), 2) as lead_recall_minutes
                 FROM leads l
                 JOIN consultants c ON l.assigned_to = c.id
                 JOIN sheet_connections sc ON l.connection_id = sc.id
                 WHERE l.is_accepted = 0
                   AND l.assigned_to IS NOT NULL
-                  AND sc.lead_recall_minutes > 0
-                  AND l.last_interaction_date <= DATE_SUB(NOW(), INTERVAL sc.lead_recall_minutes MINUTE)
+                  AND l.last_interaction_date <= DATE_SUB(NOW(), INTERVAL COALESCE(NULLIF(sc.lead_recall_minutes, 0), (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes'), 2) MINUTE)
                 ORDER BY l.id ASC";
                 
         $stmt = $conn->prepare($sql);

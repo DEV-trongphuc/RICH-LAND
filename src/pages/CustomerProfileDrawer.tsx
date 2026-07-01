@@ -20,6 +20,7 @@ import { numberToText } from '../utils/numberToText';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
+import { fetchAPI } from '../utils/api';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import styles from './EntityDrawer.module.css';
@@ -297,6 +298,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return { group1: false, group2: false, group3: false, group4: false, group5: false };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
+  const [decayDays, setDecayDays] = useState<number>(5);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
     const count = Object.values(updatedData).filter(Boolean).length;
@@ -515,6 +517,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           }
         })
         .catch(() => { });
+      
+      // Fetch dynamic business configurations (decay days)
+      fetchAPI('get_settings')
+        .then(res => {
+          if (res && res.success && res.data && res.data.temperature_decay_days !== undefined) {
+            const val = parseInt(res.data.temperature_decay_days, 10);
+            if (!isNaN(val) && val > 0) {
+              setDecayDays(val);
+            }
+          }
+        })
+        .catch(() => {});
     }
   }, [isOpen]);
 
@@ -567,12 +581,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
 
-    const fiveDaysInMs = 5 * 24 * 60 * 60 * 1000;
+    const fiveDaysInMs = decayDays * 24 * 60 * 60 * 1000;
     const isDecayed = lastInteractionTime ? (new Date().getTime() - new Date(lastInteractionTime).getTime() > fiveDaysInMs) : false;
 
     if (isDecayed) {
       s -= 15;
-      r.push({ rule: 'Rớt nhiệt do quá 5 ngày không tương tác', pts: -15, type: 'Decay' });
+      r.push({ rule: `Rớt nhiệt do quá ${decayDays} ngày không tương tác`, pts: -15, type: 'Decay' });
     }
 
     if (r.length === 0) r.push({ rule: 'Điểm khởi tạo (Mặc định)', pts: 15, type: 'System' });
@@ -580,7 +594,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return { score: Math.min(100, Math.max(0, s || 15)), rules: r };
   }, [
     formData.job_title, formData.phone, formData.email, formData.source, formData.expected_revenue, formData.status,
-    formData.created_at, contact?.last_contact, contact?.updated_at, drawerActivities
+    formData.created_at, contact?.last_contact, contact?.updated_at, drawerActivities, decayDays
   ]);
 
   const mockStore = useMockStore();
