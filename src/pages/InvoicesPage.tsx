@@ -367,12 +367,21 @@ export const InvoicesPage: React.FC = () => {
       {/* Preview Modal */}
       <AnimatePresence>
         {previewItem && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPreviewItem(null)} style={{ zIndex: 1000 }} />
+          <motion.div 
+            className="overlay-backdrop" 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => setPreviewItem(null)} 
+            style={{ zIndex: 1000 }}
+          >
             <motion.div
-              className="modal"
-              style={{ position: 'fixed', top: '50%', left: '50%', width: '90%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', zIndex: 1010, padding: 0, borderRadius: 'var(--radius-2xl)' }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}
+              className="modal-sheet"
+              style={{ width: '90%', maxWidth: 700, zIndex: 1010, padding: 0, borderRadius: 'var(--radius-2xl)', margin: 'auto' }}
+              initial={{ opacity: 0, scale: 0.96, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              onClick={e => e.stopPropagation()}
             >
               <div style={{ padding: '2rem', background: 'var(--color-surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
@@ -434,7 +443,7 @@ export const InvoicesPage: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

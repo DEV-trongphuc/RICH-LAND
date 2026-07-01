@@ -295,10 +295,11 @@ export const ProductsPage: React.FC = () => {
       <AnimatePresence>
         {showModal && (
           <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
-            <motion.div className="modal-sheet shadow-2xl"
+            <motion.div className="modal-sheet modal-md shadow-2xl"
               initial={{ opacity:0, scale:0.96, y: 20 }} 
               animate={{ opacity:1, scale:1, y: 0 }} 
               exit={{ opacity:0, scale:0.96, y: 20 }}
+              style={{ maxWidth: '650px', width: '100%' }}
               onClick={e => e.stopPropagation()}
             >
               

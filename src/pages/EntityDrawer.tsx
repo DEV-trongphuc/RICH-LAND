@@ -490,20 +490,23 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
       {/* Help Modal */}
       <AnimatePresence>
         {helpModal && (
-          <>
+          <motion.div
+            className="overlay-backdrop"
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            onClick={() => setHelpModal(null)}
+            style={{ zIndex: 1100, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
+          >
             <motion.div
-              className="overlay-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setHelpModal(null)}
-              style={{ zIndex: 1100, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={e => e.stopPropagation()}
               style={{
-                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                 background: 'var(--color-surface)', width: '400px', borderRadius: 'var(--radius-lg)',
                 boxShadow: 'var(--shadow-xl)', zIndex: 1110, border: '1px solid var(--color-border)',
-                overflow: 'hidden'
+                overflow: 'hidden', margin: 'auto'
               }}
             >
               <div style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #BD1D2D 100%)', padding: '1rem 1.25rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -517,7 +520,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                 <button className="btn outline" onClick={() => setHelpModal(null)}>Đã hiểu</button>
               </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </>,

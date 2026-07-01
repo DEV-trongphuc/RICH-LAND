@@ -1476,6 +1476,17 @@ try {
       PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
 
+    $chkLoc = $conn->query("SHOW COLUMNS FROM projects LIKE 'location'");
+    if ($chkLoc && $chkLoc->num_rows === 0) {
+        $conn->query("ALTER TABLE projects ADD COLUMN location VARCHAR(255) NULL AFTER description");
+        $logMsg("Đã thêm location cho projects", "success");
+    }
+    $chkDev = $conn->query("SHOW COLUMNS FROM projects LIKE 'developer'");
+    if ($chkDev && $chkDev->num_rows === 0) {
+        $conn->query("ALTER TABLE projects ADD COLUMN developer VARCHAR(255) NULL AFTER location");
+        $logMsg("Đã thêm developer cho projects", "success");
+    }
+
     $conn->query("CREATE TABLE IF NOT EXISTS `project_roster` (
       `project_id` int(11) NOT NULL,
       `user_id` int(11) NOT NULL,

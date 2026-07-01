@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import { AddressSelect } from '../components/ui/AddressSelect';
 
 interface Project {
   id: number;
@@ -12,6 +14,8 @@ interface Project {
   code: string;
   description: string;
   status: string;
+  developer?: string;
+  location?: string;
   created_at: string;
   roster_count?: number;
   doc_count?: number;
@@ -45,6 +49,19 @@ export default function ProjectsPage() {
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
+  const [autoCode, setAutoCode] = useState(true);
+
+  const generateCodeFromName = (name: string) => {
+    if (!name) return '';
+    const cleanName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const words = cleanName.trim().split(/\s+/);
+    const initials = words
+      .map(w => w.charAt(0))
+      .filter(char => /[a-zA-Z0-9]/.test(char))
+      .join('')
+      .toUpperCase();
+    return initials;
+  };
 
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -78,8 +95,12 @@ export default function ProjectsPage() {
 
   const handleSaveProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingProject?.name || !editingProject?.code) {
-      setError('Tên và mã dự án là bắt buộc');
+    if (!editingProject?.name) {
+      setError('Tên dự án là bắt buộc');
+      return;
+    }
+    if (!autoCode && !editingProject?.code) {
+      setError('Mã dự án là bắt buộc khi tắt tự động sinh mã');
       return;
     }
 
@@ -269,6 +290,7 @@ export default function ProjectsPage() {
           <button
             onClick={() => {
               setEditingProject({ status: 'active' });
+              setAutoCode(true);
               setIsEditModalOpen(true);
             }}
             className="btn primary"
@@ -291,6 +313,7 @@ export default function ProjectsPage() {
           actionText="Thêm ngay"
           onAction={() => {
             setEditingProject({ status: 'active' });
+            setAutoCode(true);
             setIsEditModalOpen(true);
           }}
         />
@@ -309,7 +332,11 @@ export default function ProjectsPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-lg" style={{ color: 'var(--color-text)' }}>{proj.name}</h3>
-                      <span className="text-xs text-gray-500 font-mono">Mã: {proj.code}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                        <span className="text-xs text-gray-500 font-mono">Mã: {proj.code}</span>
+                        {proj.developer && <span className="text-xs text-gray-500">Chủ đầu tư: <strong>{proj.developer}</strong></span>}
+                        {proj.location && <span className="text-xs text-gray-500">Vị trí: <strong>{proj.location}</strong></span>}
+                      </div>
                     </div>
                   </div>
                   <span
@@ -351,6 +378,7 @@ export default function ProjectsPage() {
                     <button
                       onClick={() => {
                         setEditingProject(proj);
+                        setAutoCode(false);
                         setIsEditModalOpen(true);
                       }}
                       className="btn secondary sm"
@@ -377,52 +405,114 @@ export default function ProjectsPage() {
       {/* Edit Modal */}
       {isEditModalOpen && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="modal-sheet modal-sm" style={{ animation: 'scaleUp 0.2s ease-out' }}>
+          <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out', maxWidth: '650px', width: '100%' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{editingProject?.id ? 'Chỉnh sửa dự án' : 'Thêm dự án mới'}</h3>
               <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
             <form onSubmit={handleSaveProject}>
-              <div className="modal-body">
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                 <div>
                   <label className="form-label">Tên dự án</label>
                   <input
                     type="text"
                     required
                     value={editingProject?.name || ''}
-                    onChange={e => setEditingProject(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setEditingProject(prev => {
+                        const next = { ...prev, name: val };
+                        if (autoCode && !prev?.id) {
+                          next.code = generateCodeFromName(val);
+                        }
+                        return next;
+                      });
+                    }}
                     className="form-input"
+                    placeholder="Nhập tên dự án..."
                   />
                 </div>
+
                 <div>
-                  <label className="form-label">Mã dự án</label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Mã dự án</label>
+                    {!editingProject?.id && (
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={autoCode}
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setAutoCode(checked);
+                            if (checked && editingProject?.name) {
+                              setEditingProject(prev => ({ ...prev, code: generateCodeFromName(prev?.name || '') }));
+                            }
+                          }}
+                          style={{ accentColor: 'var(--color-primary)' }}
+                        />
+                        Tự động tạo mã
+                      </label>
+                    )}
+                  </div>
                   <input
                     type="text"
                     required
+                    disabled={autoCode && !editingProject?.id}
                     value={editingProject?.code || ''}
-                    onChange={e => setEditingProject(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                    onChange={e => {
+                      setAutoCode(false);
+                      setEditingProject(prev => ({ ...prev, code: e.target.value.toUpperCase() }));
+                    }}
                     className="form-input"
+                    placeholder={autoCode && !editingProject?.id ? 'Hệ thống tự động sinh' : 'Ví dụ: VGP'}
                   />
                 </div>
+
                 <div>
+                  <label className="form-label">Chủ đầu tư</label>
+                  <input
+                    type="text"
+                    value={editingProject?.developer || ''}
+                    onChange={e => setEditingProject(prev => ({ ...prev, developer: e.target.value }))}
+                    className="form-input"
+                    placeholder="Ví dụ: Vingroup, Novaland..."
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', height: '44px' }}>
+                    <div>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Trạng thái bán</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: editingProject?.status === 'active' ? 'var(--color-emerald)' : 'var(--color-text-muted)' }}>
+                        {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
+                      </span>
+                      <ToggleSwitch
+                        checked={editingProject?.status === 'active'}
+                        onChange={checked => setEditingProject(prev => ({ ...prev, status: checked ? 'active' : 'inactive' }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ gridColumn: 'span 2' }}>
+                  <AddressSelect
+                    label="Vị trí / Địa chỉ dự án"
+                    value={editingProject?.location || ''}
+                    onChange={val => setEditingProject(prev => ({ ...prev, location: val }))}
+                    placeholder="Nhấp để chọn tỉnh/thành phố, xã/phường và số nhà..."
+                  />
+                </div>
+
+                <div style={{ gridColumn: 'span 2' }}>
                   <label className="form-label">Mô tả chi tiết</label>
                   <textarea
                     value={editingProject?.description || ''}
                     onChange={e => setEditingProject(prev => ({ ...prev, description: e.target.value }))}
                     className="form-textarea"
-                    style={{ minHeight: '80px' }}
-                  />
-                </div>
-                <div>
-                  <label className="form-label">Trạng thái bán</label>
-                  <CustomSelect
-                    options={[
-                      { value: 'active', label: 'Đang mở bán' },
-                      { value: 'inactive', label: 'Tạm dừng bán' }
-                    ]}
-                    value={editingProject?.status || 'active'}
-                    onChange={v => setEditingProject(prev => ({ ...prev, status: v }))}
-                    width="100%"
+                    style={{ minHeight: '100px' }}
+                    placeholder="Nhập mô tả thông tin dự án..."
                   />
                 </div>
               </div>

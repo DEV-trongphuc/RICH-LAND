@@ -1255,9 +1255,10 @@ select:focus {
   -webkit-backdrop-filter: blur(6px);
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 40px 20px;
+  overflow-y: auto;
 }
 
 @media (max-width: 576px) {
@@ -2077,6 +2078,7 @@ input[type="radio"]:hover:not(:checked) {
   max-width: calc(100vw - 2rem);
   z-index: 1001;
   position: relative;
+  margin: auto;
 }
 
 .modal-sm {

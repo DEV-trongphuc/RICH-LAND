@@ -35,6 +35,37 @@ class ProjectController {
         respond(200, $projects, 'Lấy danh sách dự án thành công');
     }
 
+    private function generateUniqueCode(string $projectName): string {
+        // Lấy chữ cái đầu của các từ
+        $words = explode(' ', preg_replace('/\s+/', ' ', trim($projectName)));
+        $initials = '';
+        foreach ($words as $w) {
+            $char = mb_substr($w, 0, 1);
+            if (preg_match('/[a-zA-Z0-9]/', $char)) {
+                $initials .= strtoupper($char);
+            }
+        }
+        // Loại bỏ dấu tiếng Việt để có mã sạch
+        $initials = iconv('UTF-8', 'ASCII//TRANSLIT', $initials);
+        $initials = preg_replace('/[^A-Z0-9]/', '', strtoupper($initials));
+
+        if (empty($initials)) {
+            $initials = 'PROJ';
+        }
+
+        $code = $initials;
+        $counter = 1;
+        while (true) {
+            $stmt = $this->db->prepare("SELECT id FROM projects WHERE code = ?");
+            $stmt->execute([$code]);
+            if (!$stmt->fetch()) {
+                return $code;
+            }
+            $code = $initials . $counter;
+            $counter++;
+        }
+    }
+
     public function store(array $auth): void {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
         $b = getBody();
@@ -42,9 +73,16 @@ class ProjectController {
         $code = trim($b['code'] ?? '');
         $desc = trim($b['description'] ?? '');
         $status = trim($b['status'] ?? 'active');
+        $location = trim($b['location'] ?? '');
+        $developer = trim($b['developer'] ?? '');
 
-        if (!$name || !$code) {
-            respond(422, null, 'Tên dự án và Mã dự án là bắt buộc', false);
+        if (!$name) {
+            respond(422, null, 'Tên dự án là bắt buộc', false);
+        }
+
+        // Tự động sinh mã nếu trống
+        if (empty($code)) {
+            $code = $this->generateUniqueCode($name);
         }
 
         // Check unique code
@@ -55,14 +93,14 @@ class ProjectController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO projects (tenant_id, name, code, description, status) 
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO projects (tenant_id, name, code, description, status, location, developer) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status]);
+        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer]);
         $newId = $this->db->lastInsertId();
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_PROJECT', 'project', $newId, "Tạo dự án: $name ($code)");
-        respond(200, ['id' => $newId], 'Tạo dự án thành công');
+        respond(200, ['id' => $newId, 'code' => $code], 'Tạo dự án thành công');
     }
 
     public function update(array $auth, int $id): void {
@@ -72,9 +110,16 @@ class ProjectController {
         $code = trim($b['code'] ?? '');
         $desc = trim($b['description'] ?? '');
         $status = trim($b['status'] ?? 'active');
+        $location = trim($b['location'] ?? '');
+        $developer = trim($b['developer'] ?? '');
 
-        if (!$name || !$code) {
-            respond(422, null, 'Tên dự án và Mã dự án là bắt buộc', false);
+        if (!$name) {
+            respond(422, null, 'Tên dự án là bắt buộc', false);
+        }
+
+        // Tự động sinh mã nếu trống
+        if (empty($code)) {
+            $code = $this->generateUniqueCode($name);
         }
 
         // Check unique code excluding this project
@@ -85,10 +130,10 @@ class ProjectController {
         }
 
         $stmt = $this->db->prepare("
-            UPDATE projects SET name = ?, code = ?, description = ?, status = ? 
+            UPDATE projects SET name = ?, code = ?, description = ?, status = ?, location = ?, developer = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$name, $code, $desc, $status, $id, $auth['tenant_id']]);
+        $stmt->execute([$name, $code, $desc, $status, $location, $developer, $id, $auth['tenant_id']]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT', 'project', $id, "Cập nhật dự án: $name ($code)");
         respond(200, null, 'Cập nhật dự án thành công');

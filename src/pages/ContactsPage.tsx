@@ -736,26 +736,29 @@ export const ContactsPage: React.FC = () => {
       {/* Quick Create Contact Modal - Enhanced UI */}
       <AnimatePresence>
         {showCreateModal && (
-          <>
-            <motion.div 
-              className="overlay-backdrop" 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-              onClick={() => !creating && setShowCreateModal(false)} 
-              style={{ zIndex: 1000 }} 
-            />
+          <motion.div 
+            className="overlay-backdrop" 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => !creating && setShowCreateModal(false)} 
+            style={{ zIndex: 1000 }}
+          >
             <motion.div
               className="modal-sheet"
-              initial={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
-              animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-              exit={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
+              initial={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
+              animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+              exit={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              onClick={e => e.stopPropagation()}
               style={isMobile ? { 
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
                 maxWidth: '100vw', zIndex: 1010, overflow: 'hidden', borderRadius: 0,
                 display: 'flex', flexDirection: 'column'
               } : { 
-                position: 'fixed', top: '50%', left: '50%', width: 640, 
-                maxWidth: 'calc(100vw - 2rem)', zIndex: 1010, overflow: 'visible'
+                width: 640, 
+                maxWidth: 'calc(100vw - 2rem)', zIndex: 1010, overflow: 'visible',
+                margin: 'auto'
               }}
             >
               {/* Header */}
@@ -907,7 +910,7 @@ export const ContactsPage: React.FC = () => {
                 </button>
               </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
