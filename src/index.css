@@ -1450,6 +1450,12 @@ select:focus {
   margin-bottom: 1rem;
 }
 
+.empty-state button svg,
+.empty-state .btn svg {
+  color: inherit !important;
+  margin-bottom: 0 !important;
+}
+
 .empty-state h3 {
   font-size: 1.125rem;
   font-weight: 600;
