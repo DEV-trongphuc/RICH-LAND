@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
@@ -735,7 +736,7 @@ export const ContactsPage: React.FC = () => {
 
       {/* Quick Create Contact Modal - Enhanced UI */}
       <AnimatePresence>
-        {showCreateModal && (
+        {showCreateModal && typeof document !== 'undefined' && createPortal(
           <motion.div 
             className="overlay-backdrop" 
             initial={{ opacity: 0 }} 
@@ -911,7 +912,7 @@ export const ContactsPage: React.FC = () => {
               </div>
             </motion.div>
           </motion.div>
-        )}
+        , document.body)}
       </AnimatePresence>
     </div>
   );

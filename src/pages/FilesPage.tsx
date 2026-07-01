@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Folder, FileText, Download, Trash2, Upload, Search, X,
@@ -516,7 +517,7 @@ export const FilesPage: React.FC = () => {
 
       {/* Modal Tải tệp mới */}
       <AnimatePresence>
-        {showUploadModal && (
+        {showUploadModal && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1100 }}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -565,12 +566,12 @@ export const FilesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
 
       {/* Modal Quản lý Danh mục */}
       <AnimatePresence>
-        {showCatModal && (
+        {showCatModal && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1100 }}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -603,7 +604,7 @@ export const FilesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
     </div>
   );

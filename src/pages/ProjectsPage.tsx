@@ -404,8 +404,8 @@ export default function ProjectsPage() {
 
       {/* Edit Modal */}
       {isEditModalOpen && typeof document !== 'undefined' && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out', maxWidth: '650px', width: '100%' }}>
+        <div className="overlay-backdrop" onClick={() => setIsEditModalOpen(false)} style={{ zIndex: 1000 }}>
+          <div className="modal-sheet modal-md" onClick={e => e.stopPropagation()} style={{ animation: 'scaleUp 0.2s ease-out', maxWidth: '650px', width: '100%' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, color: 'var(--color-text)' }}>{editingProject?.id ? 'Chỉnh sửa dự án' : 'Thêm dự án mới'}</h3>
               <button onClick={() => setIsEditModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
@@ -528,8 +528,8 @@ export default function ProjectsPage() {
 
       {/* Roster Modal */}
       {isRosterModalOpen && typeof document !== 'undefined' && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out' }}>
+        <div className="overlay-backdrop" onClick={() => setIsRosterModalOpen(false)} style={{ zIndex: 1000 }}>
+          <div className="modal-sheet modal-md" onClick={e => e.stopPropagation()} style={{ animation: 'scaleUp 0.2s ease-out' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, color: 'var(--color-text)' }}>Cấu hình Roster Nhân Sự Phân Phối</h3>
               <button onClick={() => setIsRosterModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
@@ -589,8 +589,8 @@ export default function ProjectsPage() {
 
       {/* Documents Modal */}
       {isDocsModalOpen && typeof document !== 'undefined' && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="modal-sheet modal-md" style={{ animation: 'scaleUp 0.2s ease-out' }}>
+        <div className="overlay-backdrop" onClick={() => setIsDocsModalOpen(false)} style={{ zIndex: 1000 }}>
+          <div className="modal-sheet modal-md" onClick={e => e.stopPropagation()} style={{ animation: 'scaleUp 0.2s ease-out' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, color: 'var(--color-text)' }}>Kho Tài Liệu Dự Án (Mật)</h3>
               <button onClick={() => setIsDocsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { TicketDrawer } from './TicketDrawer';
@@ -329,7 +330,7 @@ export const TicketsPage: React.FC = () => {
       )}
 
       <AnimatePresence>
-        {showCreateModal && (
+        {showCreateModal && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" onClick={() => setShowCreateModal(false)} style={{ zIndex: 1000 }}>
             <motion.div className="modal-sheet shadow-2xl"
               initial={{ opacity: 0, scale: 0.96, y: 20 }} 
@@ -469,7 +470,7 @@ export const TicketsPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
       <TicketDrawer 
         isOpen={!!selectedTicket} 

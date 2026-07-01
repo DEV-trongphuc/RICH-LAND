@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Package, Plus, Edit, Trash2, LayoutGrid, List, Search, 
   Filter, History, Share, Clock, CheckCircle, AlertTriangle, 
@@ -689,7 +690,7 @@ export default function InventoryPage() {
 
       {/* Internal Export Modal */}
       <AnimatePresence>
-        {showExportModal && selectedBatch && (
+        {showExportModal && selectedBatch && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 20 }}
@@ -784,12 +785,12 @@ export default function InventoryPage() {
               </form>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
 
       {/* Adjust Modal */}
       <AnimatePresence>
-        {showAdjustModal && selectedBatch && (
+        {showAdjustModal && selectedBatch && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 20 }}
@@ -842,12 +843,12 @@ export default function InventoryPage() {
               </form>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
 
       {/* History Modal */}
       <AnimatePresence>
-        {showHistoryModal && selectedBatch && (
+        {showHistoryModal && selectedBatch && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.96, y: 20 }}
@@ -906,7 +907,7 @@ export default function InventoryPage() {
               </div>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
         </>
       )}

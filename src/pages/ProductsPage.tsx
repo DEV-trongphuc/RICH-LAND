@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Pagination } from '../components/ui/Pagination';
 import { Plus, Package, Pencil, Trash2, X, Loader2, Search, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -293,7 +294,7 @@ export const ProductsPage: React.FC = () => {
       </div>
 
       <AnimatePresence>
-        {showModal && (
+        {showModal && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
             <motion.div className="modal-sheet modal-md shadow-2xl"
               initial={{ opacity:0, scale:0.96, y: 20 }} 
@@ -426,17 +427,25 @@ export const ProductsPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
 
 
       {/* Category Management Modal (Modal xịn) */}
       <AnimatePresence>
-        {showCatModal && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setShowCatModal(false)} style={{ zIndex: 1000 }} />
-            <motion.div className="modal-sheet" style={{ position:'fixed', top:'50%', left:'50%', width:'700px', maxWidth:'calc(100vw - 2rem)', maxHeight: '90vh', overflowY: 'auto', zIndex: 1010 }}
-              initial={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }} animate={{ opacity:1, scale:1, x: '-50%', y: '-50%' }} exit={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }}>
+        {showCatModal && typeof document !== 'undefined' && createPortal(
+          <motion.div 
+            className="overlay-backdrop" 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }} 
+            onClick={() => setShowCatModal(false)} 
+            style={{ zIndex: 1000 }}
+          >
+            <motion.div className="modal-sheet" style={{ width:'700px', maxWidth:'calc(100vw - 2rem)', zIndex: 1010, margin: 'auto' }}
+              initial={{ opacity:0, scale:0.96, y: 20 }} animate={{ opacity:1, scale:1, y: 0 }} exit={{ opacity:0, scale:0.96, y: 20 }}
+              onClick={e => e.stopPropagation()}
+            >
               
               <div className="modal-header" style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid var(--color-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -508,8 +517,8 @@ export const ProductsPage: React.FC = () => {
                 <button className="btn primary" onClick={() => setShowCatModal(false)}>Hoàn tất</button>
               </div>
             </motion.div>
-          </>
-        )}
+          </motion.div>
+        , document.body)}
       </AnimatePresence>
     </div>
   );

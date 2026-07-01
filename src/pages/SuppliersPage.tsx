@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Truck, Plus, Search, MoreHorizontal, Mail, Phone, MapPin, 
@@ -215,10 +216,11 @@ export const SuppliersPage: React.FC = () => {
 
       {/* Modal Cải tiến */}
       <AnimatePresence>
-        {showModal && (
+        {showModal && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" onClick={() => setShowModal(false)} style={{ zIndex: 1000 }}>
             <motion.div 
-              className="modal-sheet shadow-2xl"
+              className="modal-sheet modal-md shadow-2xl"
+              style={{ maxWidth: '600px', width: '100%' }}
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -314,7 +316,7 @@ export const SuppliersPage: React.FC = () => {
               </form>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
     </div>
   );

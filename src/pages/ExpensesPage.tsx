@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DollarSign, Plus, Search, Download, Truck, Coffee, Home,
   Briefcase, CreditCard, Tag, Eye, Pencil, Trash2, Loader2,
@@ -459,7 +460,7 @@ export const ExpensesPage: React.FC = () => {
 
       {/* Add/Edit Modal */}
       <AnimatePresence>
-        {showModal && (
+        {showModal && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
             <motion.div className="modal-sheet shadow-2xl"
               initial={{ opacity: 0, scale: 0.9, y: 20 }} 
@@ -723,14 +724,14 @@ export const ExpensesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
 
 
 
       {/* Quick View Modal */}
       <AnimatePresence>
-        {viewItem && (
+        {viewItem && typeof document !== 'undefined' && createPortal(
           <div className="overlay-backdrop" onClick={() => setViewItem(null)} style={{ zIndex: 1000 }}>
             <motion.div className="modal-sheet shadow-2xl"
               initial={{ opacity: 0, scale: 0.96, y: 20 }} 
@@ -793,7 +794,7 @@ export const ExpensesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        )}
+        , document.body)}
       </AnimatePresence>
     </div>
   );

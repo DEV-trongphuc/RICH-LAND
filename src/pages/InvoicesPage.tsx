@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
   Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
@@ -366,7 +367,7 @@ export const InvoicesPage: React.FC = () => {
 
       {/* Preview Modal */}
       <AnimatePresence>
-        {previewItem && (
+        {previewItem && typeof document !== 'undefined' && createPortal(
           <motion.div 
             className="overlay-backdrop" 
             initial={{ opacity: 0 }} 
@@ -444,7 +445,7 @@ export const InvoicesPage: React.FC = () => {
               </div>
             </motion.div>
           </motion.div>
-        )}
+        , document.body)}
       </AnimatePresence>
     </div>
   );
