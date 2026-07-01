@@ -68,6 +68,11 @@ function requireAuth(): array {
     if (!$token) respond(401, null, 'Token không hợp lệ', false);
     $payload = JWT::decode($token);
     if (!$payload) respond(401, null, 'Token hết hạn hoặc không hợp lệ', false);
+    
+    // Normalize role: convert 'sale' to 'sales' to ensure compatibility with all controllers
+    if (isset($payload['role']) && $payload['role'] === 'sale') {
+        $payload['role'] = 'sales';
+    }
     return $payload;
 }
 

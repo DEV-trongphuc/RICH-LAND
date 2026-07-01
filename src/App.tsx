@@ -97,7 +97,7 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (isAdminPath) {
-    if (user?.role !== 'admin' && user?.role !== 'superadmin') {
+    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin') {
       return <Navigate to="/" replace />;
     }
   }
@@ -207,7 +207,7 @@ const AppTabs = () => {
       </div>
 
       {/* Admin Pages */}
-      {(user?.role === 'admin' || user?.role === 'superadmin') && (
+      {((user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'super_admin') && (
         <>
           <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }} className={currentPath === '/consultants' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/consultants') && (

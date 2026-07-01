@@ -15,13 +15,13 @@ class CooperationController {
             SELECT cs.*, c.first_name, c.last_name, c.phone, dep.unit_code, proj.name as project_name, dep.expected_commission
             FROM cooperation_slips cs
             JOIN contacts c ON cs.contact_id = c.id
-            JOIN deposits dep ON cs.deposit_slip_id = dep.id
-            JOIN projects proj ON dep.project_id = proj.id
+            LEFT JOIN deposits dep ON cs.deposit_slip_id = dep.id
+            LEFT JOIN projects proj ON dep.project_id = proj.id
             WHERE c.tenant_id = ?
         ";
         $params = [$tid];
 
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             // Only show slips where the sales is a shareholder
             $sql .= " AND (JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(? AS CHAR))) OR cs.created_by = ?)";
             $params[] = $auth['user_id'];
@@ -135,7 +135,7 @@ class CooperationController {
             respond(400, null, 'Không thể cập nhật tỷ lệ sau khi phiếu đã được ký hoặc duyệt', false);
         }
 
-        if ($auth['role'] === 'sales' && $slip['owner_id'] != $auth['user_id'] && $slip['created_by'] != $auth['user_id']) {
+        if (($auth['role'] === 'sales' || $auth['role'] === 'sale') && $slip['owner_id'] != $auth['user_id'] && $slip['created_by'] != $auth['user_id']) {
             respond(403, null, 'Chỉ chủ sở hữu khách hàng hoặc người tạo phiếu mới được cập nhật tỷ lệ', false);
         }
 
