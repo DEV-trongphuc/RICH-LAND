@@ -267,4 +267,39 @@ class CooperationController {
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REJECT_COOPERATION_SLIP', 'cooperation_slip', $id, "Từ chối phiếu hợp tác ID: $id. Lý do: $details");
         respond(200, null, 'Đã từ chối phiếu hợp tác và yêu cầu ký lại từ đầu');
     }
+
+    public function createSlip(array $auth): void {
+        $b = getBody();
+        $contactId = (int)($b['contact_id'] ?? 0);
+        if ($contactId <= 0) {
+            respond(422, null, 'ID khách hàng là bắt buộc', false);
+        }
+
+        // Check if slip already exists
+        $stmtCheck = $this->db->prepare("SELECT id FROM cooperation_slips WHERE contact_id = ? LIMIT 1");
+        $stmtCheck->execute([$contactId]);
+        if ($stmtCheck->fetchColumn()) {
+            respond(400, null, 'Phiếu hợp tác của khách hàng này đã tồn tại', false);
+        }
+
+        // Find owner of contact
+        $stmtC = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ?");
+        $stmtC->execute([$contactId]);
+        $ownerId = (int)$stmtC->fetchColumn();
+        if ($ownerId <= 0) {
+            $ownerId = $auth['user_id'];
+        }
+
+        $shares = [$ownerId => 100];
+        $sharesJson = json_encode($shares);
+
+        $stmtIns = $this->db->prepare("
+            INSERT INTO cooperation_slips (contact_id, deposit_slip_id, version, total_percentage, shares_json, signatures_json, status, created_by)
+            VALUES (?, NULL, 1, 100, ?, '{}', 'pending_signatures', ?)
+        ");
+        $stmtIns->execute([$contactId, $sharesJson, $auth['user_id']]);
+        $slipId = $this->db->lastInsertId();
+
+        respond(201, ['id' => (int)$slipId], 'Khởi tạo phiếu hợp tác thành công');
+    }
 }

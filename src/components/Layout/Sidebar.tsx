@@ -1,38 +1,93 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
 import { fetchAPI } from '../../utils/api';
 
-const ALL_NAV_ITEMS = [
-  { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
-  { name: 'Quản lý Data', href: '/data', icon: Database },
-  { name: 'Khách hàng (CRM)', href: '/contacts', icon: Users },
-  { name: 'Công ty', href: '/companies', icon: Building2 },
-  { name: 'Cơ hội (Deals)', href: '/deals', icon: TrendingUp },
-  { name: 'Báo giá', href: '/quotes', icon: FileText },
-  { name: 'Hoạt động', href: '/activities', icon: Calendar },
-  { name: 'Sản phẩm', href: '/products', icon: Package },
-  { name: 'Hóa đơn', href: '/invoices', icon: Receipt },
-  { name: 'Chi phí', href: '/expenses', icon: CreditCard },
-  { name: 'Báo cáo CRM', href: '/reports-crm', icon: BarChart2 },
-  { name: 'Chủ đầu tư', href: '/suppliers', icon: Truck },
-  { name: 'Tập tin', href: '/files', icon: File },
-  { name: 'Giỏ hàng', href: '/inventory', icon: Boxes },
-  { name: 'Quản lý Dự án', href: '/projects', icon: Building2 },
-  { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: FileText },
-  { name: 'Quản lý Đặt cọc', href: '/deposits', icon: CreditCard },
-  { name: 'Meta CAPI Logs', href: '/capi', icon: Link2, adminOnly: true },
-  { name: 'Ticket Lỗi Data', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' },
-  { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
-  { name: 'Vòng phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
-  { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
-  { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
-  { name: 'Tích hợp', href: '/integrations', icon: Link2, adminOnly: true },
-  { name: 'Tư vấn viên', href: '/consultants', icon: Users, adminOnly: true },
-  { name: 'Quản lý Tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
-  { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true },
+interface SidebarItem {
+  name: string;
+  href: string;
+  icon: any;
+  end?: boolean;
+  adminOnly?: boolean;
+  badgeKey?: string;
+}
+
+interface SidebarGroup {
+  title: string;
+  items: SidebarItem[];
+}
+
+const SIDEBAR_GROUPS: SidebarGroup[] = [
+  {
+    title: 'TỔNG QUAN',
+    items: [
+      { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
+      { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2 }
+    ]
+  },
+  {
+    title: 'KHÁCH HÀNG',
+    items: [
+      { name: 'Khách hàng', href: '/contacts', icon: Users },
+      { name: 'Kho Data', href: '/data', icon: Database },
+      { name: 'Pipeline', href: '/deals', icon: TrendingUp },
+      { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
+      { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
+      { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
+      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' }
+    ]
+  },
+  {
+    title: 'DỰ ÁN',
+    items: [
+      { name: 'Dự án', href: '/projects', icon: Building2 },
+      { name: 'Chiến dịch', href: '/projects?tab=campaigns', icon: Layers },
+      { name: 'Tài liệu', href: '/files', icon: File }
+    ]
+  },
+  {
+    title: 'NHÂN SỰ',
+    items: [
+      { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2 },
+      { name: 'Team', href: '/consultants?tab=teams', icon: Users },
+      { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, adminOnly: true }
+    ]
+  },
+  {
+    title: 'ĐỐI TÁC',
+    items: [
+      { name: 'Công ty', href: '/companies', icon: Building2 },
+      { name: 'Chủ đầu tư', href: '/suppliers', icon: Truck }
+    ]
+  },
+  {
+    title: 'SẢN PHẨM',
+    items: [
+      { name: 'Giỏ hàng', href: '/inventory', icon: Boxes }
+    ]
+  },
+  {
+    title: 'TÀI CHÍNH',
+    items: [
+      { name: 'Hóa đơn', href: '/invoices', icon: Receipt },
+      { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
+      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true }
+    ]
+  },
+  {
+    title: 'CÀI ĐẶT HỆ THỐNG',
+    items: [
+      { name: 'Tích hợp Data', href: '/integrations', icon: Link2, adminOnly: true },
+      { name: 'Vòng đời khách hàng', href: '/settings?tab=lifecycle', icon: Settings, adminOnly: true },
+      { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
+      { name: 'CAPI', href: '/capi', icon: Link2, adminOnly: true },
+      { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck },
+      { name: 'Phân quyền', href: '/accounts?tab=permissions', icon: ShieldCheck, adminOnly: true },
+      { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true }
+    ]
+  }
 ];
 
 export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileClose }: { isCollapsed: boolean; onToggleCollapse: () => void; isMobileOpen?: boolean; onMobileClose?: () => void }) => {
@@ -97,36 +152,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     };
   }, [user]);
 
-  const NAV_ITEMS = ALL_NAV_ITEMS.filter(item => {
-    const role = user?.role as string;
-    // 1. Superadmin check
-    if ((item as any).superAdminOnly) {
-      return role === 'superadmin' || role === 'super_admin';
-    }
-    
-    // 2. Admin check
-    if (item.adminOnly) {
-      return role === 'admin' || role === 'superadmin' || role === 'super_admin';
-    }
-    
-    // 3. Marketing checks
-    if (role === 'marketing') {
-      const allowedMarketingPaths = [
-        '/', '/data', '/contacts', '/companies', '/activities', '/reports-crm', '/files', '/gatekeeper', '/projects', '/deposits', '/cooperation-slips'
-      ];
-      return allowedMarketingPaths.includes(item.href);
-    }
-    
-    // 4. Sales checks (in case they view admin layout)
-    if (role === 'sales' || role === 'sale') {
-      const allowedSalesPaths = [
-        '/', '/contacts', '/companies', '/deals', '/activities', '/products', '/files', '/projects', '/deposits', '/cooperation-slips'
-      ];
-      return allowedSalesPaths.includes(item.href);
-    }
-    
-    return true;
-  });
+  const visibleGroups = SIDEBAR_GROUPS.map(group => {
+    const filteredItems = group.items.filter(item => {
+      const role = user?.role as string;
+      const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
+
+      if (item.adminOnly) {
+        return isAdmin;
+      }
+      return true;
+    });
+    return { ...group, items: filteredItems };
+  }).filter(group => group.items.length > 0);
 
   return (
     <>
@@ -168,12 +205,12 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           {/* Logo Icon */}
           <div style={{
             width: 42, height: 42, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+            background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
-            boxShadow: '0 0 12px rgba(192, 132, 252, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 0 12px rgba(189, 29, 45, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3)',
             overflow: 'hidden',
-            border: '2px solid rgba(192, 132, 252, 0.8)'
+            border: '2px solid rgba(189, 29, 45, 0.8)'
           }}>
             <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -336,98 +373,100 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
               }} />
             )}
 
-            {!isCollapsed && (
-              <span style={{
-                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
-                textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
-                padding: '0.5rem 1.5rem', whiteSpace: 'nowrap'
-              }}>{t("Chức năng chính")}</span>
-            )}
+            {visibleGroups.map((group, groupIdx) => (
+              <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: isCollapsed ? '0.5rem' : '1.25rem' }}>
+                {!isCollapsed && (
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(255, 255, 255, 0.28)',
+                    padding: '0.5rem 1.5rem',
+                    whiteSpace: 'nowrap',
+                    display: 'block'
+                  }}>
+                    {t(group.title)}
+                  </span>
+                )}
+                {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
+                  const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
+                  const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href);
 
-            {NAV_ITEMS.map(({ name, href, icon: Icon, end, badgeKey }) => {
-              const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
-              const isSettingsGroupStart = href === '/rules';
-              return (
-                <Fragment key={href}>
-                  {isSettingsGroupStart && !isCollapsed && (
-                    <span style={{
-                      fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
-                      textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
-                      padding: '1.25rem 1.5rem 0.5rem 1.5rem', whiteSpace: 'nowrap',
-                      display: 'block'
-                    }}>{t("Cài đặt hệ thống")}</span>
-                  )}
-                  <NavLink
-                    to={href}
-                    end={end}
-                    className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
-                    title={isCollapsed ? t(name) : undefined}
-                    onClick={(e) => {
-                      if (location.pathname === href) {
-                        e.preventDefault();
-                        return;
-                      }
-                      if (onMobileClose) onMobileClose();
-                    }}
-                    style={({ isActive }) => ({
-                      display: 'flex', alignItems: 'center', gap: '0.875rem',
-                      padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
-                      justifyContent: isCollapsed ? 'center' : 'flex-start',
-                      color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
-                      textDecoration: 'none', fontSize: '0.9375rem',
-                      fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
-                      position: 'relative',
-                      background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                      whiteSpace: 'nowrap', overflow: 'hidden',
-                    })}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        {/* Icon Box — with badge dot when collapsed */}
-                        <div style={{
-                          width: 36, height: 36, borderRadius: 10,
-                          background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          flexShrink: 0, transition: 'all 0.2s', position: 'relative'
-                        }}>
-                          <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
-                          {isCollapsed && badgeCount > 0 && (
-                            <div style={{
-                              position: 'absolute', top: 4, right: 4, width: 8, height: 8,
-                              borderRadius: '50%', background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444'
-                            }} />
-                          )}
-                        </div>
-
-                        {!isCollapsed && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
-                            <span>{t(name)}</span>
-                            {badgeCount > 0 && (
-                              <span style={{
-                                fontSize: '0.7rem',
-                                minWidth: '18px',
-                                height: '18px',
-                                borderRadius: '9px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                padding: badgeCount > 9 ? '0 5px' : '0',
-                                background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
-                                color: 'white',
-                                fontWeight: 700,
-                                lineHeight: 1
-                              }}>
-                                {badgeCount}
-                              </span>
+                  return (
+                    <NavLink
+                      key={name + href}
+                      to={href}
+                      end={end}
+                      className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                      title={isCollapsed ? t(name) : undefined}
+                      onClick={(e) => {
+                        if (location.pathname + location.search === href) {
+                          e.preventDefault();
+                          return;
+                        }
+                        if (onMobileClose) onMobileClose();
+                      }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '0.875rem',
+                        padding: isCollapsed ? '0.75rem 0' : '0.625rem 1.5rem',
+                        justifyContent: isCollapsed ? 'center' : 'flex-start',
+                        color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
+                        textDecoration: 'none', fontSize: '0.9rem',
+                        fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
+                        position: 'relative',
+                        background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
+                        whiteSpace: 'nowrap', overflow: 'hidden',
+                      }}
+                    >
+                      {() => (
+                        <>
+                          {/* Icon Box — with badge dot when collapsed */}
+                          <div style={{
+                            width: 36, height: 36, borderRadius: 10,
+                            background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0, transition: 'all 0.2s', position: 'relative'
+                          }}>
+                            <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
+                            {isCollapsed && badgeCount > 0 && (
+                              <div style={{
+                                position: 'absolute', top: 4, right: 4, width: 8, height: 8,
+                                borderRadius: '50%', background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444'
+                              }} />
                             )}
                           </div>
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                </Fragment>
-              );
-            })}
+
+                          {!isCollapsed && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+                              <span>{t(name)}</span>
+                              {badgeCount > 0 && (
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  minWidth: '18px',
+                                  height: '18px',
+                                  borderRadius: '9px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: badgeCount > 9 ? '0 5px' : '0',
+                                  background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444',
+                                  color: 'white',
+                                  fontWeight: 700,
+                                  lineHeight: 1
+                                }}>
+                                  {badgeCount}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
 

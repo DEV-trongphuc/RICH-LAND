@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -25,6 +25,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import styles from './EntityDrawer.module.css';
 import { Tooltip } from '../components/ui/Tooltip';
+import { useAuth } from '../contexts/AuthContext';
 
 /* ─── Types ─────────────────────────────────────────────────── */
 interface Props {
@@ -73,6 +74,7 @@ const overridePurpleColor = (c: string | null | undefined): string => {
 const TABS = [
   { id: 'info', label: 'Thông tin chung', icon: <User size={16} /> },
   { id: 'tags', label: 'Tags', icon: <TagIcon size={16} /> },
+  { id: 'cooperation', label: 'Hợp tác', icon: <Users size={16} /> },
   { id: 'notes', label: 'Ghi chú', icon: <FileText size={16} /> },
   { id: 'tasks', label: 'Công việc', icon: <CheckSquare size={16} /> },
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
@@ -264,6 +266,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('info');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
@@ -321,6 +324,117 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     } finally {
       setIsSavingTTL1(false);
     }
+  };
+
+  // Cooperation Slip States and Functions (Module 4)
+  const [coopSlip, setCoopSlip] = useState<any>(null);
+  const [coopLoading, setCoopLoading] = useState(false);
+  const [salesUsers, setSalesUsers] = useState<any[]>([]);
+  const [coopShares, setCoopShares] = useState<{ user_id: string; percentage: string }[]>([]);
+  const [coopError, setCoopError] = useState('');
+
+  const fetchCoopSlip = async () => {
+    if (!contact?.id) return;
+    setCoopLoading(true);
+    setCoopError('');
+    try {
+      const [resSlips, resUsers] = await Promise.all([
+        fetchAPI('cooperation-slips'),
+        fetchAPI('users')
+      ]);
+      
+      if (resSlips.success) {
+        const found = (resSlips.data || []).find((s: any) => Number(s.contact_id) === Number(contact.id));
+        setCoopSlip(found || null);
+        if (found) {
+          const initialShares = found.shareholders.map((s: any) => ({
+            user_id: String(s.user_id),
+            percentage: String(s.percentage)
+          }));
+          setCoopShares(initialShares);
+        }
+      }
+      if (resUsers.success) {
+        const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
+        setSalesUsers(sales);
+      }
+    } catch (e: any) {
+      setCoopError(e.message || 'Lỗi tải dữ liệu hợp tác');
+    }
+    setCoopLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'cooperation' && contact?.id) {
+      fetchCoopSlip();
+    }
+  }, [activeTab, contact?.id]);
+
+  const handleCreateCoopSlip = async () => {
+    setCoopLoading(true);
+    try {
+      const res = await fetchAPI('cooperation-slips', {
+        method: 'POST',
+        body: JSON.stringify({ contact_id: contact.id })
+      });
+      if (res.success) {
+        addToast('Đã khởi tạo phiếu hợp tác hoa hồng thành công!', 'success');
+        await fetchCoopSlip();
+      } else {
+        addToast(res.message || 'Không thể tạo phiếu hợp tác', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.message, 'error');
+    }
+    setCoopLoading(false);
+  };
+
+  const handleSaveCoopShares = async () => {
+    if (!coopSlip) return;
+    const sum = coopShares.reduce((acc, curr) => acc + (Number(curr.percentage) || 0), 0);
+    if (sum !== 100) {
+      addToast('Tổng tỷ lệ chia sẻ hoa hồng phải bằng 100% (Hiện tại là ' + sum + '%)', 'error');
+      return;
+    }
+    setCoopLoading(true);
+    try {
+      const sharesObj: Record<string, number> = {};
+      coopShares.forEach(s => {
+        if (s.user_id) sharesObj[s.user_id] = Number(s.percentage) || 0;
+      });
+      const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/shares`, {
+        method: 'PUT',
+        body: JSON.stringify({ shares: sharesObj })
+      });
+      if (res.success) {
+        addToast('Cập nhật tỷ lệ chia sẻ thành công!', 'success');
+        await fetchCoopSlip();
+      } else {
+        addToast(res.message || 'Lỗi lưu tỷ lệ', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.message, 'error');
+    }
+    setCoopLoading(false);
+  };
+
+  const handleSignCoopSlip = async () => {
+    if (!coopSlip) return;
+    setCoopLoading(true);
+    try {
+      const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/sign`, {
+        method: 'POST'
+      });
+      if (res.success) {
+        addToast('Đã ký xác nhận phân chia hoa hồng thành công!', 'success');
+        await fetchCoopSlip();
+      } else {
+        addToast(res.message || 'Lỗi ký xác nhận', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.message, 'error');
+    }
+    setCoopLoading(false);
   };
 
   const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
@@ -1452,6 +1566,191 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* COOPERATION TAB (Module 4) */}
+                  {activeTab === 'cooperation' && (
+                    <div className="animate-fade">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div>
+                          <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)', letterSpacing: '-0.01em', marginBottom: '0.25rem' }}>Phân chia hợp tác & Hoa hồng</h3>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Quản lý tỷ lệ chia sẻ doanh thu và ký xác nhận giữa các nhân viên hỗ trợ khách hàng.</p>
+                        </div>
+                      </div>
+
+                      {coopLoading ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+                          <Loader2 className="animate-spin" size={32} style={{ color: 'var(--color-primary)' }} />
+                        </div>
+                      ) : coopError ? (
+                        <div className="card-panel error" style={{ padding: '1.5rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                          <AlertCircle size={20} />
+                          <span>{coopError}</span>
+                        </div>
+                      ) : !coopSlip ? (
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <Users size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa thiết lập hợp tác</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '320px', margin: '0 auto 1.5rem' }}>
+                            Khách hàng này chưa có cấu hình phiếu phân chia hoa hồng. Bắt đầu thiết lập để phân chia tỷ lệ doanh thu.
+                          </p>
+                          <button className="btn primary" onClick={handleCreateCoopSlip}>
+                            <Plus size={16} /> Thiết lập hợp tác hoa hồng
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                          {/* Status and summary */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Trạng thái phiếu:</span>
+                              <span className={`badge ${
+                                coopSlip.status === 'approved' ? 'success' : 
+                                coopSlip.status === 'rejected' ? 'danger' : 
+                                coopSlip.status === 'pending_manager_approval' ? 'info' : 'warning'
+                              }`}>
+                                {coopSlip.status === 'approved' ? 'Đã duyệt' : 
+                                 coopSlip.status === 'rejected' ? 'Bị từ chối' : 
+                                 coopSlip.status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký xác nhận'}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)' }}>Phiên bản: {coopSlip.version}</span>
+                          </div>
+
+                          {coopSlip.dispute_details && (
+                            <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', borderRadius: '12px', fontSize: '0.875rem' }}>
+                              <strong>Lý do từ chối:</strong> {coopSlip.dispute_details}
+                            </div>
+                          )}
+
+                          {/* Shareholder Management */}
+                          <div className="card-panel" style={{ padding: '1.5rem' }}>
+                            <h4 style={{ fontWeight: 700, marginBottom: '1.25rem', fontSize: '1rem' }}>Danh sách phân chia hoa hồng</h4>
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                              {coopShares.map((share, idx) => {
+                                const isSigned = coopSlip.shareholders?.find((s: any) => String(s.user_id) === share.user_id)?.signed;
+
+                                return (
+                                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{
+                                      flex: 1,
+                                      pointerEvents: (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected') ? 'none' : 'auto',
+                                      opacity: (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected') ? 0.6 : 1
+                                    }}>
+                                      <CustomSelect
+                                        value={share.user_id}
+                                        onChange={(val) => {
+                                          const newShares = [...coopShares];
+                                          newShares[idx].user_id = val;
+                                          setCoopShares(newShares);
+                                        }}
+                                        options={[
+                                          { value: '', label: '-- Chọn nhân sự --' },
+                                          ...salesUsers.map(u => ({ value: String(u.id), label: `${u.full_name} (${u.email})` }))
+                                        ]}
+                                      />
+                                    </div>
+                                    <div style={{ width: '120px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <input
+                                        type="number"
+                                        className="form-control"
+                                        value={share.percentage}
+                                        min="0"
+                                        max="100"
+                                        onChange={(e) => {
+                                          const newShares = [...coopShares];
+                                          newShares[idx].percentage = e.target.value;
+                                          setCoopShares(newShares);
+                                        }}
+                                        disabled={coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected'}
+                                        style={{ textAlign: 'right' }}
+                                      />
+                                      <span style={{ fontWeight: 600 }}>%</span>
+                                    </div>
+                                    {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected') ? (
+                                      <button 
+                                        className="btn ghost text-danger sm" 
+                                        onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
+                                        style={{ padding: '8px' }}
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    ) : (
+                                      <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }} title={isSigned ? "Đã ký xác nhận" : "Chờ ký"}>
+                                        {isSigned ? (
+                                          <CheckCircle2 size={18} color="#10b981" />
+                                        ) : (
+                                          <Clock size={18} color="#f59e0b" />
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Actions to Add New Shareholder or Save */}
+                            {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected') && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <button 
+                                  className="btn outline sm"
+                                  onClick={() => setCoopShares(prev => [...prev, { user_id: '', percentage: '0' }])}
+                                >
+                                  <Plus size={14} /> Thêm nhân sự
+                                </button>
+                                <button 
+                                  className="btn primary sm"
+                                  onClick={handleSaveCoopShares}
+                                >
+                                  Lưu tỷ lệ mới
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Signature section */}
+                          {coopSlip.status === 'pending_signatures' && coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && (
+                            <div className="card-panel" style={{ padding: '1.5rem', background: 'rgba(189, 29, 45, 0.1)', border: '1px solid #BD1D2D' }}>
+                              <h4 style={{ fontWeight: 700, color: '#BD1D2D', marginBottom: '0.5rem' }}>Bạn có yêu cầu ký xác nhận</h4>
+                              <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--color-text)' }}>
+                                Bạn là một bên trong phiếu hợp tác này. Vui lòng ký xác nhận tỷ lệ chia sẻ hoa hồng.
+                              </p>
+                              <button className="btn primary" onClick={handleSignCoopSlip}>
+                                <PenTool size={16} /> Ký xác nhận
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Shareholders signatures list */}
+                          <div className="card-panel" style={{ padding: '1.5rem' }}>
+                            <h4 style={{ fontWeight: 700, marginBottom: '1rem', fontSize: '1rem' }}>Bảng chữ ký và tỷ lệ</h4>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                              {coopSlip.shareholders?.map((sh: any) => (
+                                <div key={sh.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid var(--color-border-light)' }}>
+                                  <div>
+                                    <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{sh.name}</p>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sh.email}</p>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)' }}>{sh.percentage}%</span>
+                                    {sh.signed ? (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '0.8125rem', fontWeight: 600 }}>
+                                        <CheckCircle2 size={16} /> Đã ký ({new Date(sh.signature_time).toLocaleDateString('vi-VN')})
+                                      </div>
+                                    ) : (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontSize: '0.8125rem', fontWeight: 600 }}>
+                                        <Clock size={16} /> Chờ ký
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 

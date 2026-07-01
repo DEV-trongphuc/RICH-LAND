@@ -3541,7 +3541,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
         {/* Scrollable View Area */}
         <main className="no-scrollbar responsive-main portal-main-content" style={{ flex: 1, padding: '2rem 3rem', width: '100%', overflowY: 'auto' }}>
-          <div style={{ width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
+          <div style={{ width: '100%' }}>
             {/* Admin Switch Sale View warning/dropdown */}
             {(user?.role === 'admin' || user?.role === 'superadmin') && data.consultants && !saleIdFilter && (
               <div className="portal-filters-row" style={{

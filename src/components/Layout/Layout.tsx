@@ -361,7 +361,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         />
 
         <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: '2rem 3rem', position: 'relative', zIndex: 10 }}>
-          <div style={{ width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
+          <div style={{ width: '100%' }}>
             {children}
           </div>
         </main>

@@ -18,6 +18,7 @@ import { withRouterFreezer } from '../components/RouterFreezer';
 import { CalendarSkeleton, TableSkeleton, KpiCardSkeleton, CardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { detectCountryFromPhone } from '../utils/phoneHelper';
 import { NotificationPreviewModal } from '../components/ui/NotificationPreviewModal';
+import { RuleSettings } from './RuleSettings';
 
 
 type Lead = {
@@ -291,6 +292,8 @@ const getAICardConfig = (selectedLead: Lead | null, theme: 'light' | 'dark', t: 
 
 const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }) => {
   const { user } = useAuth();
+  const userRole = user?.role as string;
+  const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager';
   const { language, t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -746,7 +749,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const isTicketLead = selectedLead?.status === 'error' || selectedLead?.report_status === 'approved' || selectedLead?.report_status === 'pending';
 
   // Calendar View Mode States
-  const viewMode = location.pathname === '/calendar' ? 'calendar' : 'list';
+  const [localViewMode, setLocalViewMode] = useState<'list' | 'calendar' | 'rules'>('list');
+  useEffect(() => {
+    if (location.pathname === '/calendar') {
+      setLocalViewMode('calendar');
+    } else if (location.pathname === '/rules') {
+      setLocalViewMode('rules');
+    } else {
+      setLocalViewMode('list');
+    }
+  }, [location.pathname]);
+  const viewMode = localViewMode;
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<any>({});
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -1282,7 +1295,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               <button
                 type="button"
                 className={`btn-toggle-view ${viewMode === 'list' ? 'active' : ''}`}
-                onClick={() => navigate('/data')}
+                onClick={() => {
+                  setLocalViewMode('list');
+                  navigate('/data');
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1304,7 +1320,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               <button
                 type="button"
                 className={`btn-toggle-view ${viewMode === 'calendar' ? 'active' : ''}`}
-                onClick={() => navigate('/calendar')}
+                onClick={() => {
+                  setLocalViewMode('calendar');
+                  navigate('/calendar');
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -1323,6 +1342,30 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               >
                 <Calendar size={13} /> <span className="hide-on-mobile">{t('Lịch biểu')}</span>
               </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className={`btn-toggle-view ${viewMode === 'rules' ? 'active' : ''}`}
+                  onClick={() => setLocalViewMode('rules')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: viewMode === 'rules' ? 'var(--color-primary)' : 'transparent',
+                    color: viewMode === 'rules' ? 'white' : 'var(--color-text-muted)',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    height: '28px'
+                  }}
+                >
+                  <Filter size={13} /> <span className="hide-on-mobile">{t('Cài đặt phân bổ')}</span>
+                </button>
+              )}
             </div>
 
             {/* Separator line */}
@@ -1415,7 +1458,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         style={{
           position: 'relative',
           zIndex: 100,
-          display: viewMode === 'calendar' ? 'none' : 'flex',
+          display: (viewMode === 'calendar' || viewMode === 'rules') ? 'none' : 'flex',
           gap: '0.75rem',
           marginBottom: '1.25rem',
           flexShrink: 0,
@@ -1525,7 +1568,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       </div>
 
       {/* Table */}
-      {viewMode === 'calendar' ? (
+      {viewMode === 'rules' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.25rem' }} className="fade-in-view">
+          <RuleSettings />
+        </div>
+      ) : viewMode === 'calendar' ? (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }} className="fade-in-view">
           {/* Calendar Header / Control */}
           <div className="mobile-stack" style={{
