@@ -542,6 +542,9 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $conn->commit();
                     
                     if ($affected > 0) {
+                        // Post-commit: kích hoạt đồng bộ 2 chiều lên Google Sheets
+                        triggerTwoWaySync($conn, $row['lead_id']);
+
                         logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
                         
                         // Send Email
