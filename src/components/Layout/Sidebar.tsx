@@ -117,7 +117,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       }
     }, 60);
     return () => clearTimeout(timer);
-  }, [location.pathname, isCollapsed]);
+  }, [location.pathname, location.search, isCollapsed]);
 
   // Poll pending ticket count every 60s
   useEffect(() => {
