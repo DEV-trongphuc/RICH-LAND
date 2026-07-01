@@ -689,9 +689,10 @@ export default function InventoryPage() {
       )}
 
       {/* Internal Export Modal */}
-      <AnimatePresence>
-        {showExportModal && selectedBatch && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showExportModal && selectedBatch && (
+            <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -785,13 +786,15 @@ export default function InventoryPage() {
               </form>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
 
       {/* Adjust Modal */}
-      <AnimatePresence>
-        {showAdjustModal && selectedBatch && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showAdjustModal && selectedBatch && (
+            <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -843,13 +846,15 @@ export default function InventoryPage() {
               </form>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
 
       {/* History Modal */}
-      <AnimatePresence>
-        {showHistoryModal && selectedBatch && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showHistoryModal && selectedBatch && (
+            <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -907,8 +912,9 @@ export default function InventoryPage() {
               </div>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
         </>
       )}
     </div>

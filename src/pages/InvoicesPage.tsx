@@ -366,9 +366,10 @@ export const InvoicesPage: React.FC = () => {
 
 
       {/* Preview Modal */}
-      <AnimatePresence>
-        {previewItem && typeof document !== 'undefined' && createPortal(
-          <motion.div 
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {previewItem && (
+            <motion.div 
             className="overlay-backdrop" 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
@@ -445,8 +446,9 @@ export const InvoicesPage: React.FC = () => {
               </div>
             </motion.div>
           </motion.div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
     </div>
   );
 };

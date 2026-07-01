@@ -459,9 +459,10 @@ export const ExpensesPage: React.FC = () => {
       </div>
 
       {/* Add/Edit Modal */}
-      <AnimatePresence>
-        {showModal && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showModal && (
+            <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
             <motion.div className="modal-sheet shadow-2xl"
               initial={{ opacity: 0, scale: 0.9, y: 20 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
@@ -724,15 +725,17 @@ export const ExpensesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
 
 
 
       {/* Quick View Modal */}
-      <AnimatePresence>
-        {viewItem && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop" onClick={() => setViewItem(null)} style={{ zIndex: 1000 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {viewItem && (
+            <div className="overlay-backdrop" onClick={() => setViewItem(null)} style={{ zIndex: 1000 }}>
             <motion.div className="modal-sheet shadow-2xl"
               initial={{ opacity: 0, scale: 0.96, y: 20 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
@@ -794,8 +797,9 @@ export const ExpensesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
     </div>
   );
 };

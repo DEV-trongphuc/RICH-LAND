@@ -293,10 +293,11 @@ export const ProductsPage: React.FC = () => {
         )}
       </div>
 
-      <AnimatePresence>
-        {showModal && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
-            <motion.div className="modal-sheet modal-md shadow-2xl"
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showModal && (
+            <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
+              <motion.div className="modal-sheet modal-md shadow-2xl"
               initial={{ opacity:0, scale:0.96, y: 20 }} 
               animate={{ opacity:1, scale:1, y: 0 }} 
               exit={{ opacity:0, scale:0.96, y: 20 }}
@@ -427,21 +428,23 @@ export const ProductsPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
 
 
       {/* Category Management Modal (Modal xịn) */}
-      <AnimatePresence>
-        {showCatModal && typeof document !== 'undefined' && createPortal(
-          <motion.div 
-            className="overlay-backdrop" 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }} 
-            onClick={() => setShowCatModal(false)} 
-            style={{ zIndex: 1000 }}
-          >
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showCatModal && (
+            <motion.div 
+              className="overlay-backdrop" 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              onClick={() => setShowCatModal(false)} 
+              style={{ zIndex: 1000 }}
+            >
             <motion.div className="modal-sheet" style={{ width:'700px', maxWidth:'calc(100vw - 2rem)', zIndex: 1010, margin: 'auto' }}
               initial={{ opacity:0, scale:0.96, y: 20 }} animate={{ opacity:1, scale:1, y: 0 }} exit={{ opacity:0, scale:0.96, y: 20 }}
               onClick={e => e.stopPropagation()}
@@ -518,8 +521,9 @@ export const ProductsPage: React.FC = () => {
               </div>
             </motion.div>
           </motion.div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
     </div>
   );
 };

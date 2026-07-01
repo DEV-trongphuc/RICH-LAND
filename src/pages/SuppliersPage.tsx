@@ -215,9 +215,10 @@ export const SuppliersPage: React.FC = () => {
       )}
 
       {/* Modal Cải tiến */}
-      <AnimatePresence>
-        {showModal && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop" onClick={() => setShowModal(false)} style={{ zIndex: 1000 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showModal && (
+            <div className="overlay-backdrop" onClick={() => setShowModal(false)} style={{ zIndex: 1000 }}>
             <motion.div 
               className="modal-sheet modal-md shadow-2xl"
               style={{ maxWidth: '600px', width: '100%' }}
@@ -316,8 +317,9 @@ export const SuppliersPage: React.FC = () => {
               </form>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
     </div>
   );
 };

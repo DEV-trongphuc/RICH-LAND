@@ -516,9 +516,10 @@ export const FilesPage: React.FC = () => {
       </div>
 
       {/* Modal Tải tệp mới */}
-      <AnimatePresence>
-        {showUploadModal && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1100 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showUploadModal && (
+            <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1100 }}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -566,13 +567,15 @@ export const FilesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
 
       {/* Modal Quản lý Danh mục */}
-      <AnimatePresence>
-        {showCatModal && typeof document !== 'undefined' && createPortal(
-          <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1100 }}>
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showCatModal && (
+            <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1100 }}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -604,8 +607,9 @@ export const FilesPage: React.FC = () => {
               </div>
             </motion.div>
           </div>
-        , document.body)}
+        )}
       </AnimatePresence>
+    , document.body)}
     </div>
   );
 };
