@@ -846,7 +846,7 @@ function evaluateRules($conn, $data, $source, $type, $connId = null, $connection
     return null;
 }
 
-function getNextConsultantInRound($conn, $roundId)
+function getNextConsultantInRound($conn, $roundId, $lead = null)
 {
     // 1. Get round info with FOR UPDATE lock
     $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1 FOR UPDATE");
@@ -964,11 +964,12 @@ function getNextConsultantInRound($conn, $roundId)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
-    // Calculate active count of available consultants
+    // Calculate active count of available consultants (who pass all 5 gates)
     $activeCount = 0;
     foreach ($consultants as $c) {
         $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
-        if (!$isOnVacation) {
+        $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
+        if (!$isOnVacation && $isGatePassed) {
             $activeCount++;
         }
     }
@@ -977,7 +978,13 @@ function getNextConsultantInRound($conn, $roundId)
         // Check if consultant is available (only vacation/leave counts as unavailable for skipping)
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
-        $isAvailable = !$isOnVacation;
+        
+        $gateResult = checkConsultantGates($conn, (int)$row['id'], $lead);
+        $isGatePassed = ($gateResult === true);
+        if ($gateResult !== true) {
+            error_log("RICH LAND INFO: Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
+        }
+        $isAvailable = !$isOnVacation && $isGatePassed;
 
         // Priority 1: Compensation (error data replacement) - only if available (not on vacation)
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale. 
@@ -1066,7 +1073,8 @@ function getNextConsultantInRound($conn, $roundId)
 
         // Check availability (only vacation/leave counts as unavailable for skipping)
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
-        $isAvailable = !$isOnVacation;
+        $isGatePassed = (checkConsultantGates($conn, (int)$candidate['id'], $lead) === true);
+        $isAvailable = !$isOnVacation && $isGatePassed;
 
         if ($isAvailable) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
@@ -1365,7 +1373,7 @@ function logDistribution($conn, $leadId, $assignedTo, $roundId, $status, $messag
  * Simulate getNextConsultantInRound WITHOUT updating the database.
  * Used for previewing who will receive the lead.
  */
-function simulateNextConsultantInRound($conn, $roundId)
+function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 {
     // 1. Get round info without FOR UPDATE
     $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? AND is_active = 1");
@@ -1478,11 +1486,12 @@ function simulateNextConsultantInRound($conn, $roundId)
     $today = date('Y-m-d');
     $currentTime = date('H:i');
 
-    // Calculate active count of available consultants
+    // Calculate active count of available consultants (who pass all 5 gates)
     $activeCount = 0;
     foreach ($consultants as $c) {
         $isOnVacation = ($c['vacation_mode'] == 1 || (!empty($c['leave_start']) && $today >= $c['leave_start'] && (empty($c['leave_end']) || $today <= $c['leave_end'])));
-        if (!$isOnVacation) {
+        $isGatePassed = (checkConsultantGates($conn, (int)$c['id'], $lead) === true);
+        if (!$isOnVacation && $isGatePassed) {
             $activeCount++;
         }
     }
@@ -1490,7 +1499,13 @@ function simulateNextConsultantInRound($conn, $roundId)
     foreach ($consultants as $row) {
         $isOnVacation = ($row['vacation_mode'] == 1 || (!empty($row['leave_start']) && $today >= $row['leave_start'] && (empty($row['leave_end']) || $today <= $row['leave_end'])));
         $isInWorkHours = isConsultantInWorkHours($currentTime, $row['work_start_time'], $row['work_end_time'], $row['work_schedule']);
-        $isAvailable = !$isOnVacation;
+        
+        $gateResult = checkConsultantGates($conn, (int)$row['id'], $lead);
+        $isGatePassed = ($gateResult === true);
+        if ($gateResult !== true) {
+            error_log("RICH LAND INFO (Sim): Consultant ID " . $row['id'] . " failed gate check: " . $gateResult);
+        }
+        $isAvailable = !$isOnVacation && $isGatePassed;
 
         // Priority 1: Compensation
         // BUGFIX/ENHANCEMENT: Tránh dồn dập đền bù liên tục cho cùng 1 sale.
@@ -1555,7 +1570,8 @@ function simulateNextConsultantInRound($conn, $roundId)
         $candidate = $simulatedConsultants[$nextIdx];
 
         $isOnVacation = ($candidate['vacation_mode'] == 1 || (!empty($candidate['leave_start']) && $today >= $candidate['leave_start'] && (empty($candidate['leave_end']) || $today <= $candidate['leave_end'])));
-        $isAvailable = !$isOnVacation;
+        $isGatePassed = (checkConsultantGates($conn, (int)$candidate['id'], $lead) === true);
+        $isAvailable = !$isOnVacation && $isGatePassed;
 
         if ($isAvailable) {
             $ratio = max(1, (int) ($candidate['receive_ratio'] ?? 1));
@@ -1581,6 +1597,161 @@ function simulateNextConsultantInRound($conn, $roundId)
 
     return $chosenConsultant;
 }
+
+/**
+ * Validates a consultant against the 5 Lead Distribution Gates:
+ * 1. Project Roster (campaign roster check)
+ * 2. Selfie Check-in (day check-in)
+ * 3. Vacation Mode (readiness switch)
+ * 4. Backpressure Valve (uncontacted lead limit)
+ * 5. Hour/Day/Month Quotas
+ */
+function checkConsultantGates($conn, $consultantId, $lead = null)
+{
+    // GATE 1: Roster chiến dịch (Project Roster)
+    if ($lead) {
+        // Resolve project_id from lead attributes
+        $stmtProj = $conn->query("SELECT id, code, name FROM projects WHERE status = 'active'");
+        $matchedProjectId = null;
+        if ($stmtProj) {
+            while ($p = $stmtProj->fetch_assoc()) {
+                $code = strtolower($p['code'] ?? '');
+                $pName = strtolower($p['name'] ?? '');
+                
+                $searchIn = '';
+                if (!empty($lead['campaign_name'])) $searchIn .= ' ' . $lead['campaign_name'];
+                if (!empty($lead['note'])) $searchIn .= ' ' . $lead['note'];
+                if (!empty($lead['source'])) $searchIn .= ' ' . $lead['source'];
+                if (!empty($lead['name'])) $searchIn .= ' ' . $lead['name'];
+                
+                if (($code !== '' && stripos($searchIn, $code) !== false) || ($pName !== '' && stripos($searchIn, $pName) !== false)) {
+                    $matchedProjectId = (int) $p['id'];
+                    break;
+                }
+            }
+        }
+        
+        if ($matchedProjectId) {
+            $stmtR = $conn->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ?");
+            $stmtR->bind_param("ii", $matchedProjectId, $consultantId);
+            $stmtR->execute();
+            $inRoster = $stmtR->get_result()->fetch_assoc();
+            $stmtR->close();
+            if (!$inRoster) {
+                return "Failed Gate 1: Sales not in project roster for project ID $matchedProjectId";
+            }
+        }
+    }
+
+    // GATE 2: Check-in ngày hợp lệ (Selfie Check-in)
+    $dayOfWeek = date('N'); // 1 (Mon) - 7 (Sun)
+    if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
+        $todayStr = date('Y-m-d');
+        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
+        $stmtCheck->bind_param("is", $consultantId, $todayStr);
+        $stmtCheck->execute();
+        $hasCheckIn = $stmtCheck->get_result()->fetch_assoc();
+        $stmtCheck->close();
+        if (!$hasCheckIn) {
+            return "Failed Gate 2: No approved check-in for today";
+        }
+    }
+
+    // GATE 3: Nút Sẵn sàng (vacation_mode / status)
+    $stmtUser = $conn->prepare("SELECT vacation_mode, status FROM users WHERE id = ?");
+    $stmtUser->bind_param("i", $consultantId);
+    $stmtUser->execute();
+    $u = $stmtUser->get_result()->fetch_assoc();
+    $stmtUser->close();
+    if ($u) {
+        if ($u['status'] !== 'active') {
+            return "Failed Gate 3: User inactive or on leave";
+        }
+        if ((int)$u['vacation_mode'] === 1) {
+            return "Failed Gate 3: Vacation Mode enabled (tạm vắng)";
+        }
+    }
+
+    // GATE 4: Van chống ôm (Backpressure Valve)
+    $backpressureLimit = (int) get_system_setting($conn, 'backpressure_limit');
+    if ($backpressureLimit <= 0) {
+        $backpressureLimit = 5;
+    }
+    
+    // Count lead tính công (excluding Not Lead / status = 'rejected') in status 'chua_xac_dinh'
+    $stmtKhtn = $conn->prepare("
+        SELECT COUNT(*) as cnt 
+        FROM contacts 
+        WHERE owner_id = ? 
+          AND pipeline_status = 'chua_xac_dinh'
+          AND status != 'rejected'
+    ");
+    $stmtKhtn->bind_param("i", $consultantId);
+    $stmtKhtn->execute();
+    $khtnCnt = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
+    $stmtKhtn->close();
+    
+    if ($khtnCnt >= $backpressureLimit) {
+        return "Failed Gate 4: Backpressure valve limit exceeded ($khtnCnt >= $backpressureLimit 'Chưa Xác Định' leads)";
+    }
+
+    // GATE 5: Hạn mức (Quota) của Sales
+    $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
+    $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
+    $limitMonth = (int) get_system_setting($conn, 'databank_limit_per_month');
+
+    if ($limitDay <= 0) $limitDay = 2;
+    if ($limitHour <= 0) $limitHour = 3;
+    if ($limitMonth <= 0) $limitMonth = 300;
+
+    // Check hourly
+    $stmtHour = $conn->prepare("
+        SELECT COUNT(*) as cnt 
+        FROM distribution_logs 
+        WHERE assigned_to = ? 
+          AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+    ");
+    $stmtHour->bind_param("i", $consultantId);
+    $stmtHour->execute();
+    $hourCnt = (int) ($stmtHour->get_result()->fetch_assoc()['cnt'] ?? 0);
+    $stmtHour->close();
+    if ($hourCnt >= $limitHour) {
+        return "Failed Gate 5: Hourly limit reached ($hourCnt >= $limitHour)";
+    }
+
+    // Check daily
+    $stmtDay = $conn->prepare("
+        SELECT COUNT(*) as cnt 
+        FROM distribution_logs 
+        WHERE assigned_to = ? 
+          AND DATE(received_at) = CURDATE()
+    ");
+    $stmtDay->bind_param("i", $consultantId);
+    $stmtDay->execute();
+    $dayCnt = (int) ($stmtDay->get_result()->fetch_assoc()['cnt'] ?? 0);
+    $stmtDay->close();
+    if ($dayCnt >= $limitDay) {
+        return "Failed Gate 5: Daily limit reached ($dayCnt >= $limitDay)";
+    }
+
+    // Check monthly
+    $stmtMonth = $conn->prepare("
+        SELECT COUNT(*) as cnt 
+        FROM distribution_logs 
+        WHERE assigned_to = ? 
+          AND received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+    ");
+    $stmtMonth->bind_param("i", $consultantId);
+    $stmtMonth->execute();
+    $monthCnt = (int) ($stmtMonth->get_result()->fetch_assoc()['cnt'] ?? 0);
+    $stmtMonth->close();
+    if ($monthCnt >= $limitMonth) {
+        return "Failed Gate 5: Monthly limit reached ($monthCnt >= $limitMonth)";
+    }
+
+    return true;
+}
+
 
 /**
  * Check if a given time (HH:MM) is within the consultant's working hours.

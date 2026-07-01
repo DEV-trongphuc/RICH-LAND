@@ -53,7 +53,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
 
   let resolvedSrc = src;
   if (src && src.startsWith('uploads/')) {
-    const apiBase = import.meta.env.VITE_API_URL || 'http://open.domation.net/richland';
+    const apiBase = import.meta.env.VITE_API_URL || '/backend';
     resolvedSrc = `${apiBase}/${src}`;
   }
 

@@ -62,6 +62,28 @@ const formatExcelDate = (val: string) => {
   return trimmed;
 };
 
+const SLUG_TO_LABEL: Record<string, string> = {
+  chua_xac_dinh: 'Chưa xác định',
+  quan_tam: 'Quan tâm',
+  dong_y_gap: 'Đồng ý gặp',
+  da_gap: 'Đã gặp',
+  booking: 'Booking',
+  dat_coc: 'Đặt cọc',
+  dong_deal: 'Đóng deal'
+};
+
+const generateSlug = (str: string): string => {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9\s_-]/g, '')
+    .trim()
+    .replace(/[\s-]+/g, '_');
+};
+
 const DEFAULT_REPORT_REASONS = [
   { reason: 'Sai số điện thoại / Số ảo', note: 'Data có số điện thoại sai, không đúng, thiếu số, hoặc gọi thì báo không phải tên của khách hàng.' },
   { reason: 'Trùng của tôi', note: 'Data bị trùng, đã check CRCM mà thấy data có lần tương tác cuối cùng > {n} tháng nghĩa là giao đúng; hoặc data < {n} tháng mà giao thì báo cáo trùng; hoặc nhập data không được (tùy trường hợp sẽ xét).' },
@@ -111,10 +133,18 @@ const SettingsInner = () => {
   const [databankLimitPerHour, setDatabankLimitPerHour] = useState<number>(3);
   const [databankLimitPerMonth, setDatabankLimitPerMonth] = useState<number>(300);
 
-  // Pipeline status hierarchy state
   const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
     'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
   ]);
+  const [pipelineStatusLabels, setPipelineStatusLabels] = useState<Record<string, string>>({
+    chua_xac_dinh: 'Chưa xác định',
+    quan_tam: 'Quan tâm',
+    dong_y_gap: 'Đồng ý gặp',
+    da_gap: 'Đã gặp',
+    booking: 'Booking',
+    dat_coc: 'Đặt cọc',
+    dong_deal: 'Đóng deal'
+  });
 
   // States
   const [provider, setProvider] = useState('appscript');
@@ -307,6 +337,11 @@ const SettingsInner = () => {
             setPipelineStatusHierarchy(JSON.parse(json.data.pipeline_status_hierarchy));
           } catch(e) {}
         }
+        if (json.data.pipeline_status_labels) {
+          try {
+            setPipelineStatusLabels(JSON.parse(json.data.pipeline_status_labels));
+          } catch(e) {}
+        }
         if (json.data.db_version) setDbVersion(json.data.db_version);
         if (json.data.email_provider) {
           setProvider(json.data.email_provider);
@@ -480,6 +515,7 @@ const SettingsInner = () => {
       ticket_auto_approve_rules: ticketAutoApproveRules,
       report_error_reasons: reportErrorReasons,
       pipeline_status_hierarchy: JSON.stringify(pipelineStatusHierarchy),
+      pipeline_status_labels: JSON.stringify(pipelineStatusLabels),
       temperature_decay_days: temperatureDecayDays,
       lead_response_timeout_minutes: leadResponseTimeoutMinutes,
       uncontacted_lead_share_hours: uncontactedLeadShareHours,
@@ -1993,7 +2029,7 @@ function doPost(e) {
                     <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <code style={{ flex: 1, background: 'var(--color-bg)', padding: '0.5rem', borderRadius: 6, fontSize: '0.875rem', color: 'var(--color-primary)', border: '1px solid var(--color-border)' }}>
-                        {`${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/zalo_webhook.php`}
+                        {`${import.meta.env.VITE_API_URL || window.location.origin + '/backend'}/zalo_webhook.php`}
                       </code>
                     </div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 8 }}>
@@ -2344,152 +2380,193 @@ function doPost(e) {
               </div>
 
               {/* Cấu hình Tham số Nghiệp vụ & Hạn mức */}
-              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
-                    <Clock size={16} />
+              <div className="card" style={{ padding: '2rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: 6, borderRadius: 8 }}>
+                    <Clock size={18} />
                   </span>
                   {t('Cấu hình Nghiệp vụ & Hạn mức')}
                 </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                  {t('Thiết lập các mốc thời gian, trạng thái và hạn mức hoạt động động của hệ thống theo quy chuẩn vận hành (không hardcode).')}
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.75rem', lineHeight: 1.5 }}>
+                  {t('Thiết lập các mốc thời gian, trạng thái và hạn mức hoạt động của hệ thống theo quy chuẩn vận hành (không hardcode).')}
                 </p>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* Grid 1: Thresholds */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                    <div>
-                      <label className="form-label">{t('Số ngày tự động rớt nhiệt (Decay)')}</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={temperatureDecayDays}
-                        onChange={e => setTemperatureDecayDays(Number(e.target.value))}
-                        min={1}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Mặc định: 5 ngày không tương tác chất lượng.')}
-                      </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  {/* Nhóm 1: Phân phối & Rớt nhiệt Lead */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <Zap size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc Phân phối & Rớt nhiệt')}</h4>
                     </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Số ngày tự động rớt nhiệt (Decay)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={temperatureDecayDays}
+                            onChange={e => setTemperatureDecayDays(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('ngày')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Mặc định: 5 ngày không tương tác chất lượng.')}
+                        </span>
+                      </div>
 
-                    <div>
-                      <label className="form-label">{t('Thời gian chờ nhận lead (Phút)')}</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={leadResponseTimeoutMinutes}
-                        onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
-                        min={1}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Thời gian phản hồi trước khi thu hồi lead.')}
-                      </span>
-                    </div>
+                      <div>
+                        <label className="form-label">{t('Thời gian chờ nhận lead')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={leadResponseTimeoutMinutes}
+                            onChange={e => setLeadResponseTimeoutMinutes(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Thời gian phản hồi trước khi thu hồi lead.')}
+                        </span>
+                      </div>
 
-                    <div>
-                      <label className="form-label">{t('Chờ chia song song Chưa XĐ (Giờ)')}</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={uncontactedLeadShareHours}
-                        onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
-                        min={1}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Grid 2: Shifts & Golden Hours */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
-                    <div>
-                      <label className="form-label">{t('Bắt đầu ca đêm (Trực đêm)')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="HH:MM"
-                        value={nightShiftStartTime}
-                        onChange={e => setNightShiftStartTime(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label">{t('Kết thúc ca đêm (Reset roster)')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="HH:MM"
-                        value={nightShiftEndTime}
-                        onChange={e => setNightShiftEndTime(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label">{t('Bắt đầu giờ vàng')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="HH:MM"
-                        value={goldenHoursStartTime}
-                        onChange={e => setGoldenHoursStartTime(e.target.value)}
-                      />
-                    </div>
-
-                    <div>
-                      <label className="form-label">{t('Kết thúc giờ vàng')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="HH:MM"
-                        value={goldenHoursEndTime}
-                        onChange={e => setGoldenHoursEndTime(e.target.value)}
-                      />
+                      <div>
+                        <label className="form-label">{t('Chờ chia song song Chưa XĐ')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={uncontactedLeadShareHours}
+                            onChange={e => setUncontactedLeadShareHours(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('giờ')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Chia thêm 1 TVV nếu lead Chưa XĐ không tiến triển.')}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Grid 3: Databank limits */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
-                    <div>
-                      <label className="form-label">{t('Hạn mức nhận Databank / Ngày')}</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={databankLimitPerDay}
-                        onChange={e => setDatabankLimitPerDay(Number(e.target.value))}
-                        min={0}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Số lead databank tối đa Sale được nhận/ngày.')}
-                      </span>
+                  {/* Nhóm 2: Ca trực & Khung giờ vàng */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Ca trực đêm & Khung giờ vàng')}</h4>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Bắt đầu ca đêm (Trực đêm)')}</label>
+                        <input
+                          type="time"
+                          className="form-input"
+                          value={nightShiftStartTime}
+                          onChange={e => setNightShiftStartTime(e.target.value)}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Kết thúc ca đêm (Reset roster)')}</label>
+                        <input
+                          type="time"
+                          className="form-input"
+                          value={nightShiftEndTime}
+                          onChange={e => setNightShiftEndTime(e.target.value)}
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="form-label">{t('Hạn mức nhận Databank / Giờ')}</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={databankLimitPerHour}
-                        onChange={e => setDatabankLimitPerHour(Number(e.target.value))}
-                        min={0}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Số lead databank tối đa Sale được nhận/giờ.')}
-                      </span>
-                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Bắt đầu giờ vàng')}</label>
+                        <input
+                          type="time"
+                          className="form-input"
+                          value={goldenHoursStartTime}
+                          onChange={e => setGoldenHoursStartTime(e.target.value)}
+                        />
+                      </div>
 
-                    <div>
-                      <label className="form-label">{t('Hạn mức nhận Databank / Tháng')}</label>
-                      <input
-                        type="number"
-                        className="form-input"
-                        value={databankLimitPerMonth}
-                        onChange={e => setDatabankLimitPerMonth(Number(e.target.value))}
-                        min={0}
-                      />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        {t('Số lead databank tối đa Sale được nhận/tháng.')}
-                      </span>
+                      <div>
+                        <label className="form-label">{t('Kết thúc giờ vàng')}</label>
+                        <input
+                          type="time"
+                          className="form-input"
+                          value={goldenHoursEndTime}
+                          onChange={e => setGoldenHoursEndTime(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 3: Hạn mức nhận Databank */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <Shield size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Hạn mức nhận khách hàng từ Databank')}</h4>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Hạn mức nhận / Ngày')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '4.5rem' }}
+                            value={databankLimitPerDay}
+                            onChange={e => setDatabankLimitPerDay(Number(e.target.value))}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / ngày')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lead databank tối đa Sale được nhận/ngày.')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Hạn mức nhận / Giờ')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '4.5rem' }}
+                            value={databankLimitPerHour}
+                            onChange={e => setDatabankLimitPerHour(Number(e.target.value))}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / giờ')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lead databank tối đa Sale được nhận/giờ.')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Hạn mức nhận / Tháng')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '5.5rem' }}
+                            value={databankLimitPerMonth}
+                            onChange={e => setDatabankLimitPerMonth(Number(e.target.value))}
+                            min={0}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('lead / tháng')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Số lead databank tối đa Sale được nhận/tháng.')}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2933,88 +3010,158 @@ function doPost(e) {
               </div>
 
               {/* Cấu hình Vòng đời Khách hàng (Pipeline Status Hierarchy) */}
-              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ display: 'inline-flex', background: 'var(--color-primary)', color: 'white', padding: 4, borderRadius: 6 }}>
-                    <Activity size={16} />
+              <div className="card" style={{ padding: '2rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: 6, borderRadius: 8 }}>
+                    <Activity size={18} />
                   </span>
                   {t('Cấu hình Vòng đời & Trạng thái Khách hàng')}
                 </h3>
-                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                  {t('Thiết lập thứ tự các bước chuyển trạng thái (State Machine) của khách hàng. Sales chỉ được phép chuyển trạng thái theo chiều tiến và tuần tự (Chống nhảy cóc và đi lùi).')}
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.75rem', lineHeight: 1.5 }}>
+                  {t('Thiết lập thứ tự các bước chuyển trạng thái (State Machine) của khách hàng. Hãy nhập tên hiển thị tiếng Việt, hệ thống sẽ tự động tạo mã tương ứng. Các bước trùng lặp mã sẽ bị báo đỏ cảnh báo.')}
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {pipelineStatusHierarchy.map((status, index) => (
-                    <div
-                      key={index}
-                      style={{ border: '1px solid var(--color-border)', borderRadius: '10px', padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)' }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontWeight: 800, color: 'var(--color-primary)', minWidth: '24px' }}>#{index + 1}</span>
-                        <input
-                          type="text"
-                          value={status}
-                          onChange={e => {
-                            const newHierarchy = [...pipelineStatusHierarchy];
-                            newHierarchy[index] = e.target.value;
-                            setPipelineStatusHierarchy(newHierarchy);
-                          }}
-                          className="form-input"
-                          style={{ margin: 0, padding: '4px 8px', fontSize: '0.8125rem', width: '200px', height: '30px' }}
-                        />
-                      </div>
+                  {(() => {
+                    const slugCounts: Record<string, number> = {};
+                    pipelineStatusHierarchy.forEach(slug => {
+                      slugCounts[slug] = (slugCounts[slug] || 0) + 1;
+                    });
 
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button
-                          type="button"
-                          disabled={index === 0}
-                          onClick={() => {
-                            const newHierarchy = [...pipelineStatusHierarchy];
-                            const temp = newHierarchy[index];
-                            newHierarchy[index] = newHierarchy[index - 1];
-                            newHierarchy[index - 1] = temp;
-                            setPipelineStatusHierarchy(newHierarchy);
+                    return pipelineStatusHierarchy.map((status, index) => {
+                      const label = pipelineStatusLabels[status] || SLUG_TO_LABEL[status] || status;
+                      const isDuplicate = slugCounts[status] > 1;
+
+                      return (
+                        <div
+                          key={index}
+                          style={{
+                            border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
+                            borderRadius: '12px',
+                            padding: '12px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-surface)',
+                            transition: 'all 0.2s'
                           }}
-                          className="btn outline"
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', opacity: index === 0 ? 0.3 : 1 }}
                         >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          disabled={index === pipelineStatusHierarchy.length - 1}
-                          onClick={() => {
-                            const newHierarchy = [...pipelineStatusHierarchy];
-                            const temp = newHierarchy[index];
-                            newHierarchy[index] = newHierarchy[index + 1];
-                            newHierarchy[index + 1] = temp;
-                            setPipelineStatusHierarchy(newHierarchy);
-                          }}
-                          className="btn outline"
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', opacity: index === pipelineStatusHierarchy.length - 1 ? 0.3 : 1 }}
-                        >
-                          ↓
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPipelineStatusHierarchy(prev => prev.filter((_, i) => i !== index));
-                          }}
-                          className="btn outline text-red-500"
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: '28px', color: '#ef4444', borderColor: '#ef4444/30' }}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                            <span style={{ fontWeight: 800, color: isDuplicate ? 'var(--color-danger)' : 'var(--color-primary)', minWidth: '24px' }}>#{index + 1}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1, maxWidth: '400px' }}>
+                              <input
+                                type="text"
+                                value={label}
+                                placeholder={t('Tên trạng thái (tiếng Việt)...')}
+                                onChange={e => {
+                                  const newLabel = e.target.value;
+                                  const newSlug = generateSlug(newLabel);
+                                  
+                                  const newHierarchy = [...pipelineStatusHierarchy];
+                                  newHierarchy[index] = newSlug;
+                                  setPipelineStatusHierarchy(newHierarchy);
+
+                                  setPipelineStatusLabels(prev => {
+                                    const next = { ...prev };
+                                    delete next[status];
+                                    next[newSlug] = newLabel;
+                                    return next;
+                                  });
+                                }}
+                                className="form-input"
+                                style={{
+                                  margin: 0,
+                                  padding: '6px 12px',
+                                  fontSize: '0.875rem',
+                                  borderColor: isDuplicate ? 'var(--color-danger)' : undefined,
+                                  boxShadow: isDuplicate ? '0 0 0 1px var(--color-danger-light)' : undefined
+                                }}
+                              />
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{
+                                fontSize: '0.75rem',
+                                fontFamily: 'monospace',
+                                background: isDuplicate ? 'var(--color-danger-light)' : 'var(--color-bg-secondary)',
+                                color: isDuplicate ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                border: `1px solid ${isDuplicate ? 'var(--color-danger)' : 'var(--color-border)'}`,
+                                fontWeight: 600
+                              }}>
+                                {isDuplicate ? `${t('Mã trùng:')} ${status}` : `key: ${status}`}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '6px', marginLeft: '12px' }}>
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => {
+                                const newHierarchy = [...pipelineStatusHierarchy];
+                                const temp = newHierarchy[index];
+                                newHierarchy[index] = newHierarchy[index - 1];
+                                newHierarchy[index - 1] = temp;
+                                setPipelineStatusHierarchy(newHierarchy);
+                              }}
+                              className="btn outline"
+                              style={{ padding: '6px 10px', fontSize: '0.75rem', height: '32px', opacity: index === 0 ? 0.3 : 1 }}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === pipelineStatusHierarchy.length - 1}
+                              onClick={() => {
+                                const newHierarchy = [...pipelineStatusHierarchy];
+                                const temp = newHierarchy[index];
+                                newHierarchy[index] = newHierarchy[index + 1];
+                                newHierarchy[index + 1] = temp;
+                                setPipelineStatusHierarchy(newHierarchy);
+                              }}
+                              className="btn outline"
+                              style={{ padding: '6px 10px', fontSize: '0.75rem', height: '32px', opacity: index === pipelineStatusHierarchy.length - 1 ? 0.3 : 1 }}
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPipelineStatusHierarchy(prev => prev.filter((_, i) => i !== index));
+                                setPipelineStatusLabels(prev => {
+                                  const next = { ...prev };
+                                  delete next[status];
+                                  return next;
+                                });
+                              }}
+                              className="btn outline"
+                              style={{ padding: '6px 10px', fontSize: '0.75rem', height: '32px', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
 
                   <button
                     type="button"
-                    onClick={() => setPipelineStatusHierarchy(prev => [...prev, 'new_status'])}
+                    onClick={() => {
+                      const newLabel = 'Trạng thái mới';
+                      let suffix = 1;
+                      let newSlug = 'trang_thai_moi';
+                      while (pipelineStatusHierarchy.includes(newSlug)) {
+                        newSlug = `trang_thai_moi_${suffix}`;
+                        suffix++;
+                      }
+                      setPipelineStatusHierarchy(prev => [...prev, newSlug]);
+                      setPipelineStatusLabels(prev => ({ ...prev, [newSlug]: newLabel }));
+                    }}
                     className="btn outline"
-                    style={{ alignSelf: 'flex-start', marginTop: '4px', fontSize: '0.8125rem', height: '32px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    style={{ alignSelf: 'flex-start', marginTop: '4px', fontSize: '0.8125rem', height: '34px', display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
                     <Plus size={14} /> {t('Thêm bước trạng thái mới')}
                   </button>

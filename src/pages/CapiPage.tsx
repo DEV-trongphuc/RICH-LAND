@@ -80,7 +80,7 @@ export default function CapiPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6" style={{ color: 'var(--color-text)' }}>
+    <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)' }}>
       {/* Notifications */}
       {error && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', borderRadius: '8px' }}>
@@ -98,13 +98,13 @@ export default function CapiPage() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 900, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link2 />
             Tích Hợp Meta Conversion API (CAPI)
           </h1>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+          <p className="page-subtitle">
             Cấu hình Pixel ID và Access Token, giám sát nhật ký các sự kiện đẩy ngược về Facebook Ads
           </p>
         </div>
@@ -146,8 +146,8 @@ export default function CapiPage() {
             <button
               type="submit"
               disabled={saving}
-              className="btn w-full"
-              style={{ backgroundColor: 'var(--color-primary)', color: 'white', marginTop: '0.5rem' }}
+              className="btn primary"
+              style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}
             >
               <Save size={16} />
               {saving ? 'Đang lưu...' : 'Lưu cấu hình'}

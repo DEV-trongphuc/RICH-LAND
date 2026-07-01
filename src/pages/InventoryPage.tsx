@@ -183,13 +183,13 @@ export default function InventoryPage() {
 
   const archiveBatch = (id: number) => {
     showConfirm(
-      'Lưu trữ lô hàng', 
-      'Bạn có chắc chắn muốn lưu trữ lô hàng này? Lô hàng sẽ không còn xuất hiện trong danh sách hoạt động.',
+      'Lưu trữ căn hộ/lô đất', 
+      'Bạn có chắc chắn muốn lưu trữ căn/lô này? Căn/lô này sẽ không còn xuất hiện trong danh sách hoạt động.',
       async () => {
         try {
           const res = await api.post(`/inventory/archive/${id}`);
           if (res.data.success) {
-            addToast('Đã lưu trữ lô hàng', 'success');
+            addToast('Đã lưu trữ căn hộ/lô đất', 'success');
             fetchBatches();
           }
           closeConfirm();
@@ -264,12 +264,12 @@ export default function InventoryPage() {
 
   return (
     <div className="page-container anim-fade-up">
-      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+      <div className="page-header">
         <div>
           <h1 className="page-title">Giỏ hàng &amp; Căn hộ</h1>
           <p className="page-subtitle">Quản lý giỏ hàng căn hộ, lô đất dự án và lịch sử giao dịch.</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           
           {/* Mobile Tab Selector */}
           <div className="mobile-only" style={{ flex: 1, minWidth: '160px' }}>
@@ -294,14 +294,14 @@ export default function InventoryPage() {
 
           <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
 
-          <button className="btn outline" onClick={() => setShowImportExport(true)} style={{ height: '34px', fontSize: '0.8rem', padding: '0 12px' }} title="Nhập/Xuất Excel">
+          <button className="btn outline" onClick={() => setShowImportExport(true)} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Nhập/Xuất Excel">
             <Download size={14} />
-            <span className="hide-on-mobile"> Nhập/Xuất Excel</span>
+            <span> Nhập/Xuất Excel</span>
           </button>
 
-          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} style={{ height: '34px', fontSize: '0.8rem', padding: '0 12px' }} title="Khai báo căn / lô">
+          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Khai báo căn / lô">
             <Plus size={14} />
-            <span className="hide-on-mobile"> Khai báo căn / lô</span>
+            <span> Khai báo căn / lô</span>
           </button>
         </div>
       </div>
@@ -309,7 +309,7 @@ export default function InventoryPage() {
       <ImportExportModal 
         isOpen={showImportExport} 
         onClose={() => setShowImportExport(false)} 
-        entityName={activeTab === 'batches' ? 'Kho hàng' : 'Sản phẩm'}
+        entityName={activeTab === 'batches' ? 'Giỏ hàng' : 'Căn hộ / Lô đất'}
         onExport={() => {
             const type = activeTab === 'batches' ? 'inventory' : 'product';
             window.open(`${api.defaults.baseURL}/export?type=${type}&token=${localStorage.getItem('token')}`, '_blank');

@@ -26,7 +26,7 @@ export const Login = () => {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/api.php?action=login_google`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login_google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: response.credential })
@@ -105,7 +105,7 @@ export const Login = () => {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/api.php?action=login`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })

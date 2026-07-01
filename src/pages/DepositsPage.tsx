@@ -156,7 +156,7 @@ export default function DepositsPage() {
 
     try {
       const token = localStorage.getItem('richland_token') || '';
-      const url = `${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/api.php?action=deposits/${depositId}/milestones/${milestoneId}/unc&token=${token}`;
+      const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=deposits/${depositId}/milestones/${milestoneId}/unc&token=${token}`;
 
       const response = await fetch(url, {
         method: 'POST',
@@ -241,95 +241,101 @@ export default function DepositsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6" style={{ color: 'var(--color-text)' }}>
+    <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)' }}>
       {/* Notifications */}
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', borderRadius: '8px' }}>
           <AlertCircle size={20} />
           <span>{error}</span>
-          <button className="ml-auto" onClick={() => setError('')}><X size={16} /></button>
+          <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setError('')}><X size={16} /></button>
         </div>
       )}
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px' }}>
           <Check size={20} />
           <span>{success}</span>
-          <button className="ml-auto" onClick={() => setSuccess('')}><X size={16} /></button>
+          <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setSuccess('')}><X size={16} /></button>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-primary animate-pulse" style={{ color: 'var(--color-primary)' }}>
-            Quản Lý Đặt Cọc & Tiến Độ
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC
-          </p>
+          <h1 className="page-title">Quản Lý Đặt Cọc &amp; Tiến Độ</h1>
+          <p className="page-subtitle">Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC</p>
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity"
-          style={{ backgroundColor: 'var(--color-primary)' }}
+          className="btn primary"
+          style={{ height: '38px' }}
         >
-          <Plus size={18} />
+          <Plus size={16} />
           Tạo phiếu cọc mới
         </button>
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Đang tải danh sách đặt cọc...</div>
+        <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách đặt cọc...</div>
       ) : deposits.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-gray-700/50 rounded-xl text-gray-500">
-          Chưa có phiếu cọc nào được ghi nhận
+        <div className="card" style={{ padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <CreditCard size={48} style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }} />
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có phiếu cọc nào</h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC.</p>
+          <button className="btn primary" onClick={() => setIsCreateOpen(true)}>
+            <Plus size={16} /> Tạo phiếu cọc mới
+          </button>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {deposits.map(dep => (
             <div
               key={dep.id}
-              className="p-6 rounded-xl border border-gray-800 bg-black/40 backdrop-blur-md shadow-2xl space-y-6"
+              className="card animate-fade"
+              style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
             >
               {/* Top Row: General info */}
-              <div className="flex flex-wrap justify-between items-start gap-4">
-                <div className="flex items-center gap-3.5">
-                  <div className="p-3.5 bg-primary/10 rounded-xl text-primary" style={{ color: 'var(--color-primary)' }}>
-                    <CreditCard size={26} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(163, 20, 34, 0.1)', borderRadius: '12px', color: 'var(--color-primary)' }}>
+                    <CreditCard size={24} />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-lg">
-                      Căn: <span className="text-primary" style={{ color: 'var(--color-primary)' }}>{dep.unit_code}</span> | Dự án: {dep.project_name}
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 800 }}>
+                      Căn: <span style={{ color: 'var(--color-primary)' }}>{dep.unit_code}</span> | Dự án: {dep.project_name}
                     </h3>
-                    <p className="text-xs text-gray-400">
-                      Khách hàng: <span className="font-bold text-gray-300">{dep.last_name} {dep.first_name}</span> ({dep.phone}) • Người tạo: {dep.creator_name}
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
+                      Khách hàng: <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</span> ({dep.phone}) • Người tạo: {dep.creator_name}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="block text-xs text-gray-500">Giá bán / Hoa hồng</span>
-                    <span className="font-bold text-sm text-gray-300">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Giá bán / Hoa hồng</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
                       {dep.price.toLocaleString()} VND / {dep.expected_commission.toLocaleString()} VND
                     </span>
                   </div>
                   <span
-                    className={`px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider ${
-                      dep.status === 'approved'
-                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                        : dep.status === 'cancelled'
-                        ? 'bg-red-500/10 text-red-500 border border-red-500/20'
-                        : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-                    }`}
+                    className="badge"
+                    style={{
+                      background: dep.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : dep.status === 'cancelled' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                      color: dep.status === 'approved' ? 'var(--color-success)' : dep.status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-warning)',
+                      border: dep.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : dep.status === 'cancelled' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700
+                    }}
                   >
                     {dep.status === 'approved' ? 'Hoàn tất cọc' : dep.status === 'cancelled' ? 'Đã bể cọc' : 'Chờ duyệt UNC'}
                   </span>
                   {dep.status !== 'cancelled' && (
                     <button
                       onClick={() => handleOpenCancel(dep.id)}
-                      className="p-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-md hover:bg-red-500/20 transition-colors"
+                      className="btn sm outline"
+                      style={{ padding: '6px', height: '30px', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                       title="Báo hủy / Bể cọc"
                     >
                       <Ban size={14} />
@@ -339,53 +345,62 @@ export default function DepositsPage() {
               </div>
 
               {/* Milestones Schedule */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-gray-800/60">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
                 {dep.milestones.map(m => (
                   <div
                     key={m.id}
-                    className="p-4 rounded-lg bg-black/20 border border-gray-800/80 flex flex-col justify-between space-y-3"
+                    className="card-panel"
+                    style={{
+                      padding: '1rem',
+                      borderRadius: '8px',
+                      background: 'var(--color-bg)',
+                      border: '1px solid var(--color-border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      gap: '0.75rem'
+                    }}
                   >
                     <div>
-                      <div className="flex justify-between items-start">
-                        <span className="font-extrabold text-xs text-gray-400 line-clamp-1">{m.milestone_name}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text-light)' }} className="line-clamp-1">{m.milestone_name}</span>
                         <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                            m.status === 'approved'
-                              ? 'bg-emerald-500/10 text-emerald-500'
-                              : m.status === 'paid'
-                              ? 'bg-blue-500/10 text-blue-500'
-                              : m.status === 'failed'
-                              ? 'bg-red-500/10 text-red-500'
-                              : 'bg-gray-500/10 text-gray-400'
-                          }`}
+                          style={{
+                            fontSize: '10px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: m.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : m.status === 'paid' ? 'rgba(59, 130, 246, 0.1)' : m.status === 'failed' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                            color: m.status === 'approved' ? 'var(--color-success)' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? 'var(--color-danger)' : 'var(--color-text-muted)'
+                          }}
                         >
                           {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'UNC sai' : 'Chờ nộp'}
                         </span>
                       </div>
-                      <span className="block font-black text-sm mt-1">{m.expected_amount.toLocaleString()} VND</span>
+                      <span style={{ display: 'block', fontWeight: 800, fontSize: '0.875rem', marginTop: '4px', color: 'var(--color-text)' }}>{m.expected_amount.toLocaleString()} VND</span>
                     </div>
 
                     {/* Actions / Attachments */}
-                    <div className="pt-2 border-t border-gray-800/50 flex gap-2 items-center justify-between">
+                    <div style={{ paddingTop: '8px', borderTop: '1px solid var(--color-border-light)', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
                       {m.unc_file_path ? (
                         <a
-                          href={`${import.meta.env.VITE_API_URL || 'http://open.domation.net/richland'}/uploads/${m.unc_file_path}`}
+                          href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs text-primary hover:underline flex items-center gap-1"
-                          style={{ color: 'var(--color-primary)' }}
+                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          className="hover:underline"
                         >
                           <FileText size={12} />
                           Xem ảnh UNC
                         </a>
                       ) : (
-                        <span className="text-[10px] text-gray-500">Chưa nộp UNC</span>
+                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Chưa nộp UNC</span>
                       )}
 
                       {/* Action buttons */}
-                      <div className="flex gap-1.5">
+                      <div style={{ display: 'flex', gap: '6px' }}>
                         {dep.status !== 'cancelled' && m.status !== 'approved' && (
-                          <label className="p-1 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 cursor-pointer">
+                          <label className="btn sm outline" style={{ padding: '4px 6px', height: '24px', cursor: 'pointer' }} title="Tải UNC lên">
                             <Upload size={12} />
                             <input
                               type="file"
@@ -398,14 +413,16 @@ export default function DepositsPage() {
                           <>
                             <button
                               onClick={() => handleApproveMilestone(dep.id, m.id)}
-                              className="p-1 bg-emerald-500/20 text-emerald-500 rounded hover:bg-emerald-500/30"
+                              className="btn sm"
+                              style={{ padding: '4px 6px', height: '24px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', border: 'none' }}
                               title="Duyệt"
                             >
                               <Check size={12} />
                             </button>
                             <button
                               onClick={() => handleRejectMilestone(dep.id, m.id)}
-                              className="p-1 bg-red-500/20 text-red-500 rounded hover:bg-red-500/30"
+                              className="btn sm"
+                              style={{ padding: '4px 6px', height: '24px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', border: 'none' }}
                               title="Từ chối"
                             >
                               <X size={12} />
@@ -424,21 +441,21 @@ export default function DepositsPage() {
 
       {/* Create Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-lg w-full p-6 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-800">
-              <h2 className="text-xl font-bold">Khởi tạo phiếu đặt cọc</h2>
-              <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Khởi tạo phiếu đặt cọc</h2>
+              <button onClick={() => setIsCreateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
-            <form onSubmit={handleCreateDeposit} className="space-y-4 max-h-[80vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleCreateDeposit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Khách hàng</label>
+                  <label className="form-label">Khách hàng</label>
                   <select
                     required
                     value={selectedContactId}
                     onChange={e => setSelectedContactId(e.target.value)}
-                    className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className="form-input"
                   >
                     <option value="">-- Chọn khách hàng --</option>
                     {contacts.map(c => (
@@ -449,12 +466,12 @@ export default function DepositsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Dự án</label>
+                  <label className="form-label">Dự án</label>
                   <select
                     required
                     value={selectedProjectId}
                     onChange={e => setSelectedProjectId(e.target.value)}
-                    className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className="form-input"
                   >
                     <option value="">-- Chọn dự án --</option>
                     {projects.map(p => (
@@ -464,55 +481,55 @@ export default function DepositsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Mã căn hộ</label>
+                  <label className="form-label">Mã căn hộ</label>
                   <input
                     type="text"
                     required
                     placeholder="VD: A-12.05"
                     value={unitCode}
                     onChange={e => setUnitCode(e.target.value.toUpperCase())}
-                    className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className="form-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Giá bán (VND)</label>
+                  <label className="form-label">Giá bán (VND)</label>
                   <input
                     type="number"
                     required
                     value={price}
                     onChange={e => setPrice(e.target.value)}
-                    className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className="form-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Hoa hồng (VND)</label>
+                  <label className="form-label">Hoa hồng (VND)</label>
                   <input
                     type="number"
                     value={expectedCommission}
                     onChange={e => setExpectedCommission(e.target.value)}
-                    className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    className="form-input"
                   />
                 </div>
               </div>
 
               {/* Milestones config */}
-              <div className="space-y-2 pt-2 border-t border-gray-800">
-                <div className="flex justify-between items-center">
-                  <h4 className="text-sm font-bold text-gray-300">Lịch trình thanh toán</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700 }}>Lịch trình thanh toán</h4>
                   <button
                     type="button"
                     onClick={handleAddMilestoneInput}
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
-                    style={{ color: 'var(--color-primary)' }}
+                    style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                    className="hover:underline"
                   >
                     <Plus size={14} /> Thêm đợt tiền
                   </button>
                 </div>
 
                 {milestonesInput.map((m, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
+                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <input
                       type="text"
                       required
@@ -523,25 +540,27 @@ export default function DepositsPage() {
                           prev.map((item, i) => (i === idx ? { ...item, name: e.target.value } : item))
                         )
                       }
-                      className="flex-1 bg-black/40 border border-gray-800 rounded-lg px-3 py-1.5 text-xs focus:border-primary focus:outline-none"
+                      className="form-input"
+                      style={{ fontSize: '0.75rem', padding: '6px 10px', flex: 1 }}
                     />
                     <input
                       type="number"
                       required
-                      placeholder="Số tiền đợt (VND)"
+                      placeholder="Số tiền (VND)"
                       value={m.amount}
                       onChange={e =>
                         setMilestonesInput(prev =>
                           prev.map((item, i) => (i === idx ? { ...item, amount: e.target.value } : item))
                         )
                       }
-                      className="w-36 bg-black/40 border border-gray-800 rounded-lg px-3 py-1.5 text-xs focus:border-primary focus:outline-none"
+                      className="form-input"
+                      style={{ fontSize: '0.75rem', padding: '6px 10px', width: '130px' }}
                     />
                     {milestonesInput.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveMilestoneInput(idx)}
-                        className="p-1.5 text-red-500 hover:bg-red-500/10 rounded"
+                        style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex' }}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -552,8 +571,8 @@ export default function DepositsPage() {
 
               <button
                 type="submit"
-                className="w-full py-2 bg-primary hover:opacity-90 transition-opacity font-bold rounded-lg text-white"
-                style={{ backgroundColor: 'var(--color-primary)' }}
+                className="btn primary w-full"
+                style={{ height: '38px', marginTop: '0.5rem' }}
               >
                 Tạo phiếu đặt cọc
               </button>
@@ -564,29 +583,31 @@ export default function DepositsPage() {
 
       {/* Cancel Modal */}
       {isCancelOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-800">
-              <h2 className="text-xl font-bold text-red-500">Báo cáo bể cọc / Hủy mua</h2>
-              <button onClick={() => setIsCancelOpen(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-danger)' }}>Báo cáo bể cọc / Hủy mua</h2>
+              <button onClick={() => setIsCancelOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
-            <div className="space-y-4">
-              <p className="text-xs text-gray-400">
-                **Lưu ý:** Nếu chưa được duyệt bất kỳ đợt thanh toán nào, hệ thống sẽ tự động hạ 1 mức nhiệt của KHTN (decay) và chuyển trạng thái về Booking.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                <strong>Lưu ý:</strong> Nếu chưa được duyệt bất kỳ đợt thanh toán nào, hệ thống sẽ tự động hạ 1 mức nhiệt của KHTN (decay) và chuyển trạng thái về Booking.
               </p>
               <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Lý do hủy cọc</label>
+                <label className="form-label">Lý do hủy cọc</label>
                 <textarea
                   required
                   placeholder="Nhập lý do chi tiết..."
                   value={cancelReason}
                   onChange={e => setCancelReason(e.target.value)}
-                  className="w-full bg-black/40 border border-gray-800 rounded-lg px-3 py-2 text-sm h-24 resize-none focus:border-primary focus:outline-none"
+                  className="form-input"
+                  style={{ height: '96px', resize: 'none' }}
                 />
               </div>
               <button
                 onClick={handleConfirmCancel}
-                className="w-full py-2 bg-red-600 hover:bg-red-700 font-bold rounded-lg text-white transition-colors"
+                className="btn primary w-full"
+                style={{ height: '38px', backgroundColor: 'var(--color-danger)', border: 'none' }}
               >
                 Xác nhận bể cọc
               </button>

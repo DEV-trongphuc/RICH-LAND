@@ -981,7 +981,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     toast.loading(t('Đang chuẩn bị dữ liệu xuất CSV...'), { id: 'export' });
     try {
       const token = localStorage.getItem('richland_token') || '';
-      const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'http://open.domation.net/richland/api.php';
+      const baseUrl = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : '/backend/api.php';
       const exportUrl = `${baseUrl}?action=export_csv&token=${encodeURIComponent(token)}&date=${encodeURIComponent(dateFilter)}&status=${encodeURIComponent(statusFilter)}&consultant=${encodeURIComponent(consultantFilter)}&round=${encodeURIComponent(roundFilter)}&search=${encodeURIComponent(searchTerm)}`;
 
       const link = document.createElement('a');

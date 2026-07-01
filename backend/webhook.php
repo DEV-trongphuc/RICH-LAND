@@ -700,7 +700,7 @@ try {
     }
 
     if ($targetRoundId) {
-        $assignResult = getNextConsultantInRound($conn, $targetRoundId);
+        $assignResult = getNextConsultantInRound($conn, $targetRoundId, $data);
         if ($assignResult) {
             $assignedConsultantId = $assignResult['id'];
             $status = $assignResult['is_compensation'] ? 'compensation' : 'assigned';

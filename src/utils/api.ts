@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : 'http://open.domation.net/richland/api.php';
+const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : '/backend/api.php';
 import { processMockRequest } from './mockEngine';
 import { en, ja, zh } from './translations';
 

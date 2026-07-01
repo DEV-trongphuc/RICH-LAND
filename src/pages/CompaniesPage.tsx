@@ -120,7 +120,7 @@ export const CompaniesPage: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="page-container anim-fade-up">
       <div className="page-header">
         <div>
           <h1 className="page-title">Công ty</h1>

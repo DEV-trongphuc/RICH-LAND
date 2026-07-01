@@ -3254,7 +3254,7 @@ th.col-check {
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -3270,7 +3270,7 @@ th.col-check {
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 

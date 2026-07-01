@@ -77,12 +77,18 @@ class CapiHelper {
                 }
             }
 
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
+            $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
+            $requestUri = $_SERVER['REQUEST_URI'] ?? '/richland';
+            $basePath = preg_replace('#/(api.php|index.php|backend).*$#i', '', $requestUri);
+            $eventSourceUrl = $protocol . "://" . $host . rtrim($basePath, '/');
+
             $payload = [
                 'data' => [
                     [
                         'event_name' => $eventName,
                         'event_time' => time(),
-                        'event_source_url' => 'http://open.domation.net/richland',
+                        'event_source_url' => $eventSourceUrl,
                         'action_source' => 'system',
                         'user_data' => [
                             'ph' => !empty($phone) ? [self::normalizeAndHash($phone)] : [],

@@ -13,6 +13,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+// Intercept OOP controller routes and bridge them to index.php
+$action = $_GET['action'] ?? '';
+$segments = explode('/', $action);
+if (in_array($segments[0], ['projects', 'deposits', 'cooperation-slips', 'capi'])) {
+    $_SERVER['REQUEST_URI'] = '/backend/' . $action;
+    require_once __DIR__ . '/index.php';
+    exit;
+}
+
 require_once 'env.php';
 require_once 'db_connect.php';
 

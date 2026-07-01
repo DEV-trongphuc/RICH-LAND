@@ -1357,6 +1357,61 @@ try {
         $logMsg("Hoàn thành cập nhật phiên bản 148.", "success");
     }
 
+    // --------------------------------------------------
+    if ($currentVersion < 149) {
+        $logMsg("Đang chạy cập nhật phiên bản 149 (Chuyển đổi cột pipeline_status từ ENUM sang VARCHAR để hỗ trợ cấu hình động)...", "info");
+
+        // Alter table contacts modifying pipeline_status to VARCHAR(50)
+        $conn->query("ALTER TABLE contacts MODIFY COLUMN pipeline_status VARCHAR(50) NOT NULL DEFAULT 'chua_xac_dinh'");
+
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '149') ON DUPLICATE KEY UPDATE setting_value = '149'");
+        $currentVersion = 149;
+        $logMsg("Hoàn thành cập nhật phiên bản 149.", "success");
+    }
+
+    // --------------------------------------------------
+    if ($currentVersion < 150) {
+        $logMsg("Đang chạy cập nhật phiên bản 150 (Tạo bảng check_ins và cấu hình van chống ôm)...", "info");
+
+        // 1. Create check_ins table
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS `check_ins` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `user_id` int(11) NOT NULL,
+              `check_in_date` date NOT NULL,
+              `check_in_time` time NOT NULL,
+              `selfie_url` varchar(255) DEFAULT NULL,
+              `status` enum('approved', 'pending_approval', 'rejected') NOT NULL DEFAULT 'approved',
+              `reason` varchar(255) DEFAULT NULL,
+              PRIMARY KEY (`id`),
+              UNIQUE KEY `user_date` (`user_id`, `check_in_date`),
+              FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+
+        // 2. Insert backpressure_limit configuration
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('backpressure_limit', '5')");
+
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '150') ON DUPLICATE KEY UPDATE setting_value = '150'");
+        $currentVersion = 150;
+        $logMsg("Hoàn thành cập nhật phiên bản 150.", "success");
+    }
+
+    // --------------------------------------------------
+    if ($currentVersion < 151) {
+        $logMsg("Đang chạy cập nhật phiên bản 151 (Bổ sung cột ai_attempts bị thiếu trong bảng leads)...", "info");
+
+        $chkColAiAtt = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_attempts'");
+        if ($chkColAiAtt && $chkColAiAtt->num_rows === 0) {
+            $conn->query("ALTER TABLE leads ADD COLUMN ai_attempts INT DEFAULT 0 AFTER ai_evaluation");
+            $logMsg("Đã bổ sung cột ai_attempts vào bảng leads.", "info");
+        }
+
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '151') ON DUPLICATE KEY UPDATE setting_value = '151'");
+        $currentVersion = 151;
+        $logMsg("Hoàn thành cập nhật phiên bản 151.", "success");
+    }
+
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");
 
 } catch (Throwable $e) {

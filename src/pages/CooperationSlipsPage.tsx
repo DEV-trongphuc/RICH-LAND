@@ -191,44 +191,42 @@ export default function CooperationSlipsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6" style={{ color: 'var(--color-text)' }}>
+    <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)' }}>
       {/* Notifications */}
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', borderRadius: '8px' }}>
           <AlertCircle size={20} />
           <span>{error}</span>
-          <button className="ml-auto" onClick={() => setError('')}><X size={16} /></button>
+          <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setError('')}><X size={16} /></button>
         </div>
       )}
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 rounded-lg">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '1rem', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px' }}>
           <Check size={20} />
           <span>{success}</span>
-          <button className="ml-auto" onClick={() => setSuccess('')}><X size={16} /></button>
+          <button style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }} onClick={() => setSuccess('')}><X size={16} /></button>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="page-header">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-primary" style={{ color: 'var(--color-primary)' }}>
-            Phiếu Hợp Tác & Chữ Ký Số
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Xác nhận tỷ lệ chia sẻ hoa hồng dự án giữa các Sales hỗ trợ và ký số điện tử
-          </p>
+          <h1 className="page-title">Phiếu Hợp Tác &amp; Chữ Ký Số</h1>
+          <p className="page-subtitle">Xác nhận tỷ lệ chia sẻ hoa hồng dự án giữa các Sales hỗ trợ và ký số điện tử</p>
         </div>
       </div>
 
       {/* List */}
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Đang tải danh sách phiếu hợp tác...</div>
+        <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách phiếu hợp tác...</div>
       ) : slips.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-gray-700/50 rounded-xl text-gray-500">
-          Chưa phát sinh phiếu hợp tác chia hoa hồng nào
+        <div className="card" style={{ padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <FileText size={48} style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }} />
+          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa phát sinh phiếu hợp tác</h3>
+          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Các phiếu phân chia hoa hồng tự động sinh ra khi tạo giao dịch đặt cọc thành công.</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {slips.map(slip => {
             const hasSigned = slip.shareholders.find(s => s.user_id === user?.consultant_id)?.signed;
             const isShareholder = slip.shareholders.some(s => s.user_id === user?.consultant_id);
@@ -236,35 +234,37 @@ export default function CooperationSlipsPage() {
             return (
               <div
                 key={slip.id}
-                className="p-6 rounded-xl border border-gray-800 bg-black/40 backdrop-blur-md shadow-2xl space-y-6"
+                className="card animate-fade"
+                style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
               >
                 {/* General Info */}
-                <div className="flex flex-wrap justify-between items-start gap-4 pb-4 border-b border-gray-800/60">
-                  <div className="flex items-center gap-3.5">
-                    <div className="p-3.5 bg-primary/10 rounded-xl text-primary" style={{ color: 'var(--color-primary)' }}>
-                      <FileText size={26} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ padding: '10px', background: 'rgba(163, 20, 34, 0.1)', borderRadius: '12px', color: 'var(--color-primary)' }}>
+                      <FileText size={24} />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-lg">
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 800 }}>
                         Phiếu hợp tác #{slip.id} | Căn: {slip.unit_code} ({slip.project_name})
                       </h3>
-                      <p className="text-xs text-gray-400">
-                        Khách hàng: <span className="font-bold text-gray-300">{slip.last_name} {slip.first_name}</span> • Hoa hồng dự kiến: <span className="font-bold text-emerald-500">{slip.expected_commission.toLocaleString()} VND</span>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
+                        Khách hàng: <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.last_name} {slip.first_name}</span> • Hoa hồng dự kiến: <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{slip.expected_commission.toLocaleString()} VND</span>
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span
-                      className={`px-3 py-1 rounded-md text-xs font-black uppercase tracking-wider ${
-                        slip.status === 'approved'
-                          ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                          : slip.status === 'pending_manager_approval'
-                          ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                          : slip.status === 'rejected'
-                          ? 'bg-red-500/10 text-red-500 border border-red-500/20'
-                          : 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/20'
-                      }`}
+                      className="badge"
+                      style={{
+                        background: slip.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : slip.status === 'pending_manager_approval' ? 'rgba(59, 130, 246, 0.1)' : slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                        color: slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? '#2563eb' : slip.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-warning)',
+                        border: slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : slip.status === 'pending_manager_approval' ? '1px solid rgba(59, 130, 246, 0.2)' : slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700
+                      }}
                     >
                       {slip.status === 'approved'
                         ? 'Đã duyệt hoa hồng'
@@ -277,11 +277,12 @@ export default function CooperationSlipsPage() {
                     
                     {/* Sign / Update buttons */}
                     {slip.status === 'pending_signatures' && (
-                      <>
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         {(slip.created_by === user?.consultant_id || isManager) && (
                           <button
                             onClick={() => handleOpenUpdateShares(slip)}
-                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 font-bold text-xs rounded-lg text-white"
+                            className="btn sm outline"
+                            style={{ height: '30px' }}
                           >
                             Cấu hình chia %
                           </button>
@@ -289,30 +290,32 @@ export default function CooperationSlipsPage() {
                         {isShareholder && !hasSigned && (
                           <button
                             onClick={() => handleSignSlip(slip.id)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white font-bold text-xs rounded-lg hover:opacity-90 transition-opacity"
-                            style={{ backgroundColor: 'var(--color-primary)' }}
+                            className="btn sm primary"
+                            style={{ height: '30px', display: 'flex', alignItems: 'center', gap: '4px' }}
                           >
-                            <PenTool size={14} />
+                            <PenTool size={12} />
                             Ký xác nhận
                           </button>
                         )}
-                      </>
+                      </div>
                     )}
 
                     {/* Manager Approval actions */}
                     {isManager && slip.status === 'pending_manager_approval' && (
-                      <div className="flex gap-2">
+                      <div style={{ display: 'flex', gap: '8px' }}>
                         <button
                           onClick={() => handleApproveSlip(slip.id)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-colors"
+                          className="btn sm primary"
+                          style={{ height: '30px', background: 'var(--color-success)', border: 'none' }}
                         >
-                          <CheckCircle size={14} /> Duyệt hoa hồng
+                          <CheckCircle size={12} /> Duyệt hoa hồng
                         </button>
                         <button
                           onClick={() => handleRejectSlip(slip.id)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg transition-colors"
+                          className="btn sm"
+                          style={{ height: '30px', background: 'var(--color-danger)', border: 'none', color: 'white' }}
                         >
-                          <X size={14} /> Bác bỏ
+                          <X size={12} /> Bác bỏ
                         </button>
                       </div>
                     )}
@@ -321,37 +324,45 @@ export default function CooperationSlipsPage() {
 
                 {/* Shareholders Distribution & Signatures */}
                 <div>
-                  <h4 className="font-extrabold text-sm mb-3">Tỷ lệ phân chia & Chữ ký số Sales:</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <h4 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--color-text)' }}>Tỷ lệ phân chia &amp; Chữ ký số Sales:</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                     {slip.shareholders.map(sh => (
                       <div
                         key={sh.user_id}
-                        className={`p-4 rounded-lg border flex flex-col justify-between space-y-2 ${
-                          sh.signed
-                            ? 'border-emerald-500/20 bg-emerald-500/5'
-                            : 'border-gray-800 bg-black/25'
-                        }`}
+                        className="card-panel"
+                        style={{
+                          padding: '1rem',
+                          borderRadius: '8px',
+                          background: sh.signed ? 'rgba(16, 185, 129, 0.04)' : 'var(--color-bg)',
+                          border: sh.signed ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--color-border)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem'
+                        }}
                       >
-                        <div className="flex justify-between items-start">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                           <div>
-                            <h5 className="font-bold text-sm">{sh.name}</h5>
-                            <span className="text-xs text-gray-500">{sh.email}</span>
+                            <h5 style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{sh.name}</h5>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sh.email}</span>
                           </div>
-                          <span className="font-black text-base text-primary" style={{ color: 'var(--color-primary)' }}>
+                          <span style={{ fontWeight: 800, fontSize: '1.125rem', color: 'var(--color-primary)' }}>
                             {sh.percentage}%
                           </span>
                         </div>
 
-                        <div className="pt-2 border-t border-gray-800/40 flex items-center justify-between">
+                        <div style={{ paddingTop: '8px', borderTop: sh.signed ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
                           <span
-                            className={`text-[10px] font-bold ${
-                              sh.signed ? 'text-emerald-500' : 'text-yellow-500'
-                            }`}
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              color: sh.signed ? 'var(--color-success)' : 'var(--color-warning)'
+                            }}
                           >
                             {sh.signed ? '✓ Đã ký xác nhận' : '⚡ Chờ ký'}
                           </span>
                           {sh.signed && (
-                            <span className="text-[9px] text-gray-500 text-right">
+                            <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', textAlign: 'right' }}>
                               IP: {sh.signature_ip}<br />
                               Lúc: {new Date(sh.signature_time!).toLocaleString()}
                             </span>
@@ -364,7 +375,7 @@ export default function CooperationSlipsPage() {
 
                 {/* Dispute Reason */}
                 {slip.status === 'rejected' && slip.dispute_details && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs flex gap-2 items-center">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', borderRadius: '8px', fontSize: '0.75rem' }}>
                     <ShieldAlert size={16} />
                     <span>Lý do sếp bác bỏ: <strong>{slip.dispute_details}</strong>. Vui lòng cập nhật lại tỷ lệ chia sẻ và ký xác nhận lại.</span>
                   </div>
@@ -377,16 +388,16 @@ export default function CooperationSlipsPage() {
 
       {/* Configuration Modal */}
       {isUpdateOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-center items-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-800">
-              <h2 className="text-xl font-bold">Cấu hình phân chia tỷ lệ (%)</h2>
-              <button onClick={() => setIsUpdateOpen(false)} className="text-gray-400 hover:text-white"><X size={20} /></button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Cấu hình phân chia tỷ lệ (%)</h2>
+              <button onClick={() => setIsUpdateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
-            <form onSubmit={handleSaveShares} className="space-y-4">
-              <div className="max-h-72 overflow-y-auto space-y-2 pr-2">
+            <form onSubmit={handleSaveShares} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '4px' }}>
                 {sharesInput.map((item, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
+                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                     <select
                       required
                       value={item.user_id}
@@ -395,7 +406,8 @@ export default function CooperationSlipsPage() {
                           prev.map((val, i) => (i === idx ? { ...val, user_id: e.target.value } : val))
                         )
                       }
-                      className="flex-1 bg-black/40 border border-gray-800 rounded-lg px-3 py-1.5 text-xs focus:border-primary focus:outline-none"
+                      className="form-input"
+                      style={{ fontSize: '0.75rem', padding: '6px 10px', flex: 1 }}
                     >
                       <option value="">-- Chọn nhân viên --</option>
                       {salesAccounts.map(s => (
@@ -412,13 +424,14 @@ export default function CooperationSlipsPage() {
                           prev.map((val, i) => (i === idx ? { ...val, percentage: e.target.value } : val))
                         )
                       }
-                      className="w-20 bg-black/40 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-center focus:border-primary focus:outline-none"
+                      className="form-input"
+                      style={{ fontSize: '0.75rem', padding: '6px 10px', width: '80px', textAlign: 'center' }}
                     />
                     {sharesInput.length > 1 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveShareholderInput(idx)}
-                        className="p-1.5 text-red-500 hover:bg-red-500/10 rounded"
+                        style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex' }}
                       >
                         <X size={14} />
                       </button>
@@ -427,24 +440,24 @@ export default function CooperationSlipsPage() {
                 ))}
               </div>
 
-              <div className="flex justify-between items-center pt-2">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)' }}>
                 <button
                   type="button"
                   onClick={handleAddShareholderInput}
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                  style={{ color: 'var(--color-primary)' }}
+                  style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                  className="hover:underline"
                 >
                   <UserPlus size={14} /> Thêm nhân viên hỗ trợ
                 </button>
-                <span className="text-xs text-gray-400 font-bold">
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
                   Tổng: {sharesInput.reduce((acc, s) => acc + (parseInt(s.percentage) || 0), 0)}% / 100%
                 </span>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-2 bg-primary hover:opacity-90 font-bold rounded-lg text-white"
-                style={{ backgroundColor: 'var(--color-primary)' }}
+                className="btn primary w-full"
+                style={{ height: '38px', marginTop: '0.5rem' }}
               >
                 Lưu và gửi chữ ký lại
               </button>

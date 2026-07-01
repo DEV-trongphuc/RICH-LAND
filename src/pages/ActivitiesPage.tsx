@@ -11,6 +11,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CalendarView } from '../components/CalendarView';
 import { LayoutList } from 'lucide-react';
+import { CustomModal } from '../components/ui/CustomModal';
 
 const PAGE_SIZE = 50;
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
@@ -451,95 +452,86 @@ export const ActivitiesPage: React.FC = () => {
       )}
 
       {/* Add/Edit Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '520px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 1010 }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} 
-              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} 
-              exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
-                <h3 style={{ fontWeight: 700 }}>{editItem ? 'Sửa hoạt động' : 'Thêm hoạt động'}</h3>
-                <button onClick={() => setShowModal(false)} style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
-              </div>
-              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {/* Type selector */}
-                <div className="form-group">
-                  <label className="form-label">Loại hoạt động</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {TYPES.map(t => (
-                      <button key={t} type="button" onClick={() => setForm({ ...form, type: t })}
-                        style={{ padding: '0.375rem 0.75rem', borderRadius: 'var(--radius-md)', border: `2px solid ${form.type === t ? T_COLOR[t] : 'var(--color-border)'}`, background: form.type === t ? T_COLOR[t] + '15' : 'transparent', color: form.type === t ? T_COLOR[t] : 'var(--color-text-light)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {T_ICON[t]} {T_LABEL[t]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Tiêu đề *</label>
-                  <input className="form-input" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Nội dung hoạt động..." autoFocus />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Thời gian</label>
-                    <input className="form-input" type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Ưu tiên</label>
-                    <CustomSelect 
-                      options={[
-                        { value: 'low', label: 'Thấp' },
-                        { value: 'medium', label: 'Trung bình' },
-                        { value: 'high', label: 'Cao' }
-                      ]} 
-                      value={form.priority} 
-                      onChange={val => setForm({ ...form, priority: val.toString() })} 
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Liên kết đến</label>
-                    <CustomSelect 
-                      options={[
-                        { value: '', label: 'Không có' },
-                        { value: 'contact', label: 'Khách hàng' },
-                        { value: 'deal', label: 'Deal' },
-                        { value: 'company', label: 'Công ty' }
-                      ]} 
-                      value={form.related_type} 
-                      onChange={val => setForm({ ...form, related_type: val.toString(), related_id: '' })} 
-                    />
-                  </div>
-                  {form.related_type && (
-                    <div className="form-group">
-                      <label className="form-label">Chọn {form.related_type === 'contact' ? 'Khách hàng' : form.related_type === 'deal' ? 'Deal' : 'Công ty'}</label>
-                      <CustomSelect 
-                        options={getRelatedOptions()} 
-                        value={form.related_id} 
-                        onChange={val => setForm({ ...form, related_id: val.toString() })} 
-                        placeholder="Gõ để tìm kiếm..."
-                        searchable={true}
-                        showAvatars={form.related_type === 'contact'}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', padding: '1.25rem 1.5rem', borderTop: '1px solid var(--color-border)' }}>
-                <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy</button>
-                <button className="btn primary" onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 size={14} className="spin" />}{editItem ? 'Lưu' : 'Thêm'}
+      <CustomModal
+        isOpen={showModal}
+        onClose={() => !saving && setShowModal(false)}
+        title={editItem ? 'Sửa hoạt động' : 'Thêm hoạt động'}
+        width={520}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {/* Type selector */}
+          <div className="form-group">
+            <label className="form-label">Loại hoạt động</label>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {TYPES.map(t => (
+                <button key={t} type="button" onClick={() => setForm({ ...form, type: t })}
+                  style={{ padding: '0.375rem 0.75rem', borderRadius: 'var(--radius-md)', border: `2px solid ${form.type === t ? T_COLOR[t] : 'var(--color-border)'}`, background: form.type === t ? T_COLOR[t] + '15' : 'transparent', color: form.type === t ? T_COLOR[t] : 'var(--color-text-light)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {T_ICON[t]} {T_LABEL[t]}
                 </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Tiêu đề *</label>
+            <input className="form-input" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Nội dung hoạt động..." autoFocus />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Thời gian</label>
+              <input className="form-input" type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Ưu tiên</label>
+              <CustomSelect 
+                options={[
+                  { value: 'low', label: 'Thấp' },
+                  { value: 'medium', label: 'Trung bình' },
+                  { value: 'high', label: 'Cao' }
+                ]} 
+                value={form.priority} 
+                onChange={val => setForm({ ...form, priority: val.toString() })} 
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Liên kết đến</label>
+              <CustomSelect 
+                options={[
+                  { value: '', label: 'Không có' },
+                  { value: 'contact', label: 'Khách hàng' },
+                  { value: 'deal', label: 'Deal' },
+                  { value: 'company', label: 'Công ty' }
+                ]} 
+                value={form.related_type} 
+                onChange={val => setForm({ ...form, related_type: val.toString(), related_id: '' })} 
+              />
+            </div>
+            {form.related_type && (
+              <div className="form-group">
+                <label className="form-label">Chọn {form.related_type === 'contact' ? 'Khách hàng' : form.related_type === 'deal' ? 'Deal' : 'Công ty'}</label>
+                <CustomSelect 
+                  options={getRelatedOptions()} 
+                  value={form.related_id} 
+                  onChange={val => setForm({ ...form, related_id: val.toString() })} 
+                  placeholder="Gõ để tìm kiếm..."
+                  searchable={true}
+                  showAvatars={form.related_type === 'contact'}
+                />
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            )}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>
+          <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy</button>
+          <button className="btn primary" onClick={handleSave} disabled={saving}>
+            {saving && <Loader2 size={14} className="spin" />}{editItem ? 'Lưu' : 'Thêm'}
+          </button>
+        </div>
+      </CustomModal>
 
     </div>
   );

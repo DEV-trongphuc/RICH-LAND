@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Folder, FileText, Download, Trash2, Upload, Search, 
+  Folder, FileText, Download, Trash2, Upload, Search, X,
   MoreVertical, File, Filter, LayoutGrid, List, Plus, Edit,
   Shield, User, Globe, Clock, ChevronRight, HardDrive,
   Star, Clock3, FileJson, FileCode, FileImage, FileVideo,
@@ -343,15 +343,19 @@ export const FilesPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-             <div className="filter-search" style={{ flex: 1, maxWidth: '400px', position: 'relative' }}>
-                <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+             <div className="filter-search" style={{ flex: 1, maxWidth: '400px' }}>
+                <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
                 <input 
                   type="text"
                   placeholder="Tìm kiếm tài liệu..." 
                   value={searchTerm}
                   onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
-                  style={{ width: '100%', padding: '12px 16px 12px 48px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', outline: 'none', fontSize: '0.875rem', fontWeight: 500, background: 'var(--color-surface)' }}
                 />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                    <X size={14} />
+                  </button>
+                )}
              </div>
              <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
                 <button 
