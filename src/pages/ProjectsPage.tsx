@@ -4,6 +4,7 @@ import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 interface Project {
   id: number;
@@ -414,14 +415,15 @@ export default function ProjectsPage() {
                 </div>
                 <div>
                   <label className="form-label">Trạng thái bán</label>
-                  <select
+                  <CustomSelect
+                    options={[
+                      { value: 'active', label: 'Đang mở bán' },
+                      { value: 'inactive', label: 'Tạm dừng bán' }
+                    ]}
                     value={editingProject?.status || 'active'}
-                    onChange={e => setEditingProject(prev => ({ ...prev, status: e.target.value }))}
-                    className="form-input"
-                  >
-                    <option value="active">Đang mở bán</option>
-                    <option value="inactive">Tạm dừng bán</option>
-                  </select>
+                    onChange={v => setEditingProject(prev => ({ ...prev, status: v }))}
+                    width="100%"
+                  />
                 </div>
               </div>
               <div className="modal-footer">
