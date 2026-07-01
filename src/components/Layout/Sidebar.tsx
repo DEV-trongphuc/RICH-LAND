@@ -241,7 +241,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
         {/* Quick Action Button */}
         <div style={{ padding: isCollapsed ? '0.75rem 0.5rem' : '1.25rem 1rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {user?.role === 'sale' ? (
+          {((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? (
             isCollapsed ? (
               <button
                 onClick={() => {
