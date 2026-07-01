@@ -50,8 +50,8 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'NHÂN SỰ',
     items: [
-      { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2 },
-      { name: 'Team', href: '/consultants?tab=teams', icon: Users },
+      { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2, adminOnly: true },
+      { name: 'Team', href: '/consultants?tab=teams', icon: Users, adminOnly: true },
       { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, adminOnly: true },
       { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, adminOnly: true }
     ]
@@ -84,7 +84,7 @@ const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Vòng đời khách hàng', href: '/settings?tab=lifecycle', icon: Settings, adminOnly: true },
       { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
       { name: 'CAPI', href: '/capi', icon: Link2, adminOnly: true },
-      { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck },
+      { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
       { name: 'Phân quyền', href: '/accounts?tab=permissions', icon: ShieldCheck, adminOnly: true },
       { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true }
     ]
