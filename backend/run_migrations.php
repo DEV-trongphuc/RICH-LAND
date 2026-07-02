@@ -1588,6 +1588,11 @@ try {
     if ($chkColENSA && $chkColENSA->num_rows === 0) {
         $conn->query("ALTER TABLE leads ADD COLUMN email_notify_sent_at DATETIME NULL");
     }
+    $chkColASSA = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_screening_started_at'");
+    if ($chkColASSA && $chkColASSA->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_screening_started_at DATETIME NULL COMMENT 'Thời điểm bắt đầu gọi AI'");
+    }
+
 
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
 
