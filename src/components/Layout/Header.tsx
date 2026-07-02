@@ -749,7 +749,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
       title={t("Menu điều hướng nhanh")}
       width="1160px"
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '70vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         {/* Search Input inside App Launcher */}
         <div style={{ 
           display: 'flex', 
@@ -856,7 +856,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
             : [];
 
           return (
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ paddingRight: '4px' }}>
               {launcherSearch.trim() ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <h5 style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>

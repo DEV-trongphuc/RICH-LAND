@@ -531,22 +531,21 @@ const AttendancePageInner = () => {
         </div>
 
         {/* View Mode Switcher */}
-        <div style={{ display: 'flex', backgroundColor: 'var(--color-bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+        <div style={{ display: 'flex', backgroundColor: 'var(--color-surface)', padding: '3px', borderRadius: '20px', border: '1px solid var(--color-border)' }}>
           <button
             onClick={() => setViewMode('list')}
             style={{
-              padding: '6px 12px',
+              padding: '6px 16px',
               fontSize: '0.75rem',
               fontWeight: 600,
-              borderRadius: '6px',
+              borderRadius: '20px',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
-              color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-muted)',
-              boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              backgroundColor: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
+              color: viewMode === 'list' ? '#ffffff' : 'var(--color-text-muted)',
               transition: 'all 0.2s'
             }}
           >
@@ -556,18 +555,17 @@ const AttendancePageInner = () => {
           <button
             onClick={() => setViewMode('calendar')}
             style={{
-              padding: '6px 12px',
+              padding: '6px 16px',
               fontSize: '0.75rem',
               fontWeight: 600,
-              borderRadius: '6px',
+              borderRadius: '20px',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: viewMode === 'calendar' ? 'var(--color-surface)' : 'transparent',
-              color: viewMode === 'calendar' ? 'var(--color-text)' : 'var(--color-text-muted)',
-              boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              backgroundColor: viewMode === 'calendar' ? 'var(--color-primary)' : 'transparent',
+              color: viewMode === 'calendar' ? '#ffffff' : 'var(--color-text-muted)',
               transition: 'all 0.2s'
             }}
           >
