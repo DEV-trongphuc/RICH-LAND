@@ -1298,25 +1298,60 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               <div className={styles.drawerBody}>
 
                 {/* Sidebar Tabs */}
-                <div className={styles.sidebarTabs}>
-                  {TABS.filter(tab => {
-                    if (currentUser?.role === 'sale') {
-                      return tab.id !== 'quotes' && tab.id !== 'expenses';
-                    }
-                    return true;
-                  }).map(tab => (
-                    <button
-                      key={tab.id}
-                      className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
-                      onClick={() => setActiveTab(tab.id)}
-                    >
-                      {tab.icon} {tab.label}
-                    </button>
-                  ))}
-                  <div style={{ marginTop: 'auto', padding: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center' }}>Enterprise CRM</p>
+                <div className={styles.sidebarTabs} style={{ gap: '0.25rem', overflowY: 'auto' }}>
+                  {(() => {
+                    const tabGroups = [
+                      {
+                        title: 'Thông tin & Nhật ký',
+                        tabs: ['info', 'tags', 'scoring', 'notes', 'timeline']
+                      },
+                      {
+                        title: 'Giao dịch & Công việc',
+                        tabs: ['cooperation', 'tasks', 'docs', 'deals', 'quotes', 'invoices']
+                      },
+                      {
+                        title: 'Nghiệp vụ & Hỗ trợ',
+                        tabs: ['ttl1', 'expenses', 'tickets']
+                      }
+                    ];
+
+                    return tabGroups.map((group, groupIdx) => {
+                      const allowedTabs = TABS.filter(tab => group.tabs.includes(tab.id) && (currentUser?.role !== 'sale' || (tab.id !== 'quotes' && tab.id !== 'expenses')));
+                      if (allowedTabs.length === 0) return null;
+
+                      return (
+                        <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
+                          <div style={{ 
+                            padding: '0.375rem 0.5rem', 
+                            fontSize: '0.65rem', 
+                            fontWeight: 800, 
+                            color: 'var(--color-text-muted)', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '0.08em',
+                            opacity: 0.8
+                          }}>
+                            {group.title}
+                          </div>
+                          {allowedTabs.map(tab => (
+                            <button
+                              key={tab.id}
+                              className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
+                              onClick={() => setActiveTab(tab.id)}
+                              style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
+                            >
+                              {tab.icon} {tab.label}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    });
+                  })()}
+                  <div style={{ marginTop: 'auto', padding: '1rem 0 0 0', borderTop: '1px solid var(--color-border)' }}>
+                    <p style={{ fontSize: '0.725rem', fontWeight: 600, color: 'var(--color-text-muted)', textAlign: 'center' }}>Enterprise CRM</p>
                   </div>
                 </div>
+
+
 
                 {/* Content Area */}
                 <div className={styles.contentArea}>

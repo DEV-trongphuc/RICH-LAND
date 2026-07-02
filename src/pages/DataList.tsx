@@ -1958,10 +1958,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         <td style={{ padding: '12px 16px' }}>
                           {lead.takers && lead.takers.length > 0 ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              {lead.takers.map((t: any) => (
+                              {lead.takers.map((tk: any) => (
                                 <div 
-                                  key={t.id} 
-                                  title={t.name}
+                                  key={tk.id} 
+                                  title={tk.name}
                                   style={{
                                     width: '26px', height: '26px', borderRadius: '50%',
                                     background: 'var(--color-primary-light)',
@@ -1971,10 +1971,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                     overflow: 'hidden', cursor: 'help'
                                   }}
                                 >
-                                  {t.avatar ? (
-                                    <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  {tk.avatar ? (
+                                    <img src={tk.avatar} alt={tk.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                   ) : (
-                                    t.name.charAt(0).toUpperCase()
+                                    tk.name.charAt(0).toUpperCase()
                                   )}
                                 </div>
                               ))}
@@ -1983,6 +1983,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{t('Chưa ai nhận')}</span>
                           )}
                         </td>
+
                         <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{lead.released_to_kho_at || '-'}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                           {isAdmin ? (
@@ -2211,8 +2212,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
                             lead.takers && lead.takers.length > 0 ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {lead.takers.map((t: any) => (
-                                  <Avatar key={t.id} src={t.avatar} name={t.name} size={20} title={t.name} />
+                                {lead.takers.map((tk: any) => (
+                                  <Avatar key={tk.id} src={tk.avatar} name={tk.name} size={20} title={tk.name} />
                                 ))}
                               </div>
                             ) : (
@@ -2351,28 +2352,25 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             </div>
                           ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
                             lead.takers && lead.takers.length > 0 ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                {lead.takers.map((t: any) => (
-                                  <div 
-                                    key={t.id} 
-                                    title={t.name}
-                                    style={{
-                                      width: '28px', height: '28px', borderRadius: '50%',
-                                      background: 'var(--color-primary-light)',
-                                      color: 'var(--color-primary)',
-                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                      fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
-                                      overflow: 'hidden', cursor: 'help'
-                                    }}
-                                  >
-                                    {t.avatar ? (
-                                      <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                      t.name.charAt(0).toUpperCase()
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
+                              lead.takers.length === 1 ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Avatar name={lead.takers[0].name} src={lead.takers[0].avatar} size={28} title={`${lead.takers[0].name} (Nhận lúc: ${lead.takers[0].claimed_at})`} />
+                                  <span style={{ fontSize: '0.875rem', fontWeight: 550, color: 'var(--color-text)' }}>{lead.takers[0].name}</span>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {lead.takers.map((tk: any) => (
+                                    <Avatar 
+                                      key={tk.id} 
+                                      name={tk.name} 
+                                      src={tk.avatar} 
+                                      size={28} 
+                                      title={`${tk.name} (Nhận lúc: ${tk.claimed_at})`} 
+                                      style={{ border: '2px solid var(--color-surface)', cursor: 'help' }}
+                                    />
+                                  ))}
+                                </div>
+                              )
                             ) : (
                               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>
                             )
@@ -3710,21 +3708,21 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
                     {selectedLead.takers && selectedLead.takers.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {selectedLead.takers.map((t: any, idx: number) => (
-                          <div key={t.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                            <Avatar src={t.avatar} name={t.name} size={32} />
+                        {selectedLead.takers.map((tk: any, idx: number) => (
+                          <div key={tk.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                            <Avatar src={tk.avatar} name={tk.name} size={32} />
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t.name}</div>
-                              {t.claimed_at && (
+                              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{tk.name}</div>
+                              {tk.claimed_at && (
                                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
                                   <Clock size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                                  {t.claimed_at}
+                                  {tk.claimed_at}
                                 </div>
                               )}
                             </div>
                             {(user?.role === 'admin' || user?.role === 'superadmin') && (
                               <button
-                                onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, t.id, t.name)}
+                                onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, tk.id, tk.name)}
                                 disabled={isDeletingClaim}
                                 title={t('Xóa lượt nhận của Sale')}
                                 style={{

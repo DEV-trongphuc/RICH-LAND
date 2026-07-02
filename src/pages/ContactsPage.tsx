@@ -448,55 +448,57 @@ export const ContactsPage: React.FC = () => {
       ) : (
         <div className="card" style={{ overflow: 'visible' }}>
           {viewMode === 'list' ? (
-            <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 0 var(--color-border)' }}>
+
+            <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', boxShadow: '0 1px 0 var(--color-border)' }}>
                   <tr>
-                    <th style={{ width: 44, padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border)' }}>
+                    <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
                       <CustomCheckbox 
                         checked={selected.size === paged.length && paged.length > 0} 
                         onChange={toggleAll} 
                       />
                     </th>
-                    {columns.find(c => c.id === 'name')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>}
+                    {columns.find(c => c.id === 'name')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>}
                     {(columns.find(c => c.id === 'email')?.visible || columns.find(c => c.id === 'phone')?.visible) && (
-                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên lạc</th>
                     )}
-                    {columns.find(c => c.id === 'score')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Score</th>}
+                    {columns.find(c => c.id === 'score')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Score</th>}
                     {columns.find(c => c.id === 'company')?.visible && !columns.find(c => c.id === 'name')?.visible && (
-                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Công ty</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Công ty</th>
                     )}
-                    {columns.find(c => c.id === 'tags')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Tags</th>}
-                    {columns.find(c => c.id === 'status')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
+                    {columns.find(c => c.id === 'tags')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Tags</th>}
+                    {columns.find(c => c.id === 'status')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
                     {columns.find(c => c.id === 'contact')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
-                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>
                     )}
-                    {columns.find(c => c.id === 'deal')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Deal đang mở</th>}
-                    {columns.find(c => c.id === 'owner')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Sale phụ trách</th>}
+                    {columns.find(c => c.id === 'deal')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Deal đang mở</th>}
+                    {columns.find(c => c.id === 'owner')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Sale phụ trách</th>}
                     {columns.find(c => c.id === 'updated_at')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
-                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
+                      <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
                     )}
-                    {columns.find(c => c.id === 'created_at')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
-                    <th style={{ width: 120, borderBottom: '1px solid var(--color-border)' }}></th>
+                    {columns.find(c => c.id === 'created_at')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
+                    <th style={{ width: 120, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}></th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {paged.map(c => {
                     const days = AGO_DAYS(c.last_contact);
                     const fullName = `${c.first_name} ${c.last_name}`;
                     return (
                       <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                         style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                         style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
                          className="table-row-hover"
                          onClick={() => setProfileContact(c)}>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
+                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
                           <CustomCheckbox 
                             checked={selected.has(c.id)} 
                             onChange={() => toggleSelect(c.id)} 
                           />
                         </td>
                         {columns.find(col => col.id === 'name')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <Avatar name={fullName} size={36} />
                               <div>
@@ -511,7 +513,7 @@ export const ContactsPage: React.FC = () => {
                           </td>
                         )}
                         {(columns.find(col => col.id === 'email')?.visible || columns.find(col => col.id === 'phone')?.visible) && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                               {columns.find(col => col.id === 'phone')?.visible && c.phone ? (
                                 <PhoneLink phone={c.phone} style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} />
@@ -523,20 +525,20 @@ export const ContactsPage: React.FC = () => {
                           </td>
                         )}
                         {columns.find(col => col.id === 'score')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span style={{ fontWeight: 700, fontSize: '0.875rem', color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
                               {c.score}
                             </span>
                           </td>
                         )}
                         {columns.find(col => col.id === 'company')?.visible && !columns.find(col => col.id === 'name')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>{c.company_name || '—'}</p>
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{c.job_title || ''}</p>
                           </td>
                         )}
                         {columns.find(col => col.id === 'tags')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', maxWidth: 160, borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', maxWidth: 160, borderBottom: '1px solid var(--color-border)' }}>
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                               {(c.tags || []).slice(0, 2).map((t: string) => (
                                 <span key={t} style={{ padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
@@ -550,26 +552,26 @@ export const ContactsPage: React.FC = () => {
                           </td>
                         )}
                         {columns.find(col => col.id === 'status')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
                           </td>
                         )}
                         {columns.find(col => col.id === 'contact')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span style={{ fontSize: '0.8125rem', color: days > 30 ? 'var(--color-danger)' : days > 14 ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: days > 30 ? 700 : 400 }}>
                               {c.last_contact ? (days === 0 ? 'Hôm nay' : days === 1 ? 'Hôm qua' : `${days} ngày trước`) : '—'}
                             </span>
                           </td>
                         )}
                         {columns.find(col => col.id === 'deal')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: (c.open_deal_value || 0) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
                               {FMT_VND(c.open_deal_value || 0)}
                             </span>
                           </td>
                         )}
                         {columns.find(col => col.id === 'owner')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             {c.owner_name ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                                 <Avatar name={c.owner_name} size={32} />
@@ -596,16 +598,16 @@ export const ContactsPage: React.FC = () => {
                           </td>
                         )}
                         {columns.find(col => col.id === 'updated_at')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}</p>
                           </td>
                         )}
                         {columns.find(col => col.id === 'created_at')?.visible && (
-                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '—'}</p>
                           </td>
                         )}
-                        <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
+                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', opacity: 0 }} className="row-actions">
                             <button className="btn ghost sm" title="Xem hồ sơ" onClick={() => setProfileContact(c)}><Eye size={13} /></button>
                             {!isSale && (
