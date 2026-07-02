@@ -455,7 +455,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
   const [dealForm, setDealForm] = useState({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
-  const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium', due_date: '', description: '' });
+  const [taskForm, setTaskForm] = useState(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      title: '',
+      priority: 'medium',
+      due_date: today,
+      description: '',
+      link: '',
+      user_id: String(contact?.owner_id || currentUser?.id || '')
+    };
+  });
+
 
   const [docs, setDocs] = useState<any[]>([]);
   const [deals, setDeals] = useState<any[]>([]);
@@ -841,6 +852,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const handleAddTask = async () => {
     if (!taskForm.title.trim() || isSubmitting) return;
     setIsSubmitting(true);
+    let bodyText = taskForm.description.trim();
+    if (taskForm.link && taskForm.link.trim()) {
+      bodyText += (bodyText ? "\n\n" : "") + `Tài liệu/Link đính kèm: ${taskForm.link.trim()}`;
+    }
     try {
       await api.post('/activities', {
         related_type: 'contact',
@@ -849,10 +864,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         type: 'task',
         priority: taskForm.priority,
         due_date: taskForm.due_date,
+        user_id: taskForm.user_id ? Number(taskForm.user_id) : null,
+        body: bodyText || null,
         status: 'planned'
       });
       setShowTaskModal(false);
-      setTaskForm({ title: '', priority: 'medium', due_date: '', description: '' });
+      setTaskForm({ 
+        title: '', 
+        priority: 'medium', 
+        due_date: new Date().toISOString().slice(0, 10), 
+        description: '', 
+        link: '', 
+        user_id: String(contact?.owner_id || currentUser?.id || '') 
+      });
       fetchData();
       addToast('Đã thêm công việc mới', 'success');
     } catch (e: any) {
@@ -861,6 +885,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setIsSubmitting(false);
     }
   };
+
+
 
   const deleteActivity = async (id: number) => {
     showConfirm({
@@ -2035,7 +2061,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group1}
-                              onChange={(val) => setTtl1Data(p => ({ ...p, group1: val }))}
+                              onChange={(e) => setTtl1Data(p => ({ ...p, group1: e.target.checked }))}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 1: Nhân khẩu học (Demographics)</p>
@@ -2047,7 +2073,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group2}
-                              onChange={(val) => setTtl1Data(p => ({ ...p, group2: val }))}
+                              onChange={(e) => setTtl1Data(p => ({ ...p, group2: e.target.checked }))}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 2: Khả năng tài chính (Financial Readiness)</p>
@@ -2059,7 +2085,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group3}
-                              onChange={(val) => setTtl1Data(p => ({ ...p, group3: val }))}
+                              onChange={(e) => setTtl1Data(p => ({ ...p, group3: e.target.checked }))}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 3: Mức độ cấp thiết (Urgency)</p>
@@ -2071,7 +2097,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group4}
-                              onChange={(val) => setTtl1Data(p => ({ ...p, group4: val }))}
+                              onChange={(e) => setTtl1Data(p => ({ ...p, group4: e.target.checked }))}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 4: Mức độ phù hợp với dự án (Project Fit)</p>
@@ -2083,13 +2109,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group5}
-                              onChange={(val) => setTtl1Data(p => ({ ...p, group5: val }))}
+                              onChange={(e) => setTtl1Data(p => ({ ...p, group5: e.target.checked }))}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 5: Vai trò quyết định (Decision Role)</p>
                               <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Xác định người đứng tên cọc/hợp đồng hoặc có vai trò quyết định mua hàng cuối cùng.</p>
                             </div>
                           </label>
+                          
+
 
                         </div>
 
@@ -2182,8 +2210,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Công việc cần làm</h3>
-                        <button className="btn primary sm" onClick={() => setShowTaskModal(true)}><Plus size={14} /> Thêm công việc</button>
+                        <button className="btn primary sm" onClick={() => {
+                          const today = new Date().toISOString().slice(0, 10);
+                          setTaskForm({
+                            title: '',
+                            priority: 'medium',
+                            due_date: today,
+                            description: '',
+                            link: '',
+                            user_id: String(contact?.owner_id || currentUser?.id || '')
+                          });
+                          setShowTaskModal(true);
+                        }}><Plus size={14} /> Thêm công việc</button>
                       </div>
+
                       {tasks.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <CheckSquare size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
@@ -2248,7 +2288,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Ghi chú nội bộ</h3>
                       </div>
-                      <div className="card-panel" style={{ marginBottom: '1.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem' }}>
+                      <div className="card-panel animate-fade" style={{ marginBottom: '1.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}>
                         {/* 1. Channel & Type Row */}
                         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                           {/* Channel Select */}
@@ -2347,16 +2387,45 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           )}
 
-                          <div style={{ flex: '1 0 200px' }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Tài liệu đã gửi (Tùy chọn)</label>
-                            <input
-                              type="text"
-                              className="form-input"
-                              placeholder="Ví dụ: Bảng giá block A, Sơ đồ căn..."
-                              value={noteDocsSent}
-                              onChange={e => setNoteDocsSent(e.target.value)}
-                              style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                            />
+                          <div style={{ flex: '1 0 100%', display: 'flex', flexDirection: 'column' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Tài liệu đã gửi (Chọn tài liệu)</label>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              {[
+                                'Bảng giá',
+                                'Sơ đồ mặt bằng',
+                                'Pháp lý dự án',
+                                'Chính sách bán hàng',
+                                'Brochure dự án',
+                                'Thiết kế chi tiết'
+                              ].map(doc => {
+                                const selectedDocs = noteDocsSent ? noteDocsSent.split(', ').map(d => d.trim()) : [];
+                                const isSelected = selectedDocs.includes(doc);
+                                return (
+                                  <button
+                                    key={doc}
+                                    type="button"
+                                    onClick={() => {
+                                      let nextDocs;
+                                      if (isSelected) {
+                                        nextDocs = selectedDocs.filter(d => d !== doc);
+                                      } else {
+                                        nextDocs = [...selectedDocs, doc];
+                                      }
+                                      setNoteDocsSent(nextDocs.join(', '));
+                                    }}
+                                    style={{
+                                      padding: '6px 14px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                      background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-bg)',
+                                      color: isSelected ? '#3b82f6' : 'var(--color-text-muted)',
+                                      border: `1px solid ${isSelected ? '#3b82f6' : 'var(--color-border-light)'}`,
+                                      boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                                    }}
+                                  >
+                                    📁 {doc}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
 
@@ -2391,11 +2460,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                         </div>
 
-                        {/* 3.5. Toa tĩnh gợi ý hành động */}
+                        {/* Gợi ý hành động dựa trên vướng mắc */}
                         {noteObstacle && (
                           <div style={{
-                            background: 'var(--color-bg-light)',
-                            border: '1px solid var(--color-border)',
+                            background: '#fef08a1c',
+                            borderLeft: '4px solid #eab308',
                             borderRadius: '8px',
                             padding: '10px 12px',
                             marginBottom: '1rem',
@@ -2438,15 +2507,34 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {notes.map(n => (
-                          <div key={n.id} className="card-panel" style={{ padding: '1.25rem' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                              <div style={{ flex: 1 }}>
-                                <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
-                                  Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
-                                </p>
-                              </div>
+                        {notes.map(n => {
+                          const isCall = n.text.includes('[Nồi Đồng') || n.text.includes('(Call)');
+                          const isMeet = n.text.includes('[Nồi Áp Suất') || n.text.includes('(Meet)');
+                          const isText = n.text.includes('[Nồi Đất') || n.text.includes('(Text');
+
+                          let cardBg = 'var(--color-surface)';
+                          let leftBorder = '1px solid var(--color-border)';
+                          if (isCall) {
+                            cardBg = '#f5f3ff'; // light purple
+                            leftBorder = '4px solid #8b5cf6';
+                          } else if (isMeet) {
+                            cardBg = '#fffaf2'; // light amber/orange
+                            leftBorder = '4px solid #f59e0b';
+                          } else if (isText) {
+                            cardBg = '#f0f7ff'; // light blue
+                            leftBorder = '4px solid #3b82f6';
+                          }
+
+                          return (
+                            <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid var(--color-border)', borderLeft: leftBorder, borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ flex: 1 }}>
+                                  <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem' }}>
+                                    Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
+                                  </p>
+                                </div>
+
                               {canDeleteNote(n.user_id) && (
                                 <button
                                   className="btn-icon sm text-danger"
@@ -2475,7 +2563,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               )}
                             </div>
                           </div>
-                        ))}
+                        );
+                      })}
+
                       </div>
                     </div>
                   )}
@@ -3033,17 +3123,46 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <CheckSquare size={20} />
                   </div>
                   <div>
-                    <h3 style={{ fontWeight: 800 }}>Thêm công việc</h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Giao việc cho: <strong>{fullName}</strong></p>
+                    <h3 style={{ fontWeight: 800 }}>Thêm công việc mới</h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Liên quan đến khách hàng: <strong>{fullName}</strong></p>
                   </div>
                 </div>
                 <button className="btn-icon sm" onClick={() => setShowTaskModal(false)}><X size={18} /></button>
               </div>
               <div className="modal-body">
-                <div className="form-group">
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label">Tên công việc *</label>
                   <input className="form-input" placeholder="VD: Gửi báo giá, Demo tính năng..." value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} autoFocus />
                 </div>
+                
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label">Người thực hiện</label>
+                  <CustomSelect
+                    options={[
+                      { value: '', label: 'Chưa giao cho ai' },
+                      ...users.map(u => ({ value: String(u.id), label: `${u.full_name} (${u.role === 'admin' ? 'Admin' : u.role === 'sales' ? 'Sales' : u.role})` }))
+                    ]}
+                    value={taskForm.user_id}
+                    onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label">Tài liệu hoặc Link đính kèm (Tùy chọn)</label>
+                  <input className="form-input" placeholder="Nhập link tài liệu hoặc link đính kèm..." value={taskForm.link || ''} onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label">Mô tả chi tiết công việc</label>
+                  <textarea 
+                    className="form-input" 
+                    placeholder="Nhập ghi chú hoặc mô tả chi tiết công việc..." 
+                    value={taskForm.description} 
+                    onChange={e => setTaskForm({ ...taskForm, description: e.target.value })} 
+                    style={{ minHeight: 80, resize: 'vertical' }}
+                  />
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Mức độ ưu tiên</label>
@@ -3065,6 +3184,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
               <div className="modal-footer">
                 <button className="btn outline" onClick={() => setShowTaskModal(false)} disabled={isSubmitting}>Hủy</button>
+
                 <button className="btn primary" onClick={handleAddTask} disabled={isSubmitting}>
                   {isSubmitting ? 'Đang lưu...' : 'Lưu công việc'}
                 </button>

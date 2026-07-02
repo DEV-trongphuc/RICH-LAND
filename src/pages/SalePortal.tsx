@@ -8,8 +8,9 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare
 } from 'lucide-react';
+
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import {
@@ -229,6 +230,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [endDate, setEndDate] = useState('');
   const [showCustomDate, setShowCustomDate] = useState(false);
   const [flowViewMode, setFlowViewMode] = useState<'day' | 'hour'>('day');
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    priority: 'medium',
+    due_date: new Date().toISOString().slice(0, 10),
+    description: '',
+    link: '',
+    related_id: ''
+  });
+
   const [currentPage, setCurrentPage] = useState(1);
 
   // Authentication states
@@ -495,10 +506,41 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     return () => clearInterval(intervalId);
   }, [user, theme]);
 
+  const [portalTasks, setPortalTasks] = useState<any[]>([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+
+  const fetchPortalTasks = async () => {
+    if (!token) return;
+    setLoadingTasks(true);
+    try {
+      const res = await api.get('/activities?type=task&status=planned&limit=100');
+      if (res.data && res.data.items) {
+        setPortalTasks(res.data.items);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTasks(false);
+    }
+  };
+
+  const handleToggleTaskStatus = async (taskId: number) => {
+    try {
+      await api.put(`/activities/${taskId}`, { status: 'done' });
+      toast.success(t('Đã hoàn thành công việc'));
+      fetchPortalTasks();
+    } catch (e) {
+      toast.error(t('Lỗi khi cập nhật trạng thái công việc'));
+    }
+  };
+
   // Fetch portal data when token is valid
   const loadPortalData = async () => {
     if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
     setLoading(true);
+    fetchPortalTasks();
+
+
     loadCheckInStatus();
     loadNightShiftStatus();
     try {
@@ -951,6 +993,48 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
+  const [submittingTask, setSubmittingTask] = useState(false);
+
+  const handleCreatePortalTask = async () => {
+    if (!taskForm.title.trim()) {
+      toast.error(t('Vui lòng nhập tên công việc.'));
+      return;
+    }
+    setSubmittingTask(true);
+    let bodyText = taskForm.description.trim();
+    if (taskForm.link && taskForm.link.trim()) {
+      bodyText += (bodyText ? "\n\n" : "") + `Tài liệu/Link đính kèm: ${taskForm.link.trim()}`;
+    }
+    try {
+      await api.post('/activities', {
+        subject: taskForm.title,
+        type: 'task',
+        priority: taskForm.priority,
+        due_date: taskForm.due_date,
+        related_type: taskForm.related_id ? 'contact' : null,
+        related_id: taskForm.related_id ? Number(taskForm.related_id) : null,
+        body: bodyText || null,
+        status: 'planned'
+      });
+      setShowTaskModal(false);
+      setTaskForm({
+        title: '',
+        priority: 'medium',
+        due_date: new Date().toISOString().slice(0, 10),
+        description: '',
+        link: '',
+        related_id: ''
+      });
+      fetchPortalTasks();
+      toast.success(t('Đã tạo công việc mới'));
+    } catch (e) {
+      toast.error(t('Lỗi khi tạo công việc'));
+    } finally {
+      setSubmittingTask(false);
+    }
+  };
+
+
   const [savingLeave, setSavingLeave] = useState(false);
   const handleAddLeave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1017,7 +1101,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   useEffect(() => {
     loadPortalData();
+    fetchPortalTasks();
   }, [token, user, roundId, dateMode, saleIdFilter, search, startDate, endDate]);
+
+
 
   useEffect(() => {
     const params = new URLSearchParams(loc.search);
@@ -1771,7 +1858,107 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         </div>
 
+        {/* Row 1.5: My Tasks (Công việc cần làm) */}
+        <div className="card animate-fade" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckSquare size={18} color="var(--color-primary)" />
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                {t('CÔNG VIỆC CẦN LÀM')}
+              </h3>
+            </div>
+            <button className="btn primary sm" onClick={() => {
+              setTaskForm({
+                title: '',
+                priority: 'medium',
+                due_date: new Date().toISOString().slice(0, 10),
+                description: '',
+                link: '',
+                related_id: ''
+              });
+              setShowTaskModal(true);
+            }}>
+              <Plus size={14} /> {t('Tạo công việc')}
+            </button>
+          </div>
+
+          {loadingTasks ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}><RefreshCw className="spin" /> {t('Đang tải công việc...')}</div>
+          ) : portalTasks.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+              {t('Tuyệt vời! Bạn không có công việc nào chưa hoàn thành hôm nay.')}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+              {portalTasks.map(task => {
+                const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
+                const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
+                let dateBadgeColor = 'var(--color-text-muted)';
+                let dateBadgeBg = 'var(--color-bg)';
+                if (isOverdue) {
+                  dateBadgeColor = 'var(--color-danger)';
+                  dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
+                } else if (isToday) {
+                  dateBadgeColor = 'var(--color-warning)';
+                  dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
+                }
+
+                return (
+                  <div key={task.id} style={{
+                    padding: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px', display: 'flex', gap: '1rem', alignItems: 'flex-start',
+                    boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
+                  }}
+                    className="hover-lift"
+                  >
+                    <button
+                      onClick={() => handleToggleTaskStatus(task.id)}
+                      style={{
+                        width: 20, height: 20, borderRadius: '6px', border: '2px solid var(--color-border)',
+                        background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        marginTop: 2, cursor: 'pointer', color: 'var(--color-primary)'
+                      }}
+                      title={t('Đánh dấu hoàn thành')}
+                    >
+                      <CheckSquare size={12} style={{ opacity: 0.3 }} />
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: 4 }}>
+                        {task.subject}
+                      </div>
+                      {task.body && (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: 8, whiteSpace: 'pre-wrap' }}>
+                          {task.body}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {task.due_date && (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg }}>
+                            📅 {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
+                          </span>
+                        )}
+                        {task.related_type === 'contact' && task.related_id && (
+                          <button
+                            onClick={() => handleOpenContactProfile(Number(task.related_id))}
+                            style={{
+                              fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
+                              color: 'var(--color-primary)', background: 'var(--color-primary-light)', border: 'none', cursor: 'pointer'
+                            }}
+                          >
+                            👤 {task.contact_name || t('Khách hàng')}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Row 2: Round distribution card & Source Ratio PieChart */}
+
         <div className="responsive-grid-2" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
           {/* Card 1: Tỷ lệ theo Vòng Phân Bổ */}
           <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
@@ -5481,6 +5668,96 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           loadPortalData();
         }}
       />
+
+      <CustomModal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        title={t('Tạo công việc cần làm')}
+      >
+        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="form-group">
+            <label className="form-label">{t('Tên công việc *')}</label>
+            <input
+              className="form-input"
+              placeholder={t('VD: Gọi điện tư vấn, Gửi bảng giá...')}
+              value={taskForm.title}
+              onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
+              autoFocus
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">{t('Khách hàng liên quan (Tùy chọn)')}</label>
+            <CustomSelect
+              options={[
+                { value: '', label: t('Không chọn khách hàng') },
+                ...(data.leads || []).map((l: any) => ({
+                  value: String(l.contact_id || ''),
+                  label: `${l.lead_name || t('Không tên')} (${l.phone || ''})`
+                }))
+              ]}
+              value={taskForm.related_id}
+              onChange={val => setTaskForm({ ...taskForm, related_id: val.toString() })}
+              width="100%"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">{t('Tài liệu hoặc Link đính kèm (Tùy chọn)')}</label>
+            <input
+              className="form-input"
+              placeholder={t('Link tài liệu hoặc ghi chú nhanh...')}
+              value={taskForm.link || ''}
+              onChange={e => setTaskForm({ ...taskForm, link: e.target.value })}
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">{t('Mô tả chi tiết công việc')}</label>
+            <textarea
+              className="form-input"
+              placeholder={t('Mô tả chi tiết nội dung cần làm...')}
+              value={taskForm.description}
+              onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
+              style={{ minHeight: 80, resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">{t('Mức độ ưu tiên')}</label>
+              <CustomSelect
+                options={[
+                  { value: 'low', label: t('Thấp') },
+                  { value: 'medium', label: t('Trung bình') },
+                  { value: 'high', label: t('Cao') }
+                ]}
+                value={taskForm.priority}
+                onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
+                width="100%"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('Hạn hoàn thành')}</label>
+              <input
+                className="form-input"
+                type="date"
+                value={taskForm.due_date}
+                onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '0.5rem' }}>
+            <button className="btn outline" onClick={() => setShowTaskModal(false)}>{t('Hủy')}</button>
+            <button className="btn primary" onClick={handleCreatePortalTask} disabled={submittingTask}>
+              {submittingTask ? t('Đang lưu...') : t('Tạo công việc')}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
+
+
 
       <style>{`
         @keyframes spin {

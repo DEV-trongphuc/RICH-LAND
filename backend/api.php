@@ -44,11 +44,16 @@ require_once 'env.php';
 require_once 'config.php';
 require_once 'db_connect.php';
 
-
-
 try {
     $conn->query("ALTER TABLE consultants ADD COLUMN dob DATE NULL");
 } catch (Exception $e) {}
+try {
+    $conn->query("ALTER TABLE activities ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL AFTER updated_at");
+} catch (Exception $e) {}
+
+
+
+
 try {
     $conn->query("ALTER TABLE consultants ADD COLUMN gender VARCHAR(20) NULL");
 } catch (Exception $e) {}
