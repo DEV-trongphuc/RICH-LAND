@@ -1078,6 +1078,20 @@ export const QuickAddLeadModal = () => {
     return leads;
   };
 
+  const downloadSampleCSV = () => {
+    const headers = 'Họ & Tên,Số điện thoại,Email,Nguồn,Nhu cầu,Ghi chú\n';
+    const row = 'Nguyễn Văn A,0912345678,a@gmail.com,Facebook,Đất nền,Cần gọi lại buổi chiều\n';
+    const csvContent = '\uFEFF' + headers + row;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'rich_land_mau_nhap_lieu.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleTextBulkParse = () => {
     const parsed = parseBulkData(bulkInputText);
     if (parsed.length === 0) {
@@ -1565,6 +1579,64 @@ export const QuickAddLeadModal = () => {
               >
                 {t('Tải file CSV/TXT')}
               </button>
+            </div>
+
+            {/* Hướng dẫn định dạng & Tải file mẫu */}
+            <div style={{
+              background: 'var(--color-bg-light)', 
+              border: '1px solid var(--color-border)', 
+              borderRadius: '8px', 
+              padding: '0.75rem', 
+              fontSize: '0.75rem',
+              color: 'var(--color-text-muted)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
+                  💡 {t('Hướng dẫn định dạng cột dữ liệu')}
+                </span>
+                <button
+                  type="button"
+                  onClick={downloadSampleCSV}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#e63946',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    textDecoration: 'underline',
+                    padding: 0
+                  }}
+                >
+                  📥 {t('Tải file mẫu (.csv)')}
+                </button>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px', textAlign: 'left', minWidth: '400px' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', fontWeight: 600 }}>
+                      <th style={{ padding: '4px' }}>{t('Họ & Tên')}</th>
+                      <th style={{ padding: '4px' }}>{t('SĐT')}</th>
+                      <th style={{ padding: '4px' }}>{t('Email')}</th>
+                      <th style={{ padding: '4px' }}>{t('Nguồn')}</th>
+                      <th style={{ padding: '4px' }}>{t('Nhu cầu')}</th>
+                      <th style={{ padding: '4px' }}>{t('Ghi chú')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr style={{ opacity: 0.8 }}>
+                      <td style={{ padding: '4px' }}>Nguyễn Văn A</td>
+                      <td style={{ padding: '4px' }}>0912345678</td>
+                      <td style={{ padding: '4px' }}>a@gmail.com</td>
+                      <td style={{ padding: '4px' }}>Facebook</td>
+                      <td style={{ padding: '4px' }}>Đất nền</td>
+                      <td style={{ padding: '4px' }}>Cần gọi lại buổi chiều</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {bulkSubtab === 'text' ? (
