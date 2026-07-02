@@ -1,5 +1,4 @@
 const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : '/backend/api.php';
-import { processMockRequest } from './mockEngine';
 import { en, ja, zh } from './translations';
 
 function getTranslatedError(key: string, replacements?: Record<string, string | number>): string {
@@ -40,14 +39,6 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
   }
 
   const promise = (async () => {
-    if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
-      let payload;
-      if (options.body) {
-        try { payload = JSON.parse(options.body as string); } catch (e) {}
-      }
-      return processMockRequest(action, payload, options.method || 'GET');
-    }
-
     const token = localStorage.getItem('richland_token');
     
     const headers: Record<string, string> = {
@@ -145,14 +136,6 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
  * KHÔNG gửi token, KHÔNG redirect về /login khi lỗi
  */
 export async function fetchPublicAPI(action: string, options: RequestInit = {}) {
-  if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
-    let payload;
-    if (options.body) {
-      try { payload = JSON.parse(options.body as string); } catch (e) {}
-    }
-    return processMockRequest(action, payload);
-  }
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
