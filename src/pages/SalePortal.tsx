@@ -1087,6 +1087,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
+      case 'databank_claim': return <span className="badge success">{t('Kho chung')}</span>;
       case 'released_to_kho':
       case 'databank': {
         const cnt = takers && takers.length ? takers.length : 0;
@@ -1105,7 +1106,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const filteredLeads = data.leads.filter((lead: any) => {
     if (statusFilter !== 'all') {
       if (statusFilter === 'assigned') {
-        if (!['assigned', 'rule_6_month', 'pending_work_hours', 'fallback'].includes(lead.status) || lead.report_status) return false;
+        if (!['assigned', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim'].includes(lead.status) || lead.report_status) return false;
       } else if (statusFilter === 'compensation') {
         if (lead.status !== 'compensation' || lead.report_status) return false;
       } else if (statusFilter === 'reminder') {

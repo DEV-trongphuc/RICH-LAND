@@ -2094,7 +2094,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
                         {/* Status badge */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
+                          {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
                           {lead.status !== 'assigned' && lead.report_status === 'pending' && (
                             <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>
                               {t('Chờ duyệt')}
@@ -2154,7 +2154,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               <Avatar src="/imgs/angry_icon.jpg" name="Rich Land AI - Angry" size={20} />
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Angry</span>
                             </div>
-                          ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank') ? (
+                          ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
                             lead.takers && lead.takers.length > 0 ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 {lead.takers.map((t: any) => (
@@ -2258,7 +2258,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                            {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
+                            {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim') ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
                             {lead.status !== 'assigned' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                           </div>
                         </td>
@@ -2295,7 +2295,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
                               </div>
                             </div>
-                          ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank') ? (
+                          ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank_claim' || lead.status === 'databank') ? (
                             lead.takers && lead.takers.length > 0 ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 {lead.takers.map((t: any) => (
@@ -2614,7 +2614,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       </button>
                     )}
 
-                    {isAdmin && selectedLead.status !== 'databank' && selectedLead.status !== 'released_to_kho' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && !isAdminEditingLead && (
+                    {isAdmin && selectedLead.status !== 'databank' && selectedLead.status !== 'released_to_kho' && selectedLead.status !== 'databank_claim' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && !isAdminEditingLead && (
                       <button
                         onClick={() => handleReleaseToDatabank(selectedLead.lead_id || selectedLead.id)}
                         disabled={isReleasingLead}
@@ -2862,7 +2862,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
                     <div>
-                      {getStatusBadge((selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho') ? 'databank' : selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers)}
+                      {getStatusBadge((selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim') ? 'databank' : selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers)}
                     </div>
                   </div>
                 </div>
@@ -3681,7 +3681,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
 
                     {/* Tình trạng thông báo Zalo & Email */}
-                    {selectedLead.assigned_to_name !== '-' && selectedLead.assigned_to_name !== t('Chưa ai nhận') && selectedLead.status !== 'databank' && selectedLead.status !== 'released_to_kho' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && (
+                    {selectedLead.assigned_to_name !== '-' && selectedLead.assigned_to_name !== t('Chưa ai nhận') && selectedLead.status !== 'databank' && selectedLead.status !== 'released_to_kho' && selectedLead.status !== 'databank_claim' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && (
                       <div style={{
                         marginTop: '1rem',
                         paddingTop: '1rem',
@@ -3896,7 +3896,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
                   )}
                 </div>
-                ) : (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank') ? (
+                ) : (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank') ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>
                       {t('Danh sách Sale đã nhận')}

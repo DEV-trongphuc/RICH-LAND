@@ -1740,11 +1740,11 @@ switch ($action) {
         $endDate = $_GET['end_date'] ?? '';
 
         if ($isSale) {
-            $where = ["dl.assigned_to = ?", "dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback')"];
+            $where = ["dl.assigned_to = ?", "dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim')"];
             $params = [$saleId];
             $types = "i";
         } else {
-            $where = ["dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback')"];
+            $where = ["dl.status IN ('assigned', 'compensation', 'reminder', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim')"];
             $params = [];
             $types = "";
             if ($saleFilterId !== null) {
@@ -2321,7 +2321,7 @@ switch ($action) {
             $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
             $takers = [];
             if ($personId > 0) {
-                $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar 
+                $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
                            FROM contacts c
                            JOIN consultants cons ON c.owner_id = cons.id
                            WHERE c.person_id = ? AND c.deleted_at IS NULL";
@@ -13390,6 +13390,59 @@ switch ($action) {
         }
         break;
 
+    case 'delete_public_lead_claim':
+        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin'])) {
+            respond(403, null, 'Forbidden: Bạn không có quyền thực hiện hành động này.', false);
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+        $personId = (int) ($input['person_id'] ?? 0);
+        $saleId = (int) ($input['sale_id'] ?? 0);
+
+        if ($personId <= 0 || $saleId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'Tham số không hợp lệ']);
+            break;
+        }
+
+        $conn->begin_transaction();
+        try {
+            // Find lead_id associated with person_id
+            $stmtLead = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stmtLead->bind_param("i", $personId);
+            $stmtLead->execute();
+            $lRow = $stmtLead->get_result()->fetch_assoc();
+            $stmtLead->close();
+            $leadId = $lRow ? (int)$lRow['id'] : 0;
+
+            // Soft-delete the contact owned by the sale for this person
+            $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE person_id = ? AND owner_id = ? AND deleted_at IS NULL");
+            $stmtDel->bind_param("ii", $personId, $saleId);
+            $stmtDel->execute();
+            $affectedRows = $stmtDel->affected_rows;
+            $stmtDel->close();
+
+            if ($affectedRows === 0) {
+                throw new Exception("Không tìm thấy lượt nhận tương ứng của Sale này.");
+            }
+
+            // Log
+            if ($leadId > 0) {
+                logDistribution($conn, $leadId, $saleId, null, 'databank_claim_removed', 'Admin xóa lượt nhận của Sale', false);
+            }
+
+            $conn->commit();
+            
+            if ($leadId > 0) {
+                triggerTwoWaySync($conn, $leadId);
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Đã xóa lượt nhận của Sale thành công!']);
+        } catch (Exception $ex) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $ex->getMessage()]);
+        }
+        break;
+
     case 'claim_public_lead':
         if (!$decodedUser) {
             respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
@@ -13479,16 +13532,16 @@ switch ($action) {
                 break;
             }
 
-            // 6. Check Person Quota - Max 2 Sales can claim this Person per day
-            $stmtQPerson = $conn->prepare("SELECT COUNT(DISTINCT assigned_to) as cnt FROM distribution_logs WHERE lead_id IN (SELECT id FROM leads WHERE person_id = ?) AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            // 6. Check Person Quota - Max 2 active Sales can claim this Person
+            $stmtQPerson = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
             $stmtQPerson->bind_param("i", $personId);
             $stmtQPerson->execute();
-            $personClaimsToday = $stmtQPerson->get_result()->fetch_assoc()['cnt'] ?? 0;
+            $personClaims = (int)($stmtQPerson->get_result()->fetch_assoc()['cnt'] ?? 0);
             $stmtQPerson->close();
 
-            if ($personClaimsToday >= 2) {
+            if ($personClaims >= 2) {
                 $conn->rollback();
-                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã đạt giới hạn nhận tối đa của ngày hôm nay (tối đa 2 Sale nhận/ngày).']);
+                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã đạt giới hạn nhận tối đa (tối đa 2 Sale nhận).']);
                 break;
             }
 
@@ -13563,6 +13616,23 @@ switch ($action) {
                     $row['phone'] = maskPhone($row['phone']);
                     $row['email'] = maskEmail($row['email']);
                 }
+                $personId = (int)$row['id'];
+                $takers = [];
+                if ($personId > 0) {
+                    $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+                               FROM contacts c
+                               JOIN consultants cons ON c.owner_id = cons.id
+                               WHERE c.person_id = ? AND c.deleted_at IS NULL";
+                    $tStmt = $conn->prepare($tQuery);
+                    $tStmt->bind_param("i", $personId);
+                    $tStmt->execute();
+                    $tRes = $tStmt->get_result();
+                    while ($tRow = $tRes->fetch_assoc()) {
+                        $takers[] = $tRow;
+                    }
+                    $tStmt->close();
+                }
+                $row['takers'] = $takers;
                 $publicLeads[] = $row;
             }
         }
