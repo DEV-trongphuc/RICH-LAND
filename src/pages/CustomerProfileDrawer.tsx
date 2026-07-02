@@ -348,9 +348,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopLoading(true);
     setCoopError('');
     try {
+      const usersEndpoint = currentUser?.role === 'sale' ? 'get_consultants' : 'users';
       const [resSlips, resUsers] = await Promise.all([
         fetchAPI('cooperation-slips'),
-        fetchAPI('users')
+        fetchAPI(usersEndpoint)
       ]);
       
       if (resSlips.success) {
@@ -365,8 +366,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         }
       }
       if (resUsers.success) {
-        const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
-        setSalesUsers(sales);
+        const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale' || currentUser?.role === 'sale');
+        const mapped = sales.map((u: any) => ({
+          ...u,
+          full_name: u.full_name || u.name,
+          role: u.role || 'sales'
+        }));
+        setSalesUsers(mapped);
       }
     } catch (e: any) {
       setCoopError(e.message || 'Lỗi tải dữ liệu hợp tác');
