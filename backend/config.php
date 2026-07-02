@@ -22,3 +22,6 @@ if (!defined('UPLOAD_DIR')) define('UPLOAD_DIR', __DIR__ . '/uploads');
 
 // Environment
 if (!defined('APP_ENV')) define('APP_ENV', 'development');
+
+// Backend Version (auto-increments on backend edits)
+if (!defined('BACKEND_VERSION')) define('BACKEND_VERSION', '1.5.3.1');

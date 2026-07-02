@@ -30,7 +30,7 @@ const maskPhone = (phone: string) => {
   return `${start}***${end}`;
 };
 
-export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedClick: () => void; onMenuClick?: () => void }) => {
+export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivityFeedClick: () => void; onMenuClick?: () => void; version?: string }) => {
   const isDemo = localStorage.getItem('RICH LAND_DEMO_MODE') === 'true';
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -403,8 +403,9 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           marginRight: 4,
           userSelect: 'none'
         }}>
-          v1.5.3
+          v{version || '1.5.3'}
         </div>
+
 
         {/* Live Activity Feed Button */}
         <button 

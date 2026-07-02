@@ -101,6 +101,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [consultants, setConsultants] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [hasFetchedUsers, setHasFetchedUsers] = useState<boolean>(false);
+  const [backendVersion, setBackendVersion] = useState<string>(() => {
+    return localStorage.getItem('backend_version') || '1.5.3';
+  });
+
 
   const fetchUsersForLogs = async () => {
     if (hasFetchedUsers) return;
@@ -216,6 +220,20 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       window.removeEventListener('open-activity-feed', handleOpenFeed);
     };
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchAPI('get_settings')
+        .then(res => {
+          if (res && res.success && res.data && res.data.backend_version) {
+            setBackendVersion(res.data.backend_version);
+            localStorage.setItem('backend_version', res.data.backend_version);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
+
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'superadmin') {
@@ -358,7 +376,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         <Header 
           onActivityFeedClick={() => setIsActivityFeedOpen(true)}
           onMenuClick={() => setIsMobileSidebarOpen(true)}
+          version={backendVersion}
         />
+
 
         <main className="responsive-main" style={{ flex: 1, overflow: 'auto', padding: '2rem 3rem', position: 'relative', zIndex: 10 }}>
           <div style={{ width: '100%' }}>

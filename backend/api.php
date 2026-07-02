@@ -8259,6 +8259,7 @@ switch ($action) {
         while ($row = $res->fetch_assoc()) {
             $data[$row['setting_key']] = $row['setting_value'];
         }
+        $data['backend_version'] = defined('BACKEND_VERSION') ? BACKEND_VERSION : '1.5.3';
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 

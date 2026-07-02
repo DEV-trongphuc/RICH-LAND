@@ -641,27 +641,38 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
       api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
-      api.get('/pipeline-stages')
-        .then(r => {
-          const stages = r.data.data || [];
-          if (stages.length > 0) {
-            const sorted = [...stages].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-            setPipelineStages(sorted.map((s: any) => ({ id: s.id, name: s.name, color: s.color || '#BD1D2D', order_index: s.order_index })));
-          }
-        })
-        .catch(() => { });
-      
-      // Fetch dynamic business configurations (decay days)
+
+      // Fetch dynamic business configurations (decay days & pipeline status hierarchy)
       fetchAPI('get_settings')
         .then(res => {
-          if (res && res.success && res.data && res.data.temperature_decay_days !== undefined) {
-            const val = parseInt(res.data.temperature_decay_days, 10);
-            if (!isNaN(val) && val > 0) {
-              setDecayDays(val);
+          if (res && res.success && res.data) {
+            if (res.data.temperature_decay_days !== undefined) {
+              const val = parseInt(res.data.temperature_decay_days, 10);
+              if (!isNaN(val) && val > 0) {
+                setDecayDays(val);
+              }
+            }
+            if (res.data.pipeline_status_hierarchy && res.data.pipeline_status_labels) {
+              try {
+                const hierarchy = JSON.parse(res.data.pipeline_status_hierarchy);
+                const labels = JSON.parse(res.data.pipeline_status_labels);
+                if (Array.isArray(hierarchy) && hierarchy.length > 0) {
+                  const mappedStages = hierarchy.map((slug: string, idx: number) => ({
+                    id: slug,
+                    name: labels[slug] || slug,
+                    color: slug === 'dat_coc' || slug === 'dong_deal' ? '#10b981' : slug === 'booking' || slug === 'da_gap' || slug === 'dong_y_gap' ? '#f59e0b' : '#3b82f6',
+                    order_index: idx
+                  }));
+                  setPipelineStages(mappedStages);
+                }
+              } catch (e) {
+                console.error('Failed to parse pipeline stages from settings', e);
+              }
             }
           }
         })
         .catch(() => {});
+
     }
   }, [isOpen]);
 
@@ -1208,7 +1219,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: '1.25rem 3.5rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
                   <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
                   {(() => {
-                    const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.stage_id || formData.status));
+                    const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
                     const safeIndex = currentIdx === -1 ? 0 : currentIdx;
 
                     return pipelineStages.map((st, i) => {
@@ -2843,30 +2854,38 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   className="btn primary"
                   disabled={!pipelineModal.note.trim()}
                   onClick={async () => {
-                    const targetId = pipelineModal.targetId;   // string, e.g. 'lead' or '3'
+                    const targetId = pipelineModal.targetId;   // string, e.g. 'chua_xac_dinh' or 'dong_y_gap'
                     const targetLabel = pipelineModal.targetLabel;
                     const note = pipelineModal.note;
                     setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
 
-                    // contacts.status is an ENUM (lead/qualified/customer/churned).
-                    // Pipeline stages from settings are display-only for the stepper.
-                    // We always persist to the 'status' field.
-                    // Map numeric stage ID back to the DEFAULT fallback status string
-                    const isNumericId = !isNaN(Number(targetId)) && targetId !== '';
-                    let statusValue = targetId;
-                    if (isNumericId) {
-                      // Find in pipelineStages by index position and map to DEFAULT enum
-                      const idx = pipelineStages.findIndex(s => String(s.id) === targetId);
-                      const defaults = ['lead', 'qualified', 'customer', 'churned'];
-                      statusValue = defaults[idx] ?? 'lead';
+                    // Map selected pipeline stage slug to the macro status enum
+                    let calculatedStatus = 'lead';
+                    if (targetId === 'dat_coc' || targetId === 'dong_deal') {
+                      calculatedStatus = 'customer';
+                    } else if (targetId === 'not_lead') {
+                      calculatedStatus = 'churned';
+                    } else if (targetId === 'chua_xac_dinh') {
+                      calculatedStatus = 'lead';
+                    } else {
+                      calculatedStatus = 'qualified';
                     }
 
                     // Optimistically update UI
-                    setFormData((prev: any) => ({ ...prev, status: statusValue }));
+                    setFormData((prev: any) => ({ 
+                      ...prev, 
+                      pipeline_status: targetId, 
+                      status: calculatedStatus 
+                    }));
 
                     try {
                       // Persist status change
-                      await api.put(`/contacts/${contact.id}`, { status: statusValue });
+                      await api.put(`/contacts/${contact.id}`, { 
+                        pipeline_status: targetId, 
+                        status: calculatedStatus,
+                        ttl1_completed: formData.ttl1_completed,
+                        ttl1_data: formData.ttl1_data
+                      });
                       // Log audit note with correct query params
                       await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
                         body: `[Chuyển trạng thái Pipeline] → ${targetLabel}: ${note}`,
@@ -2875,9 +2894,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       setNotes(p => [{ id: Date.now(), text: `[Chuyển trạng thái] → ${targetLabel}: ${note}`, time: new Date().toISOString(), user: 'Admin' }, ...p]);
                       addToast(`Đã cập nhật Pipeline thành ${targetLabel}`, 'success');
                     } catch (e: any) {
+                      // Rollback optimistic update
+                      setFormData((prev: any) => ({ 
+                        ...prev, 
+                        pipeline_status: contact.pipeline_status, 
+                        status: contact.status 
+                      }));
                       addToast(e?.response?.data?.message || 'Lỗi khi cập nhật Pipeline', 'error');
                     }
                   }}
+
                 >
                   Lưu cập nhật
                 </button>
