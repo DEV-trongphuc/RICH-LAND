@@ -1651,6 +1651,7 @@ switch ($action) {
 
             $payload = [
                 'id' => $user['id'],
+                'user_id' => $user['id'],
                 'username' => $user['username'],
                 'email' => $user['email'] ?? '',
                 'role' => $user['role'] === 'sales' ? 'sale' : $user['role'],
@@ -1765,8 +1766,18 @@ switch ($action) {
                 break;
             }
 
+            // Look up matching account (user) ID
+            $stmtAcc = $conn->prepare("SELECT id FROM accounts WHERE email = ? LIMIT 1");
+            $stmtAcc->bind_param("s", $googleEmail);
+            $stmtAcc->execute();
+            $accRow = $stmtAcc->get_result()->fetch_assoc();
+            $stmtAcc->close();
+            $userId = $accRow ? (int)$accRow['id'] : (int)$sale['id']; // fallback to consultant id
+
             $payload = [
-                'id' => $sale['id'],
+                'id' => $userId,
+                'user_id' => $userId,
+                'consultant_id' => $sale['id'],
                 'username' => $sale['email'],
                 'email' => $sale['email'],
                 'role' => 'sale',
@@ -1778,6 +1789,9 @@ switch ($action) {
                 'success' => true,
                 'token' => $token,
                 'user' => [
+                    'id' => $userId,
+                    'user_id' => $userId,
+                    'consultant_id' => $sale['id'],
                     'username' => $sale['email'],
                     'email' => $sale['email'],
                     'role' => 'sale',

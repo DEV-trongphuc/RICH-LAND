@@ -93,6 +93,10 @@ function requireAuth(): array {
     if (isset($payload['role']) && $payload['role'] === 'sale') {
         $payload['role'] = 'sales';
     }
+    // Ensure user_id key exists
+    if (!isset($payload['user_id']) && isset($payload['id'])) {
+        $payload['user_id'] = $payload['id'];
+    }
     return $payload;
 }
 
