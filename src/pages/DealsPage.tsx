@@ -448,14 +448,6 @@ export const DealsPage: React.FC = () => {
           <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Nhập/Xuất</span>
         </button>
 
-        <button className="btn primary" style={{ height: 38, borderRadius: 'var(--radius-md)', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => {
-            if (pipelineView === 'deals') { setSelectedDeal(null); setShowDealDrawer(true); }
-            else if (pipelineView === 'contacts') { setSelectedContact(null); setShowContactDrawer(true); }
-            else { setSelectedCompany(null); setShowCompanyDrawer(true); }
-        }} title="Thêm mới">
-          <Plus size={14} />
-          <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Thêm {pipelineView === 'deals' ? 'Cơ Hội' : (pipelineView === 'contacts' ? 'Khách Hàng' : 'Doanh Nghiệp')}</span>
-        </button>
       </div>
 
       <ImportExportModal 
@@ -762,12 +754,7 @@ export const DealsPage: React.FC = () => {
                       <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{stage.name}</h3>
                       <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700 }}>{stageItems.length}</span>
                     </div>
-                    <button className="btn ghost sm" onClick={() => {
-                      if (pipelineView === 'deals') { setSelectedDeal({ stage_id: stage.id }); setShowDealDrawer(true); }
-                      else if (pipelineView === 'contacts') { setSelectedContact({ stage_id: stage.id }); setShowContactDrawer(true); }
-                      else { setSelectedCompany({ stage_id: stage.id }); setShowCompanyDrawer(true); }
-                    }} style={{ padding: '4px', color: 'var(--color-text-light)' }} title="Thêm vào cột này"><Plus size={18} /></button>
-                  </div>
+                    </div>
                   <div style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
                     {FMT(total)}
                   </div>

@@ -750,12 +750,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const isTicketLead = selectedLead?.status === 'error' || selectedLead?.report_status === 'approved' || selectedLead?.report_status === 'pending';
 
   // Calendar / Databank View Mode States
-  const [localViewMode, setLocalViewMode] = useState<'list' | 'calendar' | 'rules' | 'databank'>('list');
+  const [localViewMode, setLocalViewMode] = useState<'list' | 'calendar' | 'databank'>('list');
   useEffect(() => {
     if (location.pathname === '/calendar') {
       setLocalViewMode('calendar');
-    } else if (location.pathname === '/rules') {
-      setLocalViewMode('rules');
     } else {
       const viewParam = searchParams.get('view');
       if (viewParam === 'databank') {
@@ -1421,30 +1419,6 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               >
                 <Database size={13} /> <span className="hide-on-mobile">{t('Kho chung (Databank)')}</span>
               </button>
-              {isAdmin && (
-                <button
-                  type="button"
-                  className={`btn-toggle-view ${viewMode === 'rules' ? 'active' : ''}`}
-                  onClick={() => setLocalViewMode('rules')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: viewMode === 'rules' ? 'var(--color-primary)' : 'transparent',
-                    color: viewMode === 'rules' ? 'white' : 'var(--color-text-muted)',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    height: '28px'
-                  }}
-                >
-                  <Filter size={13} /> <span className="hide-on-mobile">{t('Cài đặt phân bổ')}</span>
-                </button>
-              )}
             </div>
 
             {/* Separator line */}
@@ -1537,7 +1511,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         style={{
           position: 'relative',
           zIndex: 100,
-          display: (viewMode === 'calendar' || viewMode === 'rules') ? 'none' : 'flex',
+          display: (viewMode === 'calendar') ? 'none' : 'flex',
           gap: '0.75rem',
           marginBottom: '1.25rem',
           flexShrink: 0,
@@ -1651,11 +1625,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       </div>
 
       {/* Table */}
-      {viewMode === 'rules' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'auto', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.25rem' }} className="fade-in-view">
-          <RuleSettings />
-        </div>
-      ) : viewMode === 'calendar' ? (
+      {viewMode === 'calendar' ? (
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }} className="fade-in-view">
           {/* Calendar Header / Control */}
           <div className="mobile-stack" style={{
