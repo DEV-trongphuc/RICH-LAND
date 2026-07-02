@@ -241,10 +241,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [vacationConfirmOpen, setVacationConfirmOpen] = useState(false);
 
-  // Databank states
   const [publicLeads, setPublicLeads] = useState<any[]>([]);
   const [publicLoading, setPublicLoading] = useState(false);
   const [isClaimingLeadId, setIsClaimingLeadId] = useState<number | null>(null);
+  const [publicQuota, setPublicQuota] = useState<any>(null);
 
   // Check-in state variables
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
@@ -575,6 +575,9 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       const res = await fetchAPI('get_public_leads');
       if (res.success) {
         setPublicLeads(res.data || []);
+        if (res.quota) {
+          setPublicQuota(res.quota);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -2311,6 +2314,28 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             {t('Làm mới')}
           </button>
         </div>
+
+        {publicQuota && (
+          <div style={{
+            display: 'flex', gap: '1.25rem', flexWrap: 'wrap',
+            background: theme === 'dark' ? 'rgba(189,29,45,0.1)' : 'rgba(189,29,45,0.05)',
+            border: '1px solid rgba(189,29,45,0.2)',
+            borderRadius: '12px', padding: '0.75rem 1.25rem', fontSize: '0.8125rem', color: '#bd1d2d',
+            alignItems: 'center', width: 'fit-content'
+          }}>
+            <span>
+              <strong>Hạn mức giờ:</strong> {publicQuota.claims_hour}/{publicQuota.limit_hour} lead
+            </span>
+            <div style={{ width: '1px', height: '12px', background: 'rgba(189,29,45,0.2)' }} />
+            <span>
+              <strong>Hạn mức ngày:</strong> {publicQuota.claims_day}/{publicQuota.limit_day} lead
+            </span>
+            <div style={{ width: '1px', height: '12px', background: 'rgba(189,29,45,0.2)' }} />
+            <span>
+              <strong>Hạn mức tháng:</strong> {publicQuota.claims_month}/{publicQuota.limit_month} lead
+            </span>
+          </div>
+        )}
 
         {publicLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>

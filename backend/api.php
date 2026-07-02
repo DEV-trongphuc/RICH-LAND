@@ -13545,7 +13545,50 @@ switch ($action) {
                 $publicLeads[] = $row;
             }
         }
-        echo json_encode(['success' => true, 'data' => $publicLeads]);
+
+        // Quota calculations for non-admin roles
+        $quota = null;
+        if (!$isStaffAdmin) {
+            $saleId = (int) $decodedUser['id'];
+            $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
+            $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
+            $limitMonth = (int) get_system_setting($conn, 'databank_limit_per_month');
+            if ($limitDay <= 0) $limitDay = 3;
+            if ($limitHour <= 0) $limitHour = 3;
+            if ($limitMonth <= 0) $limitMonth = 10;
+
+            // Hour claims count
+            $stmtQ1 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+            $stmtQ1->bind_param("i", $saleId);
+            $stmtQ1->execute();
+            $claimsHour = (int)($stmtQ1->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtQ1->close();
+
+            // Day claims count
+            $stmtQ2 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $stmtQ2->bind_param("i", $saleId);
+            $stmtQ2->execute();
+            $claimsDay = (int)($stmtQ2->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtQ2->close();
+
+            // Month claims count
+            $stmtQ3 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+            $stmtQ3->bind_param("i", $saleId);
+            $stmtQ3->execute();
+            $claimsMonth = (int)($stmtQ3->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtQ3->close();
+
+            $quota = [
+                'claims_hour' => $claimsHour,
+                'limit_hour' => $limitHour,
+                'claims_day' => $claimsDay,
+                'limit_day' => $limitDay,
+                'claims_month' => $claimsMonth,
+                'limit_month' => $limitMonth
+            ];
+        }
+
+        echo json_encode(['success' => true, 'data' => $publicLeads, 'quota' => $quota]);
         break;
 
     default:
