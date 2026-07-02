@@ -1585,54 +1585,75 @@ export const QuickAddLeadModal = () => {
             <div style={{
               background: 'var(--color-bg-light)', 
               border: '1px solid var(--color-border)', 
-              borderRadius: '8px', 
-              padding: '0.75rem', 
+              borderRadius: '12px', 
+              padding: '1rem', 
               fontSize: '0.75rem',
               color: 'var(--color-text-muted)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '6px'
+              gap: '10px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>
-                  💡 {t('Hướng dẫn định dạng cột dữ liệu')}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)', fontWeight: 700, fontSize: '0.8125rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', borderRadius: '50%', width: '22px', height: '22px', fontSize: '0.75rem' }}>💡</span>
+                  {t('Hướng dẫn định dạng cột dữ liệu')}
                 </span>
                 <button
                   type="button"
                   onClick={downloadSampleCSV}
                   style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#e63946',
+                    background: 'rgba(189, 29, 45, 0.08)',
+                    border: '1px dashed rgba(189, 29, 45, 0.4)',
+                    borderRadius: '6px',
+                    color: '#bd1d2d',
                     cursor: 'pointer',
+                    fontSize: '0.75rem',
                     fontWeight: 600,
-                    textDecoration: 'underline',
-                    padding: 0
+                    padding: '5px 12px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(189, 29, 45, 0.15)';
+                    e.currentTarget.style.borderStyle = 'solid';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(189, 29, 45, 0.08)';
+                    e.currentTarget.style.borderStyle = 'dashed';
                   }}
                 >
-                  📥 {t('Tải file mẫu (.csv)')}
+                  <span>📥</span>
+                  <span>{t('Tải file mẫu (.csv)')}</span>
                 </button>
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px', textAlign: 'left', minWidth: '400px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '6px', textAlign: 'left', minWidth: '500px', fontSize: '0.75rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--color-border)', fontWeight: 600 }}>
-                      <th style={{ padding: '4px' }}>{t('Họ & Tên')}</th>
-                      <th style={{ padding: '4px' }}>{t('SĐT')}</th>
-                      <th style={{ padding: '4px' }}>{t('Email')}</th>
-                      <th style={{ padding: '4px' }}>{t('Nguồn')}</th>
-                      <th style={{ padding: '4px' }}>{t('Nhu cầu')}</th>
-                      <th style={{ padding: '4px' }}>{t('Ghi chú')}</th>
+                    <tr style={{ background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', color: 'var(--color-text-muted)' }}>
+                      <th style={{ padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '6px 0 0 6px' }}>{t('Họ & Tên')}</th>
+                      <th style={{ padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>{t('SĐT')}</th>
+                      <th style={{ padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>{t('Email')}</th>
+                      <th style={{ padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>{t('Nguồn')}</th>
+                      <th style={{ padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--color-border)' }}>{t('Nhu cầu')}</th>
+                      <th style={{ padding: '8px 12px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '0 6px 6px 0' }}>{t('Ghi chú')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr style={{ opacity: 0.8 }}>
-                      <td style={{ padding: '4px' }}>Nguyễn Văn A</td>
-                      <td style={{ padding: '4px' }}>0912345678</td>
-                      <td style={{ padding: '4px' }}>a@gmail.com</td>
-                      <td style={{ padding: '4px' }}>Facebook</td>
-                      <td style={{ padding: '4px' }}>Đất nền</td>
-                      <td style={{ padding: '4px' }}>Cần gọi lại buổi chiều</td>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
+                      <td style={{ padding: '8px 12px', color: 'var(--color-text)', fontWeight: 500 }}>Nguyễn Văn A</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--color-text)', fontFamily: 'monospace', fontSize: '0.8125rem' }}>0912345678</td>
+                      <td style={{ padding: '8px 12px', color: 'var(--color-text)' }}>a@gmail.com</td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: 600 }}>Facebook</span>
+                      </td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '2px 6px', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: 600 }}>Đất nền</span>
+                      </td>
+                      <td style={{ padding: '8px 12px', color: 'var(--color-text-muted)', fontSize: '0.71875rem' }}>Cần gọi lại buổi chiều</td>
                     </tr>
                   </tbody>
                 </table>
