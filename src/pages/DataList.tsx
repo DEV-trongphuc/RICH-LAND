@@ -1117,9 +1117,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       case 'databank': {
         const cnt = takers && takers.length ? takers.length : 0;
         if (cnt === 0) {
-          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Public')}</span>;
+          return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public')}</span>;
         } else if (cnt >= 2) {
-          return <span className="badge success">{t('Đã nhận đủ (2/2)')}</span>;
+          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Đã nhận đủ (2/2)')}</span>;
         } else {
           return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Đã nhận (${cnt}/2)`)}</span>;
         }
