@@ -1586,18 +1586,18 @@ export const QuickAddLeadModal = () => {
               background: 'var(--color-bg-light)', 
               border: '1px solid var(--color-border)', 
               borderRadius: '12px', 
-              padding: '1rem', 
-              fontSize: '0.75rem',
+              padding: '0.625rem 0.875rem', 
+              fontSize: '0.6875rem',
               color: 'var(--color-text-muted)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px',
+              gap: '8px',
               boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)', fontWeight: 700, fontSize: '0.8125rem' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', borderRadius: '50%', width: '22px', height: '22px' }}>
-                    <Lightbulb size={12} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--color-text)', fontWeight: 700, fontSize: '0.75rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', borderRadius: '50%', width: '18px', height: '18px' }}>
+                    <Lightbulb size={10} />
                   </span>
                   {t('Hướng dẫn định dạng cột dữ liệu')}
                 </span>
@@ -1610,12 +1610,12 @@ export const QuickAddLeadModal = () => {
                     borderRadius: '6px',
                     color: '#bd1d2d',
                     cursor: 'pointer',
-                    fontSize: '0.75rem',
+                    fontSize: '0.6875rem',
                     fontWeight: 600,
-                    padding: '5px 12px',
+                    padding: '4px 8px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '4px',
                     transition: 'all 0.2s',
                     boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                   }}
@@ -1628,34 +1628,34 @@ export const QuickAddLeadModal = () => {
                     e.currentTarget.style.borderStyle = 'dashed';
                   }}
                 >
-                  <Download size={12} />
+                  <Download size={10} />
                   <span>{t('Tải file mẫu (.csv)')}</span>
                 </button>
               </div>
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '6px', textAlign: 'left', minWidth: '500px', fontSize: '0.6875rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '4px', textAlign: 'left', minWidth: '500px' }}>
                   <thead>
                     <tr style={{ background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', color: 'var(--color-text-muted)' }}>
-                      <th style={{ padding: '6px 10px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '6px 0 0 6px', fontSize: '0.65rem' }}>{t('Họ & Tên')}</th>
-                      <th style={{ padding: '6px 10px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.65rem' }}>{t('SĐT')}</th>
-                      <th style={{ padding: '6px 10px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.65rem' }}>{t('Email')}</th>
-                      <th style={{ padding: '6px 10px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.65rem' }}>{t('Nguồn')}</th>
-                      <th style={{ padding: '6px 10px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.65rem' }}>{t('Nhu cầu')}</th>
-                      <th style={{ padding: '6px 10px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '0 6px 6px 0', fontSize: '0.65rem' }}>{t('Ghi chú')}</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '6px 0 0 6px', fontSize: '0.625rem' }}>{t('Họ & Tên')}</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('SĐT')}</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Email')}</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nguồn')}</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nhu cầu')}</th>
+                      <th style={{ padding: '4px 6px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', borderRadius: '0 6px 6px 0', fontSize: '0.625rem' }}>{t('Ghi chú')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                      <td style={{ padding: '6px 10px', color: 'var(--color-text)', fontWeight: 500 }}>Nguyễn Văn A</td>
-                      <td style={{ padding: '6px 10px', color: 'var(--color-text)', fontFamily: 'monospace', fontSize: '0.75rem' }}>0912345678</td>
-                      <td style={{ padding: '6px 10px', color: 'var(--color-text)' }}>a@gmail.com</td>
-                      <td style={{ padding: '6px 10px' }}>
-                        <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '1px 5px', borderRadius: '4px', fontSize: '0.625rem', fontWeight: 600 }}>Facebook</span>
+                      <td style={{ padding: '4px 6px', color: 'var(--color-text)', fontWeight: 500, fontSize: '0.625rem' }}>Nguyễn Văn A</td>
+                      <td style={{ padding: '4px 6px', color: 'var(--color-text)', fontFamily: 'monospace', fontSize: '0.625rem' }}>0912345678</td>
+                      <td style={{ padding: '4px 6px', color: 'var(--color-text)', fontSize: '0.625rem' }}>a@gmail.com</td>
+                      <td style={{ padding: '4px 6px', fontSize: '0.625rem' }}>
+                        <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '1px 4px', borderRadius: '4px', fontSize: '0.5625rem', fontWeight: 600 }}>Facebook</span>
                       </td>
-                      <td style={{ padding: '6px 10px' }}>
-                        <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '1px 5px', borderRadius: '4px', fontSize: '0.625rem', fontWeight: 600 }}>Đất nền</span>
+                      <td style={{ padding: '4px 6px', fontSize: '0.625rem' }}>
+                        <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '1px 4px', borderRadius: '4px', fontSize: '0.5625rem', fontWeight: 600 }}>Đất nền</span>
                       </td>
-                      <td style={{ padding: '6px 10px', color: 'var(--color-text-muted)', fontSize: '0.6875rem' }}>Cần gọi lại buổi chiều</td>
+                      <td style={{ padding: '4px 6px', color: 'var(--color-text-muted)', fontSize: '0.625rem' }}>Cần gọi lại buổi chiều</td>
                     </tr>
                   </tbody>
                 </table>
