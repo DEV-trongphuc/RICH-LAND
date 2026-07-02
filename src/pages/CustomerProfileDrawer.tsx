@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -2332,6 +2332,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   {item.label}
                                 </button>
                               );
+                            })}
                           </div>
                         </div>
 
@@ -2352,13 +2353,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }}>
                             <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Lightbulb size={12} style={{ color: '#eab308' }} />
-                              {t('Toa gợi ý hành động (Sổ tay Richland):')}
+                              {'Toa gợi ý hành động (Sổ tay Richland):'}
                             </span>
                             <span style={{ lineHeight: 1.4 }}>
-                              {noteObstacle === 'trust' && t('Áp dụng nguyên liệu [Phòng Bếp] (Xây dựng uy tín cá nhân, chia sẻ kiến thức chuyên sâu và hỗ trợ tận tâm để khách hàng tin tưởng hơn).')}
-                              {noteObstacle === 'project' && t('Áp dụng nguyên liệu [Nước Sôi] + [Than so sánh] (Gửi bảng so sánh trực quan với đối thủ, nhấn mạnh lợi thế độc bản của dự án).')}
-                              {noteObstacle === 'unit' && t('Áp dụng nguyên liệu [Than chốt cá nhân hóa] + [Oxy] (Gửi phân tích dòng tiền căn tiềm năng nhất, tạo độ khan hiếm cho giỏ hàng độc quyền).')}
-                              {noteObstacle === 'smooth' && t('Khách hàng đang thuận lợi. Hãy duy trì tương tác đều đặn để chuẩn bị dẫn khách đi xem dự án thực tế hoặc đặt booking giữ chỗ.')}
+                              {noteObstacle === 'trust' && 'Áp dụng nguyên liệu [Phòng Bếp] (Xây dựng uy tín cá nhân, chia sẻ kiến thức chuyên sâu và hỗ trợ tận tâm để khách hàng tin tưởng hơn).'}
+                              {noteObstacle === 'project' && 'Áp dụng nguyên liệu [Nước Sôi] + [Than so sánh] (Gửi bảng so sánh trực quan với đối thủ, nhấn mạnh lợi thế độc bản của dự án).'}
+                              {noteObstacle === 'unit' && 'Áp dụng nguyên liệu [Than chốt cá nhân hóa] + [Oxy] (Gửi phân tích dòng tiền căn tiềm năng nhất, tạo độ khan hiếm cho giỏ hàng độc quyền).'}
+                              {noteObstacle === 'smooth' && 'Khách hàng đang thuận lợi. Hãy duy trì tương tác đều đặn để chuẩn bị dẫn khách đi xem dự án thực tế hoặc đặt booking giữ chỗ.'}
                             </span>
                           </div>
                         )}

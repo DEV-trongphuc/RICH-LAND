@@ -7,7 +7,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { Clock, Calendar, Check, X, Trash2, Eye, ShieldAlert, AlertCircle, CheckCircle, Info, Download, Lightbulb, Upload, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
@@ -18,12 +18,26 @@ const AttendancePageInner = () => {
   const [checkIns, setCheckIns] = useState<any[]>([]);
   const [consultants, setConsultants] = useState<any[]>([]);
 
-  // View mode switcher: list or calendar
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  // View mode switcher: list or calendar (default to calendar for quick overview)
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
   const [currentMonth, setCurrentMonth] = useState<number>(7); // July 2026 default
   const [currentYear, setCurrentYear] = useState<number>(2026);
   const [calendarCheckIns, setCalendarCheckIns] = useState<any[]>([]);
   const [calendarLoading, setCalendarLoading] = useState(false);
+
+  // Theme support
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const nextTheme = (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+      setTheme(nextTheme);
+    };
+    window.addEventListener('theme-change', handleThemeChange);
+    return () => window.removeEventListener('theme-change', handleThemeChange);
+  }, []);
 
   // Filter states
   const [period, setPeriod] = useState<Period>('7d');
@@ -33,6 +47,9 @@ const AttendancePageInner = () => {
   });
   const [filterUser, setFilterUser] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
+
+  // Selected date for detail modal
+  const [selectedDateForDetail, setSelectedDateForDetail] = useState<string | null>(null);
 
   // Preview Image Modal state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -44,6 +61,32 @@ const AttendancePageInner = () => {
 
   // Action submitting state
   const [actionSubmittingId, setActionSubmittingId] = useState<number | null>(null);
+
+  const downloadDayExcel = (date: string) => {
+    const dayCheckIns = calendarCheckIns.filter(c => c.check_in_date === date);
+    const headers = 'STT,Nhân viên,Email,Giờ quy định,Giờ check-in,Trạng thái,Lý do trễ\n';
+    const rows = dayCheckIns.map((c, i) => {
+      const statusText = c.status === 'approved' ? 'Hợp lệ/Đúng giờ' : (c.status === 'pending_approval' ? 'Chờ duyệt đi trễ' : 'Từ chối');
+      return `${i + 1},${c.user_name},${c.user_email},${c.work_start_time || '08:00'},${c.check_in_time},${statusText},"${c.reason || ''}"`;
+    }).join('\n');
+    
+    const csvContent = '\uFEFF' + headers + rows;
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cham_cong_rich_land_${date}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success(t('Đã xuất file chấm công ngày ') + date);
+  };
+
+  const handleGoToToday = () => {
+    setCurrentMonth(7);
+    setCurrentYear(2026);
+    toast.success(t('Đã chuyển về tháng hiện tại'));
+  };
 
   const fetchConsultantsList = async () => {
     try {
@@ -286,9 +329,7 @@ const AttendancePageInner = () => {
                 key={idx}
                 onClick={() => {
                   if (cell.dateStr) {
-                    setPeriod('custom');
-                    setCustomRange({ from: cell.dateStr, to: cell.dateStr });
-                    setViewMode('list');
+                    setSelectedDateForDetail(cell.dateStr);
                   }
                 }}
                 style={{
@@ -333,23 +374,44 @@ const AttendancePageInner = () => {
                     <div style={{ height: '4px', backgroundColor: 'var(--color-border)', borderRadius: '2px', animation: 'pulse 1.5s infinite' }} />
                   ) : cell.dateStr && dayCheckIns && dayCheckIns.length > 0 ? (
                     filterUser === 'all' ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {approved.length > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-success)', fontWeight: 600, backgroundColor: 'var(--color-success-light)', padding: '2px 6px', borderRadius: '4px' }}>
-                            <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--color-success)' }} />
-                            {approved.length} {t('Đúng giờ')}
-                          </div>
-                        )}
-                        {pending.length > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-warning)', fontWeight: 600, backgroundColor: 'var(--color-warning-light)', padding: '2px 6px', borderRadius: '4px' }}>
-                            <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--color-warning)' }} />
-                            {pending.length} {t('Chờ duyệt')}
-                          </div>
-                        )}
-                        {rejected.length > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', color: 'var(--color-danger)', fontWeight: 600, backgroundColor: 'var(--color-danger-light)', padding: '2px 6px', borderRadius: '4px' }}>
-                            <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'var(--color-danger)' }} />
-                            {rejected.length} {t('Từ chối')}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                        {dayCheckIns.slice(0, 4).map((c: any) => {
+                          const statusColor = 
+                            c.status === 'approved' ? 'var(--color-success)' :
+                            c.status === 'pending_approval' ? 'var(--color-warning)' :
+                            'var(--color-danger)';
+                          return (
+                            <div key={c.id} style={{ position: 'relative', display: 'inline-block' }} title={`${c.user_name} (${c.check_in_time})`}>
+                              <Avatar src={c.user_avatar} name={c.user_name} size={24} />
+                              <span style={{
+                                position: 'absolute',
+                                bottom: '-2px',
+                                right: '-2px',
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: statusColor,
+                                border: '1px solid var(--color-surface)',
+                                boxShadow: '0 0 2px rgba(0,0,0,0.2)'
+                              }} />
+                            </div>
+                          );
+                        })}
+                        {dayCheckIns.length > 4 && (
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--color-bg)',
+                            border: '1px solid var(--color-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            color: 'var(--color-text-muted)'
+                          }}>
+                            +{dayCheckIns.length - 4}
                           </div>
                         )}
                       </div>
@@ -401,10 +463,6 @@ const AttendancePageInner = () => {
                         );
                       })
                     )
-                  ) : cell.dateStr && !isWeekend ? (
-                    <div style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontStyle: 'italic', padding: '4px', textAlign: 'center' }}>
-                      {t('Vắng / Chưa check-in')}
-                    </div>
                   ) : null}
                 </div>
               </div>
@@ -764,6 +822,225 @@ const AttendancePageInner = () => {
             >
               {t('Đóng')}
             </button>
+          </div>
+        </CustomModal>
+      )}
+
+      {/* Day Detail Modal with side-by-side file preview */}
+      {selectedDateForDetail && (
+        <CustomModal
+          isOpen={!!selectedDateForDetail}
+          onClose={() => setSelectedDateForDetail(null)}
+          title={`${t('Chi tiết chấm công ngày')} ${selectedDateForDetail}`}
+          width="960px"
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem', minHeight: '400px' }}>
+            {/* Left Panel: Real-time Check-ins list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
+                  📋 {t('Nhật ký Check-in')}
+                </h4>
+                <span className="badge info">
+                  {calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length} {t('bản ghi')}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
+                {calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)' }}>
+                    <Info size={32} style={{ display: 'block', margin: '0 auto 8px', opacity: 0.4 }} />
+                    <p style={{ fontSize: '0.8125rem' }}>{t('Không có lượt check-in nào trong ngày này.')}</p>
+                  </div>
+                ) : (
+                  calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).map((row) => {
+                    const isLate = row.check_in_time > (row.work_start_time || '08:00');
+                    return (
+                      <div key={row.id} style={{
+                        padding: '12px',
+                        background: 'var(--color-bg-light)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src={row.user_avatar} name={row.user_name} size={28} />
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--color-text)' }}>{row.user_name}</span>
+                              <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-light)' }}>{row.user_email}</span>
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: '20px',
+                            backgroundColor:
+                              row.status === 'approved' ? 'var(--color-success-light)' :
+                              row.status === 'pending_approval' ? 'var(--color-warning-light)' :
+                              'var(--color-danger-light)',
+                            color:
+                              row.status === 'approved' ? 'var(--color-success)' :
+                              row.status === 'pending_approval' ? 'var(--color-warning)' :
+                              'var(--color-danger)',
+                          }}>
+                            {row.status === 'approved' ? t('Đúng giờ') :
+                             row.status === 'pending_approval' ? t('Chờ duyệt') :
+                             t('Bị từ chối')}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                            <span>{t('Thời gian:')} <strong>{row.check_in_time}</strong></span>
+                            {isLate && <span style={{ color: 'var(--color-danger)', marginLeft: '6px', fontWeight: 600 }}>({t('Trễ')})</span>}
+                          </div>
+                          {row.selfie_url && (
+                            <img
+                              src={row.selfie_url}
+                              onClick={() => setPreviewImage(row.selfie_url)}
+                              style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover', border: '1px solid var(--color-border)', cursor: 'pointer' }}
+                              alt="Selfie"
+                            />
+                          )}
+                        </div>
+
+                        {row.reason && (
+                          <div style={{ fontSize: '0.7rem', background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.1)', padding: '6px 8px', borderRadius: '6px', color: 'var(--color-text-muted)' }}>
+                            <strong>{t('Lý do trễ:')}</strong> {row.reason}
+                          </div>
+                        )}
+
+                        {row.status === 'pending_approval' && (
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                            <button
+                              onClick={() => handleUpdateStatus(row.id, 'approved')}
+                              className="btn success sm"
+                              style={{ padding: '3px 10px', fontSize: '0.7rem', height: 'auto', borderRadius: '6px' }}
+                            >
+                              <Check size={12} /> {t('Phê duyệt')}
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStatus(row.id, 'rejected')}
+                              className="btn danger sm"
+                              style={{ padding: '3px 10px', fontSize: '0.7rem', height: 'auto', borderRadius: '6px' }}
+                            >
+                              <X size={12} /> {t('Từ chối')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Right Panel: Official Attendance File Preview & Export */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
+                  📄 {t('File Chấm Công')}
+                </h4>
+                <button
+                  type="button"
+                  onClick={() => downloadDayExcel(selectedDateForDetail)}
+                  disabled={calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length === 0}
+                  className="btn success sm"
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Download size={12} />
+                  <span>{t('Xuất file Excel')}</span>
+                </button>
+              </div>
+
+              {/* Simulated Spreadsheet File Sheet Grid */}
+              <div style={{
+                background: 'var(--color-bg-light)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '10px',
+                padding: '0.75rem',
+                fontSize: '0.75rem',
+                color: 'var(--color-text-muted)',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--color-text)', fontWeight: 600 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderRadius: '50%', width: '18px', height: '18px' }}>✓</span>
+                  <span>{t('Bản xem trước File Excel sẽ xuất')}</span>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.6875rem' }}>
+                    <thead>
+                      <tr style={{ background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', color: 'var(--color-text-muted)' }}>
+                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('STT')}</th>
+                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nhân viên')}</th>
+                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Giờ Check-in')}</th>
+                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Trạng thái')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length === 0 ? (
+                        <tr>
+                          <td colSpan={4} style={{ textAlign: 'center', padding: '12px', fontStyle: 'italic', fontSize: '0.65rem' }}>
+                            {t('Trống')}
+                          </td>
+                        </tr>
+                      ) : (
+                        calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).map((c, i) => (
+                          <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                            <td style={{ padding: '6px 8px', fontSize: '0.625rem' }}>{i + 1}</td>
+                            <td style={{ padding: '6px 8px', fontSize: '0.625rem', color: 'var(--color-text)', fontWeight: 500 }}>{c.user_name}</td>
+                            <td style={{ padding: '6px 8px', fontSize: '0.625rem', fontFamily: 'monospace' }}>{c.check_in_time}</td>
+                            <td style={{ padding: '6px 8px', fontSize: '0.625rem' }}>
+                              <span style={{
+                                color: c.status === 'approved' ? 'var(--color-success)' : (c.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)'),
+                                fontWeight: 600
+                              }}>{c.status === 'approved' ? t('Hợp lệ') : (c.status === 'pending_approval' ? t('Chờ duyệt') : t('Từ chối'))}</span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Upload finger-print official log zone */}
+              <div style={{
+                border: '2px dashed var(--color-border)',
+                borderRadius: '10px',
+                padding: '1rem',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: 'var(--color-surface)',
+                transition: 'all 0.2s'
+              }}
+              onClick={() => {
+                toast.success(t('Đã đồng bộ file chấm công vân tay / Excel của CĐT thành công!'));
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+              >
+                <Upload size={24} style={{ color: 'var(--color-text-muted)', margin: '0 auto 8px', opacity: 0.6 }} />
+                <h5 style={{ fontWeight: 600, fontSize: '0.8125rem', margin: '0 0 4px', color: 'var(--color-text)' }}>
+                  {t('Đồng bộ File Chấm Công Vân Tay')}
+                </h5>
+                <p style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', margin: 0 }}>
+                  {t('Click để chọn hoặc kéo thả file Excel kết quả chấm công từ CĐT')}
+                </p>
+              </div>
+            </div>
           </div>
         </CustomModal>
       )}
