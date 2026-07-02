@@ -21,8 +21,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // One-time forced relogin trigger
-  if (!localStorage.getItem('richland_relogin_done')) {
-    localStorage.setItem('richland_relogin_done', 'true');
+  if (!localStorage.getItem('richland_relogin_done_v4')) {
+    localStorage.setItem('richland_relogin_done_v4', 'true');
     localStorage.removeItem('richland_token');
     localStorage.removeItem('richland_user');
   }
