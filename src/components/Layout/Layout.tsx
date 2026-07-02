@@ -223,16 +223,23 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (user) {
+      console.log('Layout useEffect calling get_settings, user exists:', user);
       fetchAPI('get_settings')
         .then(res => {
+          console.log('Layout get_settings response:', res);
           if (res && res.success && res.data && res.data.backend_version) {
+            console.log('Setting backendVersion to:', res.data.backend_version);
             setBackendVersion(res.data.backend_version);
             localStorage.setItem('backend_version', res.data.backend_version);
           }
         })
-        .catch(() => {});
+        .catch(err => {
+          console.error('Layout get_settings error:', err);
+        });
     }
   }, [user]);
+
+
 
 
   useEffect(() => {

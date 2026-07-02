@@ -10554,7 +10554,9 @@ switch ($action) {
             'pending_approval' => 0,
             'rejected' => 0,
             'fallback' => 0,
-            'success' => 0
+            'success' => 0,
+            'databank_claim' => 0,
+            'released_to_kho' => 0
         ];
         if ($statsResRaw) {
             while ($row = $statsResRaw->fetch_assoc()) {
@@ -10591,7 +10593,9 @@ switch ($action) {
             'pending_approval' => 0,
             'rejected' => 0,
             'fallback' => 0,
-            'success' => 0
+            'success' => 0,
+            'databank_claim' => 0,
+            'released_to_kho' => 0
         ];
         if ($prevStatsResRaw) {
             while ($row = $prevStatsResRaw->fetch_assoc()) {
@@ -10670,11 +10674,11 @@ switch ($action) {
         }
 
         // 1. Success (Distributed) Calculations
-        $raw_distributed = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'] + $statusCounts['compensation'];
+        $raw_distributed = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'] + $statusCounts['compensation'] + $statusCounts['databank_claim'] + $statusCounts['released_to_kho'];
         $distributed_today = max(0, $raw_distributed - $ticketErrors);
 
         // Keep details consistent: distributed_assigned + distributed_compensation = distributed_today
-        $assigned_count = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'];
+        $assigned_count = $statusCounts['assigned'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['fallback'] + $statusCounts['success'] + $statusCounts['databank_claim'];
         $compensation_count = $statusCounts['compensation'];
         $assigned_adjusted = max(0, $assigned_count - $ticketErrors);
         $rem = max(0, $ticketErrors - $assigned_count);
@@ -10702,7 +10706,7 @@ switch ($action) {
         ];
 
         // Do the same for previous period to keep % change consistent
-        $prev_raw_distributed = $prevStatusCounts['assigned'] + $prevStatusCounts['rule_6_month'] + $prevStatusCounts['pending_work_hours'] + $prevStatusCounts['fallback'] + $prevStatusCounts['success'] + $prevStatusCounts['compensation'];
+        $prev_raw_distributed = $prevStatusCounts['assigned'] + $prevStatusCounts['rule_6_month'] + $prevStatusCounts['pending_work_hours'] + $prevStatusCounts['fallback'] + $prevStatusCounts['success'] + $prevStatusCounts['compensation'] + $prevStatusCounts['databank_claim'] + $prevStatusCounts['released_to_kho'];
         $prev_distributed_today = max(0, $prev_raw_distributed - $prevTicketErrors);
         $prev_duplicates = $prevStatusCounts['duplicate'] + $prevStatusCounts['reminder'];
         $prev_underStandard = $prevStatusCounts['rejected'] + $prevStatusCounts['pending_approval'] + $prevStatusCounts['error'] + $prevStatusCounts['no_consultant'];
@@ -11048,7 +11052,7 @@ switch ($action) {
                                   GROUP BY lead_id
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
-                              WHERE $dateConditionDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder') 
+                              WHERE $dateConditionDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder', 'databank_claim') 
                               GROUP BY c.id, c.status, c.vacation_mode, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $consultantStats = [];
@@ -11068,7 +11072,8 @@ switch ($action) {
                         'rule_6_month' => 0,
                         'pending_work_hours' => 0,
                         'error' => 0,
-                        'reminder' => 0
+                        'reminder' => 0,
+                        'databank_claim' => 0
                     ];
                 }
                 $dl_status = $row['dl_status'];
@@ -11080,7 +11085,7 @@ switch ($action) {
 
         $topConsultantsList = [];
         foreach ($consultantStats as $cId => $cStats) {
-            $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + $cStats['reminder'] + max(0, $cStats['error'] - $cStats['compensation']);
+            $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + $cStats['reminder'] + $cStats['databank_claim'] + max(0, $cStats['error'] - $cStats['compensation']);
             $topConsultantsList[] = [
                 'id' => $cStats['id'],
                 'name' => $cStats['name'],
