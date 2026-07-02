@@ -97,6 +97,10 @@ function requireAuth(): array {
     if (!isset($payload['user_id']) && isset($payload['id'])) {
         $payload['user_id'] = $payload['id'];
     }
+    // Ensure tenant_id key exists
+    if (!isset($payload['tenant_id']) || empty($payload['tenant_id'])) {
+        $payload['tenant_id'] = 1;
+    }
     return $payload;
 }
 

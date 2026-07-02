@@ -200,6 +200,10 @@ export const DealsPage: React.FC = () => {
   };
 
   const fetchUsers = async () => {
+    const currentUser = useAuthStore.getState().user;
+    if (currentUser && (currentUser.role === 'sale' || currentUser.role === 'sales')) {
+      return;
+    }
     try {
       const r = await api.get('/users');
       setAllUsers(r.data.data || []);

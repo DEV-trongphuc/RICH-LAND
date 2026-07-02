@@ -183,9 +183,11 @@ export const ContactsPage: React.FC = () => {
   }, [page, debouncedSearch, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
 
   useEffect(() => {
-    // Fetch sales/users for assignment once
-    api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
-  }, []);
+    // Fetch sales/users for assignment once (only for admin/manager who have permission)
+    if (user && user.role !== 'sale') {
+      api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
+    }
+  }, [user]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {

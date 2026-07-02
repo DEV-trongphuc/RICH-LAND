@@ -45,6 +45,7 @@ type Lead = {
   takers?: any[];
   is_public?: number | boolean;
   person_id?: number;
+  assigned_to?: number;
 };
 
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';

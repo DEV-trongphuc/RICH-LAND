@@ -157,6 +157,14 @@ function verify_jwt($jwt, $secret)
         $decoded = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $payload)), true);
         if (isset($decoded['exp']) && $decoded['exp'] < time())
             return false;
+        if ($decoded && is_array($decoded)) {
+            if (!isset($decoded['user_id']) && isset($decoded['id'])) {
+                $decoded['user_id'] = $decoded['id'];
+            }
+            if (!isset($decoded['tenant_id']) || empty($decoded['tenant_id'])) {
+                $decoded['tenant_id'] = 1;
+            }
+        }
         return $decoded;
     }
     return false;
