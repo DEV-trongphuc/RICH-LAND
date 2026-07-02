@@ -2376,7 +2376,6 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Khách hàng')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Liên hệ')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự Án')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn ban đầu')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Trạng thái')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
                     <th style={{ padding: '1rem', width: 140 }}></th>
@@ -2409,11 +2408,6 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                           border: '1px solid rgba(189,29,45,0.15)'
                         }}>
                           {lead.project_name || lead.project_id || t('Không xác định')}
-                        </span>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <span className="badge outline" style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>
-                          {lead.original_source || 'MKT'}
                         </span>
                       </td>
                       <td style={{ padding: '1rem' }}>
