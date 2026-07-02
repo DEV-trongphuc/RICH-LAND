@@ -939,7 +939,7 @@ export const DealsPage: React.FC = () => {
       {showContactDrawer && (
         <CustomerProfileDrawer 
           isOpen={showContactDrawer}
-          onClose={() => { setShowContactDrawer(false); fetchData(); }}
+          onClose={() => setShowContactDrawer(false)}
           contact={selectedContact}
           onUpdate={(updated) => { updateItemLocally(updated); fetchData(); }}
         />
@@ -948,7 +948,7 @@ export const DealsPage: React.FC = () => {
       {showCompanyDrawer && (
         <CompanyDrawer
           isOpen={showCompanyDrawer}
-          onClose={() => { setShowCompanyDrawer(false); fetchData(); }}
+          onClose={() => setShowCompanyDrawer(false)}
           entity={selectedCompany}
           onSave={() => fetchData()}
         />
@@ -957,12 +957,14 @@ export const DealsPage: React.FC = () => {
       {showDealDrawer && (
         <DealDrawer
           isOpen={showDealDrawer}
-          onClose={() => { setShowDealDrawer(false); fetchData(); }}
+          onClose={() => setShowDealDrawer(false)}
           deal={selectedDeal}
           onSave={() => fetchData()}
           stages={stages}
         />
       )}
+
+
 
       {/* Transition Modal */}
       <AnimatePresence>
