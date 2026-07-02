@@ -19,21 +19,17 @@ class CampaignController {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             ");
             
-            // Seed default campaigns if none exist
-            $count = $this->db->query("SELECT COUNT(*) FROM marketing_campaigns")->fetchColumn();
-            if ($count == 0) {
-                $defaults = [
-                    ['Chiến dịch Mở bán Q1 2026', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
-                    ['Facebook Lead Ads - HCMC', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
-                    ['Google Search - Căn hộ cao cấp', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
-                    ['TikTok Ads - Biệt thự nghỉ dưỡng', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
-                    ['Chiến dịch Email & Inbound M2', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active']
-                ];
-                $stmt = $this->db->prepare("INSERT INTO marketing_campaigns (tenant_id, name, description, status) VALUES (1, ?, ?, ?)");
-                foreach ($defaults as $d) {
-                    $stmt->execute($d);
-                }
-            }
+            // Delete mock campaigns if they exist to keep only production/user data
+            $this->db->exec("
+                DELETE FROM marketing_campaigns 
+                WHERE name IN (
+                    'Chiến dịch Mở bán Q1 2026', 
+                    'Facebook Lead Ads - HCMC', 
+                    'Google Search - Căn hộ cao cấp', 
+                    'TikTok Ads - Biệt thự nghỉ dưỡng', 
+                    'Chiến dịch Email & Inbound M2'
+                ) OR description = 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.';
+            ");
         } catch (Exception $e) {}
     }
 

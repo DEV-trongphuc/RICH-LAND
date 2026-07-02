@@ -633,7 +633,27 @@ export default function ProjectsPage() {
                           <span className="text-xs text-gray-500 font-mono">ID: {camp.id}</span>
                         </div>
                       </div>
-                      <span className={`badge ${camp.status === 'active' ? 'success' : 'secondary'}`}>
+                      <span 
+                        className={`badge ${camp.status === 'active' ? 'success' : 'secondary'}`}
+                        style={{ 
+                          whiteSpace: 'nowrap', 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          fontSize: '0.725rem', 
+                          padding: '3px 8px', 
+                          borderRadius: '30px', 
+                          fontWeight: 700,
+                          lineHeight: 1
+                        }}
+                      >
+                        <span style={{ 
+                          width: 6, 
+                          height: 6, 
+                          borderRadius: '50%', 
+                          background: camp.status === 'active' ? '#22c55e' : '#94a3b8', 
+                          display: 'inline-block' 
+                        }}></span>
                         {camp.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
                       </span>
                     </div>
