@@ -1771,21 +1771,46 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
                     <tr style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#f8fafc', borderBottom: '1px solid var(--color-border)' }}>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Họ tên')}</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Số điện thoại')}</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Email')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Khách hàng')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Liên hệ')}</th>
                       <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Nguồn')}</th>
                       <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Người nhận')}</th>
                       <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Giải phóng lúc')}</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700 }}>{t('Hành động')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700 }}>
+                        {isAdmin ? t('Lượt nhận') : t('Hành động')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {publicLeads.map((lead: any) => (
-                      <tr key={lead.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.01)' : '#fff9fa'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        <td style={{ padding: '12px 16px', fontWeight: 600 }}>{lead.full_name || t('Khách hàng')}</td>
-                        <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{lead.phone || '-'}</td>
-                        <td style={{ padding: '12px 16px' }}>{lead.email || '-'}</td>
+                      <tr 
+                        key={lead.id} 
+                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s', cursor: isAdmin ? 'pointer' : 'default' }} 
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.01)' : '#fff9fa'} 
+                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                        onClick={() => {
+                          if (isAdmin) {
+                            setSelectedLead({
+                              ...lead,
+                              name: lead.full_name,
+                              id: lead.id,
+                              status: 'databank'
+                            });
+                          }
+                        }}
+                      >
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Avatar name={lead.full_name || t('Khách hàng')} size={32} />
+                            <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.full_name || t('Khách hàng')}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {lead.phone || '-'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
+                        </td>
                         <td style={{ padding: '12px 16px' }}>
                           <span className="badge" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}>
                             {lead.original_source || 'Databank'}
@@ -1820,33 +1845,50 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           )}
                         </td>
                         <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{lead.released_to_kho_at || '-'}</td>
-                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                          <button
-                            onClick={() => handleClaimLead(lead.id)}
-                            disabled={isClaimingLeadId !== null}
-                            style={{
-                              background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)',
-                              border: 'none',
-                              color: '#ffffff',
-                              padding: '6px 16px',
-                              borderRadius: '6px',
-                              fontSize: '0.8125rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.transform = 'translateY(-1px)';
-                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(189, 29, 45, 0.35)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.transform = 'translateY(0)';
-                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(189, 29, 45, 0.2)';
-                            }}
-                          >
-                            {isClaimingLeadId === lead.id ? t('Đang nhận...') : t('Nhận Data')}
-                          </button>
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                          {isAdmin ? (
+                            <span 
+                              className="badge" 
+                              style={{ 
+                                background: lead.takers && lead.takers.length >= 2 ? 'rgba(16,185,129,0.1)' : (lead.takers && lead.takers.length > 0 ? 'rgba(59,130,246,0.1)' : 'rgba(156,163,175,0.1)'),
+                                color: lead.takers && lead.takers.length >= 2 ? '#10b981' : (lead.takers && lead.takers.length > 0 ? '#3b82f6' : '#9ca3af'),
+                                border: lead.takers && lead.takers.length >= 2 ? '1px solid rgba(16,185,129,0.2)' : (lead.takers && lead.takers.length > 0 ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(156,163,175,0.2)'),
+                                fontWeight: 700,
+                                fontSize: '0.8rem',
+                                padding: '4px 10px',
+                                borderRadius: '20px'
+                              }}
+                            >
+                              {(lead.takers ? lead.takers.length : 0)} / 2
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => handleClaimLead(lead.id)}
+                              disabled={isClaimingLeadId !== null}
+                              style={{
+                                background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)',
+                                border: 'none',
+                                color: '#ffffff',
+                                padding: '6px 16px',
+                                borderRadius: '6px',
+                                fontSize: '0.8125rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
+                                transition: 'all 0.2s'
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(189, 29, 45, 0.35)';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(189, 29, 45, 0.2)';
+                              }}
+                            >
+                              {isClaimingLeadId === lead.id ? t('Đang nhận...') : t('Nhận Data')}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
