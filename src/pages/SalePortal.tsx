@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus
+  Camera, Video, Layers, Plus, Receipt, Building2, Users
 } from 'lucide-react';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
@@ -27,6 +27,10 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { TableSkeleton, StatRowSkeleton, CalendarSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { FairShareAudit } from './FairShareAudit';
+import { InvoicesPage } from './InvoicesPage';
+import ProjectsPage from './ProjectsPage';
+import { FilesPage } from './FilesPage';
+import { Consultants } from './Consultants';
 import vnFlag from '../assets/vn.svg';
 import usFlag from '../assets/us.svg';
 import jpFlag from '../assets/jp.svg';
@@ -231,7 +235,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [loadingTimeline, setLoadingTimeline] = useState(false);
 
   // Tab & Layout states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants'>('dashboard');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -3500,125 +3504,121 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               }} />
             )}
 
-            {!isCollapsed && (
-              <span style={{
-                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
-                textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
-                padding: '0.5rem 1.5rem', whiteSpace: 'nowrap'
-              }}>{t("Chức năng chính")}</span>
-            )}
+            {(() => {
+              const PORTAL_SIDEBAR_GROUPS = [
+                {
+                  title: 'TỔNG QUAN',
+                  items: [
+                    { name: 'Dashboard', key: 'dashboard', icon: LayoutDashboard }
+                  ]
+                },
+                {
+                  title: 'KHÁCH HÀNG',
+                  items: [
+                    { name: 'Nhật ký Data', key: 'data', icon: Database },
+                    { name: 'Kho Databank', key: 'databank', icon: Layers },
+                    { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
+                    { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
+                    { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending }
+                  ]
+                },
+                {
+                  title: 'DỰ ÁN',
+                  items: [
+                    { name: 'Dự án', key: 'projects', icon: Building2 },
+                    { name: 'Tài liệu', key: 'files', icon: FileText }
+                  ]
+                },
+                {
+                  title: 'NHÂN SỰ',
+                  items: [
+                    { name: 'Tư vấn viên', key: 'consultants', icon: Users }
+                  ]
+                },
+                {
+                  title: 'TÀI CHÍNH',
+                  items: [
+                    { name: 'Hóa đơn', key: 'invoices', icon: Receipt }
+                  ]
+                },
+                {
+                  title: 'CÀI ĐẶT TÀI KHOẢN',
+                  items: [
+                    { name: 'Quản lý tài khoản', key: 'schedule', icon: Settings }
+                  ]
+                }
+              ];
 
-            {[
-              { name: 'Dashboard', key: 'dashboard', icon: LayoutDashboard },
-              { name: 'Nhật ký Data', key: 'data', icon: Database },
-              { name: 'Kho Databank', key: 'databank', icon: Layers },
-              { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
-              { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
-              { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending }
-            ].map(({ name, key, icon: Icon, badgeCount }) => {
-              const isActive = activeTab === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setActiveTab(key as any);
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  data-active={isActive ? "true" : "false"}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.875rem',
-                    padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
-                    justifyContent: isCollapsed ? 'center' : 'flex-start',
-                    color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
-                    border: 'none', background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                    fontSize: '0.9375rem', cursor: 'pointer', width: '100%',
-                    fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
-                    position: 'relative', textAlign: 'left', outline: 'none'
-                  }}
-                >
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, transition: 'all 0.2s', position: 'relative'
-                  }}>
-                    <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
-                    {isCollapsed && badgeCount > 0 && (
-                      <span style={{
-                        position: 'absolute', top: 4, right: 4,
-                        width: 8, height: 8, borderRadius: '50%',
-                        background: '#ef4444',
-                        boxShadow: '0 0 0 2px var(--sidebar-bg, #161d31)'
-                      }} />
-                    )}
-                  </div>
-
+              return PORTAL_SIDEBAR_GROUPS.map((group, groupIdx) => (
+                <React.Fragment key={groupIdx}>
                   {!isCollapsed && (
-                    <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      {t(name)}
-                      {badgeCount > 0 && (
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 800,
-                          height: 20, minWidth: 20, padding: '0 6px', borderRadius: '9999px'
+                    <span style={{
+                      fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
+                      textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
+                      padding: '0.5rem 1.5rem', whiteSpace: 'nowrap',
+                      display: 'block',
+                      marginTop: groupIdx > 0 ? '1.25rem' : '0.5rem',
+                      marginBottom: '0.25rem'
+                    }}>{t(group.title)}</span>
+                  )}
+                  {group.items.map(({ name, key, icon: Icon, badgeCount }) => {
+                    const isActive = activeTab === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setActiveTab(key as any);
+                          setIsMobileSidebarOpen(false);
+                        }}
+                        data-active={isActive ? "true" : "false"}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: '0.875rem',
+                          padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
+                          justifyContent: isCollapsed ? 'center' : 'flex-start',
+                          color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
+                          border: 'none', background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
+                          fontSize: '0.9375rem', cursor: 'pointer', width: '100%',
+                          fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
+                          position: 'relative', textAlign: 'left', outline: 'none'
+                        }}
+                      >
+                        <div style={{
+                          width: 36, height: 36, borderRadius: 10,
+                          background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0, transition: 'all 0.2s', position: 'relative'
                         }}>
-                          {badgeCount}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                          <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
+                          {isCollapsed && badgeCount !== undefined && badgeCount > 0 && (
+                            <span style={{
+                              position: 'absolute', top: 4, right: 4,
+                              width: 8, height: 8, borderRadius: '50%',
+                              background: '#ef4444',
+                              boxShadow: '0 0 0 2px var(--sidebar-bg, #161d31)'
+                            }} />
+                          )}
+                        </div>
 
-            {!isCollapsed && (
-              <span style={{
-                fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em',
-                textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)',
-                padding: '0.5rem 1.5rem', whiteSpace: 'nowrap', marginTop: '1.25rem'
-              }}>{t("Cài đặt tài khoản")}</span>
-            )}
-
-            {[
-              { name: 'Quản lý tài khoản', key: 'schedule', icon: Settings }
-            ].map(({ name, key, icon: Icon }) => {
-              const isActive = activeTab === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setActiveTab(key as any);
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  data-active={isActive ? "true" : "false"}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.875rem',
-                    padding: isCollapsed ? '0.75rem 0' : '0.75rem 1.5rem',
-                    justifyContent: isCollapsed ? 'center' : 'flex-start',
-                    color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
-                    border: 'none', background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                    fontSize: '0.9375rem', cursor: 'pointer', width: '100%',
-                    fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
-                    position: 'relative', textAlign: 'left', outline: 'none'
-                  }}
-                >
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, transition: 'all 0.2s', position: 'relative'
-                  }}>
-                    <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
-                  </div>
-
-                  {!isCollapsed && (
-                    <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      {t(name)}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                        {!isCollapsed && (
+                          <span style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            {t(name)}
+                            {badgeCount !== undefined && badgeCount > 0 && (
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 800,
+                                height: 20, minWidth: 20, padding: '0 6px', borderRadius: '9999px'
+                              }}>
+                                {badgeCount}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </React.Fragment>
+              ));
+            })()}
           </div>
         </div>
       </aside>
@@ -4108,6 +4108,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
               {activeTab === 'tickets' && renderTicketsView()}
               {activeTab === 'schedule' && renderScheduleView()}
+              {activeTab === 'invoices' && <InvoicesPage />}
+              {activeTab === 'projects' && <ProjectsPage />}
+              {activeTab === 'files' && <FilesPage />}
+              {activeTab === 'consultants' && <Consultants />}
             </div>
           </div>
         </main>

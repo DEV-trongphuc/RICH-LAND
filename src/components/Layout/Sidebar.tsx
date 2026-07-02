@@ -166,7 +166,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
 
       if (item.adminOnly && !isAdmin) {
-        return false;
+        if (role === 'sale' && (item.href === '/accounts' || item.href === '/consultants')) {
+          // Allow Sales to view these specific pages
+        } else {
+          return false;
+        }
       }
       if (item.hideForRoles && item.hideForRoles.includes(role)) {
         return false;

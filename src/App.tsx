@@ -97,7 +97,7 @@ const AppTabs = () => {
     return <Navigate to="/sale-portal" replace />;
   }
 
-  if (currentPath === '/accounts') {
+  if (currentPath === '/accounts' || currentPath === '/consultants') {
     if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
       return <Navigate to="/" replace />;
     }
