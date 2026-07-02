@@ -1360,29 +1360,30 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {activeTab === 'info' && (
                     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       {/* Quick Stats Dashboard */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>DỰ KIẾN DOANH THU</span>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.25rem' }}>{FMT(formData.expected_revenue || 0)}</span>
-                          <span className="text-xs text-light mt-1"><span style={{ color: 'var(--color-success)' }}>{formData.win_probability || 0}%</span> xác suất chốt</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                        <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DỰ KIẾN DOANH THU</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.15rem' }}>{FMT(formData.expected_revenue || 0)}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}><span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{formData.win_probability || 0}%</span> xác suất</span>
                         </div>
-                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>LẦN LIÊN HỆ CUỐI</span>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>
+                        <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>LẦN LIÊN HỆ CUỐI</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.15rem' }}>
                             {formData.last_contact ? new Date(formData.last_contact).toLocaleDateString('vi-VN') : 'Chưa có'}
                           </span>
-                          <span className="text-xs text-light mt-1">
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
                             {formData.last_contact ? AGO(formData.last_contact) : 'Cần liên hệ ngay'}
                           </span>
                         </div>
-                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>TỔNG CHI TIÊU</span>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: '0.25rem' }}>{FMT(formData.total_spent || 0)}</span>
-                          <span className="text-xs text-light mt-1">
-                            {formData.order_count || 0} đơn hàng • Mua cuối: {formData.last_order_at ? new Date(formData.last_order_at).toLocaleDateString('vi-VN') : '—'}
+                        <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TỔNG CHI TIÊU</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', marginTop: '0.15rem' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {formData.order_count || 0} đơn • {formData.last_order_at ? new Date(formData.last_order_at).toLocaleDateString('vi-VN') : '—'}
                           </span>
                         </div>
                       </div>
+
 
                       <div className="card-panel">
                         <div className="flex items-center justify-between mb-4">
