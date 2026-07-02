@@ -22,6 +22,9 @@ $allowed = array_map('trim', explode(',', ALLOWED_ORIGINS));
 // Dynamically fetch and allow frontend_url from system_settings
 try {
     $db = Database::getInstance();
+    
+
+
     $stmtSetting = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'frontend_url' LIMIT 1");
     if ($stmtSetting) {
         $feUrl = $stmtSetting->fetchColumn();
@@ -35,6 +38,7 @@ try {
 } catch (Throwable $e) {
     // Avoid crashing on DB issues during CORS phase
 }
+
 
 // Also allow any localhost origin (any port) for local dev
 $isLocalhost = (bool) preg_match('#^https?://localhost(:\d+)?$#', $origin);

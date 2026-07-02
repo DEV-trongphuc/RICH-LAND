@@ -1677,6 +1677,42 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '10')");
 
+    // Self-healing check: seed default pipeline stages if table is empty
+    $chkStages = $conn->query("SELECT COUNT(*) FROM pipeline_stages");
+    $stageCount = $chkStages ? (int)$chkStages->fetch_row()[0] : 0;
+    if ($stageCount === 0) {
+        $tenantsRes = $conn->query("SELECT id FROM tenants");
+        $tenantIds = [];
+        if ($tenantsRes) {
+            while ($row = $tenantsRes->fetch_assoc()) {
+                $tenantIds[] = (int)$row['id'];
+            }
+        }
+        if (empty($tenantIds)) {
+            $tenantIds[] = 1;
+        }
+
+        $defaultStages = [
+            ['Chưa xác định', '#3b82f6', 0, 0, 0],
+            ['Quan tâm', '#6366f1', 1, 0, 0],
+            ['Đồng ý gặp', '#ec4899', 2, 0, 0],
+            ['Đã gặp', '#f59e0b', 3, 0, 0],
+            ['Booking', '#10b981', 4, 0, 0],
+            ['Đặt cọc', '#14b8a6', 5, 0, 0],
+            ['Đóng deal', '#10b981', 6, 1, 0]
+        ];
+
+        foreach ($tenantIds as $tid) {
+            foreach ($defaultStages as $ds) {
+                $stmtIns = $conn->prepare("INSERT INTO pipeline_stages (tenant_id, name, color, order_index, is_won, is_lost) VALUES (?, ?, ?, ?, ?, ?)");
+                $stmtIns->bind_param("issiii", $tid, $ds[0], $ds[1], $ds[2], $ds[3], $ds[4]);
+                $stmtIns->execute();
+            }
+        }
+        $logMsg("Đã khởi tạo các giai đoạn pipeline mặc định cho các tenants", "success");
+    }
+
+
 
 
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '154') ON DUPLICATE KEY UPDATE setting_value = '154'");
