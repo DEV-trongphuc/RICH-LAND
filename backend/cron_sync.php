@@ -1957,6 +1957,28 @@ function releaseExpiredLeadsToKho($conn) {
                 $stmt->close();
                 
                 if ($person) {
+                    // Rule 5.13: Cùng 1 Person bị Đóng/Lỗi 3 lần cùng 1 lý do trong 1 chiến dịch -> không ra kho nữa
+                    $checkReasonStmt = $conn->prepare("
+                        SELECT dr.reason, COUNT(*) as cnt 
+                        FROM data_reports dr
+                        JOIN leads l ON dr.lead_id = l.id
+                        WHERE l.person_id = ?
+                          AND dr.status IN ('approved', 'approved_no_comp')
+                        GROUP BY dr.reason
+                        HAVING cnt >= 3
+                        LIMIT 1
+                    ");
+                    $checkReasonStmt->bind_param("i", $personId);
+                    $checkReasonStmt->execute();
+                    $hasThreeSameReason = $checkReasonStmt->get_result()->fetch_assoc();
+                    $checkReasonStmt->close();
+
+                    if ($hasThreeSameReason) {
+                        logSync("Person ID $personId bi bao loi trung 3 lan cung 1 ly do (" . $hasThreeSameReason['reason'] . "). Tu choi ra Kho.");
+                        $conn->commit();
+                        continue;
+                    }
+
                     $publicCount = (int)($person['public_count'] ?? 0);
                     if ($publicCount === 0) {
                         $newPublicCount = 1;
