@@ -684,40 +684,48 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   const [isDeletingClaim, setIsDeletingClaim] = useState(false);
 
-  const handleDeletePublicClaim = async (personId: number, saleId: number, saleName: string) => {
-    if (!window.confirm(t('Bạn có chắc chắn muốn xóa lượt nhận của Sale {name} cho khách hàng này không?').replace('{name}', saleName))) {
-      return;
-    }
-    setIsDeletingClaim(true);
-    try {
-      const res = await fetchAPI('delete_public_lead_claim', {
-        method: 'POST',
-        body: JSON.stringify({ person_id: personId, sale_id: saleId })
-      });
-      if (res.success) {
-        toast.success(res.message || t('Đã xóa lượt nhận thành công!'));
-        
-        // Update local modal details
-        const updatedTakers = selectedLead.takers ? selectedLead.takers.filter((t: any) => t.id !== saleId) : [];
-        setSelectedLead({
-          ...selectedLead,
-          takers: updatedTakers
-        });
+  const handleDeletePublicClaim = (personId: number, saleId: number, saleName: string) => {
+    showConfirm({
+      title: t('Xóa lượt nhận của Sale'),
+      message: t('Bạn có chắc chắn muốn xóa lượt nhận của Sale {name} cho khách hàng này không?').replace('{name}', saleName),
+      confirmText: t('Xóa'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        setIsDeletingClaim(true);
+        try {
+          const res = await fetchAPI('delete_public_lead_claim', {
+            method: 'POST',
+            body: JSON.stringify({ person_id: personId, sale_id: saleId })
+          });
+          if (res.success) {
+            toast.success(res.message || t('Đã xóa lượt nhận thành công!'));
+            
+            // Update local modal details
+            const updatedTakers = selectedLead.takers ? selectedLead.takers.filter((t: any) => t.id !== saleId) : [];
+            setSelectedLead({
+              ...selectedLead,
+              takers: updatedTakers
+            });
 
-        // Refresh table counts
-        fetchLeads();
-        if (viewMode === 'databank') {
-          fetchPublicLeads();
+            // Refresh table counts
+            fetchLeads();
+            if (viewMode === 'databank') {
+              fetchPublicLeads();
+            }
+          } else {
+            toast.error(res.message || t('Lỗi khi xóa lượt nhận.'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi kết nối: ') + e.message);
+        } finally {
+          setIsDeletingClaim(false);
         }
-      } else {
-        toast.error(res.message || t('Lỗi khi xóa lượt nhận.'));
       }
-    } catch (e: any) {
-      toast.error(t('Lỗi kết nối: ') + e.message);
-    } finally {
-      setIsDeletingClaim(false);
-    }
+    });
   };
+
+
 
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true });
