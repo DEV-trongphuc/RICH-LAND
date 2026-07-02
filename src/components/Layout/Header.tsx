@@ -388,6 +388,24 @@ export const Header = ({ onActivityFeedClick, onMenuClick }: { onActivityFeedCli
           </div>
         )}
         
+        {/* Version Badge */}
+        <div style={{
+          padding: '4px 10px',
+          background: 'rgba(59, 130, 246, 0.08)',
+          color: '#3b82f6',
+          border: '1px solid rgba(59, 130, 246, 0.18)',
+          borderRadius: '20px',
+          fontSize: '0.75rem',
+          fontWeight: 700,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          marginRight: 4,
+          userSelect: 'none'
+        }}>
+          v1.5.3
+        </div>
+
         {/* Live Activity Feed Button */}
         <button 
           onClick={onActivityFeedClick}
