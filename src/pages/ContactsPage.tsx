@@ -606,26 +606,28 @@ export const ContactsPage: React.FC = () => {
                         <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', opacity: 0 }} className="row-actions">
                             <button className="btn ghost sm" title="Xem hồ sơ" onClick={() => setProfileContact(c)}><Eye size={13} /></button>
-                            <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} title="Xóa"
-                              onClick={() => {
-                                showConfirm({
-                                  title: 'Xóa liên hệ',
-                                  message: `Bạn có chắc chắn muốn xóa liên hệ ${fullName}? Hành động này không thể hoàn tác.`,
-                                  isDanger: true,
-                                  confirmText: 'Xóa',
-                                  onConfirm: async () => {
-                                    try {
-                                      await api.delete(`/contacts/${c.id}`);
-                                      setContacts(p => p.filter(x => x.id !== c.id));
-                                      addToast('Đã xóa liên hệ thành công', 'success');
-                                    } catch (e: any) {
-                                      addToast(e.response?.data?.message || 'Lỗi khi xóa liên hệ', 'error');
+                            {!isSale && (
+                              <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} title="Xóa"
+                                onClick={() => {
+                                  showConfirm({
+                                    title: 'Xóa liên hệ',
+                                    message: `Bạn có chắc chắn muốn xóa liên hệ ${fullName}? Hành động này không thể hoàn tác.`,
+                                    isDanger: true,
+                                    confirmText: 'Xóa',
+                                    onConfirm: async () => {
+                                      try {
+                                        await api.delete(`/contacts/${c.id}`);
+                                        setContacts(p => p.filter(x => x.id !== c.id));
+                                        addToast('Đã xóa liên hệ thành công', 'success');
+                                      } catch (e: any) {
+                                        addToast(e.response?.data?.message || 'Lỗi khi xóa liên hệ', 'error');
+                                      }
                                     }
-                                  }
-                                });
-                              }}>
-                              <Trash2 size={13} />
-                            </button>
+                                  });
+                                }}>
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </motion.tr>

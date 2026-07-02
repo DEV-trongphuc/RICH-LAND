@@ -226,12 +226,12 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
+    <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', zIndex: 9999, overflowY: 'auto' }}>
       <AnimatePresence>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="modal-sheet"
-          style={{ width: '95vw', maxWidth: '1100px', maxHeight: '95vh', overflow: 'hidden' }}
+          style={{ width: '95vw', maxWidth: '1100px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: 'auto' }}
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
@@ -248,7 +248,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
             <button className="btn-icon sm" onClick={onClose}><X size={20} /></button>
           </div>
 
-          <div className="modal-body" style={{ background: 'var(--color-bg)', padding: '1.5rem 2rem 4rem', maxHeight: 'calc(95vh - 140px)', overflowY: 'auto' }}>
+          <div className="modal-body" style={{ background: 'var(--color-bg)', padding: '1.5rem 2rem 4rem', flex: 1, overflowY: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
               
               {/* Left Column */}

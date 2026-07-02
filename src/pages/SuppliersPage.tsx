@@ -50,7 +50,7 @@ export const SuppliersPage: React.FC = () => {
       setSuppliers(data.items || []);
       setTotal(data.total || 0);
     } catch (err: any) {
-      addToast('Lỗi khi tải danh sách nhà cung cấp', 'error');
+      addToast('Lỗi khi tải danh sách chủ đầu tư', 'error');
     } finally {
       setLoading(false);
     }
@@ -78,10 +78,10 @@ export const SuppliersPage: React.FC = () => {
     try {
       if (selectedSupplier) {
         await api.put(`/suppliers/${selectedSupplier.id}`, formData);
-        addToast('Đã cập nhật nhà cung cấp', 'success');
+        addToast('Đã cập nhật chủ đầu tư', 'success');
       } else {
         await api.post('/suppliers', formData);
-        addToast('Đã thêm nhà cung cấp mới', 'success');
+        addToast('Đã thêm chủ đầu tư mới', 'success');
       }
       setShowModal(false);
       fetchSuppliers();
@@ -92,16 +92,16 @@ export const SuppliersPage: React.FC = () => {
 
   const handleDelete = (id: number) => {
     showConfirm({
-      title: 'Xóa nhà cung cấp',
-      message: 'Bạn có chắc chắn muốn xóa nhà cung cấp này?',
+      title: 'Xóa chủ đầu tư',
+      message: 'Bạn có chắc chắn muốn xóa chủ đầu tư này?',
       isDanger: true,
       onConfirm: async () => {
         try {
           await api.delete(`/suppliers/${id}`);
           setSuppliers(prev => prev.filter(s => s.id !== id));
-          addToast('Đã xóa nhà cung cấp', 'success');
+          addToast('Đã xóa chủ đầu tư', 'success');
         } catch (e: any) {
-          addToast('Lỗi khi xóa nhà cung cấp', 'error');
+          addToast('Lỗi khi xóa chủ đầu tư', 'error');
         } finally {
           closeConfirm();
         }
@@ -115,15 +115,15 @@ export const SuppliersPage: React.FC = () => {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h1 className="page-title">Quản lý Nhà cung cấp</h1>
-          <p className="page-subtitle">Quản lý danh sách đối tác và thông tin nhập hàng</p>
+          <h1 className="page-title">Quản lý Chủ đầu tư</h1>
+          <p className="page-subtitle">Quản lý danh sách các chủ đầu tư dự án bất động sản</p>
         </div>
         <div className="flex gap-3">
           <button className="btn outline" onClick={() => addToast('Tính năng đang phát triển', 'info')}>
             <Download size={18} /> Xuất Excel
           </button>
           <button className="btn primary" onClick={() => handleOpenModal()}>
-            <Plus size={18} /> Thêm nhà cung cấp
+            <Plus size={18} /> Thêm chủ đầu tư
           </button>
         </div>
       </div>
@@ -134,7 +134,7 @@ export const SuppliersPage: React.FC = () => {
             <Search size={18} className="text-muted" />
             <input 
               type="text"
-              placeholder="Tìm kiếm theo tên nhà cung cấp hoặc người liên hệ..." 
+              placeholder="Tìm kiếm theo tên chủ đầu tư hoặc người liên hệ..." 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -152,8 +152,8 @@ export const SuppliersPage: React.FC = () => {
       ) : total === 0 ? (
         <EmptyCard 
           icon={<Truck size={48} />}
-          title="Chưa có nhà cung cấp nào"
-          description="Bắt đầu thêm các đối tác cung cấp hàng hóa để quản lý nhập kho."
+          title="Chưa có chủ đầu tư nào"
+          description="Bắt đầu thêm các chủ đầu tư dự án để quản lý."
           actionText="Thêm ngay"
           onAction={() => handleOpenModal()}
         />
@@ -194,7 +194,7 @@ export const SuppliersPage: React.FC = () => {
 
                 <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border-light)]">
                   <div>
-                    <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Tổng giá trị mua</p>
+                    <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Tổng giá trị giao dịch</p>
                     <p className="font-bold text-primary text-base">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered || 0)}</p>
                   </div>
                   <div className="flex gap-2">
@@ -228,17 +228,17 @@ export const SuppliersPage: React.FC = () => {
               onClick={e => e.stopPropagation()}
             >
               <div className="modal-header">
-                <h3>{selectedSupplier ? 'Cập nhật đối tác' : 'Thêm nhà cung cấp mới'}</h3>
+                <h3>{selectedSupplier ? 'Cập nhật đối tác' : 'Thêm chủ đầu tư mới'}</h3>
                 <button className="btn-icon sm" onClick={() => setShowModal(false)}><ArrowUpRight size={18} style={{ transform: 'rotate(45deg)' }} /></button>
               </div>
 
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
                   <div className="form-group">
-                    <label className="form-label">Tên doanh nghiệp / Nhà cung cấp <span className="text-danger">*</span></label>
+                    <label className="form-label">Tên doanh nghiệp / Chủ đầu tư <span className="text-danger">*</span></label>
                     <input 
                       className="form-input" 
-                      placeholder="Ví dụ: Công ty TNHH Giải pháp Công nghệ"
+                      placeholder="Ví dụ: Vingroup, Novaland..."
                       required 
                       value={formData.name}
                       onChange={e => setFormData({...formData, name: e.target.value})}
@@ -281,7 +281,7 @@ export const SuppliersPage: React.FC = () => {
                       <input 
                         className="form-input" 
                         type="email"
-                        placeholder="supplier@email.com"
+                        placeholder="developer@email.com"
                         value={formData.email}
                         onChange={e => setFormData({...formData, email: e.target.value})}
                       />
@@ -293,7 +293,7 @@ export const SuppliersPage: React.FC = () => {
                       label="Địa chỉ"
                       value={formData.address}
                       onChange={val => setFormData({...formData, address: val})}
-                      placeholder="Chọn địa chỉ nhà cung cấp..."
+                      placeholder="Chọn địa chỉ chủ đầu tư..."
                     />
                   </div>
 
@@ -301,7 +301,7 @@ export const SuppliersPage: React.FC = () => {
                     <label className="form-label">Ghi chú thêm</label>
                     <textarea 
                       className="form-textarea" 
-                      placeholder="Thông tin thêm về nhà cung cấp..."
+                      placeholder="Thông tin thêm về chủ đầu tư..."
                       value={formData.notes}
                       onChange={e => setFormData({...formData, notes: e.target.value})}
                     />
@@ -311,7 +311,7 @@ export const SuppliersPage: React.FC = () => {
                 <div className="modal-footer">
                   <button type="button" className="btn secondary" onClick={() => setShowModal(false)}>Hủy bỏ</button>
                   <button type="submit" className="btn primary">
-                    {selectedSupplier ? 'Lưu thay đổi' : 'Tạo nhà cung cấp'}
+                    {selectedSupplier ? 'Lưu thay đổi' : 'Tạo chủ đầu tư'}
                   </button>
                 </div>
               </form>

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock, Home } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
@@ -21,6 +21,12 @@ export interface SidebarGroup {
 }
 
 export const SIDEBAR_GROUPS: SidebarGroup[] = [
+  {
+    title: 'BÀN LÀM VIỆC',
+    items: [
+      { name: 'Bàn làm việc Sale', href: '/sale-portal', icon: Home, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] }
+    ]
+  },
   {
     title: 'TỔNG QUAN',
     items: [
@@ -73,7 +79,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'TÀI CHÍNH',
     items: [
-      { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['sale', 'viewer'] },
+      { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
       { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
       { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true }
     ]

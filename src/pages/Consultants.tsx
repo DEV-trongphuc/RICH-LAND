@@ -11,6 +11,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, LabelList
@@ -60,6 +61,8 @@ const formatScheduleTooltip = (schedule: any, t: any): string => {
 const ConsultantsInner = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const userRole = useAuthStore.getState().user?.role;
+  const isSale = userRole === 'sale';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -127,6 +130,12 @@ const ConsultantsInner = () => {
     work_schedule: any;
     avatar: string;
     team_id: string;
+    dob: string;
+    gender: string;
+    citizen_id: string;
+    address: string;
+    bank_name: string;
+    bank_account: string;
   }>({
     name: '',
     email: '',
@@ -138,7 +147,13 @@ const ConsultantsInner = () => {
     work_end_time: '23:59',
     work_schedule: null,
     avatar: '',
-    team_id: ''
+    team_id: '',
+    dob: '',
+    gender: '',
+    citizen_id: '',
+    address: '',
+    bank_name: '',
+    bank_account: ''
   });
 
   const handleDayChange = (dayKey: string, field: 'active' | 'start' | 'end', value: any) => {
@@ -216,7 +231,13 @@ const ConsultantsInner = () => {
       work_end_time: '23:59',
       work_schedule: null,
       avatar: '',
-      team_id: ''
+      team_id: '',
+      dob: '',
+      gender: '',
+      citizen_id: '',
+      address: '',
+      bank_name: '',
+      bank_account: ''
     });
     setModalOpen(true);
   };
@@ -236,7 +257,13 @@ const ConsultantsInner = () => {
       work_end_time: user.work_end_time || '23:59',
       work_schedule: user.work_schedule || null,
       avatar: user.avatar || '',
-      team_id: user.team_id || ''
+      team_id: user.team_id || '',
+      dob: user.dob || '',
+      gender: user.gender || '',
+      citizen_id: user.citizen_id || '',
+      address: user.address || '',
+      bank_name: user.bank_name || '',
+      bank_account: user.bank_account || ''
     });
     setModalOpen(true);
   };
@@ -508,15 +535,15 @@ const ConsultantsInner = () => {
               : t('Danh sách nhân sự tiếp nhận và xử lý data từ hệ thống')}
           </p>
         </div>
-        {activeTab === 'teams' ? (
+        {!isSale && activeTab === 'teams' ? (
           <button onClick={openAddTeamModal} className="btn primary responsive-btn-full">
             <Plus size={16} /> {t('Thêm Nhóm')}
           </button>
-        ) : activeTab === 'branches' ? null : (
+        ) : activeTab === 'branches' ? null : !isSale ? (
           <button onClick={openAddModal} className="btn primary responsive-btn-full">
             <Plus size={16} /> {t('Thêm TVV')}
           </button>
-        )}
+        ) : null}
       </div>
 
       {/* Tab bar */}
@@ -823,7 +850,7 @@ const ConsultantsInner = () => {
                     </td>
                   </tr>
                 ) : teams.map((team) => (
-                  <tr key={team.id} className="table-row-hover" style={{ cursor: 'pointer' }} onClick={() => openEditTeamModal(team)}>
+                  <tr key={team.id} className="table-row-hover" style={{ cursor: isSale ? 'default' : 'pointer' }} onClick={() => !isSale && openEditTeamModal(team)}>
                     <td data-label={t('Tên Nhóm')}>
                       <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{team.name}</span>
                     </td>
@@ -838,17 +865,19 @@ const ConsultantsInner = () => {
                     </td>
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-                        <button className="btn sm outline" onClick={() => openEditTeamModal(team)}>{t('Sửa')}</button>
-                        <button
-                          className="btn sm"
-                          style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none' }}
-                          onClick={() => {
-                            setDeleteTeamId(team.id);
-                            setConfirmDeleteTeamOpen(true);
-                          }}
-                        >
-                          {t('Xóa')}
-                        </button>
+                        {!isSale && <button className="btn sm outline" onClick={() => openEditTeamModal(team)}>{t('Sửa')}</button>}
+                        {!isSale && (
+                          <button
+                            className="btn sm"
+                            style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none' }}
+                            onClick={() => {
+                              setDeleteTeamId(team.id);
+                              setConfirmDeleteTeamOpen(true);
+                            }}
+                          >
+                            {t('Xóa')}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -902,10 +931,10 @@ const ConsultantsInner = () => {
 
       {/* MODAL */}
       {modalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="overlay-backdrop" onClick={() => setModalOpen(false)}>
+        <div className="overlay-backdrop" onClick={() => setModalOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1100 }}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 800, maxHeight: '95vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both' }}
+            style={{ width: '100%', maxWidth: 800, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -999,17 +1028,87 @@ const ConsultantsInner = () => {
 
                     <div className="form-group">
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> {t('Nhóm (Team)')}</label>
-                      <select
+                      <CustomSelect
+                        options={[
+                          { value: '', label: `-- ${t('Không thuộc nhóm nào')} --` },
+                          ...teams.map(t => ({ value: String(t.id), label: `${t.name} (${t.branch || t('Không có chi nhánh')})` }))
+                        ]}
+                        value={String(formData.team_id || '')}
+                        onChange={val => setFormData({ ...formData, team_id: String(val) })}
+                        placeholder={t('Chọn nhóm...')}
+                      />
+                    </div>
+
+                    {/* Demographic Fields */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">{t('Ngày sinh')}</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={formData.dob}
+                          onChange={e => setFormData({ ...formData, dob: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Giới tính')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: '', label: `-- ${t('Chọn giới tính')} --` },
+                            { value: 'male', label: t('Nam') },
+                            { value: 'female', label: t('Nữ') },
+                            { value: 'other', label: t('Khác') }
+                          ]}
+                          value={formData.gender}
+                          onChange={val => setFormData({ ...formData, gender: String(val) })}
+                          placeholder={t('Chọn giới tính...')}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">{t('Số CMND/CCCD')}</label>
+                      <input
+                        type="text"
                         className="form-input"
-                        value={formData.team_id || ''}
-                        onChange={e => setFormData({ ...formData, team_id: e.target.value })}
-                        style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
-                      >
-                        <option value="">-- {t('Không thuộc nhóm nào')} --</option>
-                        {teams.map(t => (
-                          <option key={t.id} value={t.id}>{t.name} ({t.branch || t('Không có chi nhánh')})</option>
-                        ))}
-                      </select>
+                        placeholder="VD: 037092XXXXXX"
+                        value={formData.citizen_id}
+                        onChange={e => setFormData({ ...formData, citizen_id: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">{t('Địa chỉ thường trú')}</label>
+                      <textarea
+                        className="form-textarea"
+                        placeholder="Nhập địa chỉ nhà..."
+                        rows={2}
+                        value={formData.address}
+                        onChange={e => setFormData({ ...formData, address: e.target.value })}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">{t('Tên ngân hàng')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="VD: Vietcombank"
+                          value={formData.bank_name}
+                          onChange={e => setFormData({ ...formData, bank_name: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Số tài khoản')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="VD: 101298XXXX"
+                          value={formData.bank_account}
+                          onChange={e => setFormData({ ...formData, bank_account: e.target.value })}
+                        />
+                      </div>
                     </div>
 
                     <div className="form-group">
@@ -1820,10 +1919,10 @@ const ConsultantsInner = () => {
 
       {/* Team Add/Edit Modal */}
       {teamModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="overlay-backdrop" onClick={() => setTeamModalOpen(false)}>
+        <div className="overlay-backdrop" onClick={() => setTeamModalOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1100 }}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both' }}
+            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -1861,16 +1960,15 @@ const ConsultantsInner = () => {
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600 }}>{t('Trưởng nhóm')}</label>
-                  <select
-                    className="form-input"
-                    value={teamFormData.leader_id}
-                    onChange={e => setTeamFormData({ ...teamFormData, leader_id: e.target.value })}
-                  >
-                    <option value="">-- {t('Chọn Trưởng nhóm')} --</option>
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
-                    ))}
-                  </select>
+                  <CustomSelect
+                    options={[
+                      { value: '', label: `-- ${t('Chọn Trưởng nhóm')} --` },
+                      ...users.map(u => ({ value: String(u.id), label: u.name }))
+                    ]}
+                    value={String(teamFormData.leader_id || '')}
+                    onChange={val => setTeamFormData({ ...teamFormData, leader_id: String(val) })}
+                    placeholder={t('Chọn Trưởng nhóm...')}
+                  />
                 </div>
               </div>
 

@@ -6,7 +6,7 @@ import {
   MoreVertical, File, Filter, LayoutGrid, List, Plus, Edit,
   Shield, User, Globe, Clock, ChevronRight, HardDrive,
   Star, Clock3, FileJson, FileCode, FileImage, FileVideo,
-  MoreHorizontal, Share2, Info
+  MoreHorizontal, Share2, Info, Building2
 } from 'lucide-react';
 import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
@@ -16,9 +16,12 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
+import { useAuthStore } from '../store/authStore';
 
 export const FilesPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
+  const userRole = useAuthStore.getState().user?.role;
+  const isSale = userRole === 'sale';
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -31,6 +34,23 @@ export const FilesPage: React.FC = () => {
   const [categories, setCategories] = useState<any[]>([
     { id: 'all', label: 'Tất cả', icon: <HardDrive size={18} /> }
   ]);
+
+  const [projects, setProjects] = useState<any[]>([]);
+  
+  const fetchProjects = async () => {
+    try {
+      const res = await api.get('/projects');
+      if (res.data?.success) {
+        setProjects(res.data.data || []);
+      } else {
+        // Fallback for dev mode
+        const state = getFilteredMockState();
+        setProjects(state.projects || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch projects', err);
+    }
+  };
 
   const fetchCategories = async () => {
     if (DEV_MODE) return;
@@ -52,12 +72,18 @@ export const FilesPage: React.FC = () => {
 
   useEffect(() => {
     fetchCategories();
+    fetchProjects();
   }, []);
 
   // New States for Upload Modal
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadFormData, setUploadFormData] = useState({ name: '', category: 'general' });
+  const [uploadFormData, setUploadFormData] = useState({ name: '', category: 'general', project_id: '' });
+
+  // New States for Edit File Modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingFile, setEditingFile] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState({ id: 0, name: '', category: 'general', visibility: 'shared', project_id: '' });
 
   // New States for Category Modal
   const [showCatModal, setShowCatModal] = useState(false);
@@ -124,7 +150,7 @@ export const FilesPage: React.FC = () => {
     }
 
     setSelectedFile(file);
-    setUploadFormData({ name: file.name.split('.')[0], category: category === 'all' ? 'general' : category });
+    setUploadFormData({ name: file.name.split('.')[0], category: category === 'all' ? 'general' : category, project_id: '' });
     setShowUploadModal(true);
     // Clear input so same file can be selected again
     e.target.value = '';
@@ -139,6 +165,9 @@ export const FilesPage: React.FC = () => {
       formData.append('name', uploadFormData.name);
       formData.append('category', uploadFormData.category);
       formData.append('visibility', activeTab);
+      if (uploadFormData.project_id) {
+        formData.append('project_id', uploadFormData.project_id);
+      }
 
       await api.post('/cloud-files', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -147,6 +176,7 @@ export const FilesPage: React.FC = () => {
       addToast('Đã tải tệp lên thành công', 'success');
       setShowUploadModal(false);
       setSelectedFile(null);
+      setUploadFormData({ name: '', category: 'general', project_id: '' });
       fetchFiles();
     } catch (e: any) {
       addToast('Lỗi khi tải tệp lên', 'error');
@@ -155,7 +185,43 @@ export const FilesPage: React.FC = () => {
     }
   };
 
+  const handleOpenEditModal = (fileObj: any) => {
+    setEditingFile(fileObj);
+    setEditFormData({
+      id: fileObj.id,
+      name: fileObj.name,
+      category: fileObj.category || 'general',
+      visibility: fileObj.visibility || 'shared',
+      project_id: fileObj.project_id ? String(fileObj.project_id) : ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateFile = async () => {
+    if (!editFormData.name) return;
+    setLoading(true);
+    try {
+      await api.put(`/cloud-files/${editFormData.id}`, {
+        name: editFormData.name,
+        category: editFormData.category,
+        visibility: editFormData.visibility,
+        project_id: editFormData.project_id || null
+      });
+      addToast('Cập nhật tài liệu thành công', 'success');
+      setShowEditModal(false);
+      fetchFiles();
+    } catch (e) {
+      addToast('Lỗi khi cập nhật tài liệu', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveCategory = async () => {
+    if (isSale) {
+      addToast('Bạn không có quyền thực hiện hành động này', 'error');
+      return;
+    }
     if (!catFormData.label) return;
     try {
       if (editingCat) {
@@ -290,12 +356,14 @@ export const FilesPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 8px' }}>
                 <p style={{ fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DANH MỤC</p>
-                <button 
-                  onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
-                  style={{ color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                  <Plus size={14} />
-                </button>
+                {!isSale && (
+                  <button 
+                    onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
+                    style={{ color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <Plus size={14} />
+                  </button>
+                )}
              </div>
              {categories.map(cat => (
                <button
@@ -412,15 +480,21 @@ export const FilesPage: React.FC = () => {
                             {getMimeIcon(f.mime_type)}
                           </div>
                           <div style={{ display: 'flex', gap: '4px' }}>
+                            {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={16} /></button>}
                             <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={16} /></button>
-                            <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>
+                            {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>}
                           </div>
                         </div>
                         
                         <h4 style={{ fontWeight: 900, fontSize: '0.875rem', color: 'var(--color-text)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>{f.name}</h4>
-                        <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: '1.25rem' }}>
+                        <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: f.project_name ? '0.5rem' : '1.25rem' }}>
                           {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
                         </p>
+                        {f.project_name && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, marginBottom: '1.25rem' }}>
+                            <Building2 size={10} /> {f.project_name}
+                          </div>
+                        )}
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
                           <Avatar name={f.uploader_name} size="sm" />
@@ -468,7 +542,14 @@ export const FilesPage: React.FC = () => {
                                       <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         {getFileIcon(f.name).icon}
                                       </div>
-                                      <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
+                                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                        <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
+                                        {f.project_name && (
+                                          <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                            <Building2 size={10} /> {f.project_name}
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                 </td>
                                 <td style={{ padding: '1.25rem 1.5rem' }}>
@@ -485,6 +566,7 @@ export const FilesPage: React.FC = () => {
                                 </td>
                                 <td style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                      {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
                                       <a 
                                         href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
                                         download={f.name}
@@ -493,10 +575,10 @@ export const FilesPage: React.FC = () => {
                                       >
                                         <Download size={18} />
                                       </a>
-                                      <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>
-                                    <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
-                                  </div>
-                              </td>
+                                      {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>}
+                                      <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
+                                    </div>
+                                </td>
                             </tr>
                           ))}
                       </tbody>
@@ -558,11 +640,97 @@ export const FilesPage: React.FC = () => {
                     onChange={val => setUploadFormData({ ...uploadFormData, category: String(val) })}
                   />
                 </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label className="form-label">Dự án liên kết</label>
+                  <CustomSelect
+                    options={[
+                      { value: '', label: 'Không liên kết' },
+                      ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                    ]}
+                    value={uploadFormData.project_id}
+                    onChange={val => setUploadFormData({ ...uploadFormData, project_id: String(val) })}
+                    placeholder="Chọn dự án..."
+                  />
+                </div>
               </div>
               <div className="modal-footer" style={{ gap: '1rem' }}>
                 <button className="btn secondary flex-1" onClick={() => setShowUploadModal(false)}>Hủy</button>
                 <button className="btn primary flex-1" onClick={confirmUpload} disabled={loading}>
                   {loading ? 'Đang tải...' : 'Bắt đầu tải lên'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    , document.body)}
+
+      {/* Modal Chỉnh sửa tài liệu */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showEditModal && (
+            <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1100 }}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="modal-sheet"
+              style={{ width: '400px' }}
+            >
+              <div className="modal-header">
+                <h3>Chỉnh sửa tài liệu</h3>
+                <button className="btn-icon sm" onClick={() => setShowEditModal(false)}><Plus size={18} style={{ transform: 'rotate(45deg)' }} /></button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Tên hiển thị</label>
+                  <input 
+                    className="form-input" 
+                    value={editFormData.name} 
+                    onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
+                    placeholder="Nhập tên tài liệu..."
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label className="form-label">Danh mục</label>
+                  <CustomSelect
+                    options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.label }))}
+                    value={editFormData.category}
+                    onChange={val => setEditFormData({ ...editFormData, category: String(val) })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label className="form-label">Quyền riêng tư</label>
+                  <CustomSelect
+                    options={[
+                      { value: 'shared', label: 'Chia sẻ (Shared)' },
+                      { value: 'personal', label: 'Cá nhân (Personal)' }
+                    ]}
+                    value={editFormData.visibility}
+                    onChange={val => setEditFormData({ ...editFormData, visibility: String(val) })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginTop: '1rem' }}>
+                  <label className="form-label">Dự án liên kết</label>
+                  <CustomSelect
+                    options={[
+                      { value: '', label: 'Không liên kết' },
+                      ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                    ]}
+                    value={editFormData.project_id}
+                    onChange={val => setEditFormData({ ...editFormData, project_id: String(val) })}
+                    placeholder="Chọn dự án..."
+                  />
+                </div>
+              </div>
+              <div className="modal-footer" style={{ gap: '1rem' }}>
+                <button className="btn secondary flex-1" onClick={() => setShowEditModal(false)}>Hủy</button>
+                <button className="btn primary flex-1" onClick={handleUpdateFile} disabled={loading}>
+                  {loading ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
               </div>
             </motion.div>

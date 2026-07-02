@@ -55,6 +55,200 @@ if (!function_exists('logSync')) {
     }
 }
 
+if (!function_exists('syncInventoryConnection')) {
+    function syncInventoryConnection($conn, $connItem) {
+        logSync("Running syncInventoryConnection for ID {$connItem['id']} - {$connItem['sheet_name']}...");
+        
+        // Fetch field mappings
+        $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
+        $mapStmt->bind_param("i", $connItem['id']);
+        $mapStmt->execute();
+        $mappingsResult = $mapStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $mapStmt->close();
+        
+        $mappings = [];
+        foreach ($mappingsResult as $row) {
+            $sysField = $row['system_field'];
+            if (!isset($mappings[$sysField])) {
+                $mappings[$sysField] = [];
+            }
+            $mappings[$sysField][] = $row['sheet_column'];
+        }
+        
+        if (empty($mappings['sku'])) {
+            throw new Exception("Bản đồ trường bị thiếu trường khóa 'sku' (Mã căn) để so khớp.");
+        }
+        
+        $csvUrl = "https://docs.google.com/spreadsheets/d/" . trim($connItem['spreadsheet_id']) . "/gviz/tq?tqx=out:csv";
+        if (!empty($connItem['sheet_name'])) {
+            $csvUrl .= "&sheet=" . urlencode($connItem['sheet_name']);
+        }
+        
+        $ch = curl_init($csvUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        curl_setopt($ch, CURLOPT_USERAGENT, "Mozilla/5.0 (Windows); CRM Inventory Agent");
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        $csvData = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpCode !== 200 || empty($csvData) || stripos($csvData, '<html') !== false || stripos($csvData, '<!DOCTYPE') !== false) {
+            $errDetail = $curlError ? " (cURL Error: $curlError)" : "";
+            throw new Exception("Không thể lấy dữ liệu CSV từ Google Sheets. HTTP Code: $httpCode$errDetail.");
+        }
+        
+        $stream = fopen('php://temp', 'r+');
+        fwrite($stream, $csvData);
+        rewind($stream);
+        
+        $headers = [];
+        $rowCount = 0;
+        $updatedCount = 0;
+        $insertedCount = 0;
+        
+        while (($row = fgetcsv($stream)) !== FALSE) {
+            $row = array_map(function($val) { return trim($val ?? '', "\" "); }, $row);
+            if ($rowCount === 0) {
+                $headers = $row;
+                $rowCount++;
+                continue;
+            }
+            $rowCount++;
+            
+            if (empty(array_filter($row))) continue;
+            
+            $rowData = [];
+            foreach ($headers as $colIdx => $colName) {
+                $rowData[$colName] = $row[$colIdx] ?? '';
+            }
+            
+            $valExtractor = function($sysField) use ($mappings, $rowData) {
+                if (empty($mappings[$sysField])) return '';
+                foreach ($mappings[$sysField] as $colName) {
+                    if (isset($rowData[$colName]) && $rowData[$colName] !== '') {
+                        return $rowData[$colName];
+                    }
+                }
+                return '';
+            };
+            
+            $sku = trim($valExtractor('sku'));
+            if (empty($sku)) {
+                continue;
+            }
+            
+            $productName = trim($valExtractor('product_name'));
+            if (empty($productName)) {
+                $productName = 'Sản phẩm mới ' . $sku;
+            }
+            
+            $priceStr = $valExtractor('price');
+            $price = (float)str_replace([',', ' '], '', $priceStr);
+            
+            $importPriceStr = $valExtractor('import_price');
+            $importPrice = (float)str_replace([',', ' '], '', $importPriceStr);
+            if ($importPrice <= 0) $importPrice = $price;
+            
+            $qtyText = $valExtractor('qty');
+            $qty = 1;
+            if ($qtyText !== '') {
+                $normalizedQty = mb_strtolower(trim($qtyText));
+                if (in_array($normalizedQty, ['0', 'đã bán', 'sold', 'đã cọc', 'deposit', 'đã bán/đã cọc', 'đã khóa', 'đã đặt cọc'])) {
+                    $qty = 0;
+                } elseif (is_numeric($qtyText)) {
+                    $qty = (int)$qtyText;
+                }
+            }
+            
+            $statusText = mb_strtolower(trim($valExtractor('status')));
+            if ($statusText !== '') {
+                if (in_array($statusText, ['0', 'đã bán', 'sold', 'đã cọc', 'deposit', 'đã bán/đã cọc', 'đã khóa', 'đã đặt cọc'])) {
+                    $qty = 0;
+                }
+            }
+            
+            $category = trim($valExtractor('category'));
+            if (empty($category)) $category = 'Căn hộ';
+            
+            $unit = trim($valExtractor('unit'));
+            if (empty($unit)) $unit = 'Căn';
+            
+            $notes = trim($valExtractor('notes'));
+            
+            $extraNotes = [];
+            foreach ($mappings as $sysField => $cols) {
+                if (!in_array($sysField, ['sku', 'product_name', 'price', 'import_price', 'qty', 'status', 'category', 'unit', 'notes'])) {
+                    foreach ($cols as $colName) {
+                        if (isset($rowData[$colName]) && $rowData[$colName] !== '') {
+                            $extraNotes[] = $sysField . ': ' . $rowData[$colName];
+                        }
+                    }
+                }
+            }
+            if (!empty($extraNotes)) {
+                $notes = (empty($notes) ? '' : $notes . "\n") . implode("\n", $extraNotes);
+            }
+            
+            $tenantId = 1;
+            
+            $prodQuery = $conn->prepare("SELECT id FROM products WHERE sku = ? AND tenant_id = ? LIMIT 1");
+            $prodQuery->bind_param("si", $sku, $tenantId);
+            $prodQuery->execute();
+            $prodRes = $prodQuery->get_result()->fetch_assoc();
+            $prodQuery->close();
+            
+            if ($prodRes) {
+                $productId = $prodRes['id'];
+                
+                $upProd = $conn->prepare("UPDATE products SET name = ?, price = ?, stock_quantity = ?, category = ?, unit = ? WHERE id = ?");
+                $upProd->bind_param("sdissi", $productName, $price, $qty, $category, $unit, $productId);
+                $upProd->execute();
+                $upProd->close();
+                
+                $batchQuery = $conn->prepare("SELECT id FROM batches WHERE product_id = ? AND tenant_id = ? LIMIT 1");
+                $batchQuery->bind_param("ii", $productId, $tenantId);
+                $batchQuery->execute();
+                $batchRes = $batchQuery->get_result()->fetch_assoc();
+                $batchQuery->close();
+                
+                if ($batchRes) {
+                    $upBatch = $conn->prepare("UPDATE batches SET current_qty = ?, import_price = ?, notes = ? WHERE id = ?");
+                    $upBatch->bind_param("idsi", $qty, $importPrice, $notes, $batchRes['id']);
+                    $upBatch->execute();
+                    $upBatch->close();
+                } else {
+                    $batchCode = 'SHEET-' . strtoupper(substr(md5($sku), 0, 8));
+                    $insBatch = $conn->prepare("INSERT INTO batches (tenant_id, product_id, batch_code, import_date, import_price, initial_qty, current_qty, notes, status) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, 'active')");
+                    $insBatch->bind_param("iisdiis", $tenantId, $productId, $batchCode, $importPrice, $qty, $qty, $notes);
+                    $insBatch->execute();
+                    $insBatch->close();
+                }
+                $updatedCount++;
+            } else {
+                $insProd = $conn->prepare("INSERT INTO products (tenant_id, name, sku, price, category, unit, stock_quantity, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)");
+                $insProd->bind_param("issdssi", $tenantId, $productName, $sku, $price, $category, $unit, $qty);
+                $insProd->execute();
+                $productId = $insProd->insert_id;
+                $insProd->close();
+                
+                $batchCode = 'SHEET-' . strtoupper(substr(md5($sku), 0, 8));
+                $insBatch = $conn->prepare("INSERT INTO batches (tenant_id, product_id, batch_code, import_date, import_price, initial_qty, current_qty, notes, status) VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, 'active')");
+                $insBatch->bind_param("iisdiis", $tenantId, $productId, $batchCode, $importPrice, $qty, $qty, $notes);
+                $insBatch->execute();
+                $insBatch->close();
+                
+                $insertedCount++;
+            }
+        }
+        fclose($stream);
+        logSync("Completed inventory sync. Updated: $updatedCount. Inserted: $insertedCount.");
+    }
+}
+
 if (!function_exists('sendSheetSyncErrorAlert')) {
     function sendSheetSyncErrorAlert($conn, $connItem, $errorMessage) {
         logSync("Sending sync error notification for connection {$connItem['sheet_name']}...");
@@ -921,6 +1115,26 @@ foreach ($connections as $connItem) {
         continue;
     }
 
+    if ($connItem['connection_type'] === 'inventory_sheets') {
+        try {
+            syncInventoryConnection($conn, $connItem);
+            
+            $upStmt = $conn->prepare("UPDATE sheet_connections SET last_sync_at = NOW(), sync_status = 'idle', last_error = NULL, sync_error_count = 0, is_initialized = 1 WHERE id = ?");
+            $upStmt->bind_param("i", $connItem['id']);
+            $upStmt->execute();
+            $upStmt->close();
+        } catch (Exception $e) {
+            logSync("Error syncing inventory connection {$connItem['id']}: " . $e->getMessage());
+            
+            $err = $e->getMessage();
+            $upStmt = $conn->prepare("UPDATE sheet_connections SET sync_status = 'error', last_error = ?, sync_error_count = sync_error_count + 1 WHERE id = ?");
+            $upStmt->bind_param("si", $err, $connItem['id']);
+            $upStmt->execute();
+            $upStmt->close();
+        }
+        continue;
+    }
+
     try {
         // Fetch field mappings
         $mapStmt = $conn->prepare("SELECT sheet_column, system_field, custom_label FROM field_mappings WHERE connection_id = ?");
@@ -1707,6 +1921,14 @@ foreach ($connections as $connItem) {
 
 function releaseExpiredLeadsToKho($conn) {
     logSync("Running releaseExpiredLeadsToKho...");
+    
+    $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources') ?: 'R3_Fb,R3,R2,broadcast';
+    $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
+    $applicableSourcesEscaped = array_map(function($s) use ($conn) {
+        return "'" . $conn->real_escape_string($s) . "'";
+    }, $applicableSources);
+    $sourcesFilter = "AND c.source IN (" . implode(',', $applicableSourcesEscaped) . ")";
+
     $sql = "SELECT DISTINCT c.person_id 
             FROM contacts c 
             JOIN persons p ON c.person_id = p.id 
@@ -1714,6 +1936,7 @@ function releaseExpiredLeadsToKho($conn) {
               AND c.security_expires_at IS NOT NULL 
               AND p.is_public = 0 
               AND c.deleted_at IS NULL
+              $sourcesFilter
               AND NOT EXISTS (
                   SELECT 1 FROM contacts active_c 
                   WHERE active_c.person_id = c.person_id 
@@ -1769,6 +1992,14 @@ function releaseExpiredLeadsToKho($conn) {
 
 function assignParallelLeads($conn) {
     logSync("Running assignParallelLeads...");
+    
+    $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources') ?: 'R3_Fb,R3,R2,broadcast';
+    $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
+    $applicableSourcesEscaped = array_map(function($s) use ($conn) {
+        return "'" . $conn->real_escape_string($s) . "'";
+    }, $applicableSources);
+    $sourcesFilter = "AND c.source IN (" . implode(',', $applicableSourcesEscaped) . ")";
+
     $sql = "SELECT c.id as contact_id, c.person_id, c.owner_id, c.project_id, c.email, c.phone, c.first_name, c.last_name, c.source,
                    (SELECT round_id FROM distribution_logs WHERE lead_id = c.id AND status = 'assigned' ORDER BY id DESC LIMIT 1) as original_round_id
             FROM contacts c
@@ -1778,7 +2009,8 @@ function assignParallelLeads($conn) {
               AND c.security_expires_at <= NOW()
               AND c.security_expires_at IS NOT NULL
               AND c.owner_id IS NOT NULL
-              AND c.deleted_at IS NULL";
+              AND c.deleted_at IS NULL
+              $sourcesFilter";
               
     $res = $conn->query($sql);
     if (!$res) return;
@@ -1878,12 +2110,15 @@ function assignParallelLeads($conn) {
             $upd1->execute();
             $upd1->close();
             
+            $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
+            $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
+
             $stmtIns = $conn->prepare("
                 INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, DATE_ADD(NOW(), INTERVAL 3 HOUR))
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, ?)
             ");
             $createdBy = 1;
-            $stmtIns->bind_param("iiiisssss", $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source']);
+            $stmtIns->bind_param("iiiissssss", $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime);
             $stmtIns->execute();
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();

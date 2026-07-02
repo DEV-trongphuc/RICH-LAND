@@ -6,6 +6,12 @@ class ProjectController {
 
     public function __construct(PDO $db) {
         $this->db = $db;
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN document_ids TEXT NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN campaign_ids TEXT NULL");
+        } catch (Exception $e) {}
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
@@ -75,6 +81,8 @@ class ProjectController {
         $status = trim($b['status'] ?? 'active');
         $location = trim($b['location'] ?? '');
         $developer = trim($b['developer'] ?? '');
+        $document_ids = trim($b['document_ids'] ?? '');
+        $campaign_ids = trim($b['campaign_ids'] ?? '');
 
         if (!$name) {
             respond(422, null, 'Tên dự án là bắt buộc', false);
@@ -93,10 +101,10 @@ class ProjectController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO projects (tenant_id, name, code, description, status, location, developer) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO projects (tenant_id, name, code, description, status, location, developer, document_ids, campaign_ids) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer]);
+        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids]);
         $newId = $this->db->lastInsertId();
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_PROJECT', 'project', $newId, "Tạo dự án: $name ($code)");
@@ -112,6 +120,8 @@ class ProjectController {
         $status = trim($b['status'] ?? 'active');
         $location = trim($b['location'] ?? '');
         $developer = trim($b['developer'] ?? '');
+        $document_ids = trim($b['document_ids'] ?? '');
+        $campaign_ids = trim($b['campaign_ids'] ?? '');
 
         if (!$name) {
             respond(422, null, 'Tên dự án là bắt buộc', false);
@@ -130,10 +140,11 @@ class ProjectController {
         }
 
         $stmt = $this->db->prepare("
-            UPDATE projects SET name = ?, code = ?, description = ?, status = ?, location = ?, developer = ? 
+            UPDATE projects 
+            SET name = ?, code = ?, description = ?, status = ?, location = ?, developer = ?, document_ids = ?, campaign_ids = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$name, $code, $desc, $status, $location, $developer, $id, $auth['tenant_id']]);
+        $stmt->execute([$name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $id, $auth['tenant_id']]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT', 'project', $id, "Cập nhật dự án: $name ($code)");
         respond(200, null, 'Cập nhật dự án thành công');

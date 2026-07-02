@@ -6,6 +6,7 @@ import { CustomSelect } from './ui/CustomSelect';
 import { Avatar } from './ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 const beautifyPhone = (phoneStr: string): string => {
   if (!phoneStr) return '';
@@ -85,6 +86,8 @@ const getDeduplicatedNotes = (notes: string[]): string => {
 
 export const QuickAddLeadModal = () => {
   const { t } = useLanguage();
+  const userRole = useAuthStore.getState().user?.role;
+  const isSale = userRole === 'sale';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -959,10 +962,13 @@ export const QuickAddLeadModal = () => {
   useEffect(() => {
     const handleOpen = () => {
       setIsOpen(true);
+      if (isSale) {
+        setManualData(prev => ({ ...prev, source: 'ca_nhan' }));
+      }
     };
     window.addEventListener('open-quick-add-lead', handleOpen);
     return () => window.removeEventListener('open-quick-add-lead', handleOpen);
-  }, []);
+  }, [isSale]);
 
   // Debounce routing preview
   useEffect(() => {
@@ -1204,92 +1210,96 @@ export const QuickAddLeadModal = () => {
       width={activeTab === 'bulk' && bulkParsedLeads.length > 0 ? "800px" : "650px"}
     >
       {/* Tabs */}
-      <div style={{
-        display: 'flex',
-        background: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
-        padding: '4px',
-        borderRadius: '10px',
-        marginBottom: '1.25rem',
-        border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0'
-      }}>
-        <button
-          onClick={() => setActiveTab('single')}
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            borderRadius: '8px',
-            border: 'none',
-            cursor: 'pointer',
-            background: activeTab === 'single' ? (theme === 'dark' ? '#b91c1c' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)') : 'transparent',
-            color: activeTab === 'single' ? '#ffffff' : (theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#64748b'),
-            boxShadow: activeTab === 'single' ? '0 2px 6px rgba(189, 29, 45, 0.2)' : 'none',
-            transition: 'all 0.25s'
-          }}
-        >
-          {t('Nhập 1 khách')}
-        </button>
-        <button
-          onClick={() => setActiveTab('bulk')}
-          style={{
-            flex: 1,
-            padding: '8px 12px',
-            fontSize: '0.875rem',
-            fontWeight: 600,
-            borderRadius: '8px',
-            border: 'none',
-            cursor: 'pointer',
-            background: activeTab === 'bulk' ? (theme === 'dark' ? '#b91c1c' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)') : 'transparent',
-            color: activeTab === 'bulk' ? '#ffffff' : (theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#64748b'),
-            boxShadow: activeTab === 'bulk' ? '0 2px 6px rgba(189, 29, 45, 0.2)' : 'none',
-            transition: 'all 0.25s'
-          }}
-        >
-          {t('Thêm hàng loạt')}
-        </button>
-      </div>
+      {!isSale && (
+        <div style={{
+          display: 'flex',
+          background: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+          padding: '4px',
+          borderRadius: '10px',
+          marginBottom: '1.25rem',
+          border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0'
+        }}>
+          <button
+            onClick={() => setActiveTab('single')}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'single' ? (theme === 'dark' ? '#b91c1c' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)') : 'transparent',
+              color: activeTab === 'single' ? '#ffffff' : (theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#64748b'),
+              boxShadow: activeTab === 'single' ? '0 2px 6px rgba(189, 29, 45, 0.2)' : 'none',
+              transition: 'all 0.25s'
+            }}
+          >
+            {t('Nhập 1 khách')}
+          </button>
+          <button
+            onClick={() => setActiveTab('bulk')}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              background: activeTab === 'bulk' ? (theme === 'dark' ? '#b91c1c' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)') : 'transparent',
+              color: activeTab === 'bulk' ? '#ffffff' : (theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#64748b'),
+              boxShadow: activeTab === 'bulk' ? '0 2px 6px rgba(189, 29, 45, 0.2)' : 'none',
+              transition: 'all 0.25s'
+            }}
+          >
+            {t('Thêm hàng loạt')}
+          </button>
+        </div>
+      )}
 
       {/* Distribution Mode */}
-      <div style={{
-        marginBottom: '1.25rem',
-        background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
-        padding: '12px 16px',
-        borderRadius: '10px',
-        border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0'
-      }}>
-        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'block' }}>
-          {t('Cách thức phân bổ')}
-        </label>
-        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
-            <input
-              type="radio"
-              name="distribution_mode"
-              checked={distributionMode === 'auto_round'}
-              onChange={() => setDistributionMode('auto_round')}
-              style={{ accentColor: '#bd1d2d' }}
-            />
-            <div>
-              <strong>{t('Tự động chia (Auto Round)')}</strong>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Quay vòng theo luật phân phối hoạt động')}</div>
-            </div>
+      {!isSale && (
+        <div style={{
+          marginBottom: '1.25rem',
+          background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+          padding: '12px 16px',
+          borderRadius: '10px',
+          border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0'
+        }}>
+          <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'block' }}>
+            {t('Cách thức phân bổ')}
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
-            <input
-              type="radio"
-              name="distribution_mode"
-              checked={distributionMode === 'direct_databank'}
-              onChange={() => setDistributionMode('direct_databank')}
-              style={{ accentColor: '#bd1d2d' }}
-            />
-            <div>
-              <strong>{t('Đưa thẳng vào Kho chung (Databank)')}</strong>
-              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Lưu trữ công khai cho các Sale chủ động nhận')}</div>
-            </div>
-          </label>
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
+              <input
+                type="radio"
+                name="distribution_mode"
+                checked={distributionMode === 'auto_round'}
+                onChange={() => setDistributionMode('auto_round')}
+                style={{ accentColor: '#bd1d2d' }}
+              />
+              <div>
+                <strong>{t('Tự động chia (Auto Round)')}</strong>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Quay vòng theo luật phân phối hoạt động')}</div>
+              </div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
+              <input
+                type="radio"
+                name="distribution_mode"
+                checked={distributionMode === 'direct_databank'}
+                onChange={() => setDistributionMode('direct_databank')}
+                style={{ accentColor: '#bd1d2d' }}
+              />
+              <div>
+                <strong>{t('Đưa thẳng vào Kho chung (Databank)')}</strong>
+                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Lưu trữ công khai cho các Sale chủ động nhận')}</div>
+              </div>
+            </label>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="quick-add-modal-body" style={{ padding: '0 0 1.25rem 0', background: 'transparent' }}>
         
@@ -1328,7 +1338,7 @@ export const QuickAddLeadModal = () => {
               />
             </div>
 
-            {distributionMode === 'auto_round' && (
+            {!isSale && distributionMode === 'auto_round' && (
               <div className="quick-add-preview-box" style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginBottom: '1.25rem' }}>
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   <RefreshCw size={16} className={isPreviewing ? "spin" : ""} color="var(--color-primary)" /> Live Preview
@@ -1473,66 +1483,80 @@ export const QuickAddLeadModal = () => {
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
                 <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({ ...manualData, email: e.target.value })} />
               </div>
-              <div ref={sourceRef} style={{ position: 'relative', zIndex: showSourceSuggestions ? 50 : 1 }}>
-                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
-                <input
-                  className="form-input"
-                  placeholder="VD: FB_Ads"
-                  value={manualData.source}
-                  onChange={e => setManualData({ ...manualData, source: e.target.value })}
-                  onFocus={() => setShowSourceSuggestions(true)}
-                />
-                {showSourceSuggestions && (
-                  (() => {
-                    const filtered = existingSources.filter(src =>
-                      src.toLowerCase().includes((manualData.source || '').toLowerCase())
-                    );
-                    if (filtered.length === 0) return null;
-                    return (
-                      <div
-                        style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          zIndex: 1000,
-                          background: theme === 'dark' ? 'var(--color-surface)' : 'white',
-                          border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0',
-                          borderRadius: '8px',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                          maxHeight: '180px',
-                          overflowY: 'auto',
-                          marginTop: '4px'
-                        }}
-                      >
-                        {filtered.map((src, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => handleSelectSource(src)}
-                            style={{
-                              padding: '8px 12px',
-                              fontSize: '0.8125rem',
-                              cursor: 'pointer',
-                              color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
-                              transition: 'background-color 0.2s',
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#fff5f6';
-                              e.currentTarget.style.color = '#a31422';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.backgroundColor = 'transparent';
-                              e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#1e293b';
-                            }}
-                          >
-                            {src}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()
-                )}
-              </div>
+              {isSale ? (
+                <div>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
+                  <CustomSelect
+                    options={[
+                      { value: 'ca_nhan', label: t('Tự khai thác (ca_nhan)') },
+                      { value: 'gioi_thieu', label: t('Khách giới thiệu (gioi_thieu)') }
+                    ]}
+                    value={manualData.source || 'ca_nhan'}
+                    onChange={val => setManualData({ ...manualData, source: val })}
+                  />
+                </div>
+              ) : (
+                <div ref={sourceRef} style={{ position: 'relative', zIndex: showSourceSuggestions ? 50 : 1 }}>
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
+                  <input
+                    className="form-input"
+                    placeholder="VD: FB_Ads"
+                    value={manualData.source}
+                    onChange={e => setManualData({ ...manualData, source: e.target.value })}
+                    onFocus={() => setShowSourceSuggestions(true)}
+                  />
+                  {showSourceSuggestions && (
+                    (() => {
+                      const filtered = existingSources.filter(src =>
+                        src.toLowerCase().includes((manualData.source || '').toLowerCase())
+                      );
+                      if (filtered.length === 0) return null;
+                      return (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            zIndex: 1000,
+                            background: theme === 'dark' ? 'var(--color-surface)' : 'white',
+                            border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                            maxHeight: '180px',
+                            overflowY: 'auto',
+                            marginTop: '4px'
+                          }}
+                        >
+                          {filtered.map((src, idx) => (
+                            <div
+                              key={idx}
+                              onClick={() => handleSelectSource(src)}
+                              style={{
+                                padding: '8px 12px',
+                                fontSize: '0.8125rem',
+                                cursor: 'pointer',
+                                color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
+                                transition: 'background-color 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#fff5f6';
+                                e.currentTarget.style.color = '#a31422';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#1e293b';
+                              }}
+                            >
+                              {src}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
               <div>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Loại (Type)')}</label>
                 <input className="form-input" placeholder={t("VD: Mua nhà")} value={manualData.type} onChange={e => setManualData({ ...manualData, type: e.target.value })} />

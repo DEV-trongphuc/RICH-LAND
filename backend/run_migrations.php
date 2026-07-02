@@ -1522,6 +1522,13 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_day', '2')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '300')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_chua_xac_dinh', '+3 hours')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_quan_tam', '+1 day')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_thien_chi', '+3 days')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_dong_y_gap', '+4 days')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_da_gap', '+5 days')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('security_timer_booking', '+3 months')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_applicable_sources', 'R3_Fb,R3,R2,broadcast')");
     // Databank migrations
     $chkIsPublic = $conn->query("SHOW COLUMNS FROM persons LIKE 'is_public'");
     if ($chkIsPublic && $chkIsPublic->num_rows === 0) {

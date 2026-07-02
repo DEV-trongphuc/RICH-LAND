@@ -4,7 +4,7 @@ import {
   Package, Plus, Edit, Trash2, LayoutGrid, List, Search, 
   Filter, History, Share, Clock, CheckCircle, AlertTriangle, 
   ChevronDown, DollarSign, CalendarDays, Layers, ArrowRight,
-  TrendingDown, TrendingUp, MoreHorizontal, X, Download
+  TrendingDown, TrendingUp, MoreHorizontal, X, Download, FileSpreadsheet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
@@ -14,6 +14,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/Pagination';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
+import { InventorySyncModal } from '../components/ui/InventorySyncModal';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { DEV_MODE } from '../config/env';
 import { Tooltip } from '../components/ui/Tooltip';
@@ -65,6 +66,7 @@ export default function InventoryPage() {
   // Modals
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportExport, setShowImportExport] = useState(false);
+  const [showInventorySync, setShowInventorySync] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showPOModal, setShowPOModal] = useState(false);
@@ -300,9 +302,9 @@ export default function InventoryPage() {
             <>
               <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
 
-              <button className="btn outline" onClick={() => setShowImportExport(true)} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Nhập/Xuất Excel">
-                <Download size={14} />
-                <span> Nhập/Xuất Excel</span>
+               <button className="btn outline" onClick={() => setShowInventorySync(true)} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px', gap: '0.4rem' }} title="Đồng bộ Google Sheets">
+                <FileSpreadsheet size={14} />
+                <span> Đồng bộ Google Sheets</span>
               </button>
 
               <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Khai báo căn / lô">
@@ -314,14 +316,9 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <ImportExportModal 
-        isOpen={showImportExport} 
-        onClose={() => setShowImportExport(false)} 
-        entityName={activeTab === 'batches' ? 'Giỏ hàng' : 'Căn hộ / Lô đất'}
-        onExport={() => {
-            const type = activeTab === 'batches' ? 'inventory' : 'product';
-            window.open(`${api.defaults.baseURL}/export?type=${type}&token=${localStorage.getItem('token')}`, '_blank');
-        }}
+      <InventorySyncModal 
+        isOpen={showInventorySync} 
+        onClose={() => setShowInventorySync(false)} 
       />
 
       {/* Always mounted so header button can open modal from any tab */}

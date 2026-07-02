@@ -8,9 +8,10 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video
+  Camera, Video, Layers, Plus
 } from 'lucide-react';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
+import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
@@ -22,6 +23,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
+import { EmptyCard } from '../components/ui/EmptyCard';
 import { TableSkeleton, StatRowSkeleton, CalendarSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { FairShareAudit } from './FairShareAudit';
@@ -229,11 +231,16 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [loadingTimeline, setLoadingTimeline] = useState(false);
 
   // Tab & Layout states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank'>('dashboard');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [vacationConfirmOpen, setVacationConfirmOpen] = useState(false);
+
+  // Databank states
+  const [publicLeads, setPublicLeads] = useState<any[]>([]);
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [isClaimingLeadId, setIsClaimingLeadId] = useState<number | null>(null);
 
   // Check-in state variables
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
@@ -289,6 +296,12 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [editDob, setEditDob] = useState('');
+  const [editGender, setEditGender] = useState('');
+  const [editCitizenId, setEditCitizenId] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editBankName, setEditBankName] = useState('');
+  const [editBankAccount, setEditBankAccount] = useState('');
 
   // Impersonation role calculation for admin viewing sale
   const impersonatedSale = ((user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter)
@@ -552,6 +565,47 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   };
   const isLate = checkIsLate();
 
+  const fetchPublicLeads = async () => {
+    setPublicLoading(true);
+    try {
+      const res = await fetchAPI('get_public_leads');
+      if (res.success) {
+        setPublicLeads(res.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setPublicLoading(false);
+    }
+  };
+
+  const handleClaimLead = async (personId: number) => {
+    setIsClaimingLeadId(personId);
+    try {
+      const json = await fetchAPI('claim_public_lead', {
+        method: 'POST',
+        body: JSON.stringify({ person_id: personId })
+      });
+      if (json.success) {
+        toast.success(json.message || t('Nhận data thành công!'));
+        fetchPublicLeads();
+        loadPortalData();
+      } else {
+        toast.error(json.message || t('Nhận data thất bại'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    } finally {
+      setIsClaimingLeadId(null);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'databank') {
+      fetchPublicLeads();
+    }
+  }, [activeTab]);
+
   const handleSubmitCheckIn = async (fileToUpload?: File) => {
     setCheckInSubmitting(true);
     try {
@@ -572,8 +626,31 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           return;
         }
       } else if (capturedImage) {
-        const blob = await (await fetch(capturedImage)).blob();
-        const file = new File([blob], 'selfie.jpg', { type: 'image/jpeg' });
+        const compressToWebP = (dataUrl: string): Promise<Blob> => {
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((b) => {
+                  if (b) resolve(b);
+                  else reject(new Error('WebP conversion failed'));
+                }, 'image/webp', 0.8); // 80% quality compression
+              } else {
+                reject(new Error('Canvas context error'));
+              }
+            };
+            img.onerror = () => reject(new Error('Image loading error'));
+          });
+        };
+
+        const webpBlob = await compressToWebP(capturedImage);
+        const file = new File([webpBlob], 'selfie.webp', { type: 'image/webp' });
         const formData = new FormData();
         formData.append('file', file);
         const uploadRes = await fetchAPI('upload', {
@@ -657,6 +734,12 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       setEditAvatar(data.consultant_profile.avatar || '');
       setEditWorkStartTime(data.consultant_profile.work_start_time || '08:00');
       setEditWorkEndTime(data.consultant_profile.work_end_time || '17:30');
+      setEditDob(data.consultant_profile.dob || '');
+      setEditGender(data.consultant_profile.gender || '');
+      setEditCitizenId(data.consultant_profile.citizen_id || '');
+      setEditAddress(data.consultant_profile.address || '');
+      setEditBankName(data.consultant_profile.bank_name || '');
+      setEditBankAccount(data.consultant_profile.bank_account || '');
 
       const schedule = data.consultant_profile.work_schedule;
       if (schedule && Object.keys(schedule).length > 0) {
@@ -712,7 +795,13 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         avatar: editAvatar,
         work_start_time: editWorkStartTime,
         work_end_time: editWorkEndTime,
-        work_schedule: scheduleMode === 'custom' ? editWorkSchedule : null
+        work_schedule: scheduleMode === 'custom' ? editWorkSchedule : null,
+        dob: editDob,
+        gender: editGender,
+        citizen_id: editCitizenId,
+        address: editAddress,
+        bank_name: editBankName,
+        bank_account: editBankAccount
       };
 
       const res = await fetchAPI('update_consultant_self_profile', {
@@ -2173,6 +2262,129 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     );
   };
 
+  const renderDatabankView = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Header Block */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem',
+          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1rem 1.5rem',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
+        }}>
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+              {t('KHO DATA CHUNG (DATABANK)')}
+            </h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+              {t('Danh sách các khách hàng tiềm năng đã công khai. Bấm "Nhận Data" để trực tiếp nhận chăm sóc.')}
+            </p>
+          </div>
+          <button
+            onClick={fetchPublicLeads}
+            disabled={publicLoading}
+            className="btn outline sm"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', fontSize: '0.8125rem' }}
+          >
+            <RefreshCw size={14} className={publicLoading ? 'animate-spin' : ''} />
+            {t('Làm mới')}
+          </button>
+        </div>
+
+        {publicLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+              <div className="animate-spin" style={{ width: '2rem', height: '2rem', border: '3px solid rgba(189,29,45,0.2)', borderTopColor: '#BD1D2D', borderRadius: '50%' }}></div>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{t('Đang tải danh sách kho chung...')}</span>
+            </div>
+          </div>
+        ) : publicLeads.length === 0 ? (
+          <EmptyCard
+            icon={<Database size={48} />}
+            title={t("Kho chung trống")}
+            description={t("Hiện tại không có khách hàng tiềm năng nào được công khai để nhận.")}
+          />
+        ) : (
+          <div style={{
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Họ Tên')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Số Điện Thoại')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Email')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự Án')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn ban đầu')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
+                    <th style={{ padding: '1rem', width: 140 }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {publicLeads.map((lead) => (
+                    <tr key={lead.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text)', transition: 'background 0.2s' }}>
+                      <td style={{ padding: '1rem', fontWeight: 600 }}>{lead.full_name}</td>
+                      <td style={{ padding: '1rem', fontFamily: 'monospace', letterSpacing: '0.5px' }}>{lead.phone}</td>
+                      <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{lead.email}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: 'rgba(189,29,45,0.06)',
+                          color: '#BD1D2D',
+                          border: '1px solid rgba(189,29,45,0.15)'
+                        }}>
+                          {lead.project_name || lead.project_id || t('Không xác định')}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <span className="badge outline" style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>
+                          {lead.original_source || 'MKT'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                        {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <button
+                          onClick={() => handleClaimLead(lead.id)}
+                          disabled={isClaimingLeadId !== null}
+                          className="btn primary sm"
+                          style={{
+                            height: 32,
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '0 12px',
+                            background: '#BD1D2D',
+                            border: 'none',
+                            borderRadius: '16px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(189,29,45,0.15)'
+                          }}
+                        >
+                          {isClaimingLeadId === lead.id ? t('Đang nhận...') : t('Nhận Data')}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTicketsView = () => {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -2792,6 +3004,78 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   />
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày sinh')}</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={editDob}
+                      onChange={(e) => setEditDob(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Giới tính')}</label>
+                    <CustomSelect
+                      options={[
+                        { value: '', label: `-- ${t('Chọn giới tính')} --` },
+                        { value: 'male', label: t('Nam') },
+                        { value: 'female', label: t('Nữ') },
+                        { value: 'other', label: t('Khác') }
+                      ]}
+                      value={editGender}
+                      onChange={val => setEditGender(String(val))}
+                      placeholder={t('Chọn giới tính...')}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Số CMND/CCCD')}</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={editCitizenId}
+                    onChange={(e) => setEditCitizenId(e.target.value)}
+                    placeholder={t('Nhập số CMND hoặc CCCD')}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Địa chỉ thường trú')}</label>
+                  <textarea
+                    className="form-input"
+                    rows={2}
+                    value={editAddress}
+                    onChange={(e) => setEditAddress(e.target.value)}
+                    placeholder={t('Nhập địa chỉ của bạn')}
+                    style={{ minHeight: '60px', padding: '10px 14px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên ngân hàng')}</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={editBankName}
+                      onChange={(e) => setEditBankName(e.target.value)}
+                      placeholder={t('VD: Vietcombank')}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Số tài khoản')}</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={editBankAccount}
+                      onChange={(e) => setEditBankAccount(e.target.value)}
+                      placeholder={t('Nhập số tài khoản')}
+                    />
+                  </div>
+                </div>
+
                 {/* Save Button */}
                 <button
                   className="btn primary"
@@ -3138,7 +3422,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           {isCollapsed ? (
             <button
               onClick={() => {
-                setShowWarRoom(true);
+                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
                 setIsMobileSidebarOpen(false);
               }}
               style={{
@@ -3149,14 +3433,14 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-              title={t("AI Infinity")}
+              title={t("Thêm data nhanh")}
             >
-              <Cpu size={20} />
+              <Plus size={20} />
             </button>
           ) : (
             <button
               onClick={() => {
-                setShowWarRoom(true);
+                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
                 setIsMobileSidebarOpen(false);
               }}
               style={{
@@ -3175,7 +3459,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.4)';
               }}
             >
-              <Cpu size={18} /> {t("AI Infinity")}
+              <Plus size={18} /> {t("Thêm data nhanh")}
             </button>
           )}
         </div>
@@ -3227,6 +3511,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             {[
               { name: 'Dashboard', key: 'dashboard', icon: LayoutDashboard },
               { name: 'Nhật ký Data', key: 'data', icon: Database },
+              { name: 'Kho Databank', key: 'databank', icon: Layers },
               { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
               { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
               { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending }
@@ -3818,6 +4103,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             <div key={activeTab} className="subtab-enter-active">
               {activeTab === 'dashboard' && renderDashboardView()}
               {activeTab === 'data' && renderDataView()}
+              {activeTab === 'databank' && renderDatabankView()}
               {activeTab === 'calendar' && renderCalendarView()}
               {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
               {activeTab === 'tickets' && renderTicketsView()}
@@ -3840,17 +4126,33 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               {t('Vui lòng chụp ảnh selfie khuôn mặt của bạn để thực hiện chấm công và nhận data hôm nay.')}
             </p>
 
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-text)',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                border: '1px solid var(--color-border)'
+              }}>
+                {t('Giờ vào làm quy định:')} <span style={{ color: '#BD1D2D' }}>{impersonatedSale ? (impersonatedSale.work_start_time || '08:00') : (data.consultant_profile?.work_start_time || '08:00')}</span>
+              </div>
+            </div>
+
             <div style={{
               position: 'relative',
-              width: '100%',
-              height: '320px',
+              width: '260px',
+              height: '260px',
               backgroundColor: '#000',
-              borderRadius: '12px',
+              borderRadius: '50%',
               overflow: 'hidden',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid var(--color-border)',
+              border: '4px solid var(--color-border)',
+              margin: '0 auto',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
             }}>
               {capturedImage ? (
                 <img
@@ -3867,8 +4169,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#fff', padding: '20px', textAlign: 'center' }}>
-                  <Camera size={48} style={{ opacity: 0.5 }} />
-                  <span style={{ fontSize: '0.875rem' }}>
+                  <Camera size={40} style={{ opacity: 0.5 }} />
+                  <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
                     {cameraError || t('Camera chưa được kích hoạt')}
                   </span>
                   <button
@@ -3881,20 +4183,6 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   </button>
                 </div>
               )}
-
-              <div style={{
-                position: 'absolute',
-                top: '12px',
-                right: '12px',
-                backgroundColor: 'rgba(0,0,0,0.6)',
-                color: '#fff',
-                padding: '4px 8px',
-                borderRadius: '4px',
-                fontSize: '0.7rem',
-                fontWeight: 600
-              }}>
-                {t('Giờ vào làm quy định:')} {impersonatedSale ? (impersonatedSale.work_start_time || '08:00') : (data.consultant_profile?.work_start_time || '08:00')}
-              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
@@ -3930,38 +4218,6 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   {t('Chụp lại')}
                 </button>
               )}
-              
-              <label
-                className="btn outline"
-                style={{
-                  borderRadius: '20px',
-                  padding: '8px 20px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-              >
-                <Video size={16} />
-                {t('Tải tệp ảnh')}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () => {
-                        setCapturedImage(reader.result as string);
-                        stopCamera();
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  style={{ display: 'none' }}
-                />
-              </label>
             </div>
 
             {isLate && (
@@ -4768,6 +5024,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           recentLogs={[]}
         />
       )}
+
+      <QuickAddLeadModal />
 
       <style>{`
         @keyframes spin {

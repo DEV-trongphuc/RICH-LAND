@@ -1,11 +1,31 @@
 <?php
 class UserController {
     private PDO $db;
-    public function __construct(PDO $db) { $this->db = $db; }
+    public function __construct(PDO $db) { 
+        $this->db = $db; 
+        try {
+            $this->db->exec("ALTER TABLE users ADD COLUMN dob DATE NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE users ADD COLUMN gender VARCHAR(20) NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE users ADD COLUMN citizen_id VARCHAR(50) NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE users ADD COLUMN address TEXT NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE users ADD COLUMN bank_name VARCHAR(100) NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE users ADD COLUMN bank_account VARCHAR(100) NULL");
+        } catch (Exception $e) {}
+    }
 
     public function index(array $auth): void {
         if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
-        $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE tenant_id=? ORDER BY full_name");
+        $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE tenant_id=? ORDER BY full_name");
         $stmt->execute([$auth['tenant_id']]);
         respond(200,$stmt->fetchAll());
     }
@@ -18,8 +38,21 @@ class UserController {
         $chk->execute([$b['email'],$auth['tenant_id']]);
         if($chk->fetch()) respond(409,null,'Email đã tồn tại trong hệ thống',false);
         $hash=password_hash($b['password'],PASSWORD_BCRYPT,['cost'=>12]);
-        $this->db->prepare("INSERT INTO users (tenant_id,email,password_hash,full_name,role,phone) VALUES (?,?,?,?,?,?)")
-            ->execute([$auth['tenant_id'],$b['email'],$hash,$b['full_name'],$b['role']??'sales',$b['phone']??null]);
+        $this->db->prepare("INSERT INTO users (tenant_id,email,password_hash,full_name,role,phone,dob,gender,citizen_id,address,bank_name,bank_account) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+            ->execute([
+                $auth['tenant_id'],
+                $b['email'],
+                $hash,
+                $b['full_name'],
+                $b['role']??'sales',
+                $b['phone']??null,
+                $b['dob']??null,
+                $b['gender']??null,
+                $b['citizen_id']??null,
+                $b['address']??null,
+                $b['bank_name']??null,
+                $b['bank_account']??null
+            ]);
         $newId = (int)$this->db->lastInsertId();
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'user', $newId, json_encode(['email' => $b['email'], 'role' => $b['role']??'sales']));
@@ -28,14 +61,15 @@ class UserController {
     }
     public function show(array $auth,int $id): void {
         if (!in_array($auth['role'], ['admin', 'super_admin'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
-        $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
+        $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE id=? AND tenant_id=?");
         $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         if(!$row) respond(404,null,'Không tìm thấy người dùng',false);
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
         if (!in_array($auth['role'], ['admin', 'super_admin'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
-        $b=getBody(); $fields=['full_name','phone']; // Fields anyone can update on themselves
+        $b=getBody(); 
+        $fields=['full_name','phone','dob','gender','citizen_id','address','bank_name','bank_account']; // Fields anyone can update on themselves
         if (in_array($auth['role'], ['admin', 'super_admin'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';

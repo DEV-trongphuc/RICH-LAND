@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw, Loader2 } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -10,9 +10,13 @@ import toast from 'react-hot-toast';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
+import { useAuthStore } from '../store/authStore';
 
 const AccountsInner = () => {
   const { t } = useLanguage();
+  const user = useAuthStore(state => state.user);
+  const isSale = user?.role === 'sale';
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -207,6 +211,22 @@ const AccountsInner = () => {
     fetchAccounts();
   }, []);
 
+  useEffect(() => {
+    if (isSale && accounts.length > 0) {
+      const acc = accounts[0];
+      setEditingAccount(acc);
+      setFormData({
+        username: acc.username || '',
+        password: '',
+        name: acc.name || '',
+        email: acc.email || '',
+        zalo_chat_id: acc.zalo_chat_id || '',
+        role: acc.role || 'sale',
+        avatar: acc.avatar || ''
+      });
+    }
+  }, [accounts, isSale]);
+
   const openAddModal = () => {
     setEditingAccount(null);
     setFormData({ username: '', password: '', name: '', email: '', zalo_chat_id: '', role: 'viewer', avatar: '' });
@@ -371,6 +391,106 @@ const AccountsInner = () => {
   const LOGS_PER_PAGE = 50;
   const totalLogPages = Math.ceil(logs.length / LOGS_PER_PAGE);
   const paginatedLogs = logs.slice((logsPage - 1) * LOGS_PER_PAGE, logsPage * LOGS_PER_PAGE);
+
+  if (isSale) {
+    return (
+      <div style={{ animation: 'fadeIn 0.3s ease-out', maxWidth: '600px', margin: '2rem auto', padding: '1.5rem' }}>
+        <div className="card" style={{ padding: '2rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--color-text)' }}>
+            {t('Thông tin cá nhân & Tài khoản')}
+          </h2>
+          <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1rem', position: 'relative' }}>
+              <div style={{ position: 'relative', width: '96px', height: '96px' }}>
+                <Avatar src={formData.avatar} name={formData.name || 'User'} size={96} />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    position: 'absolute', bottom: 0, right: 0,
+                    background: 'var(--color-primary)', color: 'white',
+                    border: 'none', borderRadius: '50%', width: '28px', height: '28px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+                  }}
+                >
+                  <Camera size={14} />
+                </button>
+              </div>
+              <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} accept="image/*" style={{ display: 'none' }} />
+              {isUploadingAvatar && <span style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--color-primary)' }}>{t('Đang tải lên...')}</span>}
+            </div>
+
+            <div>
+              <label className="form-label">{t('Tên hiển thị')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={formData.name}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Username')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={formData.username}
+                onChange={e => setFormData({ ...formData, username: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Email')}</label>
+              <input
+                type="email"
+                className="form-input"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Zalo Chat ID')}</label>
+              <input
+                type="text"
+                className="form-input"
+                value={formData.zalo_chat_id}
+                onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
+                placeholder={t('Ví dụ: 123456789')}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Mật khẩu mới')}</label>
+              <input
+                type="password"
+                className="form-input"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+                placeholder={t('Để trống nếu không muốn đổi')}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="btn primary"
+                style={{ flex: 1, padding: '0.75rem', justifyContent: 'center' }}
+              >
+                {isSaving ? <Loader2 size={16} className="animate-spin" /> : t('Lưu thay đổi')}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>

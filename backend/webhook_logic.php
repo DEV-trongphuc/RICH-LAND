@@ -3222,17 +3222,20 @@ function ensurePersonAndContact($conn, $leadId) {
             $lastName = '';
         }
 
+        $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
+        $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
+
         $stmtContact = $conn->prepare("
             INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', DATE_ADD(NOW(), INTERVAL 3 HOUR))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?)
             ON DUPLICATE KEY UPDATE 
                 owner_id = VALUES(owner_id),
                 status = 'lead',
-                security_expires_at = IF(owner_id != VALUES(owner_id), DATE_ADD(NOW(), INTERVAL 3 HOUR), security_expires_at)
+                security_expires_at = IF(owner_id != VALUES(owner_id), ?, security_expires_at)
         ");
         if ($stmtContact) {
             $createdBy = 1;
-            $stmtContact->bind_param("iiiisssss", $person_id, $projectId, $assigned_to, $createdBy, $firstName, $lastName, $email, $phone, $source);
+            $stmtContact->bind_param("iiiisssssss", $person_id, $projectId, $assigned_to, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $secExpiresTime);
             $stmtContact->execute();
             $stmtContact->close();
         }

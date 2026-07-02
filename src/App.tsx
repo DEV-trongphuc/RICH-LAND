@@ -98,11 +98,11 @@ const AppTabs = () => {
   }
 
   if (currentPath === '/accounts') {
-    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin') {
+    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/invoices') {
-    if ((user?.role as string) === 'sale' || (user?.role as string) === 'viewer') {
+    if ((user?.role as string) === 'viewer') {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/quotes' || currentPath === '/expenses') {

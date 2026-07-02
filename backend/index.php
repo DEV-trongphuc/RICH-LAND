@@ -323,6 +323,7 @@ require_once __DIR__ . '/controllers/CloudFileController.php';
 require_once __DIR__ . '/controllers/CustomFieldController.php';
 require_once __DIR__ . '/controllers/ExportController.php';
 require_once __DIR__ . '/controllers/ProjectController.php';
+require_once __DIR__ . '/controllers/CampaignController.php';
 require_once __DIR__ . '/controllers/DepositController.php';
 require_once __DIR__ . '/controllers/CooperationController.php';
 require_once __DIR__ . '/controllers/CapiController.php';
@@ -719,6 +720,7 @@ switch ($resource) {
         $ctrl = new CloudFileController($db);
         if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
@@ -760,6 +762,17 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && ($segments[4] ?? '') === 'download') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'GET') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]); // fallback direct link download
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // CAMPAIGNS (Marketing campaigns)
+    case 'campaigns':
+        $auth = requireAuth();
+        $ctrl = new CampaignController($db);
+        if (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);

@@ -452,18 +452,33 @@ class ContactController {
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " liên hệ");
     }
 
+    private function getSetting(string $key, string $default): string {
+        $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        return $val !== false ? $val : $default;
+    }
+
     private function getSecurityExpiration(string $status): ?string {
         switch ($status) {
             case 'chua_xac_dinh':
-                return date('Y-m-d H:i:s', strtotime('+3 hours'));
+                $duration = $this->getSetting('security_timer_chua_xac_dinh', '+3 hours');
+                return date('Y-m-d H:i:s', strtotime($duration));
             case 'quan_tam':
-                return date('Y-m-d H:i:s', strtotime('+1 day'));
+                $duration = $this->getSetting('security_timer_quan_tam', '+1 day');
+                return date('Y-m-d H:i:s', strtotime($duration));
+            case 'thien_chi':
+                $duration = $this->getSetting('security_timer_thien_chi', '+3 days');
+                return date('Y-m-d H:i:s', strtotime($duration));
             case 'dong_y_gap':
-                return date('Y-m-d H:i:s', strtotime('+4 days'));
+                $duration = $this->getSetting('security_timer_dong_y_gap', '+4 days');
+                return date('Y-m-d H:i:s', strtotime($duration));
             case 'da_gap':
-                return date('Y-m-d H:i:s', strtotime('+5 days'));
+                $duration = $this->getSetting('security_timer_da_gap', '+5 days');
+                return date('Y-m-d H:i:s', strtotime($duration));
             case 'booking':
-                return date('Y-m-d H:i:s', strtotime('+3 months'));
+                $duration = $this->getSetting('security_timer_booking', '+3 months');
+                return date('Y-m-d H:i:s', strtotime($duration));
             default:
                 return null;
         }

@@ -134,6 +134,14 @@ const SettingsInner = () => {
   const [databankLimitPerMonth, setDatabankLimitPerMonth] = useState<number>(300);
   const [backpressureLimit, setBackpressureLimit] = useState<number>(5);
 
+  const [securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh] = useState<string>("+3 hours");
+  const [securityTimerQuanTam, setSecurityTimerQuanTam] = useState<string>("+1 day");
+  const [securityTimerThienChi, setSecurityTimerThienChi] = useState<string>("+3 days");
+  const [securityTimerDongYGap, setSecurityTimerDongYGap] = useState<string>("+4 days");
+  const [securityTimerDaGap, setSecurityTimerDaGap] = useState<string>("+5 days");
+  const [securityTimerBooking, setSecurityTimerBooking] = useState<string>("+3 months");
+  const [databankApplicableSources, setDatabankApplicableSources] = useState<string>("R3_Fb,R3,R2,broadcast");
+
   const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
     'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
   ]);
@@ -398,6 +406,13 @@ const SettingsInner = () => {
         if (json.data.databank_limit_per_hour !== undefined) setDatabankLimitPerHour(Number(json.data.databank_limit_per_hour));
         if (json.data.databank_limit_per_month !== undefined) setDatabankLimitPerMonth(Number(json.data.databank_limit_per_month));
         if (json.data.backpressure_limit !== undefined) setBackpressureLimit(Number(json.data.backpressure_limit));
+        if (json.data.security_timer_chua_xac_dinh !== undefined) setSecurityTimerChuaXacDinh(json.data.security_timer_chua_xac_dinh);
+        if (json.data.security_timer_quan_tam !== undefined) setSecurityTimerQuanTam(json.data.security_timer_quan_tam);
+        if (json.data.security_timer_thien_chi !== undefined) setSecurityTimerThienChi(json.data.security_timer_thien_chi);
+        if (json.data.security_timer_dong_y_gap !== undefined) setSecurityTimerDongYGap(json.data.security_timer_dong_y_gap);
+        if (json.data.security_timer_da_gap !== undefined) setSecurityTimerDaGap(json.data.security_timer_da_gap);
+        if (json.data.security_timer_booking !== undefined) setSecurityTimerBooking(json.data.security_timer_booking);
+        if (json.data.databank_applicable_sources !== undefined) setDatabankApplicableSources(json.data.databank_applicable_sources);
         setTicketAutoApproveEnabled(json.data.ticket_auto_approve_enabled === '1' || json.data.ticket_auto_approve_enabled === 1);
         setTicketAutoApproveKeywords(json.data.ticket_auto_approve_keywords || '');
         if (json.data.report_error_reasons) {
@@ -529,6 +544,13 @@ const SettingsInner = () => {
       databank_limit_per_hour: databankLimitPerHour,
       databank_limit_per_month: databankLimitPerMonth,
       backpressure_limit: backpressureLimit,
+      security_timer_chua_xac_dinh: securityTimerChuaXacDinh,
+      security_timer_quan_tam: securityTimerQuanTam,
+      security_timer_thien_chi: securityTimerThienChi,
+      security_timer_dong_y_gap: securityTimerDongYGap,
+      security_timer_da_gap: securityTimerDaGap,
+      security_timer_booking: securityTimerBooking,
+      databank_applicable_sources: databankApplicableSources,
       gemini_api_key: geminiApiKey,
       gemini_model: geminiModel,
       ai_screener_enabled: aiScreenerEnabled ? '1' : '0',
@@ -2586,6 +2608,101 @@ function doPost(e) {
                         </div>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
                           {t('Số lead databank tối đa Sale được nhận/tháng.')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 4: Thời hạn bảo mật & Nguồn ra kho */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Thời hạn bảo mật & Nguồn ra kho Databank')}</h4>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Nguồn lead áp dụng ra kho')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={databankApplicableSources}
+                          onChange={e => setDatabankApplicableSources(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Các nguồn lead cách nhau bằng dấu phẩy (ví dụ: R3_Fb,R3,R2,broadcast).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Thời gian Chưa Xác Định')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={securityTimerChuaXacDinh}
+                          onChange={e => setSecurityTimerChuaXacDinh(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Hạn bảo mật mặc định (ví dụ: +3 hours).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Thời gian Quan Tâm')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={securityTimerQuanTam}
+                          onChange={e => setSecurityTimerQuanTam(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Hạn bảo mật mặc định (ví dụ: +1 day).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Thời gian Thiện Chí')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={securityTimerThienChi}
+                          onChange={e => setSecurityTimerThienChi(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Hạn bảo mật mặc định (ví dụ: +3 days).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Thời gian Đồng Ý Gặp')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={securityTimerDongYGap}
+                          onChange={e => setSecurityTimerDongYGap(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Hạn bảo mật mặc định (ví dụ: +4 days).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Thời gian Đã Gặp')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={securityTimerDaGap}
+                          onChange={e => setSecurityTimerDaGap(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Hạn bảo mật mặc định (ví dụ: +5 days).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Thời gian Booking')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={securityTimerBooking}
+                          onChange={e => setSecurityTimerBooking(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Hạn bảo mật mặc định (ví dụ: +3 months).')}
                         </span>
                       </div>
                     </div>

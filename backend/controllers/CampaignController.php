@@ -1,0 +1,99 @@
+<?php
+// backend/controllers/CampaignController.php
+
+class CampaignController {
+    private PDO $db;
+
+    public function __construct(PDO $db) {
+        $this->db = $db;
+        try {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS marketing_campaigns (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    tenant_id INT NOT NULL DEFAULT 1,
+                    name VARCHAR(255) NOT NULL,
+                    description TEXT DEFAULT NULL,
+                    status VARCHAR(50) DEFAULT 'active',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+            
+            // Seed default campaigns if none exist
+            $count = $this->db->query("SELECT COUNT(*) FROM marketing_campaigns")->fetchColumn();
+            if ($count == 0) {
+                $defaults = [
+                    ['Chiến dịch Mở bán Q1 2026', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
+                    ['Facebook Lead Ads - HCMC', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
+                    ['Google Search - Căn hộ cao cấp', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
+                    ['TikTok Ads - Biệt thự nghỉ dưỡng', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active'],
+                    ['Chiến dịch Email & Inbound M2', 'Chiến dịch marketing chạy quảng cáo thu lead phân phối về cho các dự án bất động sản.', 'active']
+                ];
+                $stmt = $this->db->prepare("INSERT INTO marketing_campaigns (tenant_id, name, description, status) VALUES (1, ?, ?, ?)");
+                foreach ($defaults as $d) {
+                    $stmt->execute($d);
+                }
+            }
+        } catch (Exception $e) {}
+    }
+
+    public function index(array $auth): void {
+        $stmt = $this->db->prepare("SELECT * FROM marketing_campaigns WHERE tenant_id = ? ORDER BY created_at DESC");
+        $stmt->execute([$auth['tenant_id']]);
+        respond(200, $stmt->fetchAll(), 'Lấy danh sách chiến dịch thành công');
+    }
+
+    public function store(array $auth): void {
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        $b = getBody();
+        $name = trim($b['name'] ?? '');
+        $description = trim($b['description'] ?? '');
+        $status = trim($b['status'] ?? 'active');
+
+        if (empty($name)) {
+            respond(422, null, 'Tên chiến dịch không được để trống', false);
+        }
+
+        $stmt = $this->db->prepare("INSERT INTO marketing_campaigns (tenant_id, name, description, status) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$auth['tenant_id'], $name, $description, $status]);
+        $newId = (int)$this->db->lastInsertId();
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_CAMPAIGN', 'marketing_campaigns', $newId, "Tạo chiến dịch: $name");
+        respond(200, ['id' => $newId], 'Tạo chiến dịch thành công');
+    }
+
+    public function update(array $auth, int $id): void {
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        $b = getBody();
+        $name = trim($b['name'] ?? '');
+        $description = trim($b['description'] ?? '');
+        $status = trim($b['status'] ?? 'active');
+
+        if (empty($name)) {
+            respond(422, null, 'Tên chiến dịch không được để trống', false);
+        }
+
+        $stmt = $this->db->prepare("UPDATE marketing_campaigns SET name = ?, description = ?, status = ? WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$name, $description, $status, $id, $auth['tenant_id']]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_CAMPAIGN', 'marketing_campaigns', $id, "Cập nhật chiến dịch: $name");
+        respond(200, null, 'Cập nhật chiến dịch thành công');
+    }
+
+    public function destroy(array $auth, int $id): void {
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        
+        $stmtName = $this->db->prepare("SELECT name FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
+        $stmtName->execute([$id, $auth['tenant_id']]);
+        $name = $stmtName->fetchColumn();
+        if (!$name) {
+            respond(404, null, 'Chiến dịch không tồn tại', false);
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$id, $auth['tenant_id']]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE_CAMPAIGN', 'marketing_campaigns', $id, "Xóa chiến dịch: $name");
+        respond(200, null, 'Xóa chiến dịch thành công');
+    }
+}

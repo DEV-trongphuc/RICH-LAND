@@ -22,7 +22,7 @@ if (in_array($baseAction, [
     'cloud-files', 'file-categories', 'tickets', 'suppliers', 'purchase-orders', 
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
     'users', 'reports', 'quotes', 'invoices', 'expenses', 
-    'contacts', 'companies', 'deals', 'activities', 'notes'
+    'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns'
 ], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action;
     require_once __DIR__ . '/index.php';
@@ -31,6 +31,25 @@ if (in_array($baseAction, [
 
 require_once 'env.php';
 require_once 'db_connect.php';
+
+try {
+    $conn->query("ALTER TABLE consultants ADD COLUMN dob DATE NULL");
+} catch (Exception $e) {}
+try {
+    $conn->query("ALTER TABLE consultants ADD COLUMN gender VARCHAR(20) NULL");
+} catch (Exception $e) {}
+try {
+    $conn->query("ALTER TABLE consultants ADD COLUMN citizen_id VARCHAR(50) NULL");
+} catch (Exception $e) {}
+try {
+    $conn->query("ALTER TABLE consultants ADD COLUMN address TEXT NULL");
+} catch (Exception $e) {}
+try {
+    $conn->query("ALTER TABLE consultants ADD COLUMN bank_name VARCHAR(100) NULL");
+} catch (Exception $e) {}
+try {
+    $conn->query("ALTER TABLE consultants ADD COLUMN bank_account VARCHAR(100) NULL");
+} catch (Exception $e) {}
 
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -501,6 +520,14 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $source = trim($leadData['source'] ?? '');
     $type = trim($leadData['type'] ?? '');
     $note = trim($leadData['note'] ?? '');
+
+    if ($decodedUser['role'] === 'sale') {
+        $override_consultant_id = (int)$decodedUser['consultant_id'];
+        $distribution_mode = 'auto_round';
+        if ($source !== 'gioi_thieu') {
+            $source = 'ca_nhan';
+        }
+    }
 
     if (empty($phone) && empty($email)) {
         return ['success' => false, 'message' => 'Vui lòng nhập SĐT hoặc Email'];
@@ -992,7 +1019,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         $whEnd = $whRow['work_end_time'] ?? '23:59';
                         $workSchedule = $whRow['work_schedule'] ?? null;
                         $currentTime = date('H:i');
-                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                        if ($decodedUser['role'] !== 'sale' && !isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
                             $status = 'pending_work_hours';
                             $isOutsideWorkHours = true;
                         }
@@ -1875,6 +1902,7 @@ switch ($action) {
             }
         }
         if ($dateMode === 'today') {
+            $today = date('Y-m-d');
             $ticketWhere[] = "created_at >= ?";
             $ticketWhere[] = "created_at <= ?";
             $ticketParams[] = $today . ' 00:00:00';
@@ -2882,8 +2910,15 @@ switch ($action) {
                 break;
             }
 
-            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssi", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id);
+            $dob = !empty($input['dob']) ? $input['dob'] : null;
+            $gender = !empty($input['gender']) ? $input['gender'] : null;
+            $citizen_id = !empty($input['citizen_id']) ? $input['citizen_id'] : null;
+            $address = !empty($input['address']) ? $input['address'] : null;
+            $bank_name = !empty($input['bank_name']) ? $input['bank_name'] : null;
+            $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
+
+            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("ssssssssissssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account);
             $stmt->execute();
             $newId = $conn->insert_id;
             $stmt->close();
@@ -2999,12 +3034,19 @@ switch ($action) {
                 }
             }
 
+            $dob = !empty($input['dob']) ? $input['dob'] : null;
+            $gender = !empty($input['gender']) ? $input['gender'] : null;
+            $citizen_id = !empty($input['citizen_id']) ? $input['citizen_id'] : null;
+            $address = !empty($input['address']) ? $input['address'] : null;
+            $bank_name = !empty($input['bank_name']) ? $input['bank_name'] : null;
+            $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
+
             // Fetch old consultant state for audit log rollback support
-            $oldRes = $conn->query("SELECT name, email, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id FROM consultants WHERE id = " . $id);
+            $oldRes = $conn->query("SELECT name, email, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = " . $id);
             $oldData = $oldRes ? $oldRes->fetch_assoc() : null;
 
-            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, team_id=? WHERE id=?");
-            $stmt->bind_param("ssssssssssii", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $id);
+            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, team_id=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
+            $stmt->bind_param("ssssssssssissssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', [
                     'id' => $id,
@@ -4248,7 +4290,12 @@ switch ($action) {
         break;
 
     case 'get_connections':
-        $res = $conn->query("SELECT * FROM sheet_connections ORDER BY created_at DESC");
+        $type = $_GET['type'] ?? '';
+        if ($type === 'inventory_sheets') {
+            $res = $conn->query("SELECT * FROM sheet_connections WHERE connection_type = 'inventory_sheets' ORDER BY created_at DESC");
+        } else {
+            $res = $conn->query("SELECT * FROM sheet_connections WHERE connection_type != 'inventory_sheets' ORDER BY created_at DESC");
+        }
         $conns = [];
         while ($row = $res->fetch_assoc()) {
             $row['stats'] = [
@@ -8530,8 +8577,14 @@ switch ($action) {
 
 
     case 'get_accounts':
-        // Include email field for display and ticket notification settings
-        $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar FROM accounts ORDER BY created_at DESC");
+        if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') {
+            $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar FROM accounts WHERE id = ?");
+            $stmt->bind_param("i", $decodedUser['id']);
+            $stmt->execute();
+            $res = $stmt->get_result();
+        } else {
+            $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar FROM accounts ORDER BY created_at DESC");
+        }
         $data = [];
         while ($row = $res->fetch_assoc())
             $data[] = $row;
@@ -9360,6 +9413,10 @@ switch ($action) {
         break;
 
     case 'add_account':
+        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin') {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền tạo tài khoản mới']);
+            break;
+        }
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $username = trim($input['username'] ?? '');
@@ -9422,10 +9479,26 @@ switch ($action) {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $id = (int) ($input['id'] ?? 0);
+            
+            $isTargetSelf = $id === (int)$decodedUser['id'];
+            $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
+
+            if (!$isAdmin && !$isTargetSelf) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa tài khoản này']);
+                break;
+            }
+
             $username = trim($input['username'] ?? '');
             $password = $input['password'] ?? '';
             $name = trim($input['name'] ?? '');
             $role = $input['role'] ?? 'viewer';
+            
+            if (!$isAdmin) {
+                $exRes = $conn->query("SELECT role FROM accounts WHERE id = " . $id);
+                $exRow = $exRes ? $exRes->fetch_assoc() : null;
+                $role = $exRow ? $exRow['role'] : 'viewer';
+            }
+
             $email = trim($input['email'] ?? '');
             $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
             $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
@@ -9541,8 +9614,15 @@ switch ($action) {
             break;
         }
 
-        $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=? WHERE id=?");
-        $stmt->bind_param("sssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $targetId);
+        $dob = !empty($input['dob']) ? $input['dob'] : null;
+        $gender = !empty($input['gender']) ? $input['gender'] : null;
+        $citizen_id = !empty($input['citizen_id']) ? $input['citizen_id'] : null;
+        $address = !empty($input['address']) ? $input['address'] : null;
+        $bank_name = !empty($input['bank_name']) ? $input['bank_name'] : null;
+        $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
+
+        $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
+        $stmt->bind_param("sssssssssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $targetId);
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {
@@ -9600,6 +9680,10 @@ switch ($action) {
         break;
 
     case 'check_delete_account':
+        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin') {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thực hiện hành động này']);
+            break;
+        }
         $id = (int) ($_GET['id'] ?? 0);
 
         // 1. Check fallback_type and fallback_admin_id
@@ -9654,6 +9738,10 @@ switch ($action) {
         break;
 
     case 'delete_account':
+        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin') {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thực hiện hành động này']);
+            break;
+        }
         $id = (int) ($_GET['id'] ?? 0);
         if ($id === 1) { // Prevent deleting default super admin
             echo json_encode(['success' => false, 'message' => 'Không thể xóa tài khoản Super Admin']);
@@ -13417,6 +13505,7 @@ switch ($action) {
 
         $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
                        (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
+                       (SELECT name FROM projects WHERE id = (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1)) as project_name,
                        (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
                 FROM persons p
                 WHERE p.is_public = 1

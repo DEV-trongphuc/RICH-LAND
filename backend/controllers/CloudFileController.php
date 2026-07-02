@@ -1,7 +1,12 @@
 <?php
 class CloudFileController {
     private PDO $db;
-    public function __construct(PDO $db) { $this->db = $db; }
+    public function __construct(PDO $db) { 
+        $this->db = $db; 
+        try {
+            $this->db->exec("ALTER TABLE cloud_files ADD COLUMN project_id INT NULL");
+        } catch (Exception $e) {}
+    }
 
     public function index(array $auth): void {
         $tid    = $auth['tenant_id'];
@@ -26,10 +31,11 @@ class CloudFileController {
         $total = (int)$cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            SELECT cf.*, u.full_name as uploader_name, u2.full_name as editor_name 
+            SELECT cf.*, u.full_name as uploader_name, u2.full_name as editor_name, p.name as project_name
             FROM cloud_files cf
             LEFT JOIN users u ON cf.uploaded_by = u.id
             LEFT JOIN users u2 ON cf.updated_by = u2.id
+            LEFT JOIN projects p ON cf.project_id = p.id
             WHERE $w
             ORDER BY cf.created_at DESC
             LIMIT $limit OFFSET $offset
@@ -63,6 +69,7 @@ class CloudFileController {
         $name = $_POST['name'] ?? $file['name'];
         $category = $_POST['category'] ?? 'general';
         $visibility = $_POST['visibility'] ?? 'shared';
+        $project_id = isset($_POST['project_id']) && $_POST['project_id'] !== '' ? (int)$_POST['project_id'] : null;
 
         // 1. Prepare directory
         $targetDir = UPLOAD_DIR . "/cloud/$tid";
@@ -83,16 +90,39 @@ class CloudFileController {
 
         // 4. Save to DB
         $stmt = $this->db->prepare("
-            INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility, project_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $tid, $uid, $name,
             $dbPath, $file['type'], $file['size'],
-            $category, $visibility
+            $category, $visibility, $project_id
         ]);
 
         respond(201, ['id' => $this->db->lastInsertId(), 'path' => $dbPath], 'Đã tải tệp tin lên thành công');
+    }
+
+    public function update(array $auth, int $id): void {
+        $tid = $auth['tenant_id'];
+        $b = getBody();
+        
+        $name = trim($b['name'] ?? '');
+        $category = trim($b['category'] ?? 'general');
+        $visibility = trim($b['visibility'] ?? 'shared');
+        $project_id = isset($b['project_id']) && $b['project_id'] !== '' ? (int)$b['project_id'] : null;
+
+        if (!$name) {
+            respond(422, null, 'Tên tệp là bắt buộc', false);
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE cloud_files 
+            SET name = ?, category = ?, visibility = ?, project_id = ?, updated_by = ?
+            WHERE id = ? AND tenant_id = ?
+        ");
+        $stmt->execute([$name, $category, $visibility, $project_id, $auth['user_id'], $id, $tid]);
+
+        respond(200, null, 'Cập nhật thông tin tệp thành công');
     }
 
     public function destroy(array $auth, int $id): void {
