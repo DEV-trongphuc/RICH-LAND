@@ -53,12 +53,24 @@ class AuthController {
         // Update last login
         $this->db->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([$user['id']]);
 
+        $consultantId = null;
+        if ($user['role'] === 'sales' || $user['role'] === 'sale') {
+            $stmtC = $this->db->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+            $stmtC->execute([$user['email']]);
+            $cRow = $stmtC->fetch();
+            if ($cRow) {
+                $consultantId = (int)$cRow['id'];
+            }
+        }
+
         $payload = [
+            'id'        => $user['id'],
             'user_id'   => $user['id'],
             'tenant_id' => $user['tenant_id'],
             'email'     => $user['email'],
             'role'       => $user['role'],
             'full_name'  => $user['full_name'],
+            'consultant_id' => $consultantId,
         ];
 
         $accessToken = JWT::encode($payload);
@@ -89,6 +101,8 @@ class AuthController {
             'refresh_token' => $refreshToken,
             'user' => [
                 'id'          => $user['id'],
+                'user_id'     => $user['id'],
+                'consultant_id' => $consultantId,
                 'email'       => $user['email'],
                 'full_name'   => $user['full_name'],
                 'role'        => $user['role'],
