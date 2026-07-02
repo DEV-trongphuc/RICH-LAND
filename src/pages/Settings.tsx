@@ -134,6 +134,7 @@ const SettingsInner = () => {
   const [databankLimitPerMonth, setDatabankLimitPerMonth] = useState<number>(300);
   const [backpressureLimit, setBackpressureLimit] = useState<number>(5);
   const [checkinApprovalSlaMinutes, setCheckinApprovalSlaMinutes] = useState<number>(15);
+  const [broadcastExclusionRules, setBroadcastExclusionRules] = useState<string>("not_lead,opt_out,active_khtn");
 
   const [securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh] = useState<string>("+3 hours");
   const [securityTimerQuanTam, setSecurityTimerQuanTam] = useState<string>("+1 day");
@@ -408,6 +409,7 @@ const SettingsInner = () => {
         if (json.data.databank_limit_per_month !== undefined) setDatabankLimitPerMonth(Number(json.data.databank_limit_per_month));
         if (json.data.backpressure_limit !== undefined) setBackpressureLimit(Number(json.data.backpressure_limit));
         if (json.data.checkin_approval_sla_minutes !== undefined) setCheckinApprovalSlaMinutes(Number(json.data.checkin_approval_sla_minutes));
+        if (json.data.broadcast_exclusion_rules !== undefined) setBroadcastExclusionRules(json.data.broadcast_exclusion_rules);
         if (json.data.security_timer_chua_xac_dinh !== undefined) setSecurityTimerChuaXacDinh(json.data.security_timer_chua_xac_dinh);
         if (json.data.security_timer_quan_tam !== undefined) setSecurityTimerQuanTam(json.data.security_timer_quan_tam);
         if (json.data.security_timer_thien_chi !== undefined) setSecurityTimerThienChi(json.data.security_timer_thien_chi);
@@ -547,6 +549,7 @@ const SettingsInner = () => {
       databank_limit_per_month: databankLimitPerMonth,
       backpressure_limit: backpressureLimit,
       checkin_approval_sla_minutes: checkinApprovalSlaMinutes,
+      broadcast_exclusion_rules: broadcastExclusionRules,
       security_timer_chua_xac_dinh: securityTimerChuaXacDinh,
       security_timer_quan_tam: securityTimerQuanTam,
       security_timer_thien_chi: securityTimerThienChi,
@@ -2513,6 +2516,19 @@ function doPost(e) {
                         </div>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
                           {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Luật loại trừ Broadcast')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={broadcastExclusionRules}
+                          onChange={e => setBroadcastExclusionRules(e.target.value)}
+                          placeholder="not_lead,opt_out,active_khtn"
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Các từ khóa loại trừ cách nhau bằng dấu phẩy (not_lead, opt_out, active_khtn).')}
                         </span>
                       </div>
                     </div>

@@ -1513,6 +1513,7 @@ try {
 
     // 6. Default Settings
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('checkin_approval_sla_minutes', '15')");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('broadcast_exclusion_rules', 'not_lead,opt_out,active_khtn')");
     $chkSlaNotif = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'sla_notified_at'");
     if ($chkSlaNotif && $chkSlaNotif->num_rows === 0) {
         $conn->query("ALTER TABLE check_ins ADD COLUMN sla_notified_at DATETIME DEFAULT NULL");

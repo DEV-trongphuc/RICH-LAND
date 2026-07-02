@@ -39,7 +39,7 @@ Sale tự nhập (tay)       ─┘    campaign, dự án)  chỉ thêm)  1 ngư
 | 1.10 | **Máy đối soát**: job mỗi sáng so số leadform Meta/Google API báo vs số Lead trong CRM hôm trước. Lệch → cảnh báo + danh sách thiếu | ✅ |
 | 1.11 | Broadcast: KH cũ phản hồi → tạo Lead nguồn `broadcast` + gắn campaign mới + broadcast_id → qua cửa → nối Person cũ → sinh KHTN mới | ✅ |
 | 1.12 | Bảng đợt broadcast lưu: tệp đã chọn (rule), thông điệp, kênh, **danh sách đã gửi** (để đo response rate). Tool bắn ngoài nhưng danh sách phải đổ về CRM | ✅ |
-| 1.13 | Loại trừ khỏi tệp broadcast: Not Lead vĩnh viễn · người đã opt-out · KH đang có KHTN active ở campaign khác | 🟡 |
+| 1.13 | Loại trừ khỏi tệp broadcast: Not Lead vĩnh viễn · người đã opt-out · KH đang có KHTN active ở campaign khác (Cấu hình qua Admin Setting) | ✅ |
 | 1.14 | **Giới thiệu kế thừa dòng nguồn**: A gốc MKT giới thiệu B → B = `gioi_thieu` (dòng MKT). A là khách cá nhân → B = `ca_nhan`. Lead `gioi_thieu` bắt buộc ghi người giới thiệu (trỏ Person của A) → attribution trace về campaign gốc của A | ✅ |
 | 1.15 | Khách được giới thiệu (B): sale tự nhập (giống khách cá nhân + trường "người giới thiệu" chọn Person gốc). Về thẳng sale đó, không qua xoay vòng | ✅ |
 | 1.16 | Nguồn `ca_nhan` + `gioi_thieu`: KHÔNG áp cơ chế databank — mặc định của sale đó vĩnh viễn | ✅ |
@@ -67,7 +67,7 @@ Sale tự nhập (tay)       ─┘    campaign, dự án)  chỉ thêm)  1 ngư
 
 | # | Câu hỏi / tình huống biên | Ghi chú |
 |---|---|---|
-| M1 | Luật loại trừ tệp broadcast (1.13) — chốt danh sách cuối: còn nhóm nào nữa ngoài 3 nhóm đã nêu? | Liên quan tuân thủ chống spam + policy ZNS Zalo |
+| M1 | Luật loại trừ tệp broadcast (1.13) — chốt danh sách cuối: còn nhóm nào nữa ngoài 3 nhóm đã nêu? | ✅ Đã cấu hình động qua Admin Setting |
 | M2 | KHTN mới từ broadcast chia cho ai? Sale từng chăm Person ở dự án cũ (có quan hệ) hay team đang phụ trách dự án mới? | Lệch nhau về cả công bằng lẫn tỷ lệ chuyển đổi — **chưa chốt** |
 | M3 | Khách cá nhân trùng số được flag — sau khi flag, Quản lý có quyền làm gì? (gỡ về MKT / cho qua / khóa) | Cần định nghĩa hành động sau flag |
 | M4 | Messenger/Zalo OA: Phase 1 nhập tay. Khi nào nâng lên webhook tự động? | Phase 2+ — cửa đã thiết kế sẵn để cắm |
