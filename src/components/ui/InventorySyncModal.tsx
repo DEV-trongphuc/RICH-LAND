@@ -367,23 +367,33 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowY: 'auto', padding: '1.5rem' }}>
             {showAddConn ? (
               /* Add New Connection Form */
-              <form onSubmit={handleAddConnection} style={{ maxWidth: 550, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                    Thêm Kết Nối Google Sheets Mới
+              <form onSubmit={handleAddConnection} style={{ maxWidth: 550, display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                {/* Step Tracker */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '0.5rem', position: 'relative' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem' }}>1</div>
+                  <div style={{ width: 60, height: 1, background: 'var(--color-border)' }}></div>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-bg)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem' }}>2</div>
+                  <div style={{ width: 60, height: 1, background: 'var(--color-border)' }}></div>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-bg)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem' }}>3</div>
+                </div>
+
+                {/* Title */}
+                <div style={{ textAlign: 'center', marginBottom: '0.25rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, margin: 0 }}>
+                    Cấu hình Google Sheets 
                     <div style={{ background: 'var(--color-primary)', color: 'white', padding: '2px 6px', borderRadius: 6, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                       <FileSpreadsheet size={14} />
                     </div>
                   </h3>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    Đồng bộ hóa danh mục sản phẩm và bảng hàng của bạn tự động từ Google Sheets.
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    Kết nối bảng tính của bạn để tự động nạp dữ liệu Khách hàng.
                   </p>
                 </div>
 
-                {/* Hướng dẫn chia sẻ quyền */}
+                {/* Hướng dẫn nhanh card */}
                 <div style={{
-                  background: 'rgba(163, 20, 34, 0.04)',
-                  border: '1px solid rgba(163, 20, 34, 0.15)',
+                  background: 'rgba(239, 68, 68, 0.04)',
+                  border: '1px solid rgba(239, 68, 68, 0.15)',
                   borderRadius: 12,
                   padding: '1.25rem',
                   color: 'var(--color-text)',
@@ -391,19 +401,19 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
                   lineHeight: 1.6
                 }}>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', marginBottom: 8 }}>
-                    <Info size={16} /> Hướng dẫn chia sẻ quyền truy cập:
+                    <Info size={16} /> Hướng dẫn nhanh:
                   </div>
                   <ol style={{ paddingLeft: '1.20rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    <li>Mở file Google Sheets của bạn, nhấn nút <strong>Chia sẻ (Share)</strong> ở góc phải trên.</li>
-                    <li>Tại mục <strong>Quyền truy cập chung (General access)</strong>, đổi thành <strong>Bất kỳ ai có liên kết (Anyone with the link)</strong>.</li>
-                    <li>Thiết lập vai trò là <strong>Người xem (Viewer)</strong> (Bắt buộc để CRM có thể đọc dữ liệu).</li>
+                    <li>Bấm nút <strong style={{ color: 'var(--color-primary)' }}>Chia sẻ (Share)</strong> trên file Google Sheets.</li>
+                    <li>Tại phần <strong style={{ color: 'var(--color-primary)' }}>Quyền truy cập chung</strong>, chọn <strong style={{ color: 'var(--color-primary)' }}>Bất kỳ ai có liên kết</strong> và đặt quyền là <strong style={{ color: 'var(--color-primary)' }}>Người xem</strong>.</li>
+                    <li>Copy <strong style={{ color: 'var(--color-primary)' }}>Spreadsheet ID</strong> từ URL trình duyệt (chuỗi ký tự nằm giữa d/ và /edit).</li>
                   </ol>
                 </div>
 
                 {/* Đường dẫn bảng tính */}
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
-                    Đường dẫn hoặc ID Bảng tính (Spreadsheet ID/URL) <span style={{ color: 'var(--color-danger)' }}>*</span>
+                    Đường dẫn Google Sheet (hoặc ID)
                   </label>
                   <div style={{ position: 'relative' }}>
                     <div style={{ position: 'absolute', top: 11, left: 12, color: '#94a3b8' }}><Link2 size={16} /></div>
@@ -413,7 +423,7 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
                       style={{ paddingLeft: 36, background: 'var(--color-bg)', border: 'none', height: 40 }}
                       value={newSpreadsheetId}
                       onChange={e => setNewSpreadsheetId(e.target.value)}
-                      placeholder="Dán link Google Sheet hoặc Spreadsheet ID vào đây..."
+                      placeholder="Dán link hoặc Spreadsheet ID vào đây..."
                       required
                     />
                   </div>
@@ -422,7 +432,7 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
                 {/* Tên sheet con */}
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
-                    Tên sheet con (Tab name) <span style={{ color: 'var(--color-danger)' }}>*</span>
+                    Tên trang tính (Sheet name)
                   </label>
                   <div style={{ position: 'relative' }}>
                     <div style={{ position: 'absolute', top: 11, left: 12, color: '#94a3b8' }}><FileSpreadsheet size={16} /></div>
@@ -432,7 +442,7 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
                       style={{ paddingLeft: 36, background: 'var(--color-bg)', border: 'none', height: 40 }}
                       value={newSheetTab}
                       onChange={e => setNewSheetTab(e.target.value)}
-                      placeholder="Ví dụ: Sheet1, Bảng hàng..."
+                      placeholder="Sheet1"
                       required
                     />
                   </div>
@@ -456,11 +466,30 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex gap-3 mt-2" style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button type="button" className="btn outline" onClick={() => setShowAddConn(false)} style={{ padding: '8px 16px', borderRadius: 10 }}>Hủy</button>
-                  <button type="submit" className="btn primary" disabled={isSaving} style={{ padding: '8px 20px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(163, 20, 34, 0.15)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAddConn(false)} 
+                    style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.875rem', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Quay lại
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn primary" 
+                    disabled={isSaving} 
+                    style={{ 
+                      padding: '10px 20px', 
+                      borderRadius: 10, 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: 6, 
+                      boxShadow: '0 4px 12px rgba(163, 20, 34, 0.15)',
+                      fontWeight: 700
+                    }}
+                  >
                     {isSaving && <RefreshCw size={14} className="spin" />}
-                    {isSaving ? 'Đang kết nối...' : 'Tiến hành kết nối'}
+                    {isSaving ? 'Đang kết nối...' : 'Kiểm tra kết nối >'}
                   </button>
                 </div>
               </form>
