@@ -1592,6 +1592,19 @@ try {
     if ($chkColASSA && $chkColASSA->num_rows === 0) {
         $conn->query("ALTER TABLE leads ADD COLUMN ai_screening_started_at DATETIME NULL COMMENT 'Thời điểm bắt đầu gọi AI'");
     }
+    $chkColPromptT = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_prompt_tokens'");
+    if ($chkColPromptT && $chkColPromptT->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_prompt_tokens INT DEFAULT 0 COMMENT 'Số token prompt AI sử dụng'");
+    }
+    $chkColCompT = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_completion_tokens'");
+    if ($chkColCompT && $chkColCompT->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_completion_tokens INT DEFAULT 0 COMMENT 'Số token completion AI sử dụng'");
+    }
+    $chkColTotalT = $conn->query("SHOW COLUMNS FROM leads LIKE 'ai_total_tokens'");
+    if ($chkColTotalT && $chkColTotalT->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN ai_total_tokens INT DEFAULT 0 COMMENT 'Tổng số token AI sử dụng'");
+    }
+
 
 
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
