@@ -348,7 +348,7 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources'])) {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -2531,7 +2531,15 @@ switch ($action) {
         $endDate = sprintf("%04d-%02d-%02d 23:59:59", $year, $month, $daysInMonth);
 
         $consultantFilter = '';
-        if (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
+        if ($decodedUser['role'] === 'sale') {
+            $stmtC = $conn->prepare("SELECT name FROM consultants WHERE email = ? LIMIT 1");
+            $stmtC->bind_param("s", $decodedUser['email']);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+            $consultantName = $cRow ? $cRow['name'] : '';
+            $consultantFilter = " AND c.name = '" . $conn->real_escape_string($consultantName) . "'";
+        } elseif (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
             $consultant = $conn->real_escape_string($_GET['consultant']);
             $consultantFilter = " AND c.name = '$consultant'";
         }
@@ -2631,7 +2639,15 @@ switch ($action) {
         $escapedDate = $conn->real_escape_string($date);
 
         $consultantFilter = '';
-        if (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
+        if ($decodedUser['role'] === 'sale') {
+            $stmtC = $conn->prepare("SELECT name FROM consultants WHERE email = ? LIMIT 1");
+            $stmtC->bind_param("s", $decodedUser['email']);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+            $consultantName = $cRow ? $cRow['name'] : '';
+            $consultantFilter = " AND c.name = '" . $conn->real_escape_string($consultantName) . "'";
+        } elseif (isset($_GET['consultant']) && $_GET['consultant'] !== 'all') {
             $consultant = $conn->real_escape_string($_GET['consultant']);
             $consultantFilter = " AND c.name = '$consultant'";
         }
