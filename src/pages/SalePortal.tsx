@@ -257,6 +257,13 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  // Night shift state variables
+  const [nightShiftRegistered, setNightShiftRegistered] = useState(false);
+  const [nightShiftLoading, setNightShiftLoading] = useState(true);
+  const [nightShiftCanToggle, setNightShiftCanToggle] = useState(true);
+  const [nightShiftDate, setNightShiftDate] = useState('');
+  const [togglingNightShift, setTogglingNightShift] = useState(false);
+
   // Sliding tab indicator
   const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
   const navContainerRef = useRef<HTMLDivElement>(null);
@@ -466,6 +473,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
     setLoading(true);
     loadCheckInStatus();
+    loadNightShiftStatus();
     try {
       let query = `get_sale_portal_data&search=${encodeURIComponent(search)}&round_id=${roundId}&date_mode=${dateMode}&sale_id=${saleIdFilter}`;
       if (dateMode === 'custom') {
@@ -512,6 +520,44 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       }
     } catch (err) {
       console.error("Error loading check-in status:", err);
+    }
+  };
+
+  const loadNightShiftStatus = async () => {
+    if (!token) return;
+    setNightShiftLoading(true);
+    try {
+      const res = await fetchAPI('get_night_shift_status');
+      if (res.success) {
+        setNightShiftRegistered(res.registered);
+        setNightShiftCanToggle(res.can_toggle);
+        setNightShiftDate(res.shift_date);
+      }
+    } catch (e) {
+      console.error("Error loading night shift status:", e);
+    } finally {
+      setNightShiftLoading(false);
+    }
+  };
+
+  const handleToggleNightShift = async () => {
+    if (togglingNightShift) return;
+    setTogglingNightShift(true);
+    try {
+      const res = await fetchAPI('register_night_shift', {
+        method: 'POST',
+        body: JSON.stringify({ register: !nightShiftRegistered })
+      });
+      if (res.success) {
+        toast.success(res.message);
+        setNightShiftRegistered(!nightShiftRegistered);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi đăng ký: ') + e.message);
+    } finally {
+      setTogglingNightShift(false);
     }
   };
 
@@ -3253,6 +3299,48 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 }}>
                   <AlertTriangle size={16} />
                   <span>{t('Bạn hiện đang trong thời gian nghỉ phép. Hệ thống tự động khóa chế độ nhận data cho đến khi kết thúc kỳ nghỉ.')}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Night Shift Registration Card */}
+            <div className="card" style={{ padding: '1.5rem', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <ShieldAlert size={18} color="var(--color-primary)" />
+                    {t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)')}
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
+                    {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{
+                    fontSize: '0.875rem', fontWeight: 700,
+                    color: nightShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
+                  }}>
+                    {nightShiftRegistered ? t('Đã đăng ký trực') : t('Chưa đăng ký')}
+                  </span>
+                  {effectiveRole === 'sale' && (
+                    <div style={{ opacity: nightShiftCanToggle ? 1 : 0.5, pointerEvents: nightShiftCanToggle ? 'auto' : 'none' }}>
+                      <ToggleSwitch
+                        checked={nightShiftRegistered}
+                        onChange={handleToggleNightShift}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {!nightShiftCanToggle && (
+                <div style={{
+                  background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
+                  borderRadius: '8px', border: '1px solid currentColor', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 8
+                }}>
+                  <Info size={14} />
+                  <span>{t('Đã quá 18:00. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.')}</span>
                 </div>
               )}
             </div>

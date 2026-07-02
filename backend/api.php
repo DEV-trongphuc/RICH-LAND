@@ -2872,6 +2872,59 @@ switch ($action) {
         exit(); // Kết thúc script ngay lập tức để không lọt JSON rác
         break;
 
+    case 'get_night_shift_status':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $userId = (int)$decodedUser['id'];
+        $currentHour = (int)date('H');
+        $shiftDate = ($currentHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
+
+        $stmt = $conn->prepare("SELECT id FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
+        $stmt->bind_param("is", $userId, $shiftDate);
+        $stmt->execute();
+        $res = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        echo json_encode([
+            'success' => true, 
+            'registered' => ($res !== null),
+            'shift_date' => $shiftDate,
+            'can_toggle' => (date('H:i') < '18:00')
+        ]);
+        break;
+
+    case 'register_night_shift':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        if (date('H:i') >= '18:00') {
+            echo json_encode(['success' => false, 'message' => 'Chỉ được phép đăng ký trực đêm trước 18:00 hàng ngày.']);
+            break;
+        }
+
+        $userId = (int)$decodedUser['id'];
+        $shiftDate = date('Y-m-d');
+        $b = json_decode(file_get_contents('php://input'), true);
+        $register = isset($b['register']) ? (bool)$b['register'] : true;
+
+        if ($register) {
+            $stmt = $conn->prepare("INSERT IGNORE INTO night_shift_registrations (user_id, shift_date) VALUES (?, ?)");
+            $stmt->bind_param("is", $userId, $shiftDate);
+            $stmt->execute();
+            $stmt->close();
+            echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công.']);
+        } else {
+            $stmt = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
+            $stmt->bind_param("is", $userId, $shiftDate);
+            $stmt->execute();
+            $stmt->close();
+            echo json_encode(['success' => true, 'message' => 'Hủy đăng ký trực đêm thành công.']);
+        }
+        break;
+
     case 'get_consultants':
         $res = $conn->query("
             SELECT c.*, t.name as team_name, t.branch as team_branch 

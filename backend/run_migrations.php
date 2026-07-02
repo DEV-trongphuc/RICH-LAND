@@ -1563,6 +1563,20 @@ try {
         $logMsg("Đã thêm parallel_assigned cho contacts", "success");
     }
 
+    // 7. night_shift_registrations table
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `night_shift_registrations` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `user_id` int(11) NOT NULL,
+          `shift_date` date NOT NULL,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `user_shift_date` (`user_id`, `shift_date`),
+          FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    $logMsg("Đã kiểm tra cấu trúc bảng night_shift_registrations", "success");
+
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '152') ON DUPLICATE KEY UPDATE setting_value = '152'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
