@@ -119,6 +119,9 @@ class ContactController {
         // Duplicate Phone Check
         $phone = $b['phone'] ?? $b['mobile'] ?? null;
         if ($phone) {
+            require_once __DIR__ . '/../webhook_logic.php';
+            $phone = normalizePhone($phone);
+            
             $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND deleted_at IS NULL LIMIT 1");
             $check->execute([$auth['tenant_id'], $phone, $phone]);
             if ($check->fetch()) {
@@ -145,7 +148,8 @@ class ContactController {
         // Resolve person_id (Master Identity Link)
         $personId = null;
         if ($phone) {
-            $phoneClean = preg_replace('/[^0-9]/', '', $phone);
+            require_once __DIR__ . '/../webhook_logic.php';
+            $phoneClean = normalizePhone($phone);
             if ($phoneClean) {
                 $fullName = trim($b['first_name'] . ' ' . ($b['last_name'] ?? ''));
                 $stmtPerson = $this->db->prepare("
@@ -176,7 +180,7 @@ class ContactController {
             $auth['tenant_id'],
             $company_id, ($auth['role'] === 'sales') ? $auth['user_id'] : ($b['owner_id'] ?? $auth['user_id']),
             $auth['user_id'], $b['first_name'], $b['last_name'] ?? '',
-            $email, $b['phone'] ?? null, $b['mobile'] ?? null,
+            $email, $phone, $phone,
             $b['job_title'] ?? null, $b['department'] ?? null,
             $b['source'] ?? 'other', $b['status'] ?? 'lead',
             $tags, $b['notes'] ?? null, $stageId,
