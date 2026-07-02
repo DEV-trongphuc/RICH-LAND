@@ -3615,6 +3615,65 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       </div>
                     </div>
                   </div>
+                ) : (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank') ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>
+                      {t('Danh sách Sale đã nhận')}
+                    </div>
+                    {selectedLead.takers && selectedLead.takers.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {selectedLead.takers.map((t: any, idx: number) => (
+                          <div key={t.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                            <Avatar src={t.avatar} name={t.name} size={32} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t.name}</div>
+                              {t.claimed_at && (
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                                  <Clock size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
+                                  {t.claimed_at}
+                                </div>
+                              )}
+                            </div>
+                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                              <button
+                                onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, t.id, t.name)}
+                                disabled={isDeletingClaim}
+                                title={t('Xóa lượt nhận của Sale')}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.08)',
+                                  border: 'none',
+                                  borderRadius: '50%',
+                                  width: '28px',
+                                  height: '28px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                  flexShrink: 0
+                                }}
+                                onMouseOver={e => {
+                                  e.currentTarget.style.background = '#ef4444';
+                                  e.currentTarget.style.color = '#ffffff';
+                                }}
+                                onMouseOut={e => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                                  e.currentTarget.style.color = '#ef4444';
+                                }}
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
+                        {t('Chưa có Sale nào nhận chăm sóc khách hàng này.')}
+                      </div>
+                    )}
+                  </div>
                 ) : selectedLead.assigned_to_name !== '-' ? (
                   <div style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
@@ -3896,65 +3955,6 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
                   )}
                 </div>
-                ) : (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank') ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 2 }}>
-                      {t('Danh sách Sale đã nhận')}
-                    </div>
-                    {selectedLead.takers && selectedLead.takers.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {selectedLead.takers.map((t: any, idx: number) => (
-                          <div key={t.id || idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                            <Avatar src={t.avatar} name={t.name} size={32} />
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t.name}</div>
-                              {t.claimed_at && (
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                                  <Clock size={10} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-                                  {t.claimed_at}
-                                </div>
-                              )}
-                            </div>
-                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
-                              <button
-                                onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, t.id, t.name)}
-                                disabled={isDeletingClaim}
-                                title={t('Xóa lượt nhận của Sale')}
-                                style={{
-                                  background: 'rgba(239, 68, 68, 0.08)',
-                                  border: 'none',
-                                  borderRadius: '50%',
-                                  width: '28px',
-                                  height: '28px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.2s',
-                                  flexShrink: 0
-                                }}
-                                onMouseOver={e => {
-                                  e.currentTarget.style.background = '#ef4444';
-                                  e.currentTarget.style.color = '#ffffff';
-                                }}
-                                onMouseOut={e => {
-                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
-                                  e.currentTarget.style.color = '#ef4444';
-                                }}
-                              >
-                                <X size={14} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
-                        {t('Chưa có Sale nào nhận chăm sóc khách hàng này.')}
-                      </div>
-                    )}
-                  </div>
                 ) : (
                   <div style={{ background: 'var(--color-bg)', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
                     {t('Chưa có thông tin phân bổ cho Khách hàng này.')}
