@@ -2332,9 +2332,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   {item.label}
                                 </button>
                               );
-                            })}
                           </div>
                         </div>
+
+                        {/* 3.5. Toa tĩnh gợi ý hành động */}
+                        {noteObstacle && (
+                          <div style={{
+                            background: 'var(--color-bg-light)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '8px',
+                            padding: '10px 12px',
+                            marginBottom: '1rem',
+                            fontSize: '0.75rem',
+                            color: 'var(--color-text-muted)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            boxShadow: 'var(--shadow-sm)'
+                          }}>
+                            <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Lightbulb size={12} style={{ color: '#eab308' }} />
+                              {t('Toa gợi ý hành động (Sổ tay Richland):')}
+                            </span>
+                            <span style={{ lineHeight: 1.4 }}>
+                              {noteObstacle === 'trust' && t('Áp dụng nguyên liệu [Phòng Bếp] (Xây dựng uy tín cá nhân, chia sẻ kiến thức chuyên sâu và hỗ trợ tận tâm để khách hàng tin tưởng hơn).')}
+                              {noteObstacle === 'project' && t('Áp dụng nguyên liệu [Nước Sôi] + [Than so sánh] (Gửi bảng so sánh trực quan với đối thủ, nhấn mạnh lợi thế độc bản của dự án).')}
+                              {noteObstacle === 'unit' && t('Áp dụng nguyên liệu [Than chốt cá nhân hóa] + [Oxy] (Gửi phân tích dòng tiền căn tiềm năng nhất, tạo độ khan hiếm cho giỏ hàng độc quyền).')}
+                              {noteObstacle === 'smooth' && t('Khách hàng đang thuận lợi. Hãy duy trì tương tác đều đặn để chuẩn bị dẫn khách đi xem dự án thực tế hoặc đặt booking giữ chỗ.')}
+                            </span>
+                          </div>
+                        )}
 
                         {/* 4. Text Input Area */}
                         <div style={{ marginBottom: '1rem' }}>
