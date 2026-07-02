@@ -355,9 +355,23 @@ export const Login = () => {
               style={{ flex: 1, height: '36px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               onClick={async () => {
                 setLoading(true);
-                await new Promise(resolve => setTimeout(resolve, 300));
-                login('demo_token_12345', { username: 'admin', email: 'admin@richland.net', name: 'Admin Dev', role: 'admin' });
-                navigate('/');
+                setError('');
+                try {
+                  const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'admin@richland.net', password: 'admin123' })
+                  });
+                  const json = await res.json();
+                  if (json.success) {
+                    login(json.token, json.user);
+                    navigate('/');
+                  } else {
+                    setError(t(json.message) || 'Đăng nhập Admin thất bại');
+                  }
+                } catch (e: any) {
+                  setError('Lỗi kết nối: ' + e.message);
+                }
                 setLoading(false);
               }}
             >
@@ -369,9 +383,23 @@ export const Login = () => {
               style={{ flex: 1, height: '36px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               onClick={async () => {
                 setLoading(true);
-                await new Promise(resolve => setTimeout(resolve, 300));
-                login('demo_token_sale_1', { username: 'haidang', email: 'haidang@richland.net', name: 'Hải Đăng', role: 'sale', consultant_id: 1 });
-                navigate('/sale-portal');
+                setError('');
+                try {
+                  const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'haidang@richland.net', password: 'sale123' })
+                  });
+                  const json = await res.json();
+                  if (json.success) {
+                    login(json.token, json.user);
+                    navigate('/sale-portal');
+                  } else {
+                    setError(t(json.message) || 'Đăng nhập Sale thất bại');
+                  }
+                } catch (e: any) {
+                  setError('Lỗi kết nối: ' + e.message);
+                }
                 setLoading(false);
               }}
             >

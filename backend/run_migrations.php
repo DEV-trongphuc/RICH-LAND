@@ -1575,7 +1575,24 @@ try {
           FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
-    $logMsg("Đã kiểm tra cấu trúc bảng night_shift_registrations", "success");
+    // Seed default Admin & Sale users for Developer Quick Login
+    $adminEmail = 'admin@richland.net';
+    $adminPassHash = password_hash('admin123', PASSWORD_BCRYPT);
+    $conn->query("
+        INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
+        VALUES (999, 1, 'admin', '$adminEmail', '$adminPassHash', 'Admin Richland', 'admin', 1)
+        ON DUPLICATE KEY UPDATE email = '$adminEmail'
+    ");
+    $logMsg("Đã khởi tạo/cập nhật tài khoản Admin thực cho Dev Quick Login", "success");
+
+    $saleEmail = 'haidang@richland.net';
+    $salePassHash = password_hash('sale123', PASSWORD_BCRYPT);
+    $conn->query("
+        INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
+        VALUES (1000, 1, 'haidang', '$saleEmail', '$salePassHash', 'Nguyễn Hải Đăng', 'sales', 1)
+        ON DUPLICATE KEY UPDATE email = '$saleEmail'
+    ");
+    $logMsg("Đã khởi tạo/cập nhật tài khoản Sale thực cho Dev Quick Login", "success");
 
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '152') ON DUPLICATE KEY UPDATE setting_value = '152'");
 
