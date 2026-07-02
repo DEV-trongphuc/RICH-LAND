@@ -523,7 +523,7 @@ export const FilesPage: React.FC = () => {
                       ))}
                     </div>
                   ) : (
-                    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: '2rem' }}>
+                    <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: '2rem' }}>
                       <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr>
@@ -537,7 +537,7 @@ export const FilesPage: React.FC = () => {
                         <tbody>
                             {filtered.map(f => (
                               <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                <td style={{ padding: '1.25rem 2rem' }}>
+                                <td data-label="Tên tài liệu" style={{ padding: '1.25rem 2rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                       <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         {getFileIcon(f.name).icon}
@@ -552,19 +552,19 @@ export const FilesPage: React.FC = () => {
                                       </div>
                                     </div>
                                 </td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                <td data-label="Dung lượng" style={{ padding: '1.25rem 1.5rem' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{formatSize(f.file_size || f.size)}</span>
                                 </td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                <td data-label="Người tải lên" style={{ padding: '1.25rem 1.5rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <Avatar name={f.uploader_name} size="sm" />
                                     <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{f.uploader_name}</span>
                                   </div>
                                 </td>
-                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                <td data-label="Ngày tải" style={{ padding: '1.25rem 1.5rem' }}>
                                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{new Date(f.created_at).toLocaleDateString('vi-VN')}</span>
                                 </td>
-                                <td style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
+                                <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                                       {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
                                       <a 

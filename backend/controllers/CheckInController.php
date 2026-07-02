@@ -123,6 +123,37 @@ class CheckInController {
             'status' => $status
         ]));
 
+        // Send notifications to Admins & Managers if late
+        if ($isLate) {
+            // Get user's name
+            $stmtUserDetails = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+            $stmtUserDetails->execute([$auth['user_id']]);
+            $userName = $stmtUserDetails->fetchColumn() ?: 'Nhân viên';
+
+            // Find all managers/admins/superadmins
+            $stmtAdmins = $this->db->prepare("
+                SELECT id FROM users 
+                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'assistant')
+            ");
+            $stmtAdmins->execute([$auth['tenant_id']]);
+            $admins = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN);
+
+            if (!empty($admins)) {
+                $title = "Yêu cầu duyệt đi trễ";
+                $body = "Nhân viên " . $userName . " đã check-in trễ lúc " . substr($currentTime, 0, 5) . " và gửi lý do: \"" . $reason . "\"";
+                $type = "attendance";
+                $link = "/attendance";
+
+                $insertNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                foreach ($admins as $adminId) {
+                    $insertNotif->execute([$adminId, $auth['tenant_id'], $title, $body, $type, $link]);
+                }
+            }
+        }
+
         respond(200, [
             'id' => $newId,
             'check_in_date' => $today,
@@ -163,6 +194,22 @@ class CheckInController {
         // Update
         $upd = $this->db->prepare("UPDATE check_ins SET status = ?, reason = CASE WHEN ? != '' THEN ? ELSE reason END WHERE id = ?");
         $upd->execute([$status, $reason, $reason, $id]);
+
+        // Send notification back to the Sale user
+        $title = $status === 'approved' ? "Chấm công đi trễ đã được duyệt" : ($status === 'rejected' ? "Yêu cầu nhận lead bị từ chối" : "Yêu cầu nhận lead đang chờ duyệt");
+        $statusText = $status === 'approved' ? "chấp thuận" : ($status === 'rejected' ? "từ chối" : "cập nhật thành chờ duyệt");
+        $body = "Yêu cầu nhận lead ngày " . $row['check_in_date'] . " của bạn đã được " . $statusText . " bởi quản trị viên.";
+        if ($status === 'rejected' && !empty($reason)) {
+            $body .= " Ghi chú: \"" . $reason . "\"";
+        }
+        $type = "attendance";
+        $link = "/sale-portal";
+
+        $insertNotif = $this->db->prepare("
+            INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $insertNotif->execute([$row['user_id'], $auth['tenant_id'], $title, $body, $type, $link]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_CHECK_IN', 'check_in', $id, json_encode([
             'old_status' => $row['status'],

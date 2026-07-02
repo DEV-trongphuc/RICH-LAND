@@ -1408,14 +1408,20 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         )}
 
         {/* KPI Cards Grid */}
-        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)', gap: '1.25rem' }}>
+        <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '0.75rem' : '1.25rem' }}>
           {kpis.map((kpi, idx) => {
             const Icon = kpi.icon;
             return (
               <div
                 key={idx}
                 className="stat-card hover-lift"
-                style={{ minHeight: '140px', display: 'flex', flexDirection: 'column', cursor: 'pointer' }}
+                style={{
+                  minHeight: isMobile ? '105px' : '140px',
+                  padding: isMobile ? '12px' : '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  cursor: 'pointer'
+                }}
                 onClick={() => {
                   if (kpi.key === 'data') {
                     setStatusFilter(kpi.status);
@@ -1426,14 +1432,26 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   }
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                  <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800 }}>{kpi.label}</span>
-                  <div className="stat-icon" style={{ color: kpi.color, opacity: 0.8 }}><Icon size={20} /></div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? '6px' : '12px' }}>
+                  <span className="stat-label" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: isMobile ? '0.625rem' : '0.7rem' }}>{kpi.label}</span>
+                  <div className="stat-icon" style={{
+                    color: kpi.color,
+                    background: kpi.bg,
+                    width: isMobile ? '28px' : '36px',
+                    height: isMobile ? '28px' : '36px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Icon size={isMobile ? 15 : 18} />
+                  </div>
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)' }}>{kpi.value}</div>
-                  <div className="stat-desc" style={{ color: 'var(--color-text-muted)', marginTop: 'auto', fontWeight: 500, fontSize: '0.75rem' }}>
+                  <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>{kpi.value}</div>
+                  <div className="stat-desc" style={{ color: 'var(--color-text-muted)', marginTop: 'auto', fontWeight: 500, fontSize: isMobile ? '0.65rem' : '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {kpi.sub}
                   </div>
                 </div>

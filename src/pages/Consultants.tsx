@@ -863,7 +863,7 @@ const ConsultantsInner = () => {
                     <td data-label={t('Số thành viên')}>
                       <span className="badge info">{team.member_count} {t('thành viên')}</span>
                     </td>
-                    <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                    <td data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
                         {!isSale && <button className="btn sm outline" onClick={() => openEditTeamModal(team)}>{t('Sửa')}</button>}
                         {!isSale && (

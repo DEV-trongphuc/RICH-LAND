@@ -260,7 +260,7 @@ export const InvoicesPage: React.FC = () => {
 
       {/* Table */}
       <div className="card" style={{ overflow: 'visible' }}>
-        <div className="table-wrap">
+        <div className="table-wrap responsive-table-wrap mobile-card-table">
           <table>
             <thead>
               <tr>
@@ -283,10 +283,10 @@ export const InvoicesPage: React.FC = () => {
                   const isOverdue = inv.status === 'overdue';
                   return (
                     <motion.tr key={inv.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ background: isOverdue ? 'rgba(239,68,68,0.02)' : undefined }}>
-                      <td className="col-check" onClick={e => e.stopPropagation()}>
+                      <td data-label="Chọn" className="col-check" onClick={e => e.stopPropagation()}>
                         <CustomCheckbox checked={selected.has(inv.id)} onChange={() => toggleSelect(inv.id)} />
                       </td>
-                      <td>
+                      <td data-label="Hóa đơn">
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{inv.invoice_number}</span>
@@ -301,7 +301,7 @@ export const InvoicesPage: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="Khách hàng">
                         <div style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.contact_name || 'Khách lẻ'}>{inv.contact_name || 'Khách lẻ'}</div>
                         {inv.company_name && (
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.company_name}>
@@ -309,8 +309,8 @@ export const InvoicesPage: React.FC = () => {
                           </div>
                         )}
                       </td>
-                      <td><span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{FMT(inv.total)}</span></td>
-                      <td>
+                      <td data-label="Số tiền"><span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{FMT(inv.total)}</span></td>
+                      <td data-label="Thời hạn">
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Lập: {fmtDate(inv.issue_date || inv.created_at)}</span>
                           <span style={{ fontSize: '0.75rem', color: isOverdue ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: isOverdue ? 700 : 500 }}>
@@ -318,8 +318,8 @@ export const InvoicesPage: React.FC = () => {
                           </span>
                         </div>
                       </td>
-                      <td><span className={`badge ${sc.class}`}>{sc.icon} {sc.label}</span></td>
-                      <td>
+                      <td data-label="Trạng thái"><span className={`badge ${sc.class}`}>{sc.icon} {sc.label}</span></td>
+                      <td data-label="Thao tác">
                         <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn-icon sm" title="Xem nhanh" onClick={() => setPreviewItem(inv)}><Eye size={14} /></button>
                           {canEditInvoice && inv.status !== 'paid' && (
