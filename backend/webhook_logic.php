@@ -3261,6 +3261,29 @@ function ensurePersonAndContact($conn, $leadId) {
         $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
         $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
+        $ownerUserId = null;
+        if ($assigned_to > 0) {
+            $stmtCUser = $conn->prepare("
+                SELECT u.id 
+                FROM consultants cons 
+                JOIN users u ON cons.email = u.email 
+                WHERE cons.id = ? 
+                LIMIT 1
+            ");
+            if ($stmtCUser) {
+                $stmtCUser->bind_param("i", $assigned_to);
+                $stmtCUser->execute();
+                $cUserRes = $stmtCUser->get_result()->fetch_assoc();
+                $stmtCUser->close();
+                if ($cUserRes) {
+                    $ownerUserId = (int)$cUserRes['id'];
+                }
+            }
+        }
+        if (empty($ownerUserId)) {
+            $ownerUserId = $assigned_to; // fallback
+        }
+
         $stmtContact = $conn->prepare("
             INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?)
@@ -3271,7 +3294,7 @@ function ensurePersonAndContact($conn, $leadId) {
         ");
         if ($stmtContact) {
             $createdBy = 1;
-            $stmtContact->bind_param("iiiisssssss", $person_id, $projectId, $assigned_to, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $secExpiresTime);
+            $stmtContact->bind_param("iiiisssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $secExpiresTime);
             $stmtContact->execute();
             $stmtContact->close();
         }

@@ -1563,6 +1563,16 @@ try {
         $logMsg("Đã thêm parallel_assigned cho contacts", "success");
     }
 
+    // Self-healing check: map contacts.owner_id from consultant_id to user_id matching email
+    $conn->query("
+        UPDATE contacts c
+        JOIN consultants cons ON c.owner_id = cons.id
+        JOIN users u ON cons.email = u.email
+        SET c.owner_id = u.id
+    ");
+
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
+
     // 7. night_shift_registrations table
     $conn->query("
         CREATE TABLE IF NOT EXISTS `night_shift_registrations` (
@@ -1618,7 +1628,7 @@ try {
 
 
 
-    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '152') ON DUPLICATE KEY UPDATE setting_value = '152'");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 

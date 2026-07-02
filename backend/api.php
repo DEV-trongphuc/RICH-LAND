@@ -2394,7 +2394,8 @@ switch ($action) {
             if ($personId > 0) {
                 $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
                            FROM contacts c
-                           JOIN consultants cons ON c.owner_id = cons.id
+                           JOIN users u ON c.owner_id = u.id
+                           JOIN consultants cons ON u.email = cons.email
                            WHERE c.person_id = ? AND c.deleted_at IS NULL";
                 $tStmt = $conn->prepare($tQuery);
                 $tStmt->bind_param("i", $personId);
@@ -13588,10 +13589,8 @@ switch ($action) {
             break;
         }
 
-        $saleId = (int) $decodedUser['id'];
-        if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale' && !empty($currentSaleConsultantId)) {
-            $saleId = $currentSaleConsultantId;
-        }
+        $saleUserId = (int) $decodedUser['id'];
+        $saleConsultantId = !empty($currentSaleConsultantId) ? $currentSaleConsultantId : $saleUserId;
 
         $conn->begin_transaction();
         try {
@@ -13610,7 +13609,7 @@ switch ($action) {
 
             // 2. Check if Sale already has a contact for this Person
             $stmtCheck = $conn->prepare("SELECT id FROM contacts WHERE person_id = ? AND owner_id = ? AND deleted_at IS NULL LIMIT 1");
-            $stmtCheck->bind_param("ii", $personId, $saleId);
+            $stmtCheck->bind_param("ii", $personId, $saleUserId);
             $stmtCheck->execute();
             $hasContact = $stmtCheck->get_result()->num_rows > 0;
             $stmtCheck->close();
@@ -13623,7 +13622,7 @@ switch ($action) {
 
             // 3. Check Quota - Sale's hourly claim limit
             $stmtQ1 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-            $stmtQ1->bind_param("i", $saleId);
+            $stmtQ1->bind_param("i", $saleConsultantId);
             $stmtQ1->execute();
             $claimsHour = $stmtQ1->get_result()->fetch_assoc()['cnt'] ?? 0;
             $stmtQ1->close();
@@ -13636,7 +13635,7 @@ switch ($action) {
 
             // 4. Check Quota - Sale's daily claim limit
             $stmtQ2 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
-            $stmtQ2->bind_param("i", $saleId);
+            $stmtQ2->bind_param("i", $saleConsultantId);
             $stmtQ2->execute();
             $claimsDay = $stmtQ2->get_result()->fetch_assoc()['cnt'] ?? 0;
             $stmtQ2->close();
@@ -13649,7 +13648,7 @@ switch ($action) {
 
             // 5. Check Quota - Sale's monthly claim limit
             $stmtQ3 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
-            $stmtQ3->bind_param("i", $saleId);
+            $stmtQ3->bind_param("i", $saleConsultantId);
             $stmtQ3->execute();
             $claimsMonth = $stmtQ3->get_result()->fetch_assoc()['cnt'] ?? 0;
             $stmtQ3->close();
@@ -13690,12 +13689,12 @@ switch ($action) {
             $projectId = $projRes ? $projRes['project_id'] : NULL;
             $stmtProj->close();
 
-            $createdBy = $saleId;
+            $createdBy = $saleUserId;
             $stmtIns = $conn->prepare("
                 INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'databank', 'lead', 'chua_xac_dinh')
             ");
-            $stmtIns->bind_param("iiiissss", $personId, $projectId, $saleId, $createdBy, $firstName, $lastName, $person['email'], $person['phone']);
+            $stmtIns->bind_param("iiiissss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone']);
             $stmtIns->execute();
             $newContactId = $conn->insert_id;
             $stmtIns->close();
@@ -13707,7 +13706,7 @@ switch ($action) {
             $stmtLead->close();
             $leadId = $lRow ? $lRow['id'] : 0;
 
-            logDistribution($conn, $leadId, $saleId, null, 'databank_claim', 'Sale tự nhận từ Kho chung (Databank)', false);
+            logDistribution($conn, $leadId, $saleConsultantId, null, 'databank_claim', 'Sale tự nhận từ Kho chung (Databank)', false);
 
             $conn->commit();
 
@@ -13750,7 +13749,8 @@ switch ($action) {
                 if ($personId > 0) {
                     $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
                                FROM contacts c
-                               JOIN consultants cons ON c.owner_id = cons.id
+                               JOIN users u ON c.owner_id = u.id
+                               JOIN consultants cons ON u.email = cons.email
                                WHERE c.person_id = ? AND c.deleted_at IS NULL";
                     $tStmt = $conn->prepare($tQuery);
                     $tStmt->bind_param("i", $personId);
@@ -13769,7 +13769,8 @@ switch ($action) {
         // Quota calculations for non-admin roles
         $quota = null;
         if (!$isStaffAdmin) {
-            $saleId = (int) $decodedUser['id'];
+            $saleUserId = (int) $decodedUser['id'];
+            $saleConsultantId = !empty($currentSaleConsultantId) ? $currentSaleConsultantId : $saleUserId;
             $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
             $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
             $limitMonth = (int) get_system_setting($conn, 'databank_limit_per_month');
@@ -13779,21 +13780,21 @@ switch ($action) {
 
             // Hour claims count
             $stmtQ1 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
-            $stmtQ1->bind_param("i", $saleId);
+            $stmtQ1->bind_param("i", $saleConsultantId);
             $stmtQ1->execute();
             $claimsHour = (int)($stmtQ1->get_result()->fetch_assoc()['cnt'] ?? 0);
             $stmtQ1->close();
 
             // Day claims count
             $stmtQ2 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
-            $stmtQ2->bind_param("i", $saleId);
+            $stmtQ2->bind_param("i", $saleConsultantId);
             $stmtQ2->execute();
             $claimsDay = (int)($stmtQ2->get_result()->fetch_assoc()['cnt'] ?? 0);
             $stmtQ2->close();
 
             // Month claims count
             $stmtQ3 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
-            $stmtQ3->bind_param("i", $saleId);
+            $stmtQ3->bind_param("i", $saleConsultantId);
             $stmtQ3->execute();
             $claimsMonth = (int)($stmtQ3->get_result()->fetch_assoc()['cnt'] ?? 0);
             $stmtQ3->close();
