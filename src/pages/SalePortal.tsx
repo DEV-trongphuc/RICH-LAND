@@ -2367,6 +2367,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Email')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự Án')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn ban đầu')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Người nhận')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
                     <th style={{ padding: '1rem', width: 140 }}></th>
                   </tr>
@@ -2395,6 +2396,34 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                         <span className="badge outline" style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>
                           {lead.original_source || 'MKT'}
                         </span>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        {lead.takers && lead.takers.length > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {lead.takers.map((t: any) => (
+                              <div 
+                                key={t.id} 
+                                title={t.name}
+                                style={{
+                                  width: '26px', height: '26px', borderRadius: '50%',
+                                  background: 'var(--color-primary-light)',
+                                  color: 'var(--color-primary)',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
+                                  overflow: 'hidden', cursor: 'help'
+                                }}
+                              >
+                                {t.avatar ? (
+                                  <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                  t.name.charAt(0).toUpperCase()
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{t('Chưa ai nhận')}</span>
+                        )}
                       </td>
                       <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                         {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}

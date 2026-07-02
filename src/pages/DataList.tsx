@@ -1775,6 +1775,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Số điện thoại')}</th>
                       <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Email')}</th>
                       <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Nguồn')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Người nhận')}</th>
                       <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Giải phóng lúc')}</th>
                       <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700 }}>{t('Hành động')}</th>
                     </tr>
@@ -1789,6 +1790,34 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                           <span className="badge" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}>
                             {lead.original_source || 'Databank'}
                           </span>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          {lead.takers && lead.takers.length > 0 ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {lead.takers.map((t: any) => (
+                                <div 
+                                  key={t.id} 
+                                  title={t.name}
+                                  style={{
+                                    width: '26px', height: '26px', borderRadius: '50%',
+                                    background: 'var(--color-primary-light)',
+                                    color: 'var(--color-primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
+                                    overflow: 'hidden', cursor: 'help'
+                                  }}
+                                >
+                                  {t.avatar ? (
+                                    <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    t.name.charAt(0).toUpperCase()
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{t('Chưa ai nhận')}</span>
+                          )}
                         </td>
                         <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{lead.released_to_kho_at || '-'}</td>
                         <td style={{ padding: '12px 16px', textAlign: 'center' }}>
