@@ -18,6 +18,8 @@ import {
   PieChart, Pie, Cell
 } from 'recharts';
 import toast from 'react-hot-toast';
+import { useUIStore } from '../store/uiStore';
+
 import { fetchAPI } from '../utils/api';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -98,6 +100,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const loc = location || routerLocation;
   const { user, token, login, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
+  const { showConfirm } = useUIStore();
+
 
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -655,29 +659,40 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
-  const handleClaimLead = async (personId: number) => {
-    setIsClaimingLeadId(personId);
-    try {
-      const json = await fetchAPI('claim_public_lead', {
-        method: 'POST',
-        body: JSON.stringify({ person_id: personId })
-      });
-      if (json.success) {
-        toast.success(json.message || t('Nhận data thành công!'));
-        fetchPublicLeads();
-        loadPortalData();
-        if (json.contact_id) {
-          handleOpenContactProfile(Number(json.contact_id));
+  const handleClaimLead = (personId: number, personName?: string) => {
+    const displayName = personName || t('Khách hàng này');
+    showConfirm({
+      title: t('Nhận Khách hàng'),
+      message: t(`Bạn có chắc chắn muốn nhận khách hàng "${displayName}" từ Kho Databank về danh sách quản lý của mình không?`),
+      confirmText: t('Nhận Khách'),
+      cancelText: t('Hủy'),
+      onConfirm: async () => {
+        setIsClaimingLeadId(personId);
+        try {
+          const json = await fetchAPI('claim_public_lead', {
+            method: 'POST',
+            body: JSON.stringify({ person_id: personId })
+          });
+          if (json.success) {
+            toast.success(json.message || t('Nhận data thành công!'));
+            fetchPublicLeads();
+            loadPortalData();
+            if (json.contact_id) {
+              handleOpenContactProfile(Number(json.contact_id));
+            }
+          } else {
+            toast.error(json.message || t('Nhận data thất bại'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi: ') + e.message);
+        } finally {
+          setIsClaimingLeadId(null);
         }
-      } else {
-        toast.error(json.message || t('Nhận data thất bại'));
       }
-    } catch (e: any) {
-      toast.error(t('Lỗi: ') + e.message);
-    } finally {
-      setIsClaimingLeadId(null);
-    }
+    });
   };
+
+
 
   useEffect(() => {
     if (activeTab === 'databank') {
@@ -2606,7 +2621,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           const isFull = lead.takers && lead.takers.length >= 2;
                           return (
                             <button
-                              onClick={() => handleClaimLead(lead.id)}
+                              onClick={() => handleClaimLead(lead.id, lead.name)}
+
                               disabled={isClaimingLeadId !== null || hasClaimed || isFull}
                               className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
                               style={{

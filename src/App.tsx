@@ -8,6 +8,8 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Keyboard } from 'lucide-react';
 import { CustomModal } from './components/ui/CustomModal';
 import { getDefaultDateFilter } from './utils/api';
+import { GlobalConfirmModal } from './components/ui/GlobalConfirmModal';
+
 
 // Lazy load all pages for Code Splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(module => ({ default: module.Dashboard })));
@@ -618,7 +620,9 @@ export default function App() {
               <KeyboardShortcutsController />
             </Suspense>
           </Router>
+          <GlobalConfirmModal />
         </AuthProvider>
+
       </LanguageProvider>
     </ErrorBoundary>
   );

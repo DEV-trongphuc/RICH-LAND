@@ -15,6 +15,8 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useUIStore } from '../store/uiStore';
+
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { CalendarSkeleton, TableSkeleton, KpiCardSkeleton, CardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { detectCountryFromPhone } from '../utils/phoneHelper';
@@ -300,6 +302,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const userRole = user?.role as string;
   const isAdmin = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager';
   const { language, t } = useLanguage();
+  const { showConfirm } = useUIStore();
+
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -885,25 +889,39 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     setPublicLoading(false);
   };
 
-  const handleClaimLead = async (personId: number) => {
-    setIsClaimingLeadId(personId);
-    try {
-      const json = await fetchAPI('claim_public_lead', {
-        method: 'POST',
-        body: JSON.stringify({ person_id: personId })
-      });
-      if (json.success) {
-        toast.success(json.message || t('Nhận data thành công!'));
-        fetchPublicLeads();
-        window.dispatchEvent(new CustomEvent('lead-claimed'));
-      } else {
-        toast.error(json.message || t('Nhận data thất bại'));
+  const handleClaimLead = (personId: number, personName?: string, onSuccess?: () => void) => {
+    const displayName = personName || t('Khách hàng này');
+    showConfirm({
+      title: t('Nhận Khách hàng'),
+      message: t(`Bạn có chắc chắn muốn nhận khách hàng "${displayName}" từ Kho Databank về danh sách quản lý của mình không?`),
+      confirmText: t('Nhận Khách'),
+      cancelText: t('Hủy'),
+      onConfirm: async () => {
+        setIsClaimingLeadId(personId);
+        try {
+          const json = await fetchAPI('claim_public_lead', {
+            method: 'POST',
+            body: JSON.stringify({ person_id: personId })
+          });
+          if (json.success) {
+            toast.success(json.message || t('Nhận data thành công!'));
+            fetchPublicLeads();
+            window.dispatchEvent(new CustomEvent('lead-claimed'));
+            if (onSuccess) onSuccess();
+          } else {
+            toast.error(json.message || t('Nhận data thất bại'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi: ') + e.message);
+        }
+        setIsClaimingLeadId(null);
       }
-    } catch (e: any) {
-      toast.error(t('Lỗi: ') + e.message);
-    }
-    setIsClaimingLeadId(null);
+    });
   };
+
+
+
+
 
   useEffect(() => {
     if (isActive && viewMode === 'databank') {
@@ -2006,7 +2024,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             const isFull = lead.takers && lead.takers.length >= 2;
                             return (
                               <button
-                                onClick={() => handleClaimLead(lead.id)}
+                                onClick={() => handleClaimLead(lead.id, lead.name)}
+
                                 disabled={isClaimingLeadId !== null || hasClaimed || isFull}
                                 style={{
                                   background: hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)'),
@@ -2701,11 +2720,13 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                      !(selectedLead.takers && selectedLead.takers.some((t: any) => Number(t.id) === Number(user?.consultant_id))) &&
                      (selectedLead.takers ? selectedLead.takers.length : 0) < 2 && (
                       <button
-                        onClick={async () => {
-                          await handleClaimLead(selectedLead.person_id || selectedLead.id);
-                          setSelectedLead(null);
-                          fetchLeads();
+                        onClick={() => {
+                          handleClaimLead(selectedLead.person_id || selectedLead.id, selectedLead.name, () => {
+                            setSelectedLead(null);
+                            fetchLeads();
+                          });
                         }}
+
                         disabled={isClaimingLeadId !== null}
                         title={t("Nhận khách hàng này về danh sách chăm sóc của bạn")}
                         className="detail-action-btn"
