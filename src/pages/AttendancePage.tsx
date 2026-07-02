@@ -249,38 +249,72 @@ const AttendancePageInner = () => {
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-bg)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-surface)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Unified month switcher */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: 'var(--color-bg)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '20px',
+              padding: '2px 8px',
+              height: '38px',
+              overflow: 'hidden'
+            }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentMonth === 1) {
+                    setCurrentMonth(12);
+                    setCurrentYear(prev => prev - 1);
+                  } else {
+                    setCurrentMonth(prev => prev - 1);
+                  }
+                }}
+                className="btn ghost sm"
+                style={{ padding: '0 8px', height: '100%', borderRadius: '50%', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              <span style={{ fontSize: '0.875rem', fontWeight: 700, padding: '0 12px', minWidth: '120px', textAlign: 'center', color: 'var(--color-text)' }}>
+                {t('Tháng {month} / {year}').replace('{month}', String(currentMonth)).replace('{year}', String(currentYear))}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (currentMonth === 12) {
+                    setCurrentMonth(1);
+                    setCurrentYear(prev => prev + 1);
+                  } else {
+                    setCurrentMonth(prev => prev + 1);
+                  }
+                }}
+                className="btn ghost sm"
+                style={{ padding: '0 8px', height: '100%', borderRadius: '50%', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
+            {/* Today Button */}
             <button
-              onClick={() => {
-                if (currentMonth === 1) {
-                  setCurrentMonth(12);
-                  setCurrentYear(prev => prev - 1);
-                } else {
-                  setCurrentMonth(prev => prev - 1);
-                }
-              }}
+              type="button"
+              onClick={handleGoToToday}
               className="btn outline sm"
-              style={{ padding: '4px 10px', height: 'auto', borderRadius: '6px' }}
-            >
-              &lt;
-            </button>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0, minWidth: '130px', textAlign: 'center', color: 'var(--color-text)' }}>
-              {t('Tháng {month} / {year}').replace('{month}', String(currentMonth)).replace('{year}', String(currentYear))}
-            </h3>
-            <button
-              onClick={() => {
-                if (currentMonth === 12) {
-                  setCurrentMonth(1);
-                  setCurrentYear(prev => prev + 1);
-                } else {
-                  setCurrentMonth(prev => prev + 1);
-                }
+              style={{
+                borderColor: 'var(--color-primary)',
+                color: 'var(--color-primary)',
+                borderRadius: '20px',
+                height: '38px',
+                padding: '0 16px',
+                fontWeight: 600,
+                fontSize: '0.8125rem'
               }}
-              className="btn outline sm"
-              style={{ padding: '4px 10px', height: 'auto', borderRadius: '6px' }}
             >
-              &gt;
+              {t('Hôm nay')}
             </button>
           </div>
           
@@ -544,22 +578,157 @@ const AttendancePageInner = () => {
       </div>
 
       {/* Stats row */}
-      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
-        <div className="stat-card hover-lift" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '1.25rem', borderRadius: '12px' }}>
-          <div className="stat-label" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('TỔNG BẢN GHI')}</div>
-          <div className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>{totalCount}</div>
+      <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>
+        {/* Card 1: Total */}
+        <div className="stat-card hover-lift" style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          padding: '1.5rem',
+          borderRadius: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.05em' }}>
+              {t('TỔNG BẢN GHI')}
+            </span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg-light)', color: 'var(--color-text-muted)' }}>
+              <Calendar size={16} />
+            </div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '8px', lineHeight: 1.2 }}>
+            {totalCount}
+          </div>
+          <div style={{
+            marginTop: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            fontSize: '0.75rem',
+            color: 'var(--color-text-muted)',
+            borderTop: '1px solid var(--color-border-light)',
+            paddingTop: '10px'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-text-muted)' }} />
+              {t('Ghi nhận từ các TVV')}
+            </span>
+          </div>
         </div>
-        <div className="stat-card hover-lift" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '1.25rem', borderRadius: '12px' }}>
-          <div className="stat-label" style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 600 }}>{t('ĐÃ DUYỆT / HỢP LỆ')}</div>
-          <div className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-success)', marginTop: '4px' }}>{approvedCount}</div>
+
+        {/* Card 2: Approved */}
+        <div className="stat-card hover-lift" style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          padding: '1.5rem',
+          borderRadius: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 700, letterSpacing: '0.05em' }}>
+              {t('ĐÃ DUYỆT / HỢP LỆ')}
+            </span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+              <CheckCircle size={16} />
+            </div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#10b981', marginTop: '8px', lineHeight: 1.2 }}>
+            {approvedCount}
+          </div>
+          <div style={{
+            marginTop: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            fontSize: '0.75rem',
+            color: 'var(--color-text-muted)',
+            borderTop: '1px solid var(--color-border-light)',
+            paddingTop: '10px'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }} />
+              {t('Đúng giờ & đi trễ hợp lệ')}
+            </span>
+          </div>
         </div>
-        <div className="stat-card hover-lift" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '1.25rem', borderRadius: '12px' }}>
-          <div className="stat-label" style={{ fontSize: '0.75rem', color: 'var(--color-warning)', fontWeight: 600 }}>{t('ĐANG CHỜ DUYỆT')}</div>
-          <div className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-warning)', marginTop: '4px' }}>{pendingCount}</div>
+
+        {/* Card 3: Pending */}
+        <div className="stat-card hover-lift" style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          padding: '1.5rem',
+          borderRadius: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>
+              {t('ĐANG CHỜ DUYỆT')}
+            </span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+              <Clock size={16} />
+            </div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#f59e0b', marginTop: '8px', lineHeight: 1.2 }}>
+            {pendingCount}
+          </div>
+          <div style={{
+            marginTop: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            fontSize: '0.75rem',
+            color: 'var(--color-text-muted)',
+            borderTop: '1px solid var(--color-border-light)',
+            paddingTop: '10px'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />
+              {t('Yêu cầu phê duyệt đi trễ')}
+            </span>
+          </div>
         </div>
-        <div className="stat-card hover-lift" style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '1.25rem', borderRadius: '12px' }}>
-          <div className="stat-label" style={{ fontSize: '0.75rem', color: 'var(--color-danger)', fontWeight: 600 }}>{t('BỊ TỪ CHỐI')}</div>
-          <div className="stat-value" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: '4px' }}>{rejectedCount}</div>
+
+        {/* Card 4: Rejected */}
+        <div className="stat-card hover-lift" style={{
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          padding: '1.5rem',
+          borderRadius: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 700, letterSpacing: '0.05em' }}>
+              {t('BỊ TỪ CHỐI')}
+            </span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+              <AlertCircle size={16} />
+            </div>
+          </div>
+          <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ef4444', marginTop: '8px', lineHeight: 1.2 }}>
+            {rejectedCount}
+          </div>
+          <div style={{
+            marginTop: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            fontSize: '0.75rem',
+            color: 'var(--color-text-muted)',
+            borderTop: '1px solid var(--color-border-light)',
+            paddingTop: '10px'
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
+              {t('Không được phê duyệt')}
+            </span>
+          </div>
         </div>
       </div>
 
