@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { 
   X, FileSpreadsheet, Plus, Trash2, Database, 
   RefreshCw, AlertCircle, ExternalLink, Edit2,
-  Link2, Info, Clock
+  Link2, Info, Clock, Zap, Target
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../../utils/api';
@@ -59,6 +59,8 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
   const [newSpreadsheetId, setNewSpreadsheetId] = useState('');
   const [newSheetTab, setNewSheetTab] = useState('Sheet1');
   const [syncInterval, setSyncInterval] = useState(15);
+  const [syncPreset, setSyncPreset] = useState<'5p' | '15p' | '1h' | '1d' | 'custom'>('15p');
+  const [customSyncMins, setCustomSyncMins] = useState(15);
 
   // Column fetching states
   const [columns, setColumns] = useState<string[]>([]);
@@ -155,12 +157,18 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
       spreadsheetId = urlMatch[1];
     }
 
+    const calculatedInterval = syncPreset === '5p' ? 5 
+                             : syncPreset === '15p' ? 15 
+                             : syncPreset === '1h' ? 60 
+                             : syncPreset === '1d' ? 1440 
+                             : customSyncMins;
+
     const payload = {
       sheet_name: newSheetTab,
       spreadsheet_id: spreadsheetId,
       webhook_token: generateToken(),
       is_active: 1,
-      sync_interval: syncInterval,
+      sync_interval: calculatedInterval,
       connection_type: 'inventory_sheets',
       sync_mode: 'all',
       is_silent: 0,
@@ -670,21 +678,58 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
                 </div>
 
                 {/* Chu kỳ đồng bộ */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
-                    Chu kỳ tự động đồng bộ
-                  </label>
-                  <CustomSelect
-                    options={[
-                      { value: '5', label: 'Mỗi 5 phút' },
-                      { value: '15', label: 'Mỗi 15 phút (Khuyên dùng)' },
-                      { value: '30', label: 'Mỗi 30 phút' },
-                      { value: '60', label: 'Mỗi 60 phút' },
-                    ]}
-                    value={String(syncInterval)}
-                    onChange={v => setSyncInterval(Number(v))}
-                  />
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <label className="form-label" style={{ fontWeight: 800, color: '#334155', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, margin: 0 }}>CHU KỲ ĐỒNG BỘ</label>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', cursor: 'pointer' }}>(?) Cơ chế hoạt động?</span>
+                  </div>
+
+                  <div className="responsive-grid-5" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                    {[
+                      { id: '5p', icon: <Zap size={20} />, time: '5p', label: 'NHANH' },
+                      { id: '15p', icon: <Clock size={20} />, time: '15p', label: 'CHUẨN' },
+                      { id: '1h', icon: <Clock size={20} />, time: '1h', label: 'ỔN ĐỊNH' },
+                      { id: '1d', icon: <Target size={20} />, time: '1 ngày', label: 'TIẾT KIỆM' },
+                      { id: 'custom', icon: <Plus size={20} />, time: 'Khác', label: 'TÙY CHỈNH' }
+                    ].map(preset => (
+                      <div
+                        key={preset.id}
+                        onClick={() => setSyncPreset(preset.id as any)}
+                        style={{
+                          border: syncPreset === preset.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          background: syncPreset === preset.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                          borderRadius: 12, padding: '0.75rem 0', cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                          transition: 'all 0.2s', opacity: syncPreset === preset.id ? 1 : 0.6,
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div style={{ color: syncPreset === preset.id ? 'var(--color-primary)' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{preset.icon}</div>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 700, color: syncPreset === preset.id ? 'var(--color-primary)' : '#64748b' }}>{preset.time}</div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: syncPreset === preset.id ? 'var(--color-primary-hover)' : '#94a3b8' }}>{preset.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {syncPreset === 'custom' && (
+                  <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 12, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                    <div style={{ width: 140 }}>
+                      <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>Số phút tùy chỉnh</label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type="number" min={1} className="form-input"
+                          value={customSyncMins} onChange={e => setCustomSyncMins(Number(e.target.value))}
+                          style={{ border: 'none', fontWeight: 700, fontSize: '1rem' }}
+                        />
+                        <span style={{ position: 'absolute', right: 12, top: 10, color: '#94a3b8', fontSize: '0.875rem', fontWeight: 600 }}>phút</span>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                      Lưu ý: Thời gian quá ngắn (dưới 5 phút) có thể khiến Google giới hạn băng thông.
+                    </div>
+                  </div>
+                )}
 
                 {/* Action buttons */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1.25rem' }}>
