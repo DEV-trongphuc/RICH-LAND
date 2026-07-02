@@ -1616,19 +1616,7 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '10')");
 
-    // Seed some mock public persons for Databank testing
-    $conn->query("INSERT INTO persons (id, full_name, phone, email, is_public, released_to_kho_at) VALUES 
-        (5001, 'Nguyễn Văn A', '0911222333', 'vana@gmail.com', 1, NOW()),
-        (5002, 'Trần Thị B', '0922333444', 'thib@gmail.com', 1, NOW()),
-        (5003, 'Lê Văn C', '0933444555', 'vanc@gmail.com', 1, NOW())
-    ON DUPLICATE KEY UPDATE is_public = 1, released_to_kho_at = VALUES(released_to_kho_at), full_name = VALUES(full_name)");
-    
-    $conn->query("INSERT INTO contacts (id, tenant_id, person_id, first_name, last_name, phone, email, source, status, pipeline_status, created_by) VALUES
-        (5001, 1, 5001, 'Nguyễn', 'Văn A', '0911222333', 'vana@gmail.com', 'facebook', 'lead', 'chua_xac_dinh', 999),
-        (5002, 1, 5002, 'Trần', 'Thị B', '0922333444', 'thib@gmail.com', 'google', 'lead', 'quan_tam', 999),
-        (5003, 1, 5003, 'Lê', 'Văn C', '0933444555', 'vanc@gmail.com', 'website', 'lead', 'da_gap', 999)
-    ON DUPLICATE KEY UPDATE person_id = VALUES(person_id), phone = VALUES(phone), email = VALUES(email)");
-    $logMsg("Đã khởi tạo/cập nhật dữ liệu mẫu cho Kho Data Chung (Databank)", "success");
+
 
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '152') ON DUPLICATE KEY UPDATE setting_value = '152'");
 
