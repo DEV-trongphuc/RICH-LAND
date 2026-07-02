@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2
 } from 'lucide-react';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
@@ -332,6 +332,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [editAddress, setEditAddress] = useState('');
   const [editBankName, setEditBankName] = useState('');
   const [editBankAccount, setEditBankAccount] = useState('');
+  const [editLeaveStart, setEditLeaveStart] = useState('');
+  const [editLeaveEnd, setEditLeaveEnd] = useState('');
+  const [leaveHistory, setLeaveHistory] = useState<any[]>([]);
+  const [loadingLeaves, setLoadingLeaves] = useState(false);
 
   // Impersonation role calculation for admin viewing sale
   const impersonatedSale = ((user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter)
@@ -830,6 +834,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setEditAddress(data.consultant_profile.address || '');
       setEditBankName(data.consultant_profile.bank_name || '');
       setEditBankAccount(data.consultant_profile.bank_account || '');
+      setEditLeaveStart(data.consultant_profile.leave_start || '');
+      setEditLeaveEnd(data.consultant_profile.leave_end || '');
 
       const schedule = data.consultant_profile.work_schedule;
       if (schedule && Object.keys(schedule).length > 0) {
@@ -891,7 +897,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         citizen_id: editCitizenId,
         address: editAddress,
         bank_name: editBankName,
-        bank_account: editBankAccount
+        bank_account: editBankAccount,
+        leave_start: editLeaveStart || null,
+        leave_end: editLeaveEnd || null
       };
 
       const res = await fetchAPI('update_consultant_self_profile', {
@@ -911,6 +919,86 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setSavingProfile(false);
     }
   };
+
+  const fetchLeaveHistory = async () => {
+    setLoadingLeaves(true);
+    try {
+      const saleId = displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
+      const query = saleId ? `get_consultant_leaves&consultant_id=${saleId}` : 'get_consultant_leaves';
+      const res = await fetchAPI(query);
+      if (res.success) {
+        setLeaveHistory(res.data || []);
+      }
+    } catch (err) {
+      /* silent */
+    } finally {
+      setLoadingLeaves(false);
+    }
+  };
+
+  const [savingLeave, setSavingLeave] = useState(false);
+  const handleAddLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editLeaveStart || !editLeaveEnd) {
+      toast.error(t('Vui lòng chọn đầy đủ Từ ngày và Đến ngày.'));
+      return;
+    }
+    if (editLeaveStart > editLeaveEnd) {
+      toast.error(t('Ngày bắt đầu không được lớn hơn ngày kết thúc.'));
+      return;
+    }
+    setSavingLeave(true);
+    try {
+      const saleId = displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
+      const payload = {
+        consultant_id: saleId,
+        start_date: editLeaveStart,
+        end_date: editLeaveEnd
+      };
+      const res = await fetchAPI('add_consultant_leave', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      if (res.success) {
+        toast.success(t('Đăng ký nghỉ phép thành công!'));
+        setEditLeaveStart('');
+        setEditLeaveEnd('');
+        fetchLeaveHistory();
+        loadPortalData();
+      } else {
+        toast.error(res.message || t('Lỗi đăng ký nghỉ phép'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    } finally {
+      setSavingLeave(false);
+    }
+  };
+
+  const handleDeleteLeave = async (leaveId: number) => {
+    if (!window.confirm(t('Bạn có chắc chắn muốn xóa đăng ký nghỉ phép này không?'))) return;
+    try {
+      const res = await fetchAPI('delete_consultant_leave', {
+        method: 'POST',
+        body: JSON.stringify({ id: leaveId })
+      });
+      if (res.success) {
+        toast.success(t('Đã xóa đăng ký nghỉ phép thành công!'));
+        fetchLeaveHistory();
+        loadPortalData();
+      } else {
+        toast.error(res.message || t('Lỗi khi xóa'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (token && user) {
+      fetchLeaveHistory();
+    }
+  }, [token, user, saleIdFilter, data.consultant_profile?.id]);
 
   useEffect(() => {
     loadPortalData();
@@ -3270,42 +3358,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </button>
               </div>
             </div>
-
-            {/* Leave (Nghỉ phép) registration card */}
-            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={18} color="var(--color-warning)" />
-                {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
-              </h3>
-
-              {profile.leave_start || profile.leave_end ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--color-text-muted)' }}>{t('Từ ngày:')}</span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>
-                      {profile.leave_start ? new Date(profile.leave_start).toLocaleDateString('vi-VN') : '—'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                    <span style={{ color: 'var(--color-text-muted)' }}>{t('Đến ngày:')}</span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>
-                      {profile.leave_end ? new Date(profile.leave_end).toLocaleDateString('vi-VN') : '—'}
-                    </span>
-                  </div>
-                  <div style={{
-                    padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontWeight: 700, fontSize: '0.8rem',
-                    background: onLeave ? 'var(--color-warning-light)' : 'var(--color-success-light)',
-                    color: onLeave ? 'var(--color-warning)' : 'var(--color-success)'
-                  }}>
-                    {onLeave ? t('ĐANG TRONG KỲ NGHỈ PHÉP') : t('LỊCH NGHỈ PHÉP SẮP TỚI / ĐÃ QUA')}
-                  </div>
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>
-                  {t('Không có đăng ký nghỉ phép nào.')}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* RIGHT COLUMN: Vacation Toggle & Work Hour Settings */}
@@ -3400,6 +3452,136 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <span>{t('Đã quá 18:00. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.')}</span>
                 </div>
               )}
+            </div>
+
+            {/* Leave (Nghỉ phép) registration card */}
+            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <AlertTriangle size={18} color="var(--color-warning)" />
+                {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
+              </h3>
+
+              {onLeave && (
+                <div style={{
+                  padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontWeight: 700, fontSize: '0.8rem',
+                  background: 'var(--color-warning-light)', color: 'var(--color-warning)', marginBottom: '0.5rem'
+                }}>
+                  {t('ĐANG TRONG KỲ NGHỈ PHÉP')}
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Từ ngày')}</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={editLeaveStart}
+                    onChange={(e) => setEditLeaveStart(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Đến ngày')}</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={editLeaveEnd}
+                    onChange={(e) => setEditLeaveEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn primary"
+                style={{ width: '100%', marginTop: '0.25rem', height: '40px' }}
+                onClick={handleAddLeave}
+                disabled={savingLeave}
+              >
+                {savingLeave ? (
+                  <>
+                    <RefreshCw size={18} className="spin" style={{ marginRight: 6 }} />
+                    {t('Đang đăng ký...')}
+                  </>
+                ) : (
+                  t('Đăng ký nghỉ')
+                )}
+              </button>
+
+              {/* Lịch sử đăng ký nghỉ phép */}
+              <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{t('LỊCH SỬ NGHỈ PHÉP')}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>
+                    ({leaveHistory.length})
+                  </span>
+                </h4>
+
+                {loadingLeaves ? (
+                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                    <RefreshCw className="spin" size={16} style={{ marginRight: 6 }} />
+                    {t('Đang tải lịch sử...')}
+                  </div>
+                ) : leaveHistory.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                    {t('Chưa có đăng ký nghỉ phép nào.')}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                    {leaveHistory.map((leave) => {
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const isPast = leave.end_date < todayStr;
+                      const isCurrent = todayStr >= leave.start_date && todayStr <= leave.end_date;
+
+                      return (
+                        <div
+                          key={leave.id}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '8px 12px',
+                            background: isCurrent ? 'var(--color-warning-light)' : (isPast ? 'var(--color-bg)' : 'var(--color-surface)'),
+                            border: '1px solid var(--color-border-light)',
+                            borderRadius: '8px',
+                            opacity: isPast ? 0.6 : 1
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                              {new Date(leave.start_date).toLocaleDateString('vi-VN')} → {new Date(leave.end_date).toLocaleDateString('vi-VN')}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: isCurrent ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: 600 }}>
+                              {isCurrent ? t('Đang diễn ra') : (isPast ? t('Đã qua') : t('Sắp tới'))}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLeave(leave.id)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--color-danger)',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'background 0.2s'
+                            }}
+                            className="hover-bg-danger-light"
+                            title={t('Xóa lịch nghỉ')}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Combined Work Hours & Schedule Card */}

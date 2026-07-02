@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 153;
+$targetVersion = 154;
 $currentVersion = 0;
 
 // Query current DB version
@@ -1589,7 +1589,7 @@ try {
         $conn->query("ALTER TABLE leads ADD COLUMN email_notify_sent_at DATETIME NULL");
     }
 
-    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
 
     // 7. night_shift_registrations table
     $conn->query("
@@ -1603,6 +1603,21 @@ try {
           FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
+
+    // 8. consultant_leaves table for leave/vacation history
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `consultant_leaves` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `consultant_id` int(11) NOT NULL,
+          `start_date` date NOT NULL,
+          `end_date` date NOT NULL,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `consultant_leave_dates` (`consultant_id`, `start_date`, `end_date`),
+          FOREIGN KEY (`consultant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    $logMsg("Đã tạo hoặc kiểm tra cấu trúc bảng consultant_leaves", "success");
     // Recreate the accounts VIEW to allow all users (including Sales/Managers) to log in
     $conn->query("
         CREATE OR REPLACE VIEW `accounts` AS 
@@ -1646,7 +1661,7 @@ try {
 
 
 
-    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '154') ON DUPLICATE KEY UPDATE setting_value = '154'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 

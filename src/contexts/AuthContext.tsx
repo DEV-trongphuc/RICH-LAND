@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useAuthStore } from '../store/authStore';
 
 type User = {
   id?: number;
@@ -58,6 +59,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('richland_user');
     localStorage.removeItem('RICH LAND_DEMO_MODE');
   }, []);
+
+  React.useEffect(() => {
+    if (user) {
+      useAuthStore.getState().setUser(user as any);
+      if (token) {
+        useAuthStore.setState({ accessToken: token, isAuthenticated: true });
+      }
+    } else {
+      useAuthStore.getState().clearAuth();
+    }
+  }, [user, token]);
 
   const contextValue = React.useMemo(() => ({ user, token, login, logout }), [user, token, login, logout]);
 

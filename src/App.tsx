@@ -245,7 +245,7 @@ const AppTabs = () => {
       </div>
 
       {/* Admin Pages */}
-      {((user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'super_admin') && (
+      {((user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'super_admin' || (user?.role as string) === 'sale') && (
         <>
           <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }} className={currentPath === '/consultants' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/consultants') && (
@@ -285,7 +285,11 @@ const AppTabs = () => {
           <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }} className={currentPath === '/accounts' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/accounts') && (
               <Suspense fallback={<PageLoader />}>
-                <Accounts />
+                {user?.role === 'sale' ? (
+                  <SalePortal embedMode={true} activeTabProp="schedule" />
+                ) : (
+                  <Accounts />
+                )}
               </Suspense>
             )}
           </div>

@@ -10,11 +10,11 @@ import toast from 'react-hot-toast';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../contexts/AuthContext';
 
 const AccountsInner = () => {
   const { t } = useLanguage();
-  const user = useAuthStore(state => state.user);
+  const { user } = useAuth();
   const isSale = user?.role === 'sale';
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {

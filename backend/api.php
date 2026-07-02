@@ -15,6 +15,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Intercept OOP controller routes and bridge them to index.php
 $action = $_GET['action'] ?? '';
+
+// Self-healing check for actions passing query parameters using '?' instead of '&'
+if (strpos($action, '?') !== false) {
+    $parts = explode('?', $action, 2);
+    $action = $parts[0];
+    $_GET['action'] = $action;
+    parse_str($parts[1], $extraGet);
+    $_GET = array_merge($_GET, $extraGet);
+    $_REQUEST = array_merge($_REQUEST, $extraGet);
+}
+
 $segments = explode('/', $action);
 $baseAction = explode('&', $segments[0])[0];
 if (in_array($baseAction, [
@@ -360,7 +371,7 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 'expenses', 'tickets', 'activities', 'notes', 'cooperation-slips', 'get_accounts', 'edit_account', 'unlink_zalo'])) {
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 'expenses', 'tickets', 'activities', 'notes', 'cooperation-slips', 'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -420,16 +431,40 @@ if (!in_array($action, $publicActions)) {
         'send_lead_reminder'
     ];
 
+    // Read the input body to check for self-operation
+    $isSelfEdit = false;
+    $isSelfUnlink = false;
+
+    if ($action === 'edit_account' || $action === 'unlink_zalo') {
+        $rawInput = file_get_contents('php://input');
+        $inputData = json_decode($rawInput, true);
+        if ($action === 'edit_account' && isset($inputData['id']) && (int)$inputData['id'] === (int)$decodedUser['id']) {
+            $isSelfEdit = true;
+        }
+        if ($action === 'unlink_zalo' && isset($inputData['id']) && isset($inputData['type'])) {
+            if ($inputData['type'] === 'account' && (int)$inputData['id'] === (int)$decodedUser['id']) {
+                $isSelfUnlink = true;
+            } else if ($inputData['type'] === 'consultant') {
+                // For consultant type, we will check ownership inside the case block
+                $isSelfUnlink = true;
+            }
+        }
+    }
+
     if (in_array($action, $superAdminOnlyActions) && $decodedUser['role'] !== 'superadmin') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Forbidden: Require Super Admin privileges']);
-        exit();
+        if (!$isSelfEdit) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden: Require Super Admin privileges']);
+            exit();
+        }
     }
 
     if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin privileges']);
-        exit();
+        if ($action !== 'get_accounts' && !$isSelfUnlink) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin privileges']);
+            exit();
+        }
     }
 
     // Prevent viewer role from accessing write/modifying actions (read-only constraint)
@@ -2987,6 +3022,164 @@ switch ($action) {
         }
         break;
 
+    case 'get_consultant_leaves':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $isSale = $decodedUser['role'] === 'sale';
+        $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        
+        $targetConsultantId = null;
+        if ($isSale) {
+            $targetConsultantId = $currentSaleConsultantId;
+        } else if ($isAdmin && isset($_GET['consultant_id'])) {
+            $targetConsultantId = (int)$_GET['consultant_id'];
+        } else {
+            $targetConsultantId = $currentSaleConsultantId;
+        }
+
+        if (!$targetConsultantId) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được ID tư vấn viên.']);
+            break;
+        }
+
+        $stmt = $conn->prepare("SELECT id, start_date, end_date, created_at FROM consultant_leaves WHERE consultant_id = ? ORDER BY start_date DESC");
+        $stmt->bind_param("i", $targetConsultantId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $leaves = [];
+        while ($row = $res->fetch_assoc()) {
+            $leaves[] = $row;
+        }
+        $stmt->close();
+
+        echo json_encode(['success' => true, 'data' => $leaves]);
+        break;
+
+    case 'add_consultant_leave':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $startDate = trim($input['start_date'] ?? '');
+        $endDate = trim($input['end_date'] ?? '');
+
+        $isSale = $decodedUser['role'] === 'sale';
+        $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        
+        $targetConsultantId = null;
+        if ($isSale) {
+            $targetConsultantId = $currentSaleConsultantId;
+        } else if ($isAdmin && isset($input['consultant_id'])) {
+            $targetConsultantId = (int)$input['consultant_id'];
+        } else {
+            $targetConsultantId = $currentSaleConsultantId;
+        }
+
+        if (!$targetConsultantId) {
+            echo json_encode(['success' => false, 'message' => 'Không xác định được ID tư vấn viên.']);
+            break;
+        }
+
+        if (empty($startDate) || empty($endDate)) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng chọn đầy đủ Từ ngày và Đến ngày.']);
+            break;
+        }
+
+        if ($startDate > $endDate) {
+            echo json_encode(['success' => false, 'message' => 'Ngày bắt đầu không được lớn hơn ngày kết thúc.']);
+            break;
+        }
+
+        // Insert leave period
+        $stmt = $conn->prepare("INSERT IGNORE INTO consultant_leaves (consultant_id, start_date, end_date) VALUES (?, ?, ?)");
+        $stmt->bind_param("iss", $targetConsultantId, $startDate, $endDate);
+        if ($stmt->execute()) {
+            // Recalculate current/upcoming leave in consultants table (underlying users table)
+            $recalcStmt = $conn->prepare("SELECT start_date, end_date FROM consultant_leaves WHERE consultant_id = ? AND end_date >= CURDATE() ORDER BY start_date ASC LIMIT 1");
+            $recalcStmt->bind_param("i", $targetConsultantId);
+            $recalcStmt->execute();
+            $recalcRes = $recalcStmt->get_result()->fetch_assoc();
+            $recalcStmt->close();
+
+            $nextStart = $recalcRes ? $recalcRes['start_date'] : null;
+            $nextEnd = $recalcRes ? $recalcRes['end_date'] : null;
+
+            $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE id = ?");
+            $upStmt->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
+            $upStmt->execute();
+            $upStmt->close();
+
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi đăng ký nghỉ phép.']);
+        }
+        $stmt->close();
+        break;
+
+    case 'delete_consultant_leave':
+        if (!$decodedUser) {
+            echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+            break;
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $leaveId = (int)($input['id'] ?? 0);
+
+        if (!$leaveId) {
+            echo json_encode(['success' => false, 'message' => 'ID nghỉ phép không hợp lệ.']);
+            break;
+        }
+
+        $isSale = $decodedUser['role'] === 'sale';
+        $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+
+        // First find the consultant_id of this leave to authorize and recalculate
+        $stmt = $conn->prepare("SELECT consultant_id FROM consultant_leaves WHERE id = ?");
+        $stmt->bind_param("i", $leaveId);
+        $stmt->execute();
+        $leaveRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$leaveRow) {
+            echo json_encode(['success' => false, 'message' => 'Không tìm thấy đăng ký nghỉ phép.']);
+            break;
+        }
+
+        $targetConsultantId = (int)$leaveRow['consultant_id'];
+
+        if ($isSale && $targetConsultantId !== $currentSaleConsultantId) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa đăng ký nghỉ phép của người khác.']);
+            break;
+        }
+
+        // Delete leave period
+        $stmtDel = $conn->prepare("DELETE FROM consultant_leaves WHERE id = ?");
+        $stmtDel->bind_param("i", $leaveId);
+        if ($stmtDel->execute()) {
+            // Recalculate current/upcoming leave in consultants table (underlying users table)
+            $recalcStmt = $conn->prepare("SELECT start_date, end_date FROM consultant_leaves WHERE consultant_id = ? AND end_date >= CURDATE() ORDER BY start_date ASC LIMIT 1");
+            $recalcStmt->bind_param("i", $targetConsultantId);
+            $recalcStmt->execute();
+            $recalcRes = $recalcStmt->get_result()->fetch_assoc();
+            $recalcStmt->close();
+
+            $nextStart = $recalcRes ? $recalcRes['start_date'] : null;
+            $nextEnd = $recalcRes ? $recalcRes['end_date'] : null;
+
+            $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE id = ?");
+            $upStmt->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
+            $upStmt->execute();
+            $upStmt->close();
+
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi khi xóa đăng ký nghỉ phép.']);
+        }
+        $stmtDel->close();
+        break;
+
     case 'get_consultants':
         $res = $conn->query("
             SELECT c.*, t.name as team_name, t.branch as team_branch 
@@ -3819,6 +4012,30 @@ switch ($action) {
         if (!$id) {
             echo json_encode(['success' => false, 'message' => 'ID không hợp lệ']);
             break;
+        }
+
+        $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
+        if (!$isAdmin) {
+            if ($type === 'account' && $id !== (int)$decodedUser['id']) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền hủy liên kết Zalo của tài khoản này']);
+                break;
+            }
+            if ($type === 'consultant') {
+                $stmtC = $conn->prepare("SELECT email FROM consultants WHERE id = ? LIMIT 1");
+                if ($stmtC) {
+                    $stmtC->bind_param("i", $id);
+                    $stmtC->execute();
+                    $cRow = $stmtC->get_result()->fetch_assoc();
+                    $stmtC->close();
+                    if (!$cRow || $cRow['email'] !== $decodedUser['email']) {
+                        echo json_encode(['success' => false, 'message' => 'Bạn không có quyền hủy liên kết Zalo của tư vấn viên này']);
+                        break;
+                    }
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Lỗi chuẩn bị truy vấn SQL']);
+                    break;
+                }
+            }
         }
 
         if ($type === 'consultant') {
@@ -8802,7 +9019,7 @@ switch ($action) {
 
 
     case 'get_accounts':
-        if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') {
+        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin') {
             $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar FROM accounts WHERE id = ?");
             $stmt->bind_param("i", $decodedUser['id']);
             $stmt->execute();
@@ -9845,9 +10062,11 @@ switch ($action) {
         $address = !empty($input['address']) ? $input['address'] : null;
         $bank_name = !empty($input['bank_name']) ? $input['bank_name'] : null;
         $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
+        $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
+        $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
 
-        $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
-        $stmt->bind_param("sssssssssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $targetId);
+        $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=? WHERE id=?");
+        $stmt->bind_param("ssssssssssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $targetId);
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {

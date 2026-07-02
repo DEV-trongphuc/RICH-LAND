@@ -11,7 +11,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
+import { useAuth } from '../contexts/AuthContext';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, LabelList
@@ -61,7 +61,8 @@ const formatScheduleTooltip = (schedule: any, t: any): string => {
 const ConsultantsInner = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const userRole = useAuthStore.getState().user?.role;
+  const { user } = useAuth();
+  const userRole = user?.role;
   const isSale = userRole === 'sale';
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
