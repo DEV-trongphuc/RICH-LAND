@@ -605,30 +605,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               width="100%"
             />
           </div>
-          {/* Button to toggle War Room Flight Deck mode */}
-          <button
-            className="btn primary"
-            onClick={() => setShowWarRoom(true)}
-            title={t("AI Infinity")}
-            style={{
-              width: 38,
-              height: 38,
-              padding: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 'var(--radius-md)',
-              background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-              color: '#fff',
-              border: 'none',
-              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
-              cursor: 'pointer',
-              fontWeight: 600,
-              flexShrink: 0
-            }}
-          >
-            <Cpu size={18} style={{ color: '#fff' }} />
-          </button>
+
 
           {/* Button to open Connection Health Modal styled purple as "Hệ thống" */}
           <button
