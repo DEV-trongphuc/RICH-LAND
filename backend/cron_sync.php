@@ -2276,12 +2276,28 @@ runDailyReportCron($conn);
 require_once __DIR__ . '/cron_weekly_report.php';
 runWeeklyReportCron($conn);
 
+// --- Chạy Báo cáo Tháng nếu đã đến giờ ---
+try {
+    require_once __DIR__ . '/cron_monthly_report.php';
+    runMonthlyReportCron($conn);
+} catch (Exception $monthlyEx) {
+    logSync("Error running monthly report from cron_sync: " . $monthlyEx->getMessage());
+}
+
 // --- Chạy hàng đợi đồng bộ 2 chiều (Sync Queue Worker) ---
 try {
     require_once __DIR__ . '/cron_queue_worker.php';
     processSyncQueue($conn);
 } catch (Exception $queueEx) {
     logSync("Error running sync queue from cron_sync: " . $queueEx->getMessage());
+}
+
+// --- Chạy tiến trình AI Pre-screener ---
+try {
+    require_once __DIR__ . '/cron_ai_worker.php';
+    runAIScreenerWorker($conn);
+} catch (Exception $aiEx) {
+    logSync("Error running AI worker from cron_sync: " . $aiEx->getMessage());
 }
 
 if (php_sapi_name() === 'cli') {
