@@ -2513,27 +2513,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleClaimLead(lead.id)}
-                          disabled={isClaimingLeadId !== null || (lead.takers && lead.takers.length >= 2)}
-                          className={lead.takers && lead.takers.length >= 2 ? "btn outline sm" : "btn primary sm"}
-                          style={{
-                            height: 32,
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            padding: '0 12px',
-                            background: lead.takers && lead.takers.length >= 2 ? 'transparent' : '#BD1D2D',
-                            color: lead.takers && lead.takers.length >= 2 ? 'var(--color-text-muted)' : '#ffffff',
-                            border: lead.takers && lead.takers.length >= 2 ? '1px solid var(--color-border)' : 'none',
-                            borderRadius: '16px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: lead.takers && lead.takers.length >= 2 ? 'none' : '0 4px 12px rgba(189,29,45,0.15)'
-                          }}
-                        >
-                          {isClaimingLeadId === lead.id ? t('Đang nhận...') : (lead.takers && lead.takers.length >= 2 ? t('Hết lượt') : t('Nhận Data'))}
-                        </button>
+                        {(() => {
+                          const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
+                          const isFull = lead.takers && lead.takers.length >= 2;
+                          return (
+                            <button
+                              onClick={() => handleClaimLead(lead.id)}
+                              disabled={isClaimingLeadId !== null || hasClaimed || isFull}
+                              className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
+                              style={{
+                                height: 32,
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                padding: '0 12px',
+                                background: hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D'),
+                                color: hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff'),
+                                border: hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none'),
+                                borderRadius: '16px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: (hasClaimed || isFull) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)'
+                              }}
+                            >
+                              {isClaimingLeadId === lead.id 
+                                ? t('Đang nhận...') 
+                                : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : t('Nhận Data')))}
+                            </button>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ))}

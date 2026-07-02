@@ -492,7 +492,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           report_status: item.report_status,
           last_activity_at: item.last_activity_at,
           ai_screener_status: item.ai_screener_status,
-          ai_evaluation: item.ai_evaluation
+          ai_evaluation: item.ai_evaluation,
+          is_public: item.is_public,
+          takers: item.takers || []
         }));
         setLeads(mappedLeads);
         setTotalCount(json.total_count ?? mappedLeads.length);
@@ -1988,32 +1990,38 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               {Math.max(0, 2 - (lead.takers ? lead.takers.length : 0))} / 2
                             </span>
                           ) : (
-                            <button
-                              onClick={() => handleClaimLead(lead.id)}
-                              disabled={isClaimingLeadId !== null}
-                              style={{
-                                background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)',
-                                border: 'none',
-                                color: '#ffffff',
-                                padding: '6px 16px',
-                                borderRadius: '6px',
-                                fontSize: '0.8125rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
-                                transition: 'all 0.2s'
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 4px 10px rgba(189, 29, 45, 0.35)';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 2px 6px rgba(189, 29, 45, 0.2)';
-                              }}
-                            >
-                              {isClaimingLeadId === lead.id ? t('Đang nhận...') : t('Nhận Data')}
-                            </button>
+                            {(() => {
+                              const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id));
+                              const isFull = lead.takers && lead.takers.length >= 2;
+                              return (
+                                <button
+                                  onClick={() => handleClaimLead(lead.id)}
+                                  disabled={isClaimingLeadId !== null || hasClaimed || isFull}
+                                  style={{
+                                    background: hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)'),
+                                    border: hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none'),
+                                    color: hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff'),
+                                    padding: '6px 16px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8125rem',
+                                    fontWeight: 700,
+                                    cursor: (hasClaimed || isFull) ? 'default' : 'pointer',
+                                    boxShadow: (hasClaimed || isFull) ? 'none' : '0 2px 6px rgba(189, 29, 45, 0.2)',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(!hasClaimed && !isFull) ? e => {
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 10px rgba(189, 29, 45, 0.35)';
+                                  } : undefined}
+                                  onMouseLeave={(!hasClaimed && !isFull) ? e => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(189, 29, 45, 0.2)';
+                                  } : undefined}
+                                >
+                                  {isClaimingLeadId === lead.id ? t('Đang nhận...') : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : t('Nhận Data')))}
+                                </button>
+                              );
+                            })()}
                           )}
                         </td>
                       </tr>
