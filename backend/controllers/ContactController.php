@@ -260,7 +260,23 @@ class ContactController {
             $statusHierarchy[trim($statusName)] = $idxVal;
         }
 
+        // Synchronize stage_id and pipeline_status if only one is updated
+        $reqStageId = array_key_exists('stage_id', $b) ? (int)$b['stage_id'] : null;
+        $reqStatus = array_key_exists('pipeline_status', $b) ? $b['pipeline_status'] : null;
+
+        if ($reqStageId !== null && $reqStatus === null) {
+            $computedStatus = $this->getSlugFromStageId($reqStageId, $auth['tenant_id']);
+            $b['pipeline_status'] = $computedStatus;
+        } else if ($reqStatus !== null && $reqStageId === null) {
+            $computedStageId = $this->getStageIdFromSlug($reqStatus, $auth['tenant_id']);
+            if ($computedStageId > 0) {
+                $b['stage_id'] = $computedStageId;
+            }
+        }
+
         $newStatus = $b['pipeline_status'] ?? null;
+
+
         if ($newStatus && $newStatus !== $currStatus) {
             // Exceptions: not_lead can be set from any state
             if ($newStatus !== 'not_lead') {
@@ -410,8 +426,16 @@ class ContactController {
         $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
         if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);
 
-        $sql = "UPDATE contacts SET stage_id=? WHERE id=? AND tenant_id=?";
-        $p = [$b['stage_id'], $id, $auth['tenant_id']];
+        $stageId = (int)$b['stage_id'];
+        $newStatus = $this->getSlugFromStageId($stageId, $auth['tenant_id']);
+
+        // Check current status for CAPI/Timer trigger
+        $stmtC = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtC->execute([$id, $auth['tenant_id']]);
+        $currStatus = $stmtC->fetchColumn() ?: 'chua_xac_dinh';
+
+        $sql = "UPDATE contacts SET stage_id=?, pipeline_status=? WHERE id=? AND tenant_id=?";
+        $p = [$stageId, $newStatus, $id, $auth['tenant_id']];
         if ($auth['role'] === 'sales') {
             $sql .= " AND owner_id=?";
             $p[] = $auth['user_id'];
@@ -419,11 +443,41 @@ class ContactController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(403, null, 'Bạn không có quyền di chuyển liên hệ này', false);
-        
+
+        // Trigger CAPI / Security timer updates on status change
+        if ($newStatus !== $currStatus) {
+            require_once __DIR__ . '/../config/CapiHelper.php';
+            if ($newStatus === 'dong_y_gap' || $newStatus === 'da_gap') {
+                CapiHelper::sendEvent($this->db, $id, 'Schedule');
+            } elseif ($newStatus === 'not_lead') {
+                CapiHelper::sendEvent($this->db, $id, 'BAD');
+            } elseif ($newStatus === 'dat_coc') {
+                CapiHelper::sendEvent($this->db, $id, 'Purchase');
+            }
+
+            // Update security timer
+            $securityExpires = $this->getSecurityExpiration($newStatus);
+            $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
+            $stmtTimer->execute([$securityExpires, $id]);
+
+            // Withdraw from databank if dat_coc
+            if ($newStatus === 'dat_coc') {
+                $stmtGetPerson = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ?");
+                $stmtGetPerson->execute([$id]);
+                $pId = $stmtGetPerson->fetchColumn();
+                if ($pId) {
+                    $stmtUpPerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
+                    $stmtUpPerson->execute([$pId]);
+                }
+            }
+        }
+
         $note = $b['note'] ?? "Khách hàng đã được chuyển trạng thái.";
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
         respond(200, null, 'Đã cập nhật stage thành công');
     }
+
+
 
     public function destroy(array $auth, int $id): void {
         if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
@@ -483,4 +537,50 @@ class ContactController {
                 return null;
         }
     }
+
+    private function getSlugFromStageId(int $stageId, int $tenantId): string {
+        $stmt = $this->db->prepare("SELECT id, order_index FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
+        $stmt->execute([$tenantId]);
+        $stages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtH = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
+        $stmtH->execute();
+        $hierarchyJson = $stmtH->fetchColumn();
+        $hierarchy = $hierarchyJson ? json_decode($hierarchyJson, true) : [];
+        if (empty($hierarchy)) {
+            $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        }
+
+        foreach ($stages as $idx => $stage) {
+            if ((int)$stage['id'] === $stageId) {
+                return $hierarchy[$idx] ?? 'chua_xac_dinh';
+            }
+        }
+        return 'chua_xac_dinh';
+    }
+
+    private function getStageIdFromSlug(string $slug, int $tenantId): int {
+        $stmt = $this->db->prepare("SELECT id, order_index FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
+        $stmt->execute([$tenantId]);
+        $stages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmtH = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
+        $stmtH->execute();
+        $hierarchyJson = $stmtH->fetchColumn();
+        $hierarchy = $hierarchyJson ? json_decode($hierarchyJson, true) : [];
+        if (empty($hierarchy)) {
+            $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+        }
+
+        foreach ($hierarchy as $idx => $s) {
+            if ($s === $slug) {
+                return isset($stages[$idx]) ? (int)$stages[$idx]['id'] : 0;
+            }
+        }
+        return 0;
+    }
 }
+
+
+
+

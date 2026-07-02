@@ -69,6 +69,13 @@ class CapiHelper {
 
             // Guardrail: Forward-only check (Never send duplicate events or status drop events)
             if ($contactId) {
+                // If Purchase has already been sent for this contact, skip everything!
+                $stmtPurchase = $db->prepare("SELECT COUNT(*) FROM capi_logs WHERE contact_id = ? AND event_name = 'Purchase'");
+                $stmtPurchase->execute([$contactId]);
+                if ((int)$stmtPurchase->fetchColumn() > 0) {
+                    return true;
+                }
+
                 $stmtChk = $db->prepare("SELECT COUNT(*) FROM capi_logs WHERE contact_id = ? AND event_name = ?");
                 $stmtChk->execute([$contactId, $eventName]);
                 if ((int)$stmtChk->fetchColumn() > 0) {
@@ -76,6 +83,9 @@ class CapiHelper {
                     return true;
                 }
             }
+
+
+
 
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https" : "http";
             $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
