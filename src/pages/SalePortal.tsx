@@ -1055,7 +1055,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
   const [statusFilter, setStatusFilter] = useState('all');
 
-  const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string) => {
+  const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
     if (status === 'assigned' && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
     }
@@ -1087,6 +1087,17 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
+      case 'released_to_kho':
+      case 'databank': {
+        const cnt = takers && takers.length ? takers.length : 0;
+        if (cnt === 0) {
+          return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public (2/2)')}</span>;
+        } else if (cnt >= 2) {
+          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Giới hạn (0/2)')}</span>;
+        } else {
+          return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (1/2)`)}</span>;
+        }
+      }
       default: return null;
     }
   };
@@ -2362,12 +2373,11 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Họ Tên')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Số Điện Thoại')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Email')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Khách hàng')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Liên hệ')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự Án')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn ban đầu')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Người nhận')}</th>
+                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Trạng thái')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
                     <th style={{ padding: '1rem', width: 140 }}></th>
                   </tr>
@@ -2375,9 +2385,18 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                 <tbody>
                   {publicLeads.map((lead) => (
                     <tr key={lead.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text)', transition: 'background 0.2s' }}>
-                      <td style={{ padding: '1rem', fontWeight: 600 }}>{lead.full_name}</td>
-                      <td style={{ padding: '1rem', fontFamily: 'monospace', letterSpacing: '0.5px' }}>{lead.phone}</td>
-                      <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{lead.email}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <Avatar name={lead.full_name || t('Khách hàng')} size={32} />
+                          <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.full_name || t('Khách hàng')}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          {lead.phone || '-'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
+                      </td>
                       <td style={{ padding: '1rem' }}>
                         <span style={{
                           display: 'inline-block',
@@ -2398,32 +2417,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                         </span>
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        {lead.takers && lead.takers.length > 0 ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {lead.takers.map((t: any) => (
-                              <div 
-                                key={t.id} 
-                                title={t.name}
-                                style={{
-                                  width: '26px', height: '26px', borderRadius: '50%',
-                                  background: 'var(--color-primary-light)',
-                                  color: 'var(--color-primary)',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                  fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
-                                  overflow: 'hidden', cursor: 'help'
-                                }}
-                              >
-                                {t.avatar ? (
-                                  <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                ) : (
-                                  t.name.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{t('Chưa ai nhận')}</span>
-                        )}
+                        {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
                       </td>
                       <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                         {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
@@ -2431,23 +2425,24 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
                         <button
                           onClick={() => handleClaimLead(lead.id)}
-                          disabled={isClaimingLeadId !== null}
-                          className="btn primary sm"
+                          disabled={isClaimingLeadId !== null || (lead.takers && lead.takers.length >= 2)}
+                          className={lead.takers && lead.takers.length >= 2 ? "btn outline sm" : "btn primary sm"}
                           style={{
                             height: 32,
                             fontSize: '0.75rem',
                             fontWeight: 700,
                             padding: '0 12px',
-                            background: '#BD1D2D',
-                            border: 'none',
+                            background: lead.takers && lead.takers.length >= 2 ? 'transparent' : '#BD1D2D',
+                            color: lead.takers && lead.takers.length >= 2 ? 'var(--color-text-muted)' : '#ffffff',
+                            border: lead.takers && lead.takers.length >= 2 ? '1px solid var(--color-border)' : 'none',
                             borderRadius: '16px',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            boxShadow: '0 4px 12px rgba(189,29,45,0.15)'
+                            boxShadow: lead.takers && lead.takers.length >= 2 ? 'none' : '0 4px 12px rgba(189,29,45,0.15)'
                           }}
                         >
-                          {isClaimingLeadId === lead.id ? t('Đang nhận...') : t('Nhận Data')}
+                          {isClaimingLeadId === lead.id ? t('Đang nhận...') : (lead.takers && lead.takers.length >= 2 ? t('Hết lượt') : t('Nhận Data'))}
                         </button>
                       </td>
                     </tr>
