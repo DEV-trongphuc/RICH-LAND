@@ -13569,6 +13569,7 @@ switch ($action) {
         if (!$decodedUser) {
             respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
         }
+        require_once __DIR__ . '/webhook_logic.php';
         
         $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
         $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
