@@ -1045,6 +1045,41 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                     }
                     $whStmt->close();
 
+                    // Rule 1.9: Nhập tay (khách cá nhân/giới thiệu) trùng SĐT với lead MKT đang active trong 30 ngày -> flag
+                    $isMktDuplicate = false;
+                    $daysSinceMkt = 0;
+                    $oldMktSource = '';
+                    if ($crmCheckResult['isDuplicate'] && ($source === 'ca_nhan' || $source === 'gioi_thieu')) {
+                        $checkMktStmt = $conn->prepare("
+                            SELECT id, source, created_at 
+                            FROM leads 
+                            WHERE phone = ? OR (email = ? AND email != '') 
+                            ORDER BY created_at DESC LIMIT 1
+                        ");
+                        if ($checkMktStmt) {
+                            $checkMktStmt->bind_param("ss", $phone, $email);
+                            $checkMktStmt->execute();
+                            $mktRes = $checkMktStmt->get_result()->fetch_assoc();
+                            $checkMktStmt->close();
+
+                            if ($mktRes) {
+                                $oldMktSource = $mktRes['source'];
+                                $mktSources = ['facebook', 'google', 'google_lp', 'website', 'mkt_webhook', 'capi', 'campaign'];
+                                if (in_array($oldMktSource, $mktSources)) {
+                                    $createdTime = strtotime($mktRes['created_at']);
+                                    $daysSinceMkt = (time() - $createdTime) / (24 * 3600);
+                                    if ($daysSinceMkt <= 30) {
+                                        $isMktDuplicate = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if ($isMktDuplicate) {
+                        $note = "[CẢNH BÁO RỬA NGUỒN]: Khách hàng cá nhân tự nhập trùng SĐT active với lead MKT (" . $oldMktSource . ") cách đây " . round($daysSinceMkt) . " ngày.\n" . $note;
+                    }
+
                     if ($crmCheckResult['leadExists']) {
                         $leadId = updateLead($conn, $phone, $email, $consultantId, $source, $type, $note, null, null, $name);
                     } else {
@@ -1067,6 +1102,40 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
 
                     $conn->commit();
                     $inTransaction = false;
+
+                    // Log flag and notify admin if it is an MKT duplicate
+                    if ($isMktDuplicate) {
+                        logAdminAction($conn, $decodedUser['id'] ?? 1, 'MANUAL_LEAD_DUPLICATE_FLAG', [
+                            'lead_id' => $leadId,
+                            'phone' => $phone,
+                            'sale_id' => $consultantId,
+                            'sale_name' => $decodedUser['name'] ?? 'Sale',
+                            'old_source' => $oldMktSource,
+                            'days_since' => round($daysSinceMkt)
+                        ]);
+
+                        try {
+                            $admRes = $conn->query("SELECT id, name, zalo_chat_id FROM accounts WHERE role IN ('admin', 'superadmin', 'manager') AND status = 'active' AND tenant_id = 1");
+                            if ($admRes) {
+                                require_once __DIR__ . '/zalo_bot.php';
+                                while ($adm = $admRes->fetch_assoc()) {
+                                    if (!empty($adm['zalo_chat_id'])) {
+                                        sendLeadDuplicateFlagZaloMessageToAdmin(
+                                            $adm['zalo_chat_id'],
+                                            $adm['name'],
+                                            $decodedUser['name'] ?? 'Sale',
+                                            $name,
+                                            $phone,
+                                            $oldMktSource,
+                                            $leadId
+                                        );
+                                    }
+                                }
+                            }
+                        } catch (Exception $zEx) {
+                            error_log("Error sending duplicate flag Zalo: " . $zEx->getMessage());
+                        }
+                    }
 
                     // Post-commit: trigger live write-back
                     if (!empty($leadId)) {

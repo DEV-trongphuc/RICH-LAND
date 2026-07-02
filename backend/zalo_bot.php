@@ -431,6 +431,32 @@ function sendLeadReminderZaloMessageToSale($consultantId, $consultantName, $lead
 }
 
 /**
+/**
+ * Gửi cảnh báo rửa nguồn (sale nhập trùng số MKT active) cho Admin qua Zalo
+ */
+function sendLeadDuplicateFlagZaloMessageToAdmin($adminChatId, $adminName, $saleName, $leadName, $leadPhone, $leadSource, $leadId = 0, $sync = false)
+{
+    global $conn;
+
+    $botToken = get_system_setting($conn, 'zalo_bot_token');
+
+    if (empty($botToken) || empty($adminChatId)) {
+        return false;
+    }
+
+    $text = "⚠️ [CẢNH BÁO RỬA NGUỒN] ⚠️\n\n"
+        . "Chào Quản trị viên $adminName,\n\n"
+        . "Hệ thống ghi nhận Sale *$saleName* vừa nhập thủ công một khách hàng cá nhân trùng số điện thoại với lead MKT đang hoạt động:\n\n"
+        . "• Tên KH: $leadName\n"
+        . "• SĐT KH: $leadPhone\n"
+        . "• Nguồn gốc MKT: $leadSource\n"
+        . "• Link chi tiết: https://crm.richland.vn/contacts/$leadId\n\n"
+        . "Vui lòng kiểm tra và xử lý nếu cần thiết.";
+
+    return sendZaloMessage($botToken, $adminChatId, $text, $sync);
+}
+
+/**
  * Gửi thông báo chia Lead fallback trực tiếp cho Admin qua Zalo
  */
 function sendLeadAssignedZaloMessageToAdmin($adminChatId, $adminName, $leadName, $leadPhone, $leadNote = '', $leadSource = '', $leadId = 0, $leadEmail = '', $leadType = '', $sync = false)
