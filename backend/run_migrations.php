@@ -1575,13 +1575,33 @@ try {
           FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
+    // Recreate the accounts VIEW to allow all users (including Sales/Managers) to log in
+    $conn->query("
+        CREATE OR REPLACE VIEW `accounts` AS 
+        SELECT 
+          `id`, 
+          `username`, 
+          `password_hash`, 
+          `role`, 
+          `full_name` AS `name`, 
+          `created_at`, 
+          `email`, 
+          `zalo_chat_id`, 
+          `is_confirmed`, 
+          `confirm_token`, 
+          `last_login_at` AS `last_login`, 
+          `avatar_url` AS `avatar` 
+        FROM `users`
+    ");
+    $logMsg("Đã cập nhật VIEW accounts để hỗ trợ mọi roles đăng nhập", "success");
+
     // Seed default Admin & Sale users for Developer Quick Login
     $adminEmail = 'admin@richland.net';
     $adminPassHash = password_hash('admin123', PASSWORD_BCRYPT);
     $conn->query("
         INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
         VALUES (999, 1, 'admin', '$adminEmail', '$adminPassHash', 'Admin Richland', 'admin', 1)
-        ON DUPLICATE KEY UPDATE email = '$adminEmail'
+        ON DUPLICATE KEY UPDATE password_hash = '$adminPassHash', role = 'admin', username = 'admin', full_name = 'Admin Richland'
     ");
     $logMsg("Đã khởi tạo/cập nhật tài khoản Admin thực cho Dev Quick Login", "success");
 
@@ -1590,7 +1610,7 @@ try {
     $conn->query("
         INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
         VALUES (1000, 1, 'haidang', '$saleEmail', '$salePassHash', 'Nguyễn Hải Đăng', 'sales', 1)
-        ON DUPLICATE KEY UPDATE email = '$saleEmail'
+        ON DUPLICATE KEY UPDATE password_hash = '$salePassHash', role = 'sales', username = 'haidang', full_name = 'Nguyễn Hải Đăng'
     ");
     $logMsg("Đã khởi tạo/cập nhật tài khoản Sale thực cho Dev Quick Login", "success");
 
