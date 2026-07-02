@@ -1148,9 +1148,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       case 'databank': {
         const cnt = takers && takers.length ? takers.length : 0;
         if (cnt === 0) {
-          return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public (0/2)')}</span>;
+          return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public (2/2)')}</span>;
         } else if (cnt >= 2) {
-          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Giới hạn (2/2)')}</span>;
+          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Giới hạn (0/2)')}</span>;
         } else {
           return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (1/2)`)}</span>;
         }
@@ -1900,16 +1900,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                             <span 
                               className="badge" 
                               style={{ 
-                                background: lead.takers && lead.takers.length >= 2 ? 'rgba(16,185,129,0.1)' : (lead.takers && lead.takers.length > 0 ? 'rgba(59,130,246,0.1)' : 'rgba(156,163,175,0.1)'),
-                                color: lead.takers && lead.takers.length >= 2 ? '#10b981' : (lead.takers && lead.takers.length > 0 ? '#3b82f6' : '#9ca3af'),
-                                border: lead.takers && lead.takers.length >= 2 ? '1px solid rgba(16,185,129,0.2)' : (lead.takers && lead.takers.length > 0 ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(156,163,175,0.2)'),
+                                background: !lead.takers || lead.takers.length === 0 ? 'rgba(16,185,129,0.1)' : (lead.takers.length === 1 ? 'rgba(59,130,246,0.1)' : 'rgba(156,163,175,0.1)'),
+                                color: !lead.takers || lead.takers.length === 0 ? '#10b981' : (lead.takers.length === 1 ? '#3b82f6' : '#9ca3af'),
+                                border: !lead.takers || lead.takers.length === 0 ? '1px solid rgba(16,185,129,0.2)' : (lead.takers.length === 1 ? '1px solid rgba(59,130,246,0.2)' : '1px solid rgba(156,163,175,0.2)'),
                                 fontWeight: 700,
                                 fontSize: '0.8rem',
                                 padding: '4px 10px',
                                 borderRadius: '20px'
                               }}
                             >
-                              {(lead.takers ? lead.takers.length : 0)} / 2
+                              {Math.max(0, 2 - (lead.takers ? lead.takers.length : 0))} / 2
                             </span>
                           ) : (
                             <button
