@@ -2190,6 +2190,60 @@ function assignParallelLeads($conn) {
         }
     }
 }
+function checkCheckInSlaEscalation($conn) {
+    logSync("Running checkCheckInSlaEscalation...");
+    
+    $slaMinutes = (int) get_system_setting($conn, 'checkin_approval_sla_minutes') ?: 15;
+    
+    $sql = "SELECT c.id, c.user_id, c.check_in_date, c.check_in_time, c.reason, u.full_name as sale_name, u.tenant_id
+            FROM check_ins c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.status = 'pending_approval'
+              AND c.sla_notified_at IS NULL
+              AND TIMESTAMP(CONCAT(c.check_in_date, ' ', c.check_in_time)) <= DATE_SUB(NOW(), INTERVAL ? MINUTE)";
+              
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $stmt->bind_param("i", $slaMinutes);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        $notifStmt = $conn->prepare("
+            INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        
+        while ($row = $res->fetch_assoc()) {
+            $checkInId = (int)$row['id'];
+            $tenantId = (int)$row['tenant_id'];
+            
+            $admRes = $conn->query("SELECT id FROM users WHERE role IN ('admin', 'superadmin', 'manager', 'assistant') AND tenant_id = " . $tenantId);
+            if ($admRes) {
+                $title = "CẢNH BÁO SLA: Duyệt đi trễ quá hạn";
+                $body = "Yêu cầu duyệt đi trễ của " . $row['sale_name'] . " (lý do: \"" . $row['reason'] . "\") đã quá " . $slaMinutes . " phút chưa được xử lý!";
+                $type = "attendance";
+                $link = "/attendance";
+                
+                while ($adm = $admRes->fetch_assoc()) {
+                    $adminUserId = (int)$adm['id'];
+                    $notifStmt->bind_param("iissss", $adminUserId, $tenantId, $title, $body, $type, $link);
+                    $notifStmt->execute();
+                }
+            }
+            
+            $upd = $conn->prepare("UPDATE check_ins SET sla_notified_at = NOW() WHERE id = ?");
+            $upd->bind_param("i", $checkInId);
+            $upd->execute();
+            $upd->close();
+            
+            logSync("Sent SLA Escalation alert for check-in ID $checkInId (Sale: {$row['sale_name']})");
+        }
+        $stmt->close();
+        if ($notifStmt) {
+            $notifStmt->close();
+        }
+    }
+}
 
 logSync("Cronjob finished.");
 
@@ -2198,6 +2252,13 @@ try {
     releaseExpiredLeadsToKho($conn);
 } catch (Exception $e) {
     logSync("Error running releaseExpiredLeadsToKho: " . $e->getMessage());
+}
+
+// --- Chạy kiểm tra cảnh báo SLA duyệt đi trễ ---
+try {
+    checkCheckInSlaEscalation($conn);
+} catch (Exception $e) {
+    logSync("Error running checkCheckInSlaEscalation: " . $e->getMessage());
 }
 
 // --- Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---

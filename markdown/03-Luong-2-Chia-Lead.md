@@ -55,7 +55,7 @@ DATABANK (Luồng 5) ← Quản lý cũng có thể đẩy thủ công vào đâ
 |---|---|---|
 | 2.12 | Check-in trong app (bấm nút + ảnh selfie) = nguồn sự thật, là 1 cổng của 2.4. Group Zalo giữ làm nghi thức văn hóa nếu muốn — không còn là dữ liệu vận hành | ✅ |
 | 2.13 | Trễ check-in → mặc định không nhận lead. Muốn nhận → nút "Xin nhận lead hôm nay" + lý do → quản lý duyệt → vào danh sách (hiệu lực tới 18h) | ✅ |
-| 2.14 | SLA duyệt đề xuất: quá X phút chưa duyệt → nhắc lần 2 / đẩy cấp trên | 🟡 |
+| 2.14 | SLA duyệt đề xuất: quá X phút chưa duyệt → nhắc lần 2 / đẩy cấp trên (cấu hình qua Admin Setting) | ✅ |
 | 2.15 | **Nghỉ phép được duyệt trước** = trạng thái riêng, không tính là trễ check-in. Báo cáo kỷ luật phân biệt rõ | ✅ |
 | 2.16 | Check-in áp dụng cả **thứ 7**. **Chủ nhật** = cơ chế đăng ký tự nguyện như ca đêm (đăng ký cuối tuần) | ✅ |
 | 2.17 | Lịch làm việc (ngày áp check-in, khung giờ...) = bảng config, không hardcode | ✅ |
@@ -109,6 +109,6 @@ DATABANK (Luồng 5) ← Quản lý cũng có thể đẩy thủ công vào đâ
 |---|---|---|
 | M1 | X của van chống ôm = bao nhiêu KHTN "Chưa Xác Định"? | Con số khởi điểm để config — đề xuất lấy từ data thực (phân vị 80 hiện tại) |
 | M2 | Timeout đêm chính xác (5 phút?) + có giới hạn số vòng xoay ban đêm không | Config |
-| M3 | SLA duyệt "xin nhận lead hôm nay" (2.14) — bao nhiêu phút thì nhắc/đẩy cấp? | 🟡 chưa chốt số |
+| M3 | SLA duyệt đề xuất (2.14) — bao nhiêu phút thì nhắc/đẩy cấp? | ✅ Đã cấu hình động qua Admin Setting |
 | M4 | Có cần hạn mức lead/ngày/sale riêng không, hay van chống ôm đã đủ? | Nghiêng về: van đủ, thêm hạn mức = thừa cơ chế |
 | M5 | Chủ nhật "đăng ký cuối tuần": khung giờ + timeout giống ngày thường hay giống đêm? | Config lịch (2.17) |

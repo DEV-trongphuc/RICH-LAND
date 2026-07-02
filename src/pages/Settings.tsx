@@ -133,6 +133,7 @@ const SettingsInner = () => {
   const [databankLimitPerHour, setDatabankLimitPerHour] = useState<number>(3);
   const [databankLimitPerMonth, setDatabankLimitPerMonth] = useState<number>(300);
   const [backpressureLimit, setBackpressureLimit] = useState<number>(5);
+  const [checkinApprovalSlaMinutes, setCheckinApprovalSlaMinutes] = useState<number>(15);
 
   const [securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh] = useState<string>("+3 hours");
   const [securityTimerQuanTam, setSecurityTimerQuanTam] = useState<string>("+1 day");
@@ -406,6 +407,7 @@ const SettingsInner = () => {
         if (json.data.databank_limit_per_hour !== undefined) setDatabankLimitPerHour(Number(json.data.databank_limit_per_hour));
         if (json.data.databank_limit_per_month !== undefined) setDatabankLimitPerMonth(Number(json.data.databank_limit_per_month));
         if (json.data.backpressure_limit !== undefined) setBackpressureLimit(Number(json.data.backpressure_limit));
+        if (json.data.checkin_approval_sla_minutes !== undefined) setCheckinApprovalSlaMinutes(Number(json.data.checkin_approval_sla_minutes));
         if (json.data.security_timer_chua_xac_dinh !== undefined) setSecurityTimerChuaXacDinh(json.data.security_timer_chua_xac_dinh);
         if (json.data.security_timer_quan_tam !== undefined) setSecurityTimerQuanTam(json.data.security_timer_quan_tam);
         if (json.data.security_timer_thien_chi !== undefined) setSecurityTimerThienChi(json.data.security_timer_thien_chi);
@@ -544,6 +546,7 @@ const SettingsInner = () => {
       databank_limit_per_hour: databankLimitPerHour,
       databank_limit_per_month: databankLimitPerMonth,
       backpressure_limit: backpressureLimit,
+      checkin_approval_sla_minutes: checkinApprovalSlaMinutes,
       security_timer_chua_xac_dinh: securityTimerChuaXacDinh,
       security_timer_quan_tam: securityTimerQuanTam,
       security_timer_thien_chi: securityTimerThienChi,
@@ -2493,6 +2496,23 @@ function doPost(e) {
                         </div>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
                           {t('Hạn mức data Chưa Xác Định tối đa trước khi chặn chia lead mới.')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('SLA Duyệt đi trễ (Chấm công)')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ paddingRight: '3.5rem' }}
+                            value={checkinApprovalSlaMinutes}
+                            onChange={e => setCheckinApprovalSlaMinutes(Number(e.target.value))}
+                            min={1}
+                          />
+                          <span style={{ position: 'absolute', right: '12px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('phút')}</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Thời gian chờ duyệt xin nhận lead trễ trước khi gửi cảnh báo leo thang.')}
                         </span>
                       </div>
                     </div>

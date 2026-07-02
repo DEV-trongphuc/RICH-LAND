@@ -1512,6 +1512,12 @@ try {
     $logMsg("Đã tạo hoặc kiểm tra cấu trúc bảng projects/roster/documents", "success");
 
     // 6. Default Settings
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('checkin_approval_sla_minutes', '15')");
+    $chkSlaNotif = $conn->query("SHOW COLUMNS FROM check_ins LIKE 'sla_notified_at'");
+    if ($chkSlaNotif && $chkSlaNotif->num_rows === 0) {
+        $conn->query("ALTER TABLE check_ins ADD COLUMN sla_notified_at DATETIME DEFAULT NULL");
+        $logMsg("Đã thêm cột sla_notified_at cho check_ins", "success");
+    }
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");
