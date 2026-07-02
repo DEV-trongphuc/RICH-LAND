@@ -44,6 +44,7 @@ type Lead = {
   ai_evaluation?: string;
   takers?: any[];
   is_public?: number | boolean;
+  person_id?: number;
 };
 
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
@@ -663,6 +664,44 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       setIsReleasingLead(false);
     }
   };
+
+  const [isDeletingClaim, setIsDeletingClaim] = useState(false);
+
+  const handleDeletePublicClaim = async (personId: number, saleId: number, saleName: string) => {
+    if (!window.confirm(t('Bạn có chắc chắn muốn xóa lượt nhận của Sale {name} cho khách hàng này không?').replace('{name}', saleName))) {
+      return;
+    }
+    setIsDeletingClaim(true);
+    try {
+      const res = await fetchAPI('delete_public_lead_claim', {
+        method: 'POST',
+        body: JSON.stringify({ person_id: personId, sale_id: saleId })
+      });
+      if (res.success) {
+        toast.success(res.message || t('Đã xóa lượt nhận thành công!'));
+        
+        // Update local modal details
+        const updatedTakers = selectedLead.takers ? selectedLead.takers.filter((t: any) => t.id !== saleId) : [];
+        setSelectedLead({
+          ...selectedLead,
+          takers: updatedTakers
+        });
+
+        // Refresh table counts
+        fetchLeads();
+        if (viewMode === 'databank') {
+          fetchPublicLeads();
+        }
+      } else {
+        toast.error(res.message || t('Lỗi khi xóa lượt nhận.'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi kết nối: ') + e.message);
+    } finally {
+      setIsDeletingClaim(false);
+    }
+  };
+
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true });
   const [isSendingReminder, setIsSendingReminder] = useState(false);
@@ -3876,6 +3915,37 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 </div>
                               )}
                             </div>
+                            {(user?.role === 'admin' || user?.role === 'superadmin') && (
+                              <button
+                                onClick={() => handleDeletePublicClaim(selectedLead.person_id || selectedLead.id, t.id, t.name)}
+                                disabled={isDeletingClaim}
+                                title={t('Xóa lượt nhận của Sale')}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.08)',
+                                  border: 'none',
+                                  borderRadius: '50%',
+                                  width: '28px',
+                                  height: '28px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                  flexShrink: 0
+                                }}
+                                onMouseOver={e => {
+                                  e.currentTarget.style.background = '#ef4444';
+                                  e.currentTarget.style.color = '#ffffff';
+                                }}
+                                onMouseOut={e => {
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+                                  e.currentTarget.style.color = '#ef4444';
+                                }}
+                              >
+                                <X size={14} />
+                              </button>
+                            )}
                           </div>
                         ))}
                       </div>
