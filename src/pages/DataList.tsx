@@ -2115,6 +2115,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               <Avatar src="/imgs/angry_icon.jpg" name="Rich Land AI - Angry" size={20} />
                               <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Rich Land AI - Angry</span>
                             </div>
+                          ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank') ? (
+                            lead.takers && lead.takers.length > 0 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {lead.takers.map((t: any) => (
+                                  <Avatar key={t.id} src={t.avatar} name={t.name} size={20} title={t.name} />
+                                ))}
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)' }}>{t('Chưa ai nhận')}</span>
+                            )
                           ) : lead.assigned_to_name !== '-' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={20} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
@@ -2246,6 +2256,33 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                                 <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{t('Blacklist')}</div>
                               </div>
                             </div>
+                          ) : (lead.is_public === 1 || Number(lead.is_public) === 1 || lead.status === 'released_to_kho' || lead.status === 'databank') ? (
+                            lead.takers && lead.takers.length > 0 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {lead.takers.map((t: any) => (
+                                  <div 
+                                    key={t.id} 
+                                    title={t.name}
+                                    style={{
+                                      width: '28px', height: '28px', borderRadius: '50%',
+                                      background: 'var(--color-primary-light)',
+                                      color: 'var(--color-primary)',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      fontWeight: 700, fontSize: '0.75rem', border: '2px solid var(--color-surface)',
+                                      overflow: 'hidden', cursor: 'help'
+                                    }}
+                                  >
+                                    {t.avatar ? (
+                                      <img src={t.avatar} alt={t.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    ) : (
+                                      t.name.charAt(0).toUpperCase()
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('Chưa ai nhận')}</span>
+                            )
                           ) : lead.assigned_to_name !== '-' ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <Avatar src={lead.assigned_to_avatar} name={lead.assigned_to_name} size={32} aiScreened={!!(lead.ai_screener_status && lead.ai_screener_status !== 'not_screened')} />
