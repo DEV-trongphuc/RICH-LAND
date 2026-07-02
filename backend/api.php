@@ -336,6 +336,10 @@ if (!in_array($action, $publicActions)) {
         $decodedUser['role'] = 'sale';
     }
 
+    if (!isset($decodedUser['user_id']) && isset($decodedUser['id'])) {
+        $decodedUser['user_id'] = $decodedUser['id'];
+    }
+
     $currentSaleConsultantId = 0;
     if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
         $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
@@ -1556,8 +1560,22 @@ switch ($action) {
                     $upd->close();
                 }
 
+                $consultantId = null;
+                if ($user['role'] === 'sales' || $user['role'] === 'sale') {
+                    $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+                    $stmtC->bind_param("s", $user['email']);
+                    $stmtC->execute();
+                    $cRow = $stmtC->get_result()->fetch_assoc();
+                    $stmtC->close();
+                    if ($cRow) {
+                        $consultantId = (int)$cRow['id'];
+                    }
+                }
+
                 $payload = [
                     'id' => $user['id'],
+                    'user_id' => $user['id'],
+                    'consultant_id' => $consultantId,
                     'username' => $user['username'],
                     'email' => $user['email'] ?? '',
                     'role' => $user['role'] === 'sales' ? 'sale' : $user['role'],
@@ -1568,6 +1586,9 @@ switch ($action) {
                     'success' => true,
                     'token' => $token,
                     'user' => [
+                        'id' => $user['id'],
+                        'user_id' => $user['id'],
+                        'consultant_id' => $consultantId,
                         'username' => $user['username'],
                         'email' => $user['email'] ?? '',
                         'role' => $user['role'] === 'sales' ? 'sale' : $user['role'],
