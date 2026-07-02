@@ -13857,7 +13857,33 @@ switch ($action) {
                 logDistribution($conn, $leadId, $saleId, null, 'databank_claim_removed', 'Admin xóa lượt nhận của Sale', false);
             }
 
+            // Check remaining claims
+            $stmtCheckClaims = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
+            $stmtCheckClaims->bind_param("i", $personId);
+            $stmtCheckClaims->execute();
+            $remClaims = (int)($stmtCheckClaims->get_result()->fetch_assoc()['cnt'] ?? 0);
+            $stmtCheckClaims->close();
+
+            // Check if any remaining claims are in 'dat_coc'
+            $hasProtectedStatus = false;
+            if ($remClaims > 0) {
+                $stmtProtected = $conn->prepare("SELECT COUNT(*) as cnt FROM contacts WHERE person_id = ? AND deleted_at IS NULL AND pipeline_status = 'dat_coc'");
+                $stmtProtected->bind_param("i", $personId);
+                $stmtProtected->execute();
+                $hasProtectedStatus = ((int)$stmtProtected->get_result()->fetch_assoc()['cnt'] ?? 0) > 0;
+                $stmtProtected->close();
+            }
+
+            if ($remClaims < 2 && !$hasProtectedStatus) {
+                $stmtUpPerson = $conn->prepare("UPDATE persons SET is_public = 1 WHERE id = ?");
+                $stmtUpPerson->bind_param("i", $personId);
+                $stmtUpPerson->execute();
+                $stmtUpPerson->close();
+            }
+
             $conn->commit();
+
+
             
             if ($leadId > 0) {
                 triggerTwoWaySync($conn, $leadId);
@@ -13992,14 +14018,26 @@ switch ($action) {
             $stmtProj->close();
 
             $createdBy = $saleUserId;
+            $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
+            $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
+
             $stmtIns = $conn->prepare("
-                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'databank', 'lead', 'chua_xac_dinh')
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'databank', 'lead', 'chua_xac_dinh', ?)
             ");
-            $stmtIns->bind_param("iiiissss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone']);
+            $stmtIns->bind_param("iiiissssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $secExpiresTime);
             $stmtIns->execute();
             $newContactId = $conn->insert_id;
             $stmtIns->close();
+
+            if ($personClaims + 1 >= 2) {
+                $stmtUpPerson = $conn->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
+                $stmtUpPerson->bind_param("i", $personId);
+                $stmtUpPerson->execute();
+                $stmtUpPerson->close();
+            }
+
+
 
             $stmtLead = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
             $stmtLead->bind_param("i", $personId);

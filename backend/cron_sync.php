@@ -1921,13 +1921,15 @@ foreach ($connections as $connItem) {
 
 function releaseExpiredLeadsToKho($conn) {
     logSync("Running releaseExpiredLeadsToKho...");
-    
+
     $applicableSourcesStr = get_system_setting($conn, 'databank_applicable_sources') ?: 'R3_Fb,R3,R2,broadcast';
     $applicableSources = array_map('trim', explode(',', $applicableSourcesStr));
     $applicableSourcesEscaped = array_map(function($s) use ($conn) {
         return "'" . $conn->real_escape_string($s) . "'";
     }, $applicableSources);
-    $sourcesFilter = "AND c.source IN (" . implode(',', $applicableSourcesEscaped) . ")";
+    $sourcesFilter = "AND (c.source IN (" . implode(',', $applicableSourcesEscaped) . ") OR c.source = 'databank')";
+    
+
 
     $sql = "SELECT DISTINCT c.person_id 
             FROM contacts c 
@@ -1992,6 +1994,12 @@ function releaseExpiredLeadsToKho($conn) {
                         $upd->execute();
                         $upd->close();
                     }
+
+                    // Soft-delete the expired contacts so the claim slot becomes available again
+                    $updContacts = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE person_id = ? AND security_expires_at <= NOW() AND deleted_at IS NULL");
+                    $updContacts->bind_param("i", $personId);
+                    $updContacts->execute();
+                    $updContacts->close();
                     
                     $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
                     $stmtL->bind_param("i", $personId);
