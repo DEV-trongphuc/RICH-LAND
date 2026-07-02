@@ -2290,6 +2290,8 @@ switch ($action) {
                 r.status as report_status,
                 r.resolved_by,
                 r.resolved_at,
+                p.is_public as is_public,
+                p.id as person_id,
                 (SELECT MAX(received_at) FROM distribution_logs WHERE lead_id = dl.lead_id AND id < dl.id) as last_activity_at
             FROM distribution_logs dl
             INNER JOIN (
@@ -2299,6 +2301,7 @@ switch ($action) {
                 GROUP BY lead_id
             ) dl_max ON dl.id = dl_max.max_id
             LEFT JOIN leads l ON dl.lead_id = l.id
+            LEFT JOIN persons p ON l.person_id = p.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
             LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
             LEFT JOIN (
@@ -2314,8 +2317,26 @@ switch ($action) {
             $limitStr
         ");
         $data = [];
-        while ($row = $res->fetch_assoc())
+        while ($row = $res->fetch_assoc()) {
+            $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
+            $takers = [];
+            if ($personId > 0) {
+                $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar 
+                           FROM contacts c
+                           JOIN consultants cons ON c.owner_id = cons.id
+                           WHERE c.person_id = ? AND c.deleted_at IS NULL";
+                $tStmt = $conn->prepare($tQuery);
+                $tStmt->bind_param("i", $personId);
+                $tStmt->execute();
+                $tRes = $tStmt->get_result();
+                while ($tRow = $tRes->fetch_assoc()) {
+                    $takers[] = $tRow;
+                }
+                $tStmt->close();
+            }
+            $row['takers'] = $takers;
             $data[] = $row;
+        }
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $responseLimit]);
         break;
 
@@ -13589,6 +13610,65 @@ switch ($action) {
         }
 
         echo json_encode(['success' => true, 'data' => $publicLeads, 'quota' => $quota]);
+        break;
+
+    case 'release_to_databank':
+        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin', 'manager', 'assistant'])) {
+            respond(403, null, 'Unauthorized: Quyền truy cập bị từ chối', false);
+        }
+
+        $leadId = isset($input['lead_id']) ? (int)$input['lead_id'] : 0;
+        if ($leadId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID khách hàng không hợp lệ.']);
+            break;
+        }
+
+        $conn->begin_transaction();
+        try {
+            // Find person_id of this lead
+            $stmtL = $conn->prepare("SELECT person_id FROM leads WHERE id = ?");
+            $stmtL->bind_param("i", $leadId);
+            $stmtL->execute();
+            $lRow = $stmtL->get_result()->fetch_assoc();
+            $stmtL->close();
+
+            if (!$lRow) {
+                // If not found in leads, check contacts directly
+                $stmtC = $conn->prepare("SELECT person_id FROM contacts WHERE id = ?");
+                $stmtC->bind_param("i", $leadId);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                $stmtC->close();
+                $personId = $cRow ? (int)$cRow['person_id'] : 0;
+            } else {
+                $personId = (int)$lRow['person_id'];
+            }
+
+            if ($personId <= 0) {
+                throw new Exception("Không tìm thấy thông tin định danh Person tương ứng.");
+            }
+
+            // Update person is_public = 1
+            $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+            $stmtU->bind_param("i", $personId);
+            $stmtU->execute();
+            $stmtU->close();
+
+            // Soft delete all active contacts for this person
+            $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE person_id = ? AND deleted_at IS NULL");
+            $stmtDel->bind_param("i", $personId);
+            $stmtDel->execute();
+            $stmtDel->close();
+            
+            // Log
+            logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Admin chủ động nhả về Kho chung (Databank)', false);
+
+            $conn->commit();
+            echo json_encode(['success' => true, 'message' => 'Đã nhả khách hàng về Kho chung (Databank) thành công!']);
+        } catch (Exception $ex) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $ex->getMessage()]);
+        }
         break;
 
     default:

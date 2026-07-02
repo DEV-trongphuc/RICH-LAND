@@ -43,6 +43,7 @@ type Lead = {
   ai_screener_status?: string;
   ai_evaluation?: string;
   takers?: any[];
+  is_public?: number | boolean;
 };
 
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
@@ -633,6 +634,35 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
     note: ''
   });
   const [isSavingLeadFields, setIsSavingLeadFields] = useState(false);
+  const [isReleasingLead, setIsReleasingLead] = useState(false);
+
+  const handleReleaseToDatabank = async (leadId: number) => {
+    if (!window.confirm(t('Bạn có chắc chắn muốn nhả khách hàng này về Kho chung (Databank)? Việc này sẽ thu hồi quyền sở hữu của các tư vấn viên hiện tại.'))) {
+      return;
+    }
+    setIsReleasingLead(true);
+    try {
+      const res = await fetchAPI('release_to_databank', {
+        method: 'POST',
+        body: JSON.stringify({ lead_id: leadId })
+      });
+      if (res.success) {
+        toast.success(res.message || t('Đã nhả về Kho chung thành công!'));
+        setSelectedLead(null);
+        fetchLeads();
+        if (viewMode === 'databank') {
+          fetchPublicLeads();
+        }
+      } else {
+        toast.error(res.message || t('Lỗi khi nhả về Kho chung.'));
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(t('Lỗi kết nối hệ thống.'));
+    } finally {
+      setIsReleasingLead(false);
+    }
+  };
   const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
   const [reminderChannels, setReminderChannels] = useState({ zalo: true, email: true });
   const [isSendingReminder, setIsSendingReminder] = useState(false);
@@ -1119,9 +1149,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         if (cnt === 0) {
           return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public')}</span>;
         } else if (cnt >= 2) {
-          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Đã nhận đủ (2/2)')}</span>;
+          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Giới hạn')}</span>;
         } else {
-          return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Đã nhận (${cnt}/2)`)}</span>;
+          return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (1/2)`)}</span>;
         }
       }
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
@@ -2024,7 +2054,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
                         {/* Status badge */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          {getStatusBadge(lead.status, lead.report_status, lead.ai_screener_status, lead.created_at)}
+                          {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1) ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
                           {lead.status !== 'assigned' && lead.report_status === 'pending' && (
                             <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>
                               {t('Chờ duyệt')}
@@ -2178,7 +2208,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-start' }}>
-                            {getStatusBadge(lead.status, lead.report_status, lead.ai_screener_status, lead.created_at)}
+                            {getStatusBadge((lead.is_public === 1 || Number(lead.is_public) === 1) ? 'databank' : lead.status, lead.report_status, lead.ai_screener_status, lead.created_at, lead.takers)}
                             {lead.status !== 'assigned' && lead.report_status === 'pending' && <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.65rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', border: '1px solid #fcd34d' }}>{t('Đang chờ duyệt')}</span>}
                           </div>
                         </td>
@@ -2506,6 +2536,36 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         {t('Chặn')}
                       </button>
                     )}
+
+                    {isAdmin && selectedLead.status !== 'databank' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && !isAdminEditingLead && (
+                      <button
+                        onClick={() => handleReleaseToDatabank(selectedLead.lead_id || selectedLead.id)}
+                        disabled={isReleasingLead}
+                        title={t("Nhả về Kho chung (Databank)")}
+                        className="detail-action-btn"
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          color: '#10b981',
+                          boxShadow: '0 2px 6px rgba(16, 185, 129, 0.05)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.background = '#10b981';
+                          e.currentTarget.style.color = '#ffffff';
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 15px rgba(16, 185, 129, 0.2)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
+                          e.currentTarget.style.color = '#10b981';
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(16, 185, 129, 0.05)';
+                        }}
+                      >
+                        <RefreshCw size={14} className={isReleasingLead ? 'animate-spin' : ''} />
+                        {isReleasingLead ? t('Đang nhả...') : t('Nhả Kho')}
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -2725,7 +2785,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
                     <div>
-                      {getStatusBadge(selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers)}
+                      {getStatusBadge((selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1) ? 'databank' : selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers)}
                     </div>
                   </div>
                 </div>
@@ -3544,11 +3604,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     </div>
 
                     {/* Tình trạng thông báo Zalo & Email */}
-                    <div style={{
-                      marginTop: '1rem',
-                      paddingTop: '1rem',
-                      borderTop: '1px dashed var(--color-border-light)'
-                    }}>
+                    {selectedLead.assigned_to_name !== '-' && selectedLead.assigned_to_name !== t('Chưa ai nhận') && selectedLead.status !== 'databank' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && (
+                      <div style={{
+                        marginTop: '1rem',
+                        paddingTop: '1rem',
+                        borderTop: '1px dashed var(--color-border-light)'
+                      }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text)', fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.75rem' }}>
                         <RefreshCw size={12} className={notifLoading ? "spin" : ""} style={{ color: 'var(--color-primary)' }} />
                         <span>{t('Tình trạng gửi thông báo')}</span>
@@ -3715,7 +3776,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       )}
 
                       {/* Manual Reminder Button */}
-                      {(user?.role === 'admin' || user?.role === 'superadmin') && selectedLead.assigned_to_name !== '-' && (
+                      {(user?.role === 'admin' || user?.role === 'superadmin') && selectedLead.assigned_to_name !== '-' && selectedLead.assigned_to_name !== t('Chưa ai nhận') && selectedLead.status !== 'databank' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && (
                         <button
                           onClick={() => {
                             setReminderChannels({ zalo: true, email: true });
@@ -3756,7 +3817,8 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         </button>
                       )}
                     </div>
-                  </div>
+                  )}
+                </div>
                 ) : (
                   <div style={{ background: 'var(--color-bg)', padding: '1.5rem', borderRadius: 12, textAlign: 'center', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)' }}>
                     {t('Chưa có thông tin phân bổ cho Khách hàng này.')}
