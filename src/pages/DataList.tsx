@@ -42,6 +42,7 @@ type Lead = {
   last_activity_at?: string | null;
   ai_screener_status?: string;
   ai_evaluation?: string;
+  takers?: any[];
 };
 
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
@@ -1085,7 +1086,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
   const paginatedLeads = leads;
 
-  const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string) => {
+  const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
     if (status === 'assigned' && reportStatus === 'pending') {
       return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
     }
@@ -1113,6 +1114,16 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
       case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
+      case 'databank': {
+        const cnt = takers && takers.length ? takers.length : 0;
+        if (cnt === 0) {
+          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Public')}</span>;
+        } else if (cnt >= 2) {
+          return <span className="badge success">{t('Đã nhận đủ (2/2)')}</span>;
+        } else {
+          return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Đã nhận (${cnt}/2)`)}</span>;
+        }
+      }
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
       default: return null;
     }
@@ -1791,10 +1802,18 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         onClick={() => {
                           if (isAdmin) {
                             setSelectedLead({
-                              ...lead,
-                              name: lead.full_name,
                               id: lead.id,
-                              status: 'databank'
+                              name: lead.full_name || '',
+                              phone: lead.phone || '',
+                              email: lead.email || '',
+                              source: lead.original_source || 'Databank',
+                              status: 'databank',
+                              assigned_to_name: t('Chưa ai nhận'),
+                              round_name: t('Kho chung'),
+                              created_at: lead.released_to_kho_at || '',
+                              note: '',
+                              type: '-',
+                              takers: lead.takers || []
                             });
                           }
                         }}
@@ -2706,7 +2725,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   <div style={{ background: 'var(--color-bg)', padding: '0.625rem 0.75rem', borderRadius: 10, border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}><Tag size={12} /> {t('Trạng thái')}</div>
                     <div>
-                      {getStatusBadge(selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at)}
+                      {getStatusBadge(selectedLead.status, selectedLead.report_status, selectedLead.ai_screener_status, selectedLead.created_at, selectedLead.takers)}
                     </div>
                   </div>
                 </div>
