@@ -41,7 +41,10 @@ if (in_array($baseAction, [
 }
 
 require_once 'env.php';
+require_once 'config.php';
 require_once 'db_connect.php';
+
+
 
 try {
     $conn->query("ALTER TABLE consultants ADD COLUMN dob DATE NULL");
@@ -11178,6 +11181,7 @@ switch ($action) {
             ];
             $j++;
         }
+
         // Query Source Ratio (fallback to l.source if sc.sheet_name is null)
         $sourceSql = "SELECT 
                         CASE 
@@ -11185,9 +11189,15 @@ switch ($action) {
                             ELSE 'Nhập tay'
                         END as source, COUNT(dl.id) as count 
                       FROM distribution_logs dl 
+                      INNER JOIN (
+                          SELECT lead_id, MAX(id) as max_id 
+                          FROM distribution_logs 
+                          WHERE status != 'silent' AND $dateCondition
+                          GROUP BY lead_id
+                      ) dl_max ON dl.id = dl_max.max_id
                       JOIN leads l ON dl.lead_id = l.id
                       LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
-                      WHERE $dateCondition AND dl.status != 'silent'
+                      WHERE $dateConditionDl
                       GROUP BY 
                         CASE 
                             WHEN sc.id IS NOT NULL THEN sc.sheet_name
@@ -11212,9 +11222,16 @@ switch ($action) {
         // Query true Lead Source Ratio (Optimized: No JOIN on sheet_connections needed)
         $leadSourceSql = "SELECT COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') as source, COUNT(dl.id) as count 
                           FROM distribution_logs dl 
+                          INNER JOIN (
+                              SELECT lead_id, MAX(id) as max_id 
+                              FROM distribution_logs 
+                              WHERE status != 'silent' AND $dateCondition
+                              GROUP BY lead_id
+                          ) dl_max ON dl.id = dl_max.max_id
                           JOIN leads l ON dl.lead_id = l.id
-                          WHERE $dateCondition AND dl.status != 'silent'
-                          GROUP BY COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') ORDER BY count DESC";
+                          WHERE $dateConditionDl
+                          GROUP BY COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') 
+                          ORDER BY count DESC";
         $leadSourceResRaw = $conn->query($leadSourceSql);
         $leadSourceStats = [];
         if ($leadSourceResRaw) {
@@ -11229,6 +11246,7 @@ switch ($action) {
                 $i++;
             }
         }
+
 
         // Query Error Stats by Consultant (Approved tickets)
         $dateConditionCreated = str_replace('received_at', 'dr.created_at', $dateCondition);
