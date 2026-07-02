@@ -155,17 +155,19 @@ class ReportController
                    (
                       (SELECT COUNT(*) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = :first_stage_id1) AND d.deleted_at IS NULL AND d.tenant_id = :tid1 AND d.created_at BETWEEN :f1 AND :t1 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid1" : "").") +
                       (SELECT COUNT(*) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = :first_stage_id2) AND c.deleted_at IS NULL AND c.tenant_id = :tid2 AND c.created_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid2" : "").") +
-                      (SELECT COUNT(*) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = :first_stage_id3) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 AND cp.created_at BETWEEN :f3 AND :t3 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid3" : "").")
+                      (SELECT COUNT(*) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = :first_stage_id3) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 AND cp.created_at BETWEEN :f3 AND :t3 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid3" : "").")
                    ) as count,
                    (
                       (SELECT COALESCE(SUM(value),0) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = :first_stage_id4) AND d.deleted_at IS NULL AND d.tenant_id = :tid4 AND d.created_at BETWEEN :f4 AND :t4 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid4" : "").") +
                       (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = :first_stage_id5) AND c.deleted_at IS NULL AND c.tenant_id = :tid5 AND c.created_at BETWEEN :f5 AND :t5 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid5" : "").") +
-                      (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = :first_stage_id6) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 AND cp.created_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid6" : "").")
+                      (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = :first_stage_id6) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 AND cp.created_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid6" : "").")
                    ) as total_value
             FROM pipeline_stages ps 
             WHERE ps.tenant_id = :tid_main
             GROUP BY ps.id ORDER BY ps.order_index
         ");
+
+
 
         $p = [
             'first_stage_id1' => $firstStageId, 'first_stage_id2' => $firstStageId, 'first_stage_id3' => $firstStageId,

@@ -31,7 +31,12 @@ export const DealsPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [activeStageFilter, setActiveStageFilter] = useState<string | number>('all');
   const [stages, setStages] = useState<any[]>([]);
+  const stagesRef = React.useRef<any[]>([]);
+  React.useEffect(() => {
+    stagesRef.current = stages;
+  }, [stages]);
   const [items, setItems] = useState<Record<number, any[]>>({});
+
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -246,7 +251,7 @@ export const DealsPage: React.FC = () => {
       const grouped: Record<number, any[]> = {};
       list.forEach((d: any) => {
         const sid = (!d.stage_id || d.stage_id === '0' || d.stage_id === 0 || d.stage_id === 'unassigned')
-          ? (stages.length > 0 ? stages[0].id : 'unassigned')
+          ? (stagesRef.current.length > 0 ? stagesRef.current[0].id : 'unassigned')
           : d.stage_id;
         if (!grouped[sid as any]) grouped[sid as any] = [];
         grouped[sid as any].push(d);
@@ -281,7 +286,7 @@ export const DealsPage: React.FC = () => {
       const grouped: Record<number, any[]> = {};
       dataItems.forEach((d: any) => {
         const sid = (!d.stage_id || d.stage_id === '0' || d.stage_id === 0) 
-          ? (stages.length > 0 ? stages[0].id : 0) 
+          ? (stagesRef.current.length > 0 ? stagesRef.current[0].id : 0) 
           : d.stage_id;
         if (!grouped[sid]) grouped[sid] = [];
         grouped[sid].push(d);
