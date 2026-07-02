@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   X, FileSpreadsheet, Plus, Trash2, Database, 
-  RefreshCw, AlertCircle, ExternalLink, Edit2
+  RefreshCw, AlertCircle, ExternalLink, Edit2,
+  Link2, Info, Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchAPI } from '../../utils/api';
@@ -366,54 +367,99 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowY: 'auto', padding: '1.5rem' }}>
             {showAddConn ? (
               /* Add New Connection Form */
-              <form onSubmit={handleAddConnection} style={{ maxWidth: 550, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <h3 className="font-bold text-base" style={{ margin: 0 }}>Thêm Kết Nối Google Sheets Mới</h3>
-                <p className="text-sm text-gray-400" style={{ margin: 0, color: 'var(--color-text-muted)' }}>
-                  Hãy đảm bảo bạn đã chia sẻ trang tính Google Sheets dưới dạng <strong>"Bất kỳ ai có đường liên kết đều có thể đọc"</strong> (Anyone with the link can view) để CRM có thể kết nối đồng bộ.
-                </p>
+              <form onSubmit={handleAddConnection} style={{ maxWidth: 550, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                    Thêm Kết Nối Google Sheets Mới
+                    <div style={{ background: 'var(--color-primary)', color: 'white', padding: '2px 6px', borderRadius: 6, fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <FileSpreadsheet size={14} />
+                    </div>
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                    Đồng bộ hóa danh mục sản phẩm và bảng hàng của bạn tự động từ Google Sheets.
+                  </p>
+                </div>
 
+                {/* Hướng dẫn chia sẻ quyền */}
+                <div style={{
+                  background: 'rgba(163, 20, 34, 0.04)',
+                  border: '1px solid rgba(163, 20, 34, 0.15)',
+                  borderRadius: 12,
+                  padding: '1.25rem',
+                  color: 'var(--color-text)',
+                  fontSize: '0.85rem',
+                  lineHeight: 1.6
+                }}>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-primary)', marginBottom: 8 }}>
+                    <Info size={16} /> Hướng dẫn chia sẻ quyền truy cập:
+                  </div>
+                  <ol style={{ paddingLeft: '1.20rem', margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <li>Mở file Google Sheets của bạn, nhấn nút <strong>Chia sẻ (Share)</strong> ở góc phải trên.</li>
+                    <li>Tại mục <strong>Quyền truy cập chung (General access)</strong>, đổi thành <strong>Bất kỳ ai có liên kết (Anyone with the link)</strong>.</li>
+                    <li>Thiết lập vai trò là <strong>Người xem (Viewer)</strong> (Bắt buộc để CRM có thể đọc dữ liệu).</li>
+                  </ol>
+                </div>
+
+                {/* Đường dẫn bảng tính */}
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Tên sheet con (Tab name) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <input
-                    type="text"
-                    className="form-input text-sm"
-                    value={newSheetTab}
-                    onChange={e => setNewSheetTab(e.target.value)}
-                    placeholder="Ví dụ: Sheet1, DanhSachCanHo"
-                    required
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
+                    Đường dẫn hoặc ID Bảng tính (Spreadsheet ID/URL) <span style={{ color: 'var(--color-danger)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: 11, left: 12, color: '#94a3b8' }}><Link2 size={16} /></div>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ paddingLeft: 36, background: 'var(--color-bg)', border: 'none', height: 40 }}
+                      value={newSpreadsheetId}
+                      onChange={e => setNewSpreadsheetId(e.target.value)}
+                      placeholder="Dán link Google Sheet hoặc Spreadsheet ID vào đây..."
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Tên sheet con */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
+                    Tên sheet con (Tab name) <span style={{ color: 'var(--color-danger)' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: 11, left: 12, color: '#94a3b8' }}><FileSpreadsheet size={16} /></div>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ paddingLeft: 36, background: 'var(--color-bg)', border: 'none', height: 40 }}
+                      value={newSheetTab}
+                      onChange={e => setNewSheetTab(e.target.value)}
+                      placeholder="Ví dụ: Sheet1, Bảng hàng..."
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Chu kỳ đồng bộ */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5, marginBottom: 6, display: 'block' }}>
+                    Chu kỳ tự động đồng bộ
+                  </label>
+                  <CustomSelect
+                    options={[
+                      { value: '5', label: 'Mỗi 5 phút' },
+                      { value: '15', label: 'Mỗi 15 phút (Khuyên dùng)' },
+                      { value: '30', label: 'Mỗi 30 phút' },
+                      { value: '60', label: 'Mỗi 60 phút' },
+                    ]}
+                    value={String(syncInterval)}
+                    onChange={v => setSyncInterval(Number(v))}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Đường dẫn hoặc ID Bảng tính (Spreadsheet ID/URL) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <input
-                    type="text"
-                    className="form-input text-sm"
-                    value={newSpreadsheetId}
-                    onChange={e => setNewSpreadsheetId(e.target.value)}
-                    placeholder="Dán link Google Sheet hoặc Spreadsheet ID vào đây..."
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Chu kỳ tự động đồng bộ</label>
-                  <select 
-                    className="form-select text-sm"
-                    value={syncInterval}
-                    onChange={e => setSyncInterval(Number(e.target.value))}
-                    style={{ height: 38 }}
-                  >
-                    <option value={5}>Mỗi 5 phút</option>
-                    <option value={15}>Mỗi 15 phút (Khuyên dùng)</option>
-                    <option value={30}>Mỗi 30 phút</option>
-                    <option value={60}>Mỗi 60 phút</option>
-                  </select>
-                </div>
-
-                <div className="flex gap-3 mt-2">
-                  <button type="button" className="btn outline" onClick={() => setShowAddConn(false)}>Hủy</button>
-                  <button type="submit" className="btn primary" disabled={isSaving}>
+                {/* Action buttons */}
+                <div className="flex gap-3 mt-2" style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button type="button" className="btn outline" onClick={() => setShowAddConn(false)} style={{ padding: '8px 16px', borderRadius: 10 }}>Hủy</button>
+                  <button type="submit" className="btn primary" disabled={isSaving} style={{ padding: '8px 20px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 4px 12px rgba(163, 20, 34, 0.15)' }}>
+                    {isSaving && <RefreshCw size={14} className="spin" />}
                     {isSaving ? 'Đang kết nối...' : 'Tiến hành kết nối'}
                   </button>
                 </div>
