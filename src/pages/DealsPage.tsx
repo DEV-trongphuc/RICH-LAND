@@ -242,13 +242,17 @@ export const DealsPage: React.FC = () => {
       if (filterAssignee) {
         list = list.filter(c => String(c.owner_id) === String(filterAssignee));
       }
-      
+
       const grouped: Record<number, any[]> = {};
       list.forEach((d: any) => {
-        const sid = d.stage_id || (stages.length > 0 ? stages[0].id : 'unassigned');
+        const sid = (!d.stage_id || d.stage_id === '0' || d.stage_id === 0 || d.stage_id === 'unassigned')
+          ? (stages.length > 0 ? stages[0].id : 'unassigned')
+          : d.stage_id;
         if (!grouped[sid as any]) grouped[sid as any] = [];
         grouped[sid as any].push(d);
       });
+      
+
       
       setItems(grouped);
       setTotal(list.length);
@@ -276,10 +280,13 @@ export const DealsPage: React.FC = () => {
       const dataItems = r.data.data?.items || [];
       const grouped: Record<number, any[]> = {};
       dataItems.forEach((d: any) => {
-        const sid = d.stage_id || (stages.length > 0 ? stages[0].id : 0);
+        const sid = (!d.stage_id || d.stage_id === '0' || d.stage_id === 0) 
+          ? (stages.length > 0 ? stages[0].id : 0) 
+          : d.stage_id;
         if (!grouped[sid]) grouped[sid] = [];
         grouped[sid].push(d);
       });
+
       setItems(grouped);
       setTotal(r.data.data?.total || dataItems.length);
     } catch (e: any) {
