@@ -2643,6 +2643,40 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                         {isReleasingLead ? t('Đang nhả...') : t('Nhả Kho')}
                       </button>
                     )}
+
+                    {user?.role === 'sale' && 
+                     (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank') &&
+                     !(selectedLead.takers && selectedLead.takers.some((t: any) => Number(t.id) === Number(user?.consultant_id))) &&
+                     (selectedLead.takers ? selectedLead.takers.length : 0) < 2 && (
+                      <button
+                        onClick={async () => {
+                          await handleClaimLead(selectedLead.person_id || selectedLead.id);
+                          setSelectedLead(null);
+                          fetchLeads();
+                        }}
+                        disabled={isClaimingLeadId !== null}
+                        title={t("Nhận khách hàng này về danh sách chăm sóc của bạn")}
+                        className="detail-action-btn"
+                        style={{
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          border: 'none',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.35)';
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.transform = 'none';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
+                        }}
+                      >
+                        <RefreshCw size={14} className={isClaimingLeadId !== null ? 'animate-spin' : ''} />
+                        {isClaimingLeadId !== null ? t('Đang nhận...') : t('Nhận Data')}
+                      </button>
+                    )}
                   </div>
                 </div>
 

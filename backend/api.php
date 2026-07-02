@@ -1916,7 +1916,8 @@ switch ($action) {
                    c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason, dr.created_at as report_created_at,
                    IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes,
-                   sc.sheet_name as connection_name
+                   sc.sheet_name as connection_name,
+                   c_real.id as contact_id
             FROM distribution_logs dl
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
@@ -1928,6 +1929,7 @@ switch ($action) {
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
+            LEFT JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = dl.assigned_to AND c_real.deleted_at IS NULL
             LEFT JOIN (
                 SELECT dr1.* FROM data_reports dr1
                 INNER JOIN (
@@ -13587,6 +13589,9 @@ switch ($action) {
         }
 
         $saleId = (int) $decodedUser['id'];
+        if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale' && !empty($currentSaleConsultantId)) {
+            $saleId = $currentSaleConsultantId;
+        }
 
         $conn->begin_transaction();
         try {
@@ -13692,6 +13697,7 @@ switch ($action) {
             ");
             $stmtIns->bind_param("iiiissss", $personId, $projectId, $saleId, $createdBy, $firstName, $lastName, $person['email'], $person['phone']);
             $stmtIns->execute();
+            $newContactId = $conn->insert_id;
             $stmtIns->close();
 
             $stmtLead = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
@@ -13709,7 +13715,7 @@ switch ($action) {
                 triggerTwoWaySync($conn, $leadId);
             }
 
-            echo json_encode(['success' => true, 'message' => 'Nhận khách hàng thành công!']);
+            echo json_encode(['success' => true, 'message' => 'Nhận khách hàng thành công!', 'contact_id' => $newContactId]);
         } catch (Exception $ex) {
             $conn->rollback();
             echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $ex->getMessage()]);

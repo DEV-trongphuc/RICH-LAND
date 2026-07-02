@@ -22,12 +22,6 @@ export interface SidebarGroup {
 
 export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
-    title: 'BÀN LÀM VIỆC',
-    items: [
-      { name: 'Bàn làm việc Sale', href: '/sale-portal', icon: Home, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] }
-    ]
-  },
-  {
     title: 'TỔNG QUAN',
     items: [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
@@ -40,10 +34,11 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Khách hàng', href: '/contacts', icon: Users },
       { name: 'Kho Data', href: '/data', icon: Database },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
+      { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] },
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
-      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, adminOnly: true, badgeKey: 'tickets' }
+      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' }
     ]
   },
   {
@@ -256,96 +251,49 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
         {/* Quick Action Button */}
         <div style={{ padding: isCollapsed ? '0.75rem 0.5rem' : '1.25rem 1rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          {((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? (
-            isCollapsed ? (
-              <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('open-ai-infinity-view'));
-                  if (onMobileClose) onMobileClose();
-                }}
-                style={{
-                  width: 38, height: 38, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                title={t("AI Infinity")}
-              >
-                <Cpu size={18} />
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('open-ai-infinity-view'));
-                  if (onMobileClose) onMobileClose();
-                }}
-                className="btn primary"
-                style={{
-                  width: '100%', height: 38, borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
-                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(189, 29, 45, 0.5)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.4)';
-                }}
-              >
-                <Cpu size={16} /> {t("AI Infinity")}
-              </button>
-            )
+          {isCollapsed ? (
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                if (onMobileClose) onMobileClose();
+              }}
+              style={{
+                width: 38, height: 38, borderRadius: '50%',
+                background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
+                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              title={((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
+            >
+              <Plus size={18} />
+            </button>
           ) : (
-            isCollapsed ? (
-              <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
-                  if (onMobileClose) onMobileClose();
-                }}
-                style={{
-                  width: 38, height: 38, borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
-                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                title={t("Thêm Data Nhanh")}
-              >
-                <Plus size={18} />
-              </button>
-            ) : (
-              <button
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
-                  if (onMobileClose) onMobileClose();
-                }}
-                className="btn primary"
-                style={{
-                  width: '100%', height: 38, borderRadius: '10px',
-                  background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
-                  color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  gap: 8, fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.5)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.4)';
-                }}
-              >
-                <Plus size={16} /> {t("Thêm Data Nhanh")}
-              </button>
-            )
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-quick-add-lead'));
+                if (onMobileClose) onMobileClose();
+              }}
+              className="btn primary"
+              style={{
+                width: '100%', height: 38, borderRadius: '10px',
+                background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
+                color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 8, fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(163, 20, 34, 0.5)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.4)';
+              }}
+            >
+              <Plus size={16} /> {((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
+            </button>
           )}
         </div>
 
@@ -407,6 +355,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
                   const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href && location.search === '');
+                  const displayName = href === '/' && user?.role === 'sale' ? t('Bàn làm việc') : t(name);
 
                   return (
                     <NavLink
@@ -414,7 +363,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                       to={href}
                       end={end}
                       className={() => `sidebar-nav-item ${isActive ? 'active' : ''}`}
-                      title={isCollapsed ? t(name) : undefined}
+                      title={isCollapsed ? displayName : undefined}
                       onClick={(e) => {
                         if (location.pathname + location.search === href) {
                           e.preventDefault();
@@ -454,7 +403,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
                           {!isCollapsed && (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
-                              <span>{t(name)}</span>
+                              <span>{displayName}</span>
                               {badgeCount > 0 && (
                                 <span style={{
                                   fontSize: '0.7rem',

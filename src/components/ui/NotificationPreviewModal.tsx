@@ -106,7 +106,7 @@ export const NotificationPreviewModal: React.FC<NotificationPreviewModalProps> =
   
   // App base URL construct
   const appBaseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5173';
-  const portalUrl = `${appBaseUrl}/sale-portal`;
+  const portalUrl = `${appBaseUrl}/`;
   const reportUrl = `${appBaseUrl}/report-data?lead_id=${leadId}&sale_id=${assignedToId || consultant?.id || 0}&round_id=${roundId || round?.id || 0}`;
 
   // Helper to parse leadNote for custom key-value pairs (like mailer.php)

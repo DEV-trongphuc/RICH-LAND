@@ -83,18 +83,13 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper', '/capi', '/attendance'];
-  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits'];
+  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
   // Fallback for unrecognized paths
   if (!allPaths.includes(currentPath)) {
     return <Navigate to="/" replace />;
-  }
-
-  // Admin & Superadmin route protection check
-  if ((user?.role as string) === 'sale' && currentPath === '/') {
-    return <Navigate to="/sale-portal" replace />;
   }
 
   if (currentPath === '/accounts' || currentPath === '/consultants') {
@@ -109,6 +104,10 @@ const AppTabs = () => {
     if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'manager') {
       return <Navigate to="/" replace />;
     }
+  } else if (currentPath === '/tickets') {
+    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
+      return <Navigate to="/" replace />;
+    }
   } else if (isAdminPath) {
     if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin') {
       return <Navigate to="/" replace />;
@@ -121,14 +120,28 @@ const AppTabs = () => {
       <div style={{ display: currentPath === '/' ? 'block' : 'none' }} className={currentPath === '/' ? 'page-enter-active' : ''}>
         {visitedPaths.includes('/') && (
           <Suspense fallback={<PageLoader />}>
-            <Dashboard />
+            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="dashboard" /> : <Dashboard />}
           </Suspense>
         )}
       </div>
-      <div style={{ display: (currentPath === '/data' || currentPath === '/calendar') ? 'block' : 'none' }} className={(currentPath === '/data' || currentPath === '/calendar') ? 'page-enter-active' : ''}>
-        {(visitedPaths.includes('/data') || visitedPaths.includes('/calendar')) && (
+      <div style={{ display: currentPath === '/data' ? 'block' : 'none' }} className={currentPath === '/data' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/data') && (
           <Suspense fallback={<PageLoader />}>
             <DataList />
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/calendar' ? 'block' : 'none' }} className={currentPath === '/calendar' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/calendar') && (
+          <Suspense fallback={<PageLoader />}>
+            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="calendar" /> : <DataList />}
+          </Suspense>
+        )}
+      </div>
+      <div style={{ display: currentPath === '/databank' ? 'block' : 'none' }} className={currentPath === '/databank' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/databank') && (
+          <Suspense fallback={<PageLoader />}>
+            <SalePortal embedMode={true} activeTabProp="databank" />
           </Suspense>
         )}
       </div>
@@ -219,6 +232,14 @@ const AppTabs = () => {
         )}
       </div>
 
+      <div style={{ display: currentPath === '/tickets' ? 'block' : 'none' }} className={currentPath === '/tickets' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/tickets') && (
+          <Suspense fallback={<PageLoader />}>
+            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="tickets" /> : <Tickets />}
+          </Suspense>
+        )}
+      </div>
+
       {/* Admin Pages */}
       {((user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'super_admin') && (
         <>
@@ -233,13 +254,6 @@ const AppTabs = () => {
             {visitedPaths.includes('/rounds') && (
               <Suspense fallback={<PageLoader />}>
                 <Rounds />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/tickets' ? 'block' : 'none' }} className={currentPath === '/tickets' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/tickets') && (
-              <Suspense fallback={<PageLoader />}>
-                <Tickets />
               </Suspense>
             )}
           </div>

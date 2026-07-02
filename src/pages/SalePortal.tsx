@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import {
@@ -31,6 +31,8 @@ import { InvoicesPage } from './InvoicesPage';
 import ProjectsPage from './ProjectsPage';
 import { FilesPage } from './FilesPage';
 import { Consultants } from './Consultants';
+import api from '../api/axios';
+import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import vnFlag from '../assets/vn.svg';
 import usFlag from '../assets/us.svg';
 import jpFlag from '../assets/jp.svg';
@@ -81,8 +83,19 @@ const parseServerDate = (dateStr: string) => {
   return new Date(isoStr);
 };
 
-const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any; location: any }) => {
+interface SalePortalProps {
+  isActive?: boolean;
+  searchParams?: URLSearchParams;
+  setSearchParams?: any;
+  location?: any;
+  activeTabProp?: 'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants';
+  embedMode?: boolean;
+}
+
+const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePortalProps) => {
   const navigate = useNavigate();
+  const routerLocation = useLocation();
+  const loc = location || routerLocation;
   const { user, token, login, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
 
@@ -160,7 +173,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
   // Parse initial search query from email link
   const getInitialSearch = () => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(loc.search);
     return params.get('search') || '';
   };
 
@@ -200,12 +213,11 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     return () => clearInterval(timer);
   }, []);
 
-  // Filters
   const [search, setSearch] = useState(getInitialSearch());
   const [searchInput, setSearchInput] = useState(getInitialSearch());
   const [roundId, setRoundId] = useState('');
   const [saleIdFilter, setSaleIdFilter] = useState(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(loc.search);
     return params.get('sale_id') || '';
   });
   const [dateMode, setDateMode] = useState('7_days'); // all, today, yesterday, custom
@@ -233,13 +245,20 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   const [activeDetailLead, setActiveDetailLead] = useState<any>(null);
   const [timeline, setTimeline] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [profileContact, setProfileContact] = useState<any>(null);
 
   // Tab & Layout states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants'>(activeTabProp || 'dashboard');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [vacationConfirmOpen, setVacationConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeTabProp) {
+      setActiveTab(activeTabProp);
+    }
+  }, [activeTabProp]);
 
   const [publicLeads, setPublicLeads] = useState<any[]>([]);
   const [publicLoading, setPublicLoading] = useState(false);
@@ -643,6 +662,9 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         toast.success(json.message || t('Nhận data thành công!'));
         fetchPublicLeads();
         loadPortalData();
+        if (json.contact_id) {
+          handleOpenContactProfile(Number(json.contact_id));
+        }
       } else {
         toast.error(json.message || t('Nhận data thất bại'));
       }
@@ -764,6 +786,21 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
     };
   }, [checkInModalOpen]);
 
+  const handleOpenContactProfile = async (contactId: number) => {
+    if (!contactId) return;
+    try {
+      const res = await api.get(`/contacts/${contactId}`);
+      if (res.data.success && res.data.data) {
+        setProfileContact(res.data.data);
+      } else {
+        toast.error(t('Không thể lấy chi tiết liên hệ'));
+      }
+    } catch (e: any) {
+      console.error(e);
+      toast.error(t('Lỗi khi tải thông tin khách hàng'));
+    }
+  };
+
   const handleAcceptLead = async (leadId: number) => {
     try {
       const json = await fetchAPI('accept_lead', {
@@ -880,18 +917,18 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   }, [token, user, roundId, dateMode, saleIdFilter, search, startDate, endDate]);
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(loc.search);
     const uId = params.get('sale_id') || '';
     if (uId !== saleIdFilter) {
       setSaleIdFilter(uId);
     }
-  }, [location.search]);
+  }, [loc.search]);
 
   const handleExitImpersonation = () => {
     setSaleIdFilter('');
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(loc.search);
     params.delete('sale_id');
-    navigate(`/sale-portal${params.toString() ? '?' + params.toString() : ''}`);
+    navigate(`/${params.toString() ? '?' + params.toString() : ''}`);
   };
 
   useEffect(() => {
@@ -1133,7 +1170,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
       case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
       case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
-      case 'databank_claim': return <span className="badge success">{t('Kho chung')}</span>;
+      case 'databank_claim': return <span className="badge success">{t('Đã nhận (Kho)')}</span>;
       case 'released_to_kho':
       case 'databank': {
         const cnt = takers && takers.length ? takers.length : 0;
@@ -1599,8 +1636,12 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       onClick={() => {
-                        setActiveDetailLead(lead);
-                        setDetailModalOpen(true);
+                        if (lead.contact_id) {
+                          handleOpenContactProfile(Number(lead.contact_id));
+                        } else {
+                          setActiveDetailLead(lead);
+                          setDetailModalOpen(true);
+                        }
                       }}
                     >
                       <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
@@ -1974,8 +2015,12 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                     <div
                       key={lead.log_id}
                       onClick={() => {
-                        setActiveDetailLead(lead);
-                        setDetailModalOpen(true);
+                        if (lead.contact_id) {
+                          handleOpenContactProfile(Number(lead.contact_id));
+                        } else {
+                          setActiveDetailLead(lead);
+                          setDetailModalOpen(true);
+                        }
                       }}
                       style={{
                         padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem',
@@ -2138,8 +2183,12 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                       <tr
                         key={lead.log_id}
                         onClick={() => {
-                          setActiveDetailLead(lead);
-                          setDetailModalOpen(true);
+                          if (lead.contact_id) {
+                            handleOpenContactProfile(Number(lead.contact_id));
+                          } else {
+                            setActiveDetailLead(lead);
+                            setDetailModalOpen(true);
+                          }
                         }}
                         style={{
                           borderBottom: '1px solid var(--color-border-light)',
@@ -3497,10 +3546,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
   // Active Sale Portal View
   return (
-    <div style={{ height: '100vh', width: '100vw', background: 'var(--color-bg)', display: 'flex', overflow: 'hidden' }}>
+    <div style={embedMode ? { width: '100%' } : { height: '100vh', width: '100vw', background: 'var(--color-bg)', display: 'flex', overflow: 'hidden' }}>
 
       {/* Mobile Sidebar overlay */}
-      {isMobileSidebarOpen && (
+      {!embedMode && isMobileSidebarOpen && (
         <div
           className="responsive-sidebar-overlay"
           onClick={() => setIsMobileSidebarOpen(false)}
@@ -3508,7 +3557,8 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
       )}
 
       {/* Sidebar Navigation */}
-      <aside
+      {!embedMode && (
+        <aside
         className={`responsive-sidebar ${isMobileSidebarOpen ? 'responsive-sidebar-open' : ''}`}
         style={{
           width: isCollapsed ? 72 : 260,
@@ -3667,6 +3717,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                   items: [
                     { name: 'Nhật ký Data', key: 'data', icon: Database },
                     { name: 'Kho Databank', key: 'databank', icon: Layers },
+                    { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
                     { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
                     { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
                     { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending }
@@ -3711,13 +3762,17 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
                       marginBottom: '0.25rem'
                     }}>{t(group.title)}</span>
                   )}
-                  {group.items.map(({ name, key, icon: Icon, badgeCount }) => {
+                  {group.items.map(({ name, key, icon: Icon, badgeCount, route }) => {
                     const isActive = activeTab === key;
                     return (
                       <button
                         key={key}
                         onClick={() => {
-                          setActiveTab(key as any);
+                          if (route) {
+                            navigate(route);
+                          } else {
+                            setActiveTab(key as any);
+                          }
                           setIsMobileSidebarOpen(false);
                         }}
                         data-active={isActive ? "true" : "false"}
@@ -3772,12 +3827,14 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           </div>
         </div>
       </aside>
+      )}
 
       {/* Right Side Content Panel */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <div style={embedMode ? { width: '100%' } : { flex: 1, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
         {/* Top Header Navigation */}
-        <header className="portal-header" style={{
+        {!embedMode && (
+          <header className="portal-header" style={{
           height: 66,
           background: 'var(--color-surface)',
           borderBottom: '1px solid var(--color-border)',
@@ -3848,6 +3905,33 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
           </div>
 
           <div className="portal-header-user" style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+            {/* Switch to CRM Button */}
+            <button 
+              onClick={() => navigate('/contacts')}
+              style={{
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '6px 14px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+                transition: 'all 0.2s',
+                marginRight: '0.5rem',
+                outline: 'none'
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <Users size={14} />
+              {t('Tru cập CRM')}
+            </button>
+
             {/* Quick Vacation Toggle for Sale */}
             {displayUser?.role === 'sale' && (
               <div style={{
@@ -4207,9 +4291,10 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
             </div>
           </div>
         </header>
+        )}
 
         {/* Scrollable View Area */}
-        <main className="no-scrollbar responsive-main portal-main-content" style={{ flex: 1, padding: '2rem 3rem', width: '100%', overflowY: 'auto' }}>
+        <main className={embedMode ? "" : "no-scrollbar responsive-main portal-main-content"} style={embedMode ? { width: '100%' } : { flex: 1, padding: '2rem 3rem', width: '100%', overflowY: 'auto' }}>
           <div style={{ width: '100%' }}>
             {/* Admin Switch Sale View warning/dropdown */}
             {(user?.role === 'admin' || user?.role === 'superadmin') && data.consultants && !saleIdFilter && (
@@ -5181,6 +5266,16 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
 
       <QuickAddLeadModal />
 
+      <CustomerProfileDrawer
+        isOpen={!!profileContact}
+        onClose={() => setProfileContact(null)}
+        contact={profileContact}
+        onUpdate={updated => {
+          setProfileContact(updated);
+          loadPortalData();
+        }}
+      />
+
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
@@ -5190,4 +5285,4 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
   );
 };
 
-export const SalePortal = withRouterFreezer(SalePortalInner, '/sale-portal');
+export const SalePortal = SalePortalInner;

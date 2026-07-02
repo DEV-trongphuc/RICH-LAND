@@ -68,7 +68,9 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
 
         if (!response.ok) {
           if (response.status === 401 && action !== 'login') {
-            if (window.location.pathname === '/sale-portal') {
+            const userStr = localStorage.getItem('richland_user');
+            const userObj = userStr ? JSON.parse(userStr) : null;
+            if (window.location.pathname === '/sale-portal' || userObj?.role === 'sale') {
               localStorage.removeItem('richland_token');
               localStorage.removeItem('richland_user');
               throw new Error(json.message || 'Unauthorized');

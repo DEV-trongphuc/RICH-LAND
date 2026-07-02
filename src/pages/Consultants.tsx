@@ -790,7 +790,7 @@ const ConsultantsInner = () => {
                         <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
                           <button
                             onClick={() => {
-                              navigate(`/sale-portal?sale_id=${u.id}`);
+                              navigate(`/?sale_id=${u.id}`);
                             }}
                             className="btn ghost sm"
                             style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-success)' }}
