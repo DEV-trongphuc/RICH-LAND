@@ -67,7 +67,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
         const json = await response.json();
 
         if (!response.ok) {
-          if ((response.status === 401 || response.status === 403) && action !== 'login') {
+          if (response.status === 401 && action !== 'login') {
             if (window.location.pathname === '/sale-portal') {
               localStorage.removeItem('richland_token');
               localStorage.removeItem('richland_user');
