@@ -35,8 +35,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Kho Data', href: '/data', icon: Database },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] },
+      { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
-      { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale, adminOnly: true },
+      { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
       { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' }
     ]

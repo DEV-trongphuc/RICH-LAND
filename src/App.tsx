@@ -82,8 +82,8 @@ const AppTabs = () => {
   }, [currentPath, visitedPaths]);
 
   // Route protection mapping
-  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/fair-share', '/gatekeeper', '/capi', '/attendance'];
-  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank'];
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi', '/attendance'];
+  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -105,6 +105,10 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/tickets') {
+    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
+      return <Navigate to="/" replace />;
+    }
+  } else if (currentPath === '/fair-share') {
     if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
       return <Navigate to="/" replace />;
     }
@@ -295,7 +299,7 @@ const AppTabs = () => {
           <div style={{ display: currentPath === '/fair-share' ? 'block' : 'none' }} className={currentPath === '/fair-share' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/fair-share') && (
               <Suspense fallback={<PageLoader />}>
-                <FairShareAudit />
+                {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="fair-share" /> : <FairShareAudit />}
               </Suspense>
             )}
           </div>
@@ -601,7 +605,6 @@ export default function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/report-data" element={<ReportData />} />
                 <Route path="/demo" element={<DemoEntry />} />
-                <Route path="/sale-portal" element={<SalePortal />} />
                 
                 {/* All authenticated users (sharing a single persistent AppTabs instance) */}
                 <Route element={<ProtectedRoute />}>
