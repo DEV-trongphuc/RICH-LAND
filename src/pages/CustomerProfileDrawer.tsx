@@ -1607,8 +1607,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
 
-                      <div className="card-panel" style={{ padding: '2.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), var(--color-bg))', border: '1px solid var(--color-border-light)' }}>
-                        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                      <div className="card-panel" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), var(--color-bg))', border: '1px solid var(--color-border-light)' }}>
+                        <div>
                           <label className="form-label" style={{ fontWeight: 700, marginBottom: '1rem', display: 'block', fontSize: '0.9375rem' }}>Gắn thẻ thông minh</label>
                           <TagInput
                             tags={tags}
