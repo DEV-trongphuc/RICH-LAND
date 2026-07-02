@@ -115,6 +115,15 @@ class CloudFileController {
             respond(422, null, 'Tên tệp là bắt buộc', false);
         }
 
+        // Permission check: Only uploader or admin/manager
+        $checkStmt = $this->db->prepare("SELECT uploaded_by FROM cloud_files WHERE id = ? AND tenant_id = ?");
+        $checkStmt->execute([$id, $tid]);
+        $file = $checkStmt->fetch();
+        if (!$file) respond(404, null, 'Không tìm thấy tệp tin', false);
+        if (in_array($auth['role'], ['sales', 'sale'], true) && (int)$file['uploaded_by'] !== (int)$auth['user_id']) {
+            respond(403, null, 'Bạn không có quyền sửa thông tin tệp tin của người khác', false);
+        }
+
         $stmt = $this->db->prepare("
             UPDATE cloud_files 
             SET name = ?, category = ?, visibility = ?, project_id = ?, updated_by = ?

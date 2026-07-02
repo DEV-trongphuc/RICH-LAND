@@ -9,9 +9,9 @@ class TeamController
 
     public function index(array $auth): void
     {
-        // Only managers, admins, superadmins can access team management
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
-            respond(403, null, 'Quyền quản trị là bắt buộc', false);
+        // Only managers, admins, superadmins, and sales can access team list
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'sale', 'sales'], true)) {
+            respond(403, null, 'Quyền truy cập bị từ chối', false);
         }
 
         $stmt = $this->db->prepare("
