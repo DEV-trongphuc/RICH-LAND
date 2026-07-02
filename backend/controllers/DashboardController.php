@@ -277,17 +277,21 @@ class DashboardController {
     public function pipelineFunnel(array $auth): void {
         $tid = $auth['tenant_id'];
         
+        $sFirst = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index LIMIT 1");
+        $sFirst->execute([$tid]);
+        $firstStageId = (int)$sFirst->fetchColumn();
+
         $sql = "
             SELECT ps.id, ps.name, ps.color, ps.order_index, ps.is_won, ps.is_lost,
                    (
-                     (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid1" : "").") +
-                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid2 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid2" : "").") +
-                     (SELECT COUNT(*) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid3" : "").")
+                     (SELECT COUNT(*) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = :first_stage_id1) AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid1" : "").") +
+                     (SELECT COUNT(*) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = :first_stage_id2) AND c.deleted_at IS NULL AND c.tenant_id = :tid2 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid2" : "").") +
+                     (SELECT COUNT(*) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = :first_stage_id3) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid3" : "").")
                    ) as deal_count,
                    (
-                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid4 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid4" : "").") +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid5 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid5" : "").") +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid6" : "").")
+                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = :first_stage_id4) AND d.deleted_at IS NULL AND d.tenant_id = :tid4 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid4" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = :first_stage_id5) AND c.deleted_at IS NULL AND c.tenant_id = :tid5 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid5" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = :first_stage_id6) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid6" : "").")
                    ) as total_value
             FROM pipeline_stages ps
             WHERE ps.tenant_id = :tid_main
@@ -296,6 +300,8 @@ class DashboardController {
         ";
         
         $p = [
+            'first_stage_id1' => $firstStageId, 'first_stage_id2' => $firstStageId, 'first_stage_id3' => $firstStageId,
+            'first_stage_id4' => $firstStageId, 'first_stage_id5' => $firstStageId, 'first_stage_id6' => $firstStageId,
             'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 
             'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid, 
             'tid_main' => $tid
@@ -313,6 +319,8 @@ class DashboardController {
         $stmt->execute($p);
         respond(200, $stmt->fetchAll());
     }
+
+
 
     public function leadSources(array $auth): void {
         $tid  = $auth['tenant_id'];
