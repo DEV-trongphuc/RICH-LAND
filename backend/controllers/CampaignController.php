@@ -34,8 +34,9 @@ class CampaignController {
     }
 
     public function index(array $auth): void {
+        $tenantId = $auth['tenant_id'] ?? 1;
         $stmt = $this->db->prepare("SELECT * FROM marketing_campaigns WHERE tenant_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$auth['tenant_id']]);
+        $stmt->execute([$tenantId]);
         respond(200, $stmt->fetchAll(), 'Lấy danh sách chiến dịch thành công');
     }
 
@@ -50,11 +51,14 @@ class CampaignController {
             respond(422, null, 'Tên chiến dịch không được để trống', false);
         }
 
+        $tenantId = $auth['tenant_id'] ?? 1;
+        $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
+
         $stmt = $this->db->prepare("INSERT INTO marketing_campaigns (tenant_id, name, description, status) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$auth['tenant_id'], $name, $description, $status]);
+        $stmt->execute([$tenantId, $name, $description, $status]);
         $newId = (int)$this->db->lastInsertId();
 
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_CAMPAIGN', 'marketing_campaigns', $newId, "Tạo chiến dịch: $name");
+        logActivity($this->db, $tenantId, $userId, 'CREATE_CAMPAIGN', 'marketing_campaigns', $newId, "Tạo chiến dịch: $name");
         respond(200, ['id' => $newId], 'Tạo chiến dịch thành công');
     }
 
@@ -69,27 +73,33 @@ class CampaignController {
             respond(422, null, 'Tên chiến dịch không được để trống', false);
         }
 
-        $stmt = $this->db->prepare("UPDATE marketing_campaigns SET name = ?, description = ?, status = ? WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$name, $description, $status, $id, $auth['tenant_id']]);
+        $tenantId = $auth['tenant_id'] ?? 1;
+        $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
 
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_CAMPAIGN', 'marketing_campaigns', $id, "Cập nhật chiến dịch: $name");
+        $stmt = $this->db->prepare("UPDATE marketing_campaigns SET name = ?, description = ?, status = ? WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$name, $description, $status, $id, $tenantId]);
+
+        logActivity($this->db, $tenantId, $userId, 'UPDATE_CAMPAIGN', 'marketing_campaigns', $id, "Cập nhật chiến dịch: $name");
         respond(200, null, 'Cập nhật chiến dịch thành công');
     }
 
     public function destroy(array $auth, int $id): void {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
         
+        $tenantId = $auth['tenant_id'] ?? 1;
+        $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
+
         $stmtName = $this->db->prepare("SELECT name FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
-        $stmtName->execute([$id, $auth['tenant_id']]);
+        $stmtName->execute([$id, $tenantId]);
         $name = $stmtName->fetchColumn();
         if (!$name) {
             respond(404, null, 'Chiến dịch không tồn tại', false);
         }
 
         $stmt = $this->db->prepare("DELETE FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
-        $stmt->execute([$id, $auth['tenant_id']]);
+        $stmt->execute([$id, $tenantId]);
 
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE_CAMPAIGN', 'marketing_campaigns', $id, "Xóa chiến dịch: $name");
+        logActivity($this->db, $tenantId, $userId, 'DELETE_CAMPAIGN', 'marketing_campaigns', $id, "Xóa chiến dịch: $name");
         respond(200, null, 'Xóa chiến dịch thành công');
     }
 }

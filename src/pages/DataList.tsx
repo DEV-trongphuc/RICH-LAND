@@ -1406,16 +1406,17 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           <p className="page-subtitle">{t('Xem lịch sử, theo dõi tiến trình và quản lý toàn bộ dữ liệu Khách hàng.')}</p>
         </div>
         <div className="data-list-actions" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '10px',
-            padding: '3px 4px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-            height: '38px'
-          }}>
+          {user?.role !== 'sale' ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              padding: '3px 4px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+              height: '38px'
+            }}>
             {/* View Mode Toggle Buttons */}
             <div className="view-mode-toggle-container" style={{
               display: 'flex',
@@ -1583,6 +1584,40 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               <Filter size={13} style={{ color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)' }} />
             </button>
           </div>
+          ) : (
+            /* For Sale, only show Filter button on mobile */
+            <div className="mobile-only" style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
+              borderRadius: '10px',
+              padding: '3px 4px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+              height: '38px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowMobileFilters(!showMobileFilters)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0 8px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: showMobileFilters ? 'var(--color-primary-light)' : 'transparent',
+                  color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  height: '28px',
+                  width: '32px'
+                }}
+              >
+                <Filter size={13} style={{ color: showMobileFilters ? 'var(--color-primary)' : 'var(--color-text-muted)' }} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1680,23 +1715,25 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               />
             </div>
 
-            <div className="responsive-filter-item">
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả TVV'), icon: <User size={16} /> },
-                  ...consultants.map(c => ({
-                    value: c.name,
-                    label: c.name,
-                    avatar: c.avatar
-                  }))
-                ]}
-                value={consultantFilter}
-                onChange={val => updateParams('consultant', val.toString())}
-                showAvatars={true}
-                searchable={true}
-                width={180}
-              />
-            </div>
+            {user?.role !== 'sale' && (
+              <div className="responsive-filter-item">
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả TVV'), icon: <User size={16} /> },
+                    ...consultants.map(c => ({
+                      value: c.name,
+                      label: c.name,
+                      avatar: c.avatar
+                    }))
+                  ]}
+                  value={consultantFilter}
+                  onChange={val => updateParams('consultant', val.toString())}
+                  showAvatars={true}
+                  searchable={true}
+                  width={180}
+                />
+              </div>
+            )}
           </>
         )}
 
