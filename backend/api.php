@@ -1816,7 +1816,7 @@ switch ($action) {
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
                 WHERE status != 'silent' AND $dateConditionSubQuery
-                GROUP BY lead_id
+                GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
             WHERE $whereClause
@@ -1853,7 +1853,7 @@ switch ($action) {
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
                 WHERE status != 'silent' AND $dateConditionSubQuery
-                GROUP BY lead_id
+                GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
