@@ -336,7 +336,19 @@ if (!in_array($action, $publicActions)) {
         $decodedUser['role'] = 'sale';
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams'])) {
+    $currentSaleConsultantId = 0;
+    if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
+        $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+        $stmtC->bind_param("s", $decodedUser['email']);
+        $stmtC->execute();
+        $cRow = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
+        if ($cRow) {
+            $currentSaleConsultantId = (int)$cRow['id'];
+        }
+    }
+
+    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -522,7 +534,14 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
     $note = trim($leadData['note'] ?? '');
 
     if ($decodedUser['role'] === 'sale') {
-        $override_consultant_id = (int)$decodedUser['consultant_id'];
+        $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+        $stmtC->bind_param("s", $decodedUser['email']);
+        $stmtC->execute();
+        $cRow = $stmtC->get_result()->fetch_assoc();
+        $stmtC->close();
+        if ($cRow) {
+            $override_consultant_id = (int)$cRow['id'];
+        }
         $distribution_mode = 'auto_round';
         if ($source !== 'gioi_thieu') {
             $source = 'ca_nhan';
@@ -1708,8 +1727,9 @@ switch ($action) {
         break;
 
     case 'get_sale_portal_data':
-        $saleId = (int) $decodedUser['id'];
         $isSale = $decodedUser['role'] === 'sale';
+        $saleFilterId = isset($_GET['sale_id']) && $_GET['sale_id'] !== '' ? (int) $_GET['sale_id'] : null;
+        $saleId = $isSale ? $currentSaleConsultantId : ($saleFilterId !== null ? $saleFilterId : (int) $decodedUser['id']);
 
         $search = trim($_GET['search'] ?? '');
         $roundFilter = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int) $_GET['round_id'] : null;
@@ -2076,8 +2096,8 @@ switch ($action) {
         break;
 
     case 'get_sale_lead_timeline':
-        $saleId = (int) $decodedUser['id'];
         $isSale = $decodedUser['role'] === 'sale';
+        $saleId = $isSale ? $currentSaleConsultantId : (int) $decodedUser['id'];
         $leadId = isset($_GET['lead_id']) ? (int) $_GET['lead_id'] : 0;
 
         if (empty($leadId)) {
@@ -3079,7 +3099,7 @@ switch ($action) {
 
             // If logged in as sale, override ID to their own consultant record
             if ($decodedUser['role'] === 'sale') {
-                $id = (int) $decodedUser['id'];
+                $id = $currentSaleConsultantId;
             }
 
             if (!$id) {
@@ -3190,7 +3210,7 @@ switch ($action) {
 
             // If logged in as sale, verify the lead is assigned to them
             if ($decodedUser['role'] === 'sale') {
-                $sale_id = (int) $decodedUser['id'];
+                $sale_id = $currentSaleConsultantId;
                 if ((int)$resChk['assigned_to'] !== $sale_id) {
                     $conn->rollback();
                     echo json_encode(['success' => false, 'message' => 'Bạn không được phép tiếp nhận Lead này']);
@@ -5507,7 +5527,7 @@ switch ($action) {
         
         $consultantId = isset($_GET['consultant_id']) && $_GET['consultant_id'] !== '' ? (int) $_GET['consultant_id'] : 0;
         if ($decodedUser['role'] === 'sale') {
-            $consultantId = (int) $decodedUser['id'];
+            $consultantId = $currentSaleConsultantId;
             if ($consultantId <= 0) {
                 echo json_encode([
                     'success' => true,
@@ -11238,6 +11258,9 @@ switch ($action) {
 
     case 'get_consultant_compensation_details':
         $consultantId = isset($_GET['consultant_id']) ? (int) $_GET['consultant_id'] : 0;
+        if ($decodedUser['role'] === 'sale') {
+            $consultantId = $currentSaleConsultantId;
+        }
         $date = $_GET['date'] ?? 'Tuần này';
         $roundId = isset($_GET['round_id']) && $_GET['round_id'] !== '' ? (int) $_GET['round_id'] : 0;
 

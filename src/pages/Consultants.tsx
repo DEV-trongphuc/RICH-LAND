@@ -620,15 +620,15 @@ const ConsultantsInner = () => {
                   <th>{t('Nhóm (Team)')}</th>
                   <th>{t('Zalo Bot')}</th>
                   <th>{t('Trạng thái')}</th>
-                  <th style={{ textAlign: 'right' }}>{t('Thao tác')}</th>
+                  {!isSale && <th style={{ textAlign: 'right' }}>{t('Thao tác')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={6} />)
+                  [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isSale ? 5 : 6} />)
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={isSale ? 5 : 6}>
                     <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                         <Users size={32} color="var(--color-text-muted)" />
@@ -643,10 +643,10 @@ const ConsultantsInner = () => {
                 return (
                   <tr
                     key={u.id}
-                    className="group table-row-hover"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => openEditModal(u)}
-                    title={t("Nhấp để chỉnh sửa thông tin")}
+                    className={`group ${!isSale ? 'table-row-hover' : ''}`}
+                    style={{ cursor: !isSale ? 'pointer' : 'default' }}
+                    onClick={() => !isSale && openEditModal(u)}
+                    title={!isSale ? t("Nhấp để chỉnh sửa thông tin") : undefined}
                   >
                     <td data-label={t('Tên TVV')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -785,37 +785,39 @@ const ConsultantsInner = () => {
                         )}
                       </div>
                     </td>
-                    <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
-                        <button
-                          onClick={() => {
-                            navigate(`/sale-portal?sale_id=${u.id}`);
-                          }}
-                          className="btn ghost sm"
-                          style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-success)' }}
-                          title={t("Xem giao diện Portal")}
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setStatsConsultant(u);
-                            setStatsDateMode('this_month');
-                            setStatsStartDate('');
-                            setStatsEndDate('');
-                            setStatsModalOpen(true);
-                          }}
-                          className="btn ghost sm"
-                          style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }}
-                          title={t("Thống kê hiệu suất")}
-                        >
-                          <BarChart2 size={14} />
-                        </button>
-                        <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }} title={t("Xóa nhân sự")}>
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
+                    {!isSale && (
+                      <td className="col-actions" data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                        <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
+                          <button
+                            onClick={() => {
+                              navigate(`/sale-portal?sale_id=${u.id}`);
+                            }}
+                            className="btn ghost sm"
+                            style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-success)' }}
+                            title={t("Xem giao diện Portal")}
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setStatsConsultant(u);
+                              setStatsDateMode('this_month');
+                              setStatsStartDate('');
+                              setStatsEndDate('');
+                              setStatsModalOpen(true);
+                            }}
+                            className="btn ghost sm"
+                            style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-primary)' }}
+                            title={t("Thống kê hiệu suất")}
+                          >
+                            <BarChart2 size={14} />
+                          </button>
+                          <button onClick={() => { setDeleteId(u.id); setConfirmDeleteOpen(true); }} className="btn ghost sm" style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-danger)' }} title={t("Xóa nhân sự")}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
