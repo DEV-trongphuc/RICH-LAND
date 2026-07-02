@@ -8448,9 +8448,67 @@ switch ($action) {
             $stmt->bind_param("ss", $k, $v);
             $stmt->execute();
         }
+        $stmt->close();
+
+        // Synchronize pipeline_stages table with pipeline_status_hierarchy settings
+        $resH = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
+        $rowH = $resH->fetch_assoc();
+        $hierarchyJson = $rowH['setting_value'] ?? null;
+        
+        $resL = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_labels'");
+        $rowL = $resL->fetch_assoc();
+        $labelsJson = $rowL['setting_value'] ?? null;
+
+        if ($hierarchyJson && $labelsJson) {
+            $hierarchy = json_decode($hierarchyJson, true);
+            $labels = json_decode($labelsJson, true);
+            if (is_array($hierarchy) && is_array($labels)) {
+                $tenantId = (int)($decodedUser['tenant_id'] ?? 1);
+                
+                // Get existing stages for this tenant
+                $resS = $conn->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId ORDER BY order_index");
+                $existingStages = [];
+                while ($rowS = $resS->fetch_assoc()) {
+                    $existingStages[] = $rowS;
+                }
+                
+                $keepIds = [];
+                $colors = ['#3b82f6', '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#14b8a6', '#10b981'];
+                
+                foreach ($hierarchy as $idx => $slug) {
+                    $name = $labels[$slug] ?? $slug;
+                    $color = $colors[$idx % count($colors)];
+                    $isWon = ($slug === 'dong_deal') ? 1 : 0;
+                    $isLost = ($slug === 'that_bai' || $slug === 'lost') ? 1 : 0;
+                    
+                    if (isset($existingStages[$idx])) {
+                        $stageId = (int)$existingStages[$idx]['id'];
+                        $stmtUp = $conn->prepare("UPDATE pipeline_stages SET name = ?, color = ?, order_index = ?, is_won = ?, is_lost = ? WHERE id = ?");
+                        $stmtUp->bind_param("ssiiii", $name, $color, $idx, $isWon, $isLost, $stageId);
+                        $stmtUp->execute();
+                        $stmtUp->close();
+                        $keepIds[] = $stageId;
+                    } else {
+                        $stmtIns = $conn->prepare("INSERT INTO pipeline_stages (tenant_id, name, color, order_index, is_won, is_lost) VALUES (?, ?, ?, ?, ?, ?)");
+                        $stmtIns->bind_param("issiii", $tenantId, $name, $color, $idx, $isWon, $isLost);
+                        $stmtIns->execute();
+                        $keepIds[] = (int)$stmtIns->insert_id;
+                        $stmtIns->close();
+                    }
+                }
+                
+                if (!empty($keepIds)) {
+                    $inClause = implode(',', $keepIds);
+                    $conn->query("DELETE FROM pipeline_stages WHERE tenant_id = $tenantId AND id NOT IN ($inClause)");
+                }
+            }
+        }
+
         logAdminAction($conn, $decodedUser['id'], 'SAVE_SETTINGS', ['keys' => array_keys($input)]);
         echo json_encode(['success' => true]);
         break;
+
+
 
     case 'test_master_sync':
         try {
