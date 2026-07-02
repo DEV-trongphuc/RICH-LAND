@@ -249,7 +249,7 @@ class DepositController {
                 $nextTemp = $tempDecayMap[$currTemp] ?? 'neutral';
 
                 // Revert status to Booking or Da Gap
-                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = 'booking', temperature = ?, status = 'lead' WHERE id = ?");
+                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = 'booking', temperature = ?, status = 'lead', security_expires_at = DATE_ADD(NOW(), INTERVAL 3 MONTH) WHERE id = ?");
                 $stmtRev->execute([$nextTemp, $contactId]);
             } else {
                 // If paid, keep in Dat Coc but mark deposit cancelled (Bể cọc, tiền thu hoặc chuyển đợt)

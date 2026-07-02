@@ -1407,7 +1407,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       {/* ── Page Header ── */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(163, 20, 34, 0.3)' }}>
               <Shield size={24} />
             </span>

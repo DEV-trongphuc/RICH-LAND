@@ -809,7 +809,7 @@ const IntegrationsInner = () => {
         {/* LEFT PANEL: Sheet connections list */}
         <div className={`responsive-filter-item ${mobileActiveView === 'detail' ? 'hide-on-mobile' : ''}`} style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div>
-            <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.025em', marginBottom: 4 }}>{t('Tích hợp Data')}</h1>
+            <h1 className="page-title" style={{ letterSpacing: '-0.025em', marginBottom: 4 }}>{t('Tích hợp Data')}</h1>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Quản lý các nguồn đổ Data')}</p>
           </div>
 
@@ -817,7 +817,7 @@ const IntegrationsInner = () => {
             <button onClick={() => setShowAddConn(true)} className="btn outline" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
               <FileSpreadsheet size={16} /> {t('Thêm kết nối Sheets')}
             </button>
-            <button onClick={() => setShowAddApi(true)} className="btn primary" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10, background: 'var(--color-primary)' }}>
+            <button onClick={() => setShowAddApi(true)} className="btn primary" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
               <Zap size={16} /> {t('Thêm API Landing Page')}
             </button>
           </div>

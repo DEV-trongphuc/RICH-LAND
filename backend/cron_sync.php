@@ -1705,7 +1705,272 @@ foreach ($connections as $connItem) {
     }
 }
 
+function releaseExpiredLeadsToKho($conn) {
+    logSync("Running releaseExpiredLeadsToKho...");
+    $sql = "SELECT DISTINCT c.person_id 
+            FROM contacts c 
+            JOIN persons p ON c.person_id = p.id 
+            WHERE c.security_expires_at <= NOW() 
+              AND c.security_expires_at IS NOT NULL 
+              AND p.is_public = 0 
+              AND c.deleted_at IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM contacts active_c 
+                  WHERE active_c.person_id = c.person_id 
+                    AND active_c.deleted_at IS NULL
+                    AND (active_c.security_expires_at > NOW() OR active_c.security_expires_at IS NULL)
+              )";
+    $res = $conn->query($sql);
+    if ($res) {
+        while ($row = $res->fetch_assoc()) {
+            $personId = (int)$row['person_id'];
+            
+            $conn->begin_transaction();
+            try {
+                $stmt = $conn->prepare("SELECT id, public_count FROM persons WHERE id = ? FOR UPDATE");
+                $stmt->bind_param("i", $personId);
+                $stmt->execute();
+                $person = $stmt->get_result()->fetch_assoc();
+                $stmt->close();
+                
+                if ($person) {
+                    $publicCount = (int)($person['public_count'] ?? 0);
+                    if ($publicCount === 0) {
+                        $newPublicCount = 1;
+                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW(), public_count = ? WHERE id = ?");
+                        $upd->bind_param("ii", $newPublicCount, $personId);
+                        $upd->execute();
+                        $upd->close();
+                    } else {
+                        $upd = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+                        $upd->bind_param("i", $personId);
+                        $upd->execute();
+                        $upd->close();
+                    }
+                    
+                    $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+                    $stmtL->bind_param("i", $personId);
+                    $stmtL->execute();
+                    $lRow = $stmtL->get_result()->fetch_assoc();
+                    $stmtL->close();
+                    $leadId = $lRow ? $lRow['id'] : 0;
+                    
+                    logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Hết hạn bảo mật, tự động đưa ra Kho chung', false);
+                    logSync("Released Person ID $personId to Kho chung.");
+                }
+                $conn->commit();
+            } catch (Exception $e) {
+                $conn->rollback();
+                logSync("Error releasing Person ID $personId: " . $e->getMessage());
+            }
+        }
+    }
+}
+
+function assignParallelLeads($conn) {
+    logSync("Running assignParallelLeads...");
+    $sql = "SELECT c.id as contact_id, c.person_id, c.owner_id, c.project_id, c.email, c.phone, c.first_name, c.last_name, c.source,
+                   (SELECT round_id FROM distribution_logs WHERE lead_id = c.id AND status = 'assigned' ORDER BY id DESC LIMIT 1) as original_round_id
+            FROM contacts c
+            JOIN persons p ON c.person_id = p.id
+            WHERE c.pipeline_status = 'chua_xac_dinh'
+              AND (c.parallel_assigned IS NULL OR c.parallel_assigned = 0)
+              AND c.security_expires_at <= NOW()
+              AND c.security_expires_at IS NOT NULL
+              AND c.owner_id IS NOT NULL
+              AND c.deleted_at IS NULL";
+              
+    $res = $conn->query($sql);
+    if (!$res) return;
+    
+    while ($row = $res->fetch_assoc()) {
+        $contactId = (int)$row['contact_id'];
+        $personId = (int)$row['person_id'];
+        $ownerId = (int)$row['owner_id'];
+        $projectId = $row['project_id'] ? (int)$row['project_id'] : null;
+        $roundId = $row['original_round_id'] ? (int)$row['original_round_id'] : null;
+        
+        if (!$roundId) {
+            $leadData = [
+                'phone' => $row['phone'],
+                'email' => $row['email'],
+                'name' => trim($row['first_name'] . ' ' . $row['last_name']),
+                'source' => $row['source'],
+                'type' => '',
+                'note' => ''
+            ];
+            $ruleResult = evaluateRules($conn, $leadData, $row['source'], '', null, 'manual');
+            if (is_array($ruleResult)) {
+                $roundId = $ruleResult['target_round_id'];
+            } else {
+                $roundId = $ruleResult;
+            }
+        }
+        
+        if (!$roundId) {
+            $fbRoundRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_round_id'");
+            if ($fbRoundRes && $fbRow = $fbRoundRes->fetch_assoc()) {
+                $roundId = (int)$fbRow['setting_value'];
+            }
+        }
+        
+        if (!$roundId) {
+            logSync("No round found for parallel assignment of contact $contactId. Skipping.");
+            continue;
+        }
+        
+        $conn->begin_transaction();
+        try {
+            $stmt = $conn->prepare("SELECT last_assigned_consultant_id FROM distribution_rounds WHERE id = ? FOR UPDATE");
+            $stmt->bind_param("i", $roundId);
+            $stmt->execute();
+            $roundRes = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            
+            if (!$roundRes) {
+                $conn->rollback();
+                continue;
+            }
+            
+            $cStmt = $conn->prepare("
+                SELECT c.id, rc.receive_ratio, rc.skip_count
+                FROM round_consultants rc
+                JOIN consultants c ON rc.consultant_id = c.id
+                WHERE rc.round_id = ?
+                  AND rc.is_active = 1
+                  AND c.status = 'active'
+                  AND c.vacation_mode = 0
+                  AND (c.leave_start IS NULL OR CURDATE() < c.leave_start OR (c.leave_end IS NOT NULL AND c.leave_end < CURDATE()))
+                  AND c.id != ?
+                ORDER BY c.id ASC
+            ");
+            $cStmt->bind_param("ii", $roundId, $ownerId);
+            $cStmt->execute();
+            $cRes = $cStmt->get_result();
+            $consultants = [];
+            while ($cRow = $cRes->fetch_assoc()) {
+                $consultants[] = $cRow;
+            }
+            $cStmt->close();
+            
+            if (empty($consultants)) {
+                logSync("No other active consultants in round $roundId to assign parallelly. Skipping.");
+                $conn->rollback();
+                continue;
+            }
+            
+            $lastAssignedId = $roundRes['last_assigned_consultant_id'];
+            $nextIdx = 0;
+            if ($lastAssignedId) {
+                foreach ($consultants as $i => $c) {
+                    if ($c['id'] > $lastAssignedId) {
+                        $nextIdx = $i;
+                        break;
+                    }
+                }
+            }
+            
+            $candidate = $consultants[$nextIdx];
+            $secondSaleId = (int)$candidate['id'];
+            
+            $upd1 = $conn->prepare("UPDATE contacts SET parallel_assigned = 1 WHERE id = ?");
+            $upd1->bind_param("i", $contactId);
+            $upd1->execute();
+            $upd1->close();
+            
+            $stmtIns = $conn->prepare("
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, DATE_ADD(NOW(), INTERVAL 3 HOUR))
+            ");
+            $createdBy = 1;
+            $stmtIns->bind_param("iiiisssss", $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source']);
+            $stmtIns->execute();
+            $secondContactId = $stmtIns->insert_id;
+            $stmtIns->close();
+            
+            $updRound = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
+            $updRound->bind_param("ii", $secondSaleId, $roundId);
+            $updRound->execute();
+            $updRound->close();
+            
+            logDistribution($conn, $secondContactId, $secondSaleId, $roundId, 'assigned', 'Gán song song tự động (Chưa Xác Định > 3 giờ)', false);
+            
+            $conn->commit();
+            logSync("Parallel assigned Person ID $personId (Contact ID $contactId) to Sale ID $secondSaleId.");
+            
+            $detailStmt = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+            $detailStmt->bind_param("i", $secondSaleId);
+            $detailStmt->execute();
+            $cDetail = $detailStmt->get_result()->fetch_assoc();
+            $detailStmt->close();
+            
+            if ($cDetail) {
+                $rNameRes = $conn->query("SELECT round_name FROM distribution_rounds WHERE id = $roundId");
+                $rNameRow = $rNameRes ? $rNameRes->fetch_assoc() : null;
+                $roundName = $rNameRow ? $rNameRow['round_name'] : 'Vòng xoay';
+                
+                $fullName = trim($row['first_name'] . ' ' . $row['last_name']) ?: 'Khách hàng ẩn danh';
+                try {
+                    sendLeadAssignedEmailToSale(
+                        $cDetail['email'],
+                        $cDetail['name'],
+                        $fullName,
+                        $row['phone'],
+                        'Gán song song tự động do lead Chưa Xác Định quá 3 giờ',
+                        $row['source'],
+                        '',
+                        $roundName,
+                        $secondContactId,
+                        $secondSaleId,
+                        $roundId
+                    );
+                } catch (Exception $mailEx) {
+                    logSync("Error sending parallel assigned email: " . $mailEx->getMessage());
+                }
+                
+                try {
+                    sendLeadAssignedZaloMessageToSale(
+                        $secondSaleId,
+                        $cDetail['name'],
+                        $fullName,
+                        $row['phone'],
+                        'Gán song song tự động do lead Chưa Xác Định quá 3 giờ',
+                        $row['source'],
+                        $roundName,
+                        $secondContactId,
+                        $roundId,
+                        $row['email'],
+                        ''
+                    );
+                } catch (Exception $zaloEx) {
+                    logSync("Error sending parallel assigned Zalo: " . $zaloEx->getMessage());
+                }
+            }
+            
+            triggerTwoWaySync($conn, $secondContactId);
+            
+        } catch (Exception $e) {
+            $conn->rollback();
+            logSync("Error parallel assigning contact $contactId: " . $e->getMessage());
+        }
+    }
+}
+
 logSync("Cronjob finished.");
+
+// --- Chạy giải phóng lead hết hạn bảo mật ra Kho chung ---
+try {
+    releaseExpiredLeadsToKho($conn);
+} catch (Exception $e) {
+    logSync("Error running releaseExpiredLeadsToKho: " . $e->getMessage());
+}
+
+// --- Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---
+try {
+    assignParallelLeads($conn);
+} catch (Exception $e) {
+    logSync("Error running assignParallelLeads: " . $e->getMessage());
+}
 
 // --- Chạy Báo cáo Ngày nếu đã đến giờ ---
 require_once __DIR__ . '/cron_daily_report.php';

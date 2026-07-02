@@ -470,6 +470,707 @@ function logAdminAction($conn, $accountId, $action, $details = [])
     }
 }
 
+function maskPhone($phone) {
+    if (empty($phone)) return '';
+    $phone = trim($phone);
+    if (strlen($phone) <= 6) return '***';
+    return substr($phone, 0, 3) . str_repeat('*', strlen($phone) - 6) . substr($phone, -3);
+}
+
+function maskEmail($email) {
+    if (empty($email)) return '';
+    $email = trim($email);
+    $parts = explode('@', $email);
+    if (count($parts) < 2) return '***';
+    $name = $parts[0];
+    $domain = $parts[1];
+    if (strlen($name) <= 3) {
+        $maskedName = str_repeat('*', strlen($name));
+    } else {
+        $maskedName = substr($name, 0, 2) . str_repeat('*', strlen($name) - 3) . substr($name, -1);
+    }
+    return $maskedName . '@' . $domain;
+}
+
+function processManualLead($conn, $leadData, $override_round_id, $override_consultant_id, $compensate_skipped, $skipped_consultant_id, $distribution_mode, $decodedUser) {
+    require_once __DIR__ . '/webhook_logic.php';
+
+    $phone = normalizePhone($leadData['phone'] ?? '');
+    $email = trim($leadData['email'] ?? '');
+    $name = trim($leadData['name'] ?? '');
+    $source = trim($leadData['source'] ?? '');
+    $type = trim($leadData['type'] ?? '');
+    $note = trim($leadData['note'] ?? '');
+
+    if (empty($phone) && empty($email)) {
+        return ['success' => false, 'message' => 'Vui lòng nhập SĐT hoặc Email'];
+    }
+
+    if ($distribution_mode === 'direct_databank') {
+        // Direct to Databank
+        $conn->begin_transaction();
+        try {
+            // Check if duplicate in leads to update last interaction
+            $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+            if ($crmCheckResult['leadExists']) {
+                $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
+            } else {
+                $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+            }
+
+            // Ensure Person exists and is set to public (databank)
+            $stmtPerson = $conn->prepare("
+                INSERT INTO persons (phone, email, full_name, is_public, released_to_kho_at, public_count) 
+                VALUES (?, ?, ?, 1, NOW(), 1) 
+                ON DUPLICATE KEY UPDATE 
+                    email = IF(email IS NULL OR email = '', VALUES(email), email),
+                    full_name = IF(full_name IS NULL OR full_name = '', VALUES(full_name), full_name),
+                    is_public = 1,
+                    released_to_kho_at = NOW(),
+                    public_count = public_count + 1
+            ");
+            $stmtPerson->bind_param("sss", $phone, $email, $name);
+            $stmtPerson->execute();
+            $stmtPerson->close();
+
+            logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Thêm thủ công thẳng vào Kho chung (Databank)', false);
+            $conn->commit();
+
+            // Post-commit: trigger live write-back
+            if (!empty($leadId)) {
+                triggerTwoWaySync($conn, $leadId);
+            }
+
+            return ['success' => true, 'message' => 'Data đã được thêm thẳng vào Databank (Kho chung).'];
+        } catch (Exception $e) {
+            $conn->rollback();
+            return ['success' => false, 'message' => 'Lỗi: ' . $e->getMessage()];
+        }
+    }
+
+    // Default 'auto_round' mode
+    $assignedRoundId = $override_round_id;
+    $inject = [];
+    $isFallback = false;
+    $isFallbackAdmin = false;
+    $fallbackAdminData = null;
+    $fallbackCcEmails = '';
+
+    if (!$assignedRoundId) {
+        $ruleResult = evaluateRules($conn, $leadData, $source, $type, null, 'manual');
+        if (is_array($ruleResult)) {
+            $assignedRoundId = $ruleResult['target_round_id'];
+            $inject = $ruleResult['inject'] ?? [];
+        } else {
+            $assignedRoundId = $ruleResult;
+        }
+
+        if ($assignedRoundId) {
+            $chkRound = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+            if ($chkRound) {
+                $chkRound->bind_param("i", $assignedRoundId);
+                $chkRound->execute();
+                $chkRes = $chkRound->get_result()->fetch_assoc();
+                $chkRound->close();
+                if (!$chkRes || (int) $chkRes['is_active'] !== 1) {
+                    $assignedRoundId = null;
+                }
+            }
+        }
+    }
+
+    if (!$assignedRoundId) {
+        $fbSettings = [];
+        $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
+        if ($fbRes) {
+            while ($row = $fbRes->fetch_assoc()) {
+                $fbSettings[$row['setting_key']] = $row['setting_value'];
+            }
+        }
+
+        $fbType = $fbSettings['fallback_type'] ?? 'round';
+        $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+
+        if ($fbType === 'admin') {
+            $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
+            if ($fbAdminId > 0) {
+                $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
+                $admStmt->bind_param("i", $fbAdminId);
+                $admStmt->execute();
+                $admRes = $admStmt->get_result();
+                if ($admRes->num_rows > 0) {
+                    $fallbackAdminData = $admRes->fetch_assoc();
+                    $isFallbackAdmin = true;
+                    $fallbackCcEmails = $fbCc;
+                }
+                $admStmt->close();
+            }
+        } else {
+            $fbRoundId = (int) ($fbSettings['fallback_round_id'] ?? 0);
+            if ($fbRoundId > 0) {
+                $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
+                if ($chkFb) {
+                    $chkFb->bind_param("i", $fbRoundId);
+                    $chkFb->execute();
+                    $chkFbRes = $chkFb->get_result()->fetch_assoc();
+                    $chkFb->close();
+                    if ($chkFbRes && (int) $chkFbRes['is_active'] === 1) {
+                        $assignedRoundId = $fbRoundId;
+                        $isFallback = true;
+                    }
+                }
+            }
+        }
+    }
+
+    // If rule matched and there are inject fields, apply them!
+    if (!empty($inject)) {
+        $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
+        foreach ($inject as $k => $v) {
+            if (in_array($k, $standardFields)) {
+                if ($k === 'source')
+                    $source = $v;
+                if ($k === 'type')
+                    $type = $v;
+                if ($k === 'note')
+                    $note = $v;
+                if ($k === 'name')
+                    $name = $v;
+                if ($k === 'phone')
+                    $phone = normalizePhone($v);
+                if ($k === 'email')
+                    $email = trim($v);
+            } else {
+                $note .= "\n[$k]: $v";
+            }
+        }
+    }
+
+    $skippedCompensationNotify = null;
+    $lockAcquired = false;
+    $lockKey = '';
+    if (!empty($phone)) {
+        $lockKey = 'webhook_lead_phone_' . $phone;
+    } else if (!empty($email)) {
+        $lockKey = 'webhook_lead_email_' . md5($email);
+    } else {
+        $lockKey = 'webhook_lead_empty_' . md5(json_encode($leadData));
+    }
+
+    // Get lock using prepared statement with 5s timeout
+    $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 5) as get_lock");
+    if ($lockStmt) {
+        $lockStmt->bind_param("s", $lockKey);
+        $lockStmt->execute();
+        $lockRes = $lockStmt->get_result()->fetch_assoc();
+        $lockStmt->close();
+        if ($lockRes && $lockRes['get_lock'] == 1) {
+            $lockAcquired = true;
+        }
+    }
+
+    if (!$lockAcquired) {
+        return ['success' => false, 'message' => 'Hệ thống đang bận xử lý dữ liệu này. Vui lòng thử lại sau.'];
+    }
+
+    $inTransaction = false;
+    try {
+        // Check CRM duplicate (both phone & email)
+        $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
+        $dupCheckMonths = (int) get_system_setting($conn, 'duplicate_check_months');
+        if ($dupCheckMonths <= 0) {
+            $dupCheckMonths = 6;
+        }
+
+        if (!$override_consultant_id && $crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
+            $assignedTo = $crmCheckResult['assignedTo'];
+            $conn->begin_transaction();
+            $inTransaction = true;
+
+            // Update last interaction
+            $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, null, null, $name);
+            logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (Nhập thủ công).', false);
+            $conn->commit();
+            $inTransaction = false;
+
+            // Post-commit: trigger live write-back
+            if (!empty($leadId)) {
+                triggerTwoWaySync($conn, $leadId);
+            }
+
+            $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
+            $stmtC->bind_param("i", $assignedTo);
+            $stmtC->execute();
+            $cRow = $stmtC->get_result()->fetch_assoc();
+            $stmtC->close();
+
+            if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
+                try {
+                    require_once __DIR__ . '/mailer.php';
+                    require_once __DIR__ . '/zalo_bot.php';
+
+                    $timeline = getLeadHistoryTimeline($conn, $leadId, true);
+                    try {
+                        sendLeadReminderEmailToSale(
+                            $cRow['email'],
+                            $cRow['name'],
+                            $name,
+                            $phone,
+                            $note,
+                            $source,
+                            '',
+                            '',
+                            $timeline,
+                            $leadId
+                        );
+                    } catch (Exception $eEx) {
+                        error_log("Error sending duplicate lead reminder email: " . $eEx->getMessage());
+                    }
+
+                    try {
+                        sendLeadReminderZaloMessageToSale(
+                            $assignedTo,
+                            $cRow['name'],
+                            $name,
+                            $phone,
+                            $note,
+                            $source,
+                            '',
+                            $timeline,
+                            $leadId,
+                            $email,
+                            $type
+                        );
+                    } catch (Exception $zEx) {
+                        error_log("Error sending duplicate lead reminder Zalo: " . $zEx->getMessage());
+                    }
+                } catch (Exception $notifyEx) {
+                    error_log("Error preparing reminder notifications: " . $notifyEx->getMessage());
+                }
+            }
+
+            return ['success' => true, 'message' => 'Trùng khách cũ trong vòng ' . $dupCheckMonths . ' tháng. Đã gán lại cho Sale cũ: ' . ($cRow ? $cRow['name'] : 'Không rõ')];
+        } else if (!$assignedRoundId && !$isFallbackAdmin) {
+            // Cannot assign
+            $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+            return ['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.'];
+        } else {
+            // Check if we need to run AI Screener
+            $aiScreenerResult = null;
+            if (!$override_consultant_id) {
+                $screenerData = [
+                    'phone' => $phone,
+                    'email' => $email,
+                    'name' => $name,
+                    'source' => $source,
+                    'type' => $type,
+                    'note' => $note
+                ];
+                $aiScreenerResult = evaluateScreener($conn, $assignedRoundId, $screenerData);
+            }
+
+            $isSubstandardAutoApprove = false;
+            if ($aiScreenerResult && $aiScreenerResult['status'] === 'failed') {
+                $bsFallbackEnabled = (int) ($aiScreenerResult['below_standard_fallback_enabled'] ?? 0);
+                $bsAutoApprove = (int) ($aiScreenerResult['below_standard_auto_approve'] ?? 0);
+                $bsFallbackRoundId = (int) ($aiScreenerResult['below_standard_fallback_round_id'] ?? 0);
+
+                if ($bsFallbackEnabled === 1 && $bsAutoApprove === 1 && $bsFallbackRoundId > 0) {
+                    $assignedRoundId = $bsFallbackRoundId;
+                    $isSubstandardAutoApprove = true;
+                }
+            }
+
+            if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
+                $conn->begin_transaction();
+                $inTransaction = true;
+                if ($crmCheckResult['leadExists']) {
+                    $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
+                } else {
+                    $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                }
+
+                $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = ?, ai_evaluation = ?, assigned_to = NULL WHERE id = ?");
+                $updHeld->bind_param("issi", $assignedRoundId, $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                $updHeld->execute();
+                $updHeld->close();
+
+                $logMsgStr = $aiScreenerResult['status'] === 'error' ? "Lỗi kết nối AI (Nhập thủ công): " . $aiScreenerResult['reason'] : "Tạm giữ bởi AI (Nhập thủ công): " . $aiScreenerResult['reason'];
+                logDistribution($conn, $leadId, null, $assignedRoundId, 'pending_approval', $logMsgStr, false);
+                $conn->commit();
+                $inTransaction = false;
+
+                if (!empty($leadId)) {
+                    triggerTwoWaySync($conn, $leadId);
+                }
+
+                $roundName = 'Không rõ';
+                if ($assignedRoundId) {
+                    $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                    $stmtR->bind_param("i", $assignedRoundId);
+                    $stmtR->execute();
+                    $roundName = $stmtR->get_result()->fetch_assoc()['round_name'] ?? 'Không rõ';
+                    $stmtR->close();
+                }
+                try {
+                    sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiScreenerResult['reason'], $roundName, $email, $source, $type, $note);
+                } catch (Exception $notifyEx) {
+                    error_log("Error during manual insert AI screener notifications: " . $notifyEx->getMessage());
+                }
+
+                return [
+                    'success' => true,
+                    'status' => 'pending_approval',
+                    'message' => 'Dữ liệu bị tạm giữ bởi AI (Nhập thủ công): ' . $aiScreenerResult['reason']
+                ];
+            } else {
+                $conn->begin_transaction();
+                $inTransaction = true;
+
+                $consultantId = $override_consultant_id;
+                $isComp = false;
+                $isStarvation = false;
+
+                if (!$consultantId && $assignedRoundId) {
+                    // Compute it naturally INSIDE transaction block for row-level locking consistency
+                    $assignResult = getNextConsultantInRound($conn, $assignedRoundId);
+                    if ($assignResult) {
+                        $consultantId = $assignResult['id'];
+                        $isComp = $assignResult['is_compensation'];
+                        $isStarvation = isset($assignResult['is_starvation']) ? true : false;
+                    }
+                }
+
+                if ($override_consultant_id && $assignedRoundId) {
+                    // If overridden, check if we need to compensate the skipped consultant
+                    if ($compensate_skipped && $skipped_consultant_id) {
+                        $stmtComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
+                        $stmtComp->bind_param("ii", $assignedRoundId, $skipped_consultant_id);
+                        $stmtComp->execute();
+                        $stmtComp->close();
+
+                        // Fetch skipped consultant name & email
+                        $skippedCName = '';
+                        $skippedCEmail = '';
+                        $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                        $stmtC->bind_param("i", $skipped_consultant_id);
+                        $stmtC->execute();
+                        $resC = $stmtC->get_result()->fetch_assoc();
+                        if ($resC) {
+                            $skippedCName = $resC['name'];
+                            $skippedCEmail = $resC['email'];
+                        }
+                        $stmtC->close();
+
+                        // Fetch round name
+                        $roundName = 'Không rõ';
+                        $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                        $stmtR->bind_param("i", $assignedRoundId);
+                        $stmtR->execute();
+                        $resR = $stmtR->get_result()->fetch_assoc();
+                        if ($resR) {
+                            $roundName = $resR['round_name'];
+                        }
+                        $stmtR->close();
+
+                        // Write to active_compensation_logs
+                        $reason = "Bù 1 lượt do Admin chỉ định đè lead (Nhập thủ công)";
+                        $stmtCompLog = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason) VALUES (?, ?, ?, 1, ?)");
+                        $adminIdInt = (int) ($decodedUser['id'] ?? 1);
+                        $stmtCompLog->bind_param("iiis", $assignedRoundId, $skipped_consultant_id, $adminIdInt, $reason);
+                        $stmtCompLog->execute();
+                        $stmtCompLog->close();
+
+                        // Log admin action
+                        logAdminAction($conn, $decodedUser['id'] ?? 1, 'MANUAL_COMPENSATE_SKIPPED_SALE', [
+                            'round_id' => $assignedRoundId,
+                            'round_name' => $roundName,
+                            'consultant_id' => $skipped_consultant_id,
+                            'consultant_name' => $skippedCName,
+                            'reason' => $reason
+                        ]);
+
+                        // Setup notification queue data
+                        $skippedCompensationNotify = [
+                            'consultant_id' => $skipped_consultant_id,
+                            'email' => $skippedCEmail,
+                            'name' => $skippedCName,
+                            'round_name' => $roundName,
+                            'delta' => 1,
+                            'admin_name' => $decodedUser['name'] ?? 'Admin',
+                            'reason' => $reason,
+                            'time' => date('H:i:s d/m/Y')
+                        ];
+                    }
+                }
+
+                if ($isFallbackAdmin && $fallbackAdminData) {
+                    if ($crmCheckResult['leadExists']) {
+                        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
+                    } else {
+                        $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                    }
+                    if ($aiScreenerResult) {
+                        $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
+                        $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                        $updAi->execute();
+                        $updAi->close();
+                    }
+
+                    logDistribution($conn, $leadId, null, null, 'fallback', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'], false);
+
+                    $conn->commit();
+                    $inTransaction = false;
+
+                    // Post-commit: trigger live write-back
+                    if (!empty($leadId)) {
+                        triggerTwoWaySync($conn, $leadId);
+                    }
+
+                    try {
+                        require_once __DIR__ . '/mailer.php';
+                        require_once __DIR__ . '/zalo_bot.php';
+
+                        $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
+                        try {
+                            sendLeadAssignedEmailToSale(
+                                $fallbackAdminData['email'],
+                                $fallbackAdminData['name'],
+                                $fName,
+                                $phone ?: '',
+                                $note ?: '',
+                                $source ?: '',
+                                $fallbackCcEmails,
+                                'Fallback Admin',
+                                $leadId,
+                                0,
+                                0
+                            );
+                        } catch (Exception $eEx) {
+                            error_log("Error sending fallback admin email: " . $eEx->getMessage());
+                        }
+
+                        if (!empty($fallbackAdminData['zalo_chat_id'])) {
+                            try {
+                                sendLeadAssignedZaloMessageToAdmin(
+                                    $fallbackAdminData['zalo_chat_id'],
+                                    $fallbackAdminData['name'],
+                                    $fName,
+                                    $phone ?: '',
+                                    $note ?: '',
+                                    $source ?: '',
+                                    $leadId,
+                                    $email,
+                                    $type
+                                    );
+                            } catch (Exception $zEx) {
+                                error_log("Error sending fallback admin Zalo: " . $zEx->getMessage());
+                            }
+                        }
+                    } catch (Exception $notifyEx) {
+                        error_log("Error preparing fallback notifications: " . $notifyEx->getMessage());
+                    }
+
+                    return ['success' => true, 'message' => 'Data đã được chuyển thẳng cho Admin Fallback thành công.'];
+
+                } else if ($consultantId) {
+                    $status = $isComp ? 'compensation' : 'assigned';
+                    $logMsg = $isComp
+                        ? ($isStarvation ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.')
+                        : 'Được phân bổ tự động qua vòng xoay.';
+
+                    // Check working hours
+                    $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
+                    $whStmt->bind_param("i", $consultantId);
+                    $whStmt->execute();
+                    $whRes = $whStmt->get_result();
+                    $isOutsideWorkHours = false;
+                    $whStart = '00:00';
+                    $whEnd = '23:59';
+                    if ($whRes && $whRow = $whRes->fetch_assoc()) {
+                        $whStart = $whRow['work_start_time'] ?? '00:00';
+                        $whEnd = $whRow['work_end_time'] ?? '23:59';
+                        $workSchedule = $whRow['work_schedule'] ?? null;
+                        $currentTime = date('H:i');
+                        if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
+                            $status = 'pending_work_hours';
+                            $isOutsideWorkHours = true;
+                        }
+                    }
+                    $whStmt->close();
+
+                    if ($crmCheckResult['leadExists']) {
+                        $leadId = updateLead($conn, $phone, $email, $consultantId, $source, $type, $note, null, null, $name);
+                    } else {
+                        $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
+                    }
+                    if ($aiScreenerResult) {
+                        $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
+                        $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                        $updAi->execute();
+                        $updAi->close();
+                    }
+
+                    $stmtRound = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
+                    $stmtRound->bind_param("i", $assignedRoundId);
+                    $stmtRound->execute();
+                    $roundName = $stmtRound->get_result()->fetch_assoc()['round_name'] ?? 'Không rõ';
+                    $stmtRound->close();
+
+                    logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $logMsg, false);
+
+                    $conn->commit();
+                    $inTransaction = false;
+
+                    // Post-commit: trigger live write-back
+                    if (!empty($leadId)) {
+                        triggerTwoWaySync($conn, $leadId);
+                    }
+
+                    // Fire skipped compensation notifications outside transaction
+                    if ($skippedCompensationNotify) {
+                        try {
+                            require_once __DIR__ . '/mailer.php';
+                            require_once __DIR__ . '/zalo_bot.php';
+
+                            if (!empty($skippedCompensationNotify['email'])) {
+                                try {
+                                    sendCompensationAddedEmailToSale(
+                                        $skippedCompensationNotify['email'],
+                                        $skippedCompensationNotify['name'],
+                                        $skippedCompensationNotify['round_name'],
+                                        $skippedCompensationNotify['delta'],
+                                        $skippedCompensationNotify['admin_name'],
+                                        $skippedCompensationNotify['reason'],
+                                        $skippedCompensationNotify['time']
+                                    );
+                                } catch (Exception $mailEx) {
+                                    error_log("Error sending manual insert skip compensation email: " . $mailEx->getMessage());
+                                }
+                            }
+                            try {
+                                sendCompensationAddedZaloMessageToSale(
+                                    $skippedCompensationNotify['consultant_id'],
+                                    $skippedCompensationNotify['name'],
+                                    $skippedCompensationNotify['round_name'],
+                                    $skippedCompensationNotify['delta'],
+                                    $skippedCompensationNotify['admin_name'],
+                                    $skippedCompensationNotify['reason'],
+                                    $skippedCompensationNotify['time']
+                                );
+                            } catch (Exception $zaloEx) {
+                                error_log("Error sending manual insert skip compensation Zalo: " . $zaloEx->getMessage());
+                            }
+                        } catch (Exception $notifyEx) {
+                            error_log("Error preparing skipped compensation notifications: " . $notifyEx->getMessage());
+                        }
+                    }
+
+                    // Fire notification using Mailer and Zalo ONLY if within working hours
+                    if (!$isOutsideWorkHours) {
+                        try {
+                            require_once __DIR__ . '/mailer.php';
+                            require_once __DIR__ . '/zalo_bot.php';
+
+                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
+                            $stmtC->bind_param("i", $consultantId);
+                            $stmtC->execute();
+                            $cRes = $stmtC->get_result();
+                            if ($cRes->num_rows > 0) {
+                                $c = $cRes->fetch_assoc();
+                                $ccEmails = '';
+                                $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
+                                $stmtQ->bind_param("i", $assignedRoundId);
+                                $stmtQ->execute();
+                                $qRound = $stmtQ->get_result();
+                                if ($qRound && $qRound->num_rows > 0) {
+                                    $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
+                                }
+                                $stmtQ->close();
+
+                                $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
+
+                                try {
+                                    sendLeadAssignedEmailToSale(
+                                        $c['email'],
+                                        $c['name'],
+                                        $fName,
+                                        $phone ?: '',
+                                        $note ?: '',
+                                        $source ?: '',
+                                        $ccEmails,
+                                        $roundName,
+                                        $leadId,
+                                        $consultantId,
+                                        $assignedRoundId
+                                    );
+                                } catch (Exception $eEx) {
+                                    error_log("Error sending manual insert assignment email: " . $eEx->getMessage());
+                                }
+
+                                try {
+                                    sendLeadAssignedZaloMessageToSale(
+                                        $consultantId,
+                                        $c['name'],
+                                        $fName,
+                                        $phone ?: '',
+                                        $note ?: '',
+                                        $source ?: '',
+                                        $roundName,
+                                        $leadId,
+                                        $assignedRoundId,
+                                        $email,
+                                        $type
+                                    );
+                                } catch (Exception $zEx) {
+                                    error_log("Error sending manual insert assignment Zalo: " . $zEx->getMessage());
+                                }
+                            }
+                            $stmtC->close();
+                        } catch (Exception $notifyEx) {
+                            error_log("Error preparing manual assignment notifications: " . $notifyEx->getMessage());
+                        }
+                    }
+
+                    return ['success' => true, 'message' => $isOutsideWorkHours ? 'Data đã gán cho Sale ngoài giờ làm việc (Hoãn thông báo).' : 'Data đã được giao thành công.'];
+                } else {
+                    if ($crmCheckResult['leadExists']) {
+                        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
+                    } else {
+                        $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
+                    }
+                    if ($aiScreenerResult) {
+                        $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
+                        $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
+                        $updAi->execute();
+                        $updAi->close();
+                    }
+                    $status = (isset($isFallback) && $isFallback) ? 'fallback' : 'pending';
+                    $logMsg = (isset($isFallback) && $isFallback) ? 'No active consultants in fallback round.' : 'No active consultants in this round.';
+                    logDistribution($conn, $leadId, null, $assignedRoundId ? $assignedRoundId : null, $status, $logMsg, false);
+                    $conn->commit();
+                    $inTransaction = false;
+                    return ['success' => true, 'message' => 'Data được lưu nhưng không có TVV nào nhận.'];
+                }
+            }
+        }
+    } catch (Exception $e) {
+        if ($inTransaction) {
+            $conn->rollback();
+        }
+        return ['success' => false, 'message' => $e->getMessage()];
+    } finally {
+        if ($lockAcquired) {
+            $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
+            if ($relStmt) {
+                $relStmt->bind_param("s", $lockKey);
+                $relStmt->execute();
+                $relStmt->close();
+            }
+        }
+    }
+}
+
 if (!function_exists('getTicketNotifyAdmins')) {
     function getTicketNotifyAdmins($conn)
     {
@@ -12511,640 +13212,228 @@ switch ($action) {
         $override_consultant_id = $input['override_consultant_id'] ?? null;
         $compensate_skipped = filter_var($input['compensate_skipped'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $skipped_consultant_id = $input['skipped_consultant_id'] ?? null;
+        $distribution_mode = $input['distribution_mode'] ?? 'auto_round';
 
-        $phone = normalizePhone($data['phone'] ?? '');
-        $email = trim($data['email'] ?? '');
-        $name = trim($data['name'] ?? '');
-        $source = trim($data['source'] ?? '');
-        $type = trim($data['type'] ?? '');
-        $note = trim($data['note'] ?? '');
-
-        if (empty($phone) && empty($email)) {
-            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập SĐT hoặc Email']);
-            break;
-        }
-
-        $assignedRoundId = $override_round_id;
-        $inject = [];
-        $isFallback = false;
-        $isFallbackAdmin = false;
-        $fallbackAdminData = null;
-        $fallbackCcEmails = '';
-
-        if (!$assignedRoundId) {
-            $ruleResult = evaluateRules($conn, $data, $source, $type, null, 'manual');
-            if (is_array($ruleResult)) {
-                $assignedRoundId = $ruleResult['target_round_id'];
-                $inject = $ruleResult['inject'] ?? [];
-            } else {
-                $assignedRoundId = $ruleResult;
-            }
-
-            if ($assignedRoundId) {
-                $chkRound = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
-                if ($chkRound) {
-                    $chkRound->bind_param("i", $assignedRoundId);
-                    $chkRound->execute();
-                    $chkRes = $chkRound->get_result()->fetch_assoc();
-                    $chkRound->close();
-                    if (!$chkRes || (int) $chkRes['is_active'] !== 1) {
-                        $assignedRoundId = null;
-                    }
-                }
-            }
-        }
-
-        if (!$assignedRoundId) {
-            $fbSettings = [];
-            $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
-            if ($fbRes) {
-                while ($row = $fbRes->fetch_assoc()) {
-                    $fbSettings[$row['setting_key']] = $row['setting_value'];
-                }
-            }
-
-            $fbType = $fbSettings['fallback_type'] ?? 'round';
-            $fbCc = $fbSettings['fallback_cc_email'] ?? '';
-
-            if ($fbType === 'admin') {
-                $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
-                if ($fbAdminId > 0) {
-                    $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
-                    $admStmt->bind_param("i", $fbAdminId);
-                    $admStmt->execute();
-                    $admRes = $admStmt->get_result();
-                    if ($admRes->num_rows > 0) {
-                        $fallbackAdminData = $admRes->fetch_assoc();
-                        $isFallbackAdmin = true;
-                        $fallbackCcEmails = $fbCc;
-                    }
-                    $admStmt->close();
-                }
-            } else {
-                $fbRoundId = (int) ($fbSettings['fallback_round_id'] ?? 0);
-                if ($fbRoundId > 0) {
-                    $chkFb = $conn->prepare("SELECT is_active FROM distribution_rounds WHERE id = ?");
-                    if ($chkFb) {
-                        $chkFb->bind_param("i", $fbRoundId);
-                        $chkFb->execute();
-                        $chkFbRes = $chkFb->get_result()->fetch_assoc();
-                        $chkFb->close();
-                        if ($chkFbRes && (int) $chkFbRes['is_active'] === 1) {
-                            $assignedRoundId = $fbRoundId;
-                            $isFallback = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        // If rule matched and there are inject fields, apply them!
-        if (!empty($inject)) {
-            $standardFields = ['source', 'type', 'note', 'name', 'phone', 'email'];
-            foreach ($inject as $k => $v) {
-                if (in_array($k, $standardFields)) {
-                    if ($k === 'source')
-                        $source = $v;
-                    if ($k === 'type')
-                        $type = $v;
-                    if ($k === 'note')
-                        $note = $v;
-                    if ($k === 'name')
-                        $name = $v;
-                    if ($k === 'phone')
-                        $phone = normalizePhone($v);
-                    if ($k === 'email')
-                        $email = trim($v);
+        // Check if bulk insert
+        if (isset($data[0]) && is_array($data[0])) {
+            // Bulk insert
+            $successCount = 0;
+            $failedCount = 0;
+            $messages = [];
+            foreach ($data as $leadData) {
+                $res = processManualLead(
+                    $conn,
+                    $leadData,
+                    $override_round_id,
+                    $override_consultant_id,
+                    $compensate_skipped,
+                    $skipped_consultant_id,
+                    $distribution_mode,
+                    $decodedUser
+                );
+                if ($res['success']) {
+                    $successCount++;
                 } else {
-                    $note .= "\n[$k]: $v";
+                    $failedCount++;
+                    $messages[] = ($leadData['phone'] ?? $leadData['email'] ?? 'Không rõ SĐT/Email') . ': ' . $res['message'];
                 }
             }
-        }
-
-        $skippedCompensationNotify = null;
-        $lockAcquired = false;
-        $lockKey = '';
-        if (!empty($phone)) {
-            $lockKey = 'webhook_lead_phone_' . $phone;
-        } else if (!empty($email)) {
-            $lockKey = 'webhook_lead_email_' . md5($email);
+            echo json_encode([
+                'success' => true,
+                'message' => "Đã xử lý xong: Thành công $successCount, Thất bại $failedCount." . (empty($messages) ? '' : "\nChi tiết lỗi:\n" . implode("\n", $messages))
+            ]);
         } else {
-            $lockKey = 'webhook_lead_empty_' . md5(json_encode($data));
+            // Single insert
+            $res = processManualLead(
+                $conn,
+                $data,
+                $override_round_id,
+                $override_consultant_id,
+                $compensate_skipped,
+                $skipped_consultant_id,
+                $distribution_mode,
+                $decodedUser
+            );
+            echo json_encode($res);
         }
+        break;
 
-        // Get lock using prepared statement with 5s timeout
-        $lockStmt = $conn->prepare("SELECT GET_LOCK(?, 5) as get_lock");
-        if ($lockStmt) {
-            $lockStmt->bind_param("s", $lockKey);
-            $lockStmt->execute();
-            $lockRes = $lockStmt->get_result()->fetch_assoc();
-            $lockStmt->close();
-            if ($lockRes && $lockRes['get_lock'] == 1) {
-                $lockAcquired = true;
-            }
+    case 'claim_public_lead':
+        if (!$decodedUser) {
+            respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
         }
+        
+        $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
+        $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
+        $limitMonth = (int) get_system_setting($conn, 'databank_limit_per_month');
+        if ($limitDay <= 0) $limitDay = 2;
+        if ($limitHour <= 0) $limitHour = 3;
+        if ($limitMonth <= 0) $limitMonth = 300;
 
-        if (!$lockAcquired) {
-            echo json_encode(['success' => false, 'message' => 'Hệ thống đang bận xử lý dữ liệu này. Vui lòng thử lại sau.']);
+        $input = json_decode(file_get_contents('php://input'), true);
+        $personId = (int) ($input['person_id'] ?? 0);
+        
+        if ($personId <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID khách hàng không hợp lệ']);
             break;
         }
 
-        $inTransaction = false;
+        $saleId = (int) $decodedUser['id'];
+
+        $conn->begin_transaction();
         try {
-            // Check CRM duplicate (both phone & email)
-            $crmCheckResult = checkCRMInteraction($conn, $phone, $email);
-            $dupCheckMonths = (int) get_system_setting($conn, 'duplicate_check_months');
-            if ($dupCheckMonths <= 0) {
-                $dupCheckMonths = 6;
-            }
+            // 1. Check if Person is indeed public
+            $stmtP = $conn->prepare("SELECT id, phone, email, full_name, is_public FROM persons WHERE id = ? FOR UPDATE");
+            $stmtP->bind_param("i", $personId);
+            $stmtP->execute();
+            $person = $stmtP->get_result()->fetch_assoc();
+            $stmtP->close();
 
-            if (!$override_consultant_id && $crmCheckResult['isDuplicate'] && $crmCheckResult['monthsSinceLastInteraction'] < $dupCheckMonths && !empty($crmCheckResult['assignedTo'])) {
-                $assignedTo = $crmCheckResult['assignedTo'];
-                $conn->begin_transaction();
-                $inTransaction = true;
-
-                // Update last interaction
-                $leadId = updateLead($conn, $phone, $email, $assignedTo, $source, $type, $note, null, null, $name);
-                logDistribution($conn, $leadId, $assignedTo, null, 'reminder', 'Khách cũ đăng ký lại < ' . $dupCheckMonths . ' tháng (Nhập thủ công).', false);
-                $conn->commit();
-                $inTransaction = false;
-
-                // Post-commit: trigger live write-back
-                if (!empty($leadId)) {
-                    triggerTwoWaySync($conn, $leadId);
-                }
-
-                $stmtC = $conn->prepare("SELECT name, email, status FROM consultants WHERE id = ?");
-                $stmtC->bind_param("i", $assignedTo);
-                $stmtC->execute();
-                $cRow = $stmtC->get_result()->fetch_assoc();
-                $stmtC->close();
-
-                if ($cRow && ($cRow['status'] === 'active' || $cRow['status'] === 'leave')) {
-                    try {
-                        require_once __DIR__ . '/mailer.php';
-                        require_once __DIR__ . '/zalo_bot.php';
-
-                        $timeline = getLeadHistoryTimeline($conn, $leadId, true);
-                        try {
-                            sendLeadReminderEmailToSale(
-                                $cRow['email'],
-                                $cRow['name'],
-                                $name,
-                                $phone,
-                                $note,
-                                $source,
-                                '',
-                                '',
-                                $timeline,
-                                $leadId
-                            );
-                        } catch (Exception $eEx) {
-                            error_log("Error sending duplicate lead reminder email: " . $eEx->getMessage());
-                        }
-
-                        try {
-                            sendLeadReminderZaloMessageToSale(
-                                $assignedTo,
-                                $cRow['name'],
-                                $name,
-                                $phone,
-                                $note,
-                                $source,
-                                '',
-                                $timeline,
-                                $leadId,
-                                $email,
-                                $type
-                            );
-                        } catch (Exception $zEx) {
-                            error_log("Error sending duplicate lead reminder Zalo: " . $zEx->getMessage());
-                        }
-                    } catch (Exception $notifyEx) {
-                        error_log("Error preparing reminder notifications: " . $notifyEx->getMessage());
-                    }
-                }
-
-                echo json_encode(['success' => true, 'message' => 'Trùng khách cũ trong vòng ' . $dupCheckMonths . ' tháng. Đã gán lại cho Sale cũ: ' . ($cRow ? $cRow['name'] : 'Không rõ')]);
-            } else if (!$assignedRoundId && !$isFallbackAdmin) {
-                // Cannot assign
-                $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
-                echo json_encode(['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.']);
-            } else {
-                // Check if we need to run AI Screener
-                $aiScreenerResult = null;
-                if (!$override_consultant_id) {
-                    $screenerData = [
-                        'phone' => $phone,
-                        'email' => $email,
-                        'name' => $name,
-                        'source' => $source,
-                        'type' => $type,
-                        'note' => $note
-                    ];
-                    $aiScreenerResult = evaluateScreener($conn, $assignedRoundId, $screenerData);
-                }
-
-                $isSubstandardAutoApprove = false;
-                if ($aiScreenerResult && $aiScreenerResult['status'] === 'failed') {
-                    $bsFallbackEnabled = (int) ($aiScreenerResult['below_standard_fallback_enabled'] ?? 0);
-                    $bsAutoApprove = (int) ($aiScreenerResult['below_standard_auto_approve'] ?? 0);
-                    $bsFallbackRoundId = (int) ($aiScreenerResult['below_standard_fallback_round_id'] ?? 0);
-
-                    if ($bsFallbackEnabled === 1 && $bsAutoApprove === 1 && $bsFallbackRoundId > 0) {
-                        $assignedRoundId = $bsFallbackRoundId;
-                        $isSubstandardAutoApprove = true;
-                    }
-                }
-
-                if ($aiScreenerResult && ($aiScreenerResult['status'] === 'failed' || $aiScreenerResult['status'] === 'error') && !$isSubstandardAutoApprove) {
-                    $conn->begin_transaction();
-                    $inTransaction = true;
-                    if ($crmCheckResult['leadExists']) {
-                        $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
-                    } else {
-                        $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
-                    }
-
-                    $updHeld = $conn->prepare("UPDATE leads SET status = 'pending_approval', target_round_id = ?, ai_screener_status = ?, ai_evaluation = ?, assigned_to = NULL WHERE id = ?");
-                    $updHeld->bind_param("issi", $assignedRoundId, $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
-                    $updHeld->execute();
-                    $updHeld->close();
-
-                    $logMsg = $aiScreenerResult['status'] === 'error' ? "Lỗi kết nối AI (Nhập thủ công): " . $aiScreenerResult['reason'] : "Tạm giữ bởi AI (Nhập thủ công): " . $aiScreenerResult['reason'];
-                    logDistribution($conn, $leadId, null, $assignedRoundId, 'pending_approval', $logMsg, false);
-                    $conn->commit();
-                    $inTransaction = false;
-
-                    if (!empty($leadId)) {
-                        triggerTwoWaySync($conn, $leadId);
-                    }
-
-                    $roundName = 'Không rõ';
-                    if ($assignedRoundId) {
-                        $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
-                        $stmtR->bind_param("i", $assignedRoundId);
-                        $stmtR->execute();
-                        $roundName = $stmtR->get_result()->fetch_assoc()['round_name'] ?? 'Không rõ';
-                        $stmtR->close();
-                    }
-                    try {
-                        sendHeldLeadNotifications($conn, $leadId, $name, $phone, $aiScreenerResult['reason'], $roundName, $email, $source, $type, $note);
-                    } catch (Exception $notifyEx) {
-                        error_log("Error during manual insert AI screener notifications: " . $notifyEx->getMessage());
-                    }
-
-                    echo json_encode([
-                        'success' => true,
-                        'status' => 'pending_approval',
-                        'message' => 'Dữ liệu bị tạm giữ bởi AI (Nhập thủ công): ' . $aiScreenerResult['reason']
-                    ]);
-                } else {
-                    $conn->begin_transaction();
-                    $inTransaction = true;
-
-                    $consultantId = $override_consultant_id;
-                    $isComp = false;
-                    $isStarvation = false;
-
-                    if (!$consultantId && $assignedRoundId) {
-                        // Compute it naturally INSIDE transaction block for row-level locking consistency
-                        $assignResult = getNextConsultantInRound($conn, $assignedRoundId);
-                        if ($assignResult) {
-                            $consultantId = $assignResult['id'];
-                            $isComp = $assignResult['is_compensation'];
-                            $isStarvation = isset($assignResult['is_starvation']) ? true : false;
-                        }
-                    }
-
-                    if ($override_consultant_id && $assignedRoundId) {
-                        // If overridden, check if we need to compensate the skipped consultant
-                        if ($compensate_skipped && $skipped_consultant_id) {
-                            $stmtComp = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
-                            $stmtComp->bind_param("ii", $assignedRoundId, $skipped_consultant_id);
-                            $stmtComp->execute();
-                            $stmtComp->close();
-
-                            // Fetch skipped consultant name & email
-                            $skippedCName = '';
-                            $skippedCEmail = '';
-                            $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                            $stmtC->bind_param("i", $skipped_consultant_id);
-                            $stmtC->execute();
-                            $resC = $stmtC->get_result()->fetch_assoc();
-                            if ($resC) {
-                                $skippedCName = $resC['name'];
-                                $skippedCEmail = $resC['email'];
-                            }
-                            $stmtC->close();
-
-                            // Fetch round name
-                            $roundName = 'Không rõ';
-                            $stmtR = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
-                            $stmtR->bind_param("i", $assignedRoundId);
-                            $stmtR->execute();
-                            $resR = $stmtR->get_result()->fetch_assoc();
-                            if ($resR) {
-                                $roundName = $resR['round_name'];
-                            }
-                            $stmtR->close();
-
-                            // Write to active_compensation_logs
-                            $reason = "Bù 1 lượt do Admin chỉ định đè lead (Nhập thủ công)";
-                            $stmtCompLog = $conn->prepare("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason) VALUES (?, ?, ?, 1, ?)");
-                            $adminIdInt = (int) $decodedUser['id'];
-                            $stmtCompLog->bind_param("iiis", $assignedRoundId, $skipped_consultant_id, $adminIdInt, $reason);
-                            $stmtCompLog->execute();
-                            $stmtCompLog->close();
-
-                            // Log admin action
-                            logAdminAction($conn, $decodedUser['id'], 'MANUAL_COMPENSATE_SKIPPED_SALE', [
-                                'round_id' => $assignedRoundId,
-                                'round_name' => $roundName,
-                                'consultant_id' => $skipped_consultant_id,
-                                'consultant_name' => $skippedCName,
-                                'reason' => $reason
-                            ]);
-
-                            // Setup notification queue data
-                            $skippedCompensationNotify = [
-                                'consultant_id' => $skipped_consultant_id,
-                                'email' => $skippedCEmail,
-                                'name' => $skippedCName,
-                                'round_name' => $roundName,
-                                'delta' => 1,
-                                'admin_name' => $decodedUser['name'] ?? 'Admin',
-                                'reason' => $reason,
-                                'time' => date('H:i:s d/m/Y')
-                            ];
-                        }
-                    }
-
-                    if ($isFallbackAdmin && $fallbackAdminData) {
-                        if ($crmCheckResult['leadExists']) {
-                            $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
-                        } else {
-                            $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
-                        }
-                        if ($aiScreenerResult) {
-                            $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
-                            $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
-                            $updAi->execute();
-                            $updAi->close();
-                        }
-
-                        logDistribution($conn, $leadId, null, null, 'fallback', 'No matching rule. Routed directly to fallback Admin: ' . $fallbackAdminData['name'], false);
-
-                        $conn->commit();
-                        $inTransaction = false;
-
-                        // Post-commit: trigger live write-back
-                        if (!empty($leadId)) {
-                            triggerTwoWaySync($conn, $leadId);
-                        }
-
-                        try {
-                            require_once __DIR__ . '/mailer.php';
-                            require_once __DIR__ . '/zalo_bot.php';
-
-                            $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
-                            try {
-                                sendLeadAssignedEmailToSale(
-                                    $fallbackAdminData['email'],
-                                    $fallbackAdminData['name'],
-                                    $fName,
-                                    $phone ?: '',
-                                    $note ?: '',
-                                    $source ?: '',
-                                    $fallbackCcEmails,
-                                    'Fallback Admin',
-                                    $leadId,
-                                    0,
-                                    0
-                                );
-                            } catch (Exception $eEx) {
-                                error_log("Error sending fallback admin email: " . $eEx->getMessage());
-                            }
-
-                            if (!empty($fallbackAdminData['zalo_chat_id'])) {
-                                try {
-                                    sendLeadAssignedZaloMessageToAdmin(
-                                        $fallbackAdminData['zalo_chat_id'],
-                                        $fallbackAdminData['name'],
-                                        $fName,
-                                        $phone ?: '',
-                                        $note ?: '',
-                                        $source ?: '',
-                                        $leadId,
-                                        $email,
-                                        $type
-                                    );
-                                } catch (Exception $zEx) {
-                                    error_log("Error sending fallback admin Zalo: " . $zEx->getMessage());
-                                }
-                            }
-                        } catch (Exception $notifyEx) {
-                            error_log("Error preparing fallback notifications: " . $notifyEx->getMessage());
-                        }
-
-                        echo json_encode(['success' => true, 'message' => 'Data đã được chuyển thẳng cho Admin Fallback thành công.']);
-
-                    } else if ($consultantId) {
-                        $status = $isComp ? 'compensation' : 'assigned';
-                        $logMsg = $isComp
-                            ? ($isStarvation ? 'Được phân bổ bù lượt ngoài giờ/nghỉ phép (Starvation Prevention).' : 'Được phân bổ đền bù lượt lỗi.')
-                            : 'Được phân bổ tự động qua vòng xoay.';
-
-                        // Check working hours
-                        $whStmt = $conn->prepare("SELECT work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
-                        $whStmt->bind_param("i", $consultantId);
-                        $whStmt->execute();
-                        $whRes = $whStmt->get_result();
-                        $isOutsideWorkHours = false;
-                        $whStart = '00:00';
-                        $whEnd = '23:59';
-                        if ($whRes && $whRow = $whRes->fetch_assoc()) {
-                            $whStart = $whRow['work_start_time'] ?? '00:00';
-                            $whEnd = $whRow['work_end_time'] ?? '23:59';
-                            $workSchedule = $whRow['work_schedule'] ?? null;
-                            $currentTime = date('H:i');
-                            if (!isConsultantInWorkHours($currentTime, $whStart, $whEnd, $workSchedule)) {
-                                $status = 'pending_work_hours';
-                                $isOutsideWorkHours = true;
-                            }
-                        }
-                        $whStmt->close();
-
-                        if ($crmCheckResult['leadExists']) {
-                            $leadId = updateLead($conn, $phone, $email, $consultantId, $source, $type, $note, null, null, $name);
-                        } else {
-                            $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
-                        }
-                        if ($aiScreenerResult) {
-                            $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
-                            $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
-                            $updAi->execute();
-                            $updAi->close();
-                        }
-
-                        $stmtRound = $conn->prepare("SELECT round_name FROM distribution_rounds WHERE id = ?");
-                        $stmtRound->bind_param("i", $assignedRoundId);
-                        $stmtRound->execute();
-                        $roundName = $stmtRound->get_result()->fetch_assoc()['round_name'] ?? 'Không rõ';
-                        $stmtRound->close();
-
-                        logDistribution($conn, $leadId, $consultantId, $assignedRoundId, $status, $logMsg, false);
-
-                        $conn->commit();
-                        $inTransaction = false;
-
-                        // Post-commit: trigger live write-back
-                        if (!empty($leadId)) {
-                            triggerTwoWaySync($conn, $leadId);
-                        }
-
-                        // Fire skipped compensation notifications outside transaction
-                        if ($skippedCompensationNotify) {
-                            try {
-                                require_once __DIR__ . '/mailer.php';
-                                require_once __DIR__ . '/zalo_bot.php';
-
-                                if (!empty($skippedCompensationNotify['email'])) {
-                                    try {
-                                        sendCompensationAddedEmailToSale(
-                                            $skippedCompensationNotify['email'],
-                                            $skippedCompensationNotify['name'],
-                                            $skippedCompensationNotify['round_name'],
-                                            $skippedCompensationNotify['delta'],
-                                            $skippedCompensationNotify['admin_name'],
-                                            $skippedCompensationNotify['reason'],
-                                            $skippedCompensationNotify['time']
-                                        );
-                                    } catch (Exception $mailEx) {
-                                        error_log("Error sending manual insert skip compensation email: " . $mailEx->getMessage());
-                                    }
-                                }
-                                try {
-                                    sendCompensationAddedZaloMessageToSale(
-                                        $skippedCompensationNotify['consultant_id'],
-                                        $skippedCompensationNotify['name'],
-                                        $skippedCompensationNotify['round_name'],
-                                        $skippedCompensationNotify['delta'],
-                                        $skippedCompensationNotify['admin_name'],
-                                        $skippedCompensationNotify['reason'],
-                                        $skippedCompensationNotify['time']
-                                    );
-                                } catch (Exception $zaloEx) {
-                                    error_log("Error sending manual insert skip compensation Zalo: " . $zaloEx->getMessage());
-                                }
-                            } catch (Exception $notifyEx) {
-                                error_log("Error preparing skipped compensation notifications: " . $notifyEx->getMessage());
-                            }
-                        }
-
-                        // Fire notification using Mailer and Zalo ONLY if within working hours
-                        if (!$isOutsideWorkHours) {
-                            try {
-                                require_once __DIR__ . '/mailer.php';
-                                require_once __DIR__ . '/zalo_bot.php';
-
-                                $stmtC = $conn->prepare("SELECT name, email FROM consultants WHERE id = ?");
-                                $stmtC->bind_param("i", $consultantId);
-                                $stmtC->execute();
-                                $cRes = $stmtC->get_result();
-                                if ($cRes->num_rows > 0) {
-                                    $c = $cRes->fetch_assoc();
-                                    $ccEmails = '';
-                                    $stmtQ = $conn->prepare("SELECT cc_emails FROM distribution_rounds WHERE id = ?");
-                                    $stmtQ->bind_param("i", $assignedRoundId);
-                                    $stmtQ->execute();
-                                    $qRound = $stmtQ->get_result();
-                                    if ($qRound && $qRound->num_rows > 0) {
-                                        $ccEmails = $qRound->fetch_assoc()['cc_emails'] ?? '';
-                                    }
-                                    $stmtQ->close();
-
-                                    $fName = trim($name) !== '' ? $name : 'Khách hàng ẩn danh';
-
-                                    try {
-                                        sendLeadAssignedEmailToSale(
-                                            $c['email'],
-                                            $c['name'],
-                                            $fName,
-                                            $phone ?: '',
-                                            $note ?: '',
-                                            $source ?: '',
-                                            $ccEmails,
-                                            $roundName,
-                                            $leadId,
-                                            $consultantId,
-                                            $assignedRoundId
-                                        );
-                                    } catch (Exception $eEx) {
-                                        error_log("Error sending manual insert assignment email: " . $eEx->getMessage());
-                                    }
-
-                                    try {
-                                        sendLeadAssignedZaloMessageToSale(
-                                            $consultantId,
-                                            $c['name'],
-                                            $fName,
-                                            $phone ?: '',
-                                            $note ?: '',
-                                            $source ?: '',
-                                            $roundName,
-                                            $leadId,
-                                            $assignedRoundId,
-                                            $email,
-                                            $type
-                                        );
-                                    } catch (Exception $zEx) {
-                                        error_log("Error sending manual insert assignment Zalo: " . $zEx->getMessage());
-                                    }
-                                }
-                                $stmtC->close();
-                            } catch (Exception $notifyEx) {
-                                error_log("Error preparing manual assignment notifications: " . $notifyEx->getMessage());
-                            }
-                        }
-
-                        echo json_encode(['success' => true, 'message' => $isOutsideWorkHours ? 'Data đã gán cho Sale ngoài giờ làm việc (Hoãn thông báo).' : 'Data đã được giao thành công.']);
-                    } else {
-                        if ($crmCheckResult['leadExists']) {
-                            $leadId = updateLead($conn, $phone, $email, null, $source, $type, $note, null, null, $name);
-                        } else {
-                            $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
-                        }
-                        if ($aiScreenerResult) {
-                            $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
-                            $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
-                            $updAi->execute();
-                            $updAi->close();
-                        }
-                        $status = (isset($isFallback) && $isFallback) ? 'fallback' : 'pending';
-                        $logMsg = (isset($isFallback) && $isFallback) ? 'No active consultants in fallback round.' : 'No active consultants in this round.';
-                        logDistribution($conn, $leadId, null, $assignedRoundId ? $assignedRoundId : null, $status, $logMsg, false);
-                        $conn->commit();
-                        $inTransaction = false;
-                        echo json_encode(['success' => true, 'message' => 'Data được lưu nhưng không có TVV nào nhận.']);
-                    }
-                }
-            }
-        } catch (Exception $e) {
-            if ($inTransaction) {
+            if (!$person || (int)$person['is_public'] !== 1) {
                 $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Khách hàng này hiện không có sẵn trong Kho chung.']);
+                break;
             }
-            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
-        } finally {
-            if ($lockAcquired) {
-                $relStmt = $conn->prepare("SELECT RELEASE_LOCK(?)");
-                if ($relStmt) {
-                    $relStmt->bind_param("s", $lockKey);
-                    $relStmt->execute();
-                    $relStmt->close();
+
+            // 2. Check if Sale already has a contact for this Person
+            $stmtCheck = $conn->prepare("SELECT id FROM contacts WHERE person_id = ? AND owner_id = ? AND deleted_at IS NULL LIMIT 1");
+            $stmtCheck->bind_param("ii", $personId, $saleId);
+            $stmtCheck->execute();
+            $hasContact = $stmtCheck->get_result()->num_rows > 0;
+            $stmtCheck->close();
+
+            if ($hasContact) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Bạn đã sở hữu liên hệ này rồi.']);
+                break;
+            }
+
+            // 3. Check Quota - Sale's hourly claim limit
+            $stmtQ1 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+            $stmtQ1->bind_param("i", $saleId);
+            $stmtQ1->execute();
+            $claimsHour = $stmtQ1->get_result()->fetch_assoc()['cnt'] ?? 0;
+            $stmtQ1->close();
+
+            if ($claimsHour >= $limitHour) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => "Bạn đã đạt hạn mức nhận khách hàng tối đa trong 1 giờ ($limitHour khách hàng)."]);
+                break;
+            }
+
+            // 4. Check Quota - Sale's daily claim limit
+            $stmtQ2 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $stmtQ2->bind_param("i", $saleId);
+            $stmtQ2->execute();
+            $claimsDay = $stmtQ2->get_result()->fetch_assoc()['cnt'] ?? 0;
+            $stmtQ2->close();
+
+            if ($claimsDay >= $limitDay) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => "Bạn đã đạt hạn mức nhận khách hàng tối đa trong ngày ($limitDay khách hàng)."]);
+                break;
+            }
+
+            // 5. Check Quota - Sale's monthly claim limit
+            $stmtQ3 = $conn->prepare("SELECT COUNT(*) as cnt FROM distribution_logs WHERE assigned_to = ? AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+            $stmtQ3->bind_param("i", $saleId);
+            $stmtQ3->execute();
+            $claimsMonth = $stmtQ3->get_result()->fetch_assoc()['cnt'] ?? 0;
+            $stmtQ3->close();
+
+            if ($claimsMonth >= $limitMonth) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => "Bạn đã đạt hạn mức nhận khách hàng tối đa trong tháng ($limitMonth khách hàng)."]);
+                break;
+            }
+
+            // 6. Check Person Quota - Max 2 Sales can claim this Person per day
+            $stmtQPerson = $conn->prepare("SELECT COUNT(DISTINCT assigned_to) as cnt FROM distribution_logs WHERE lead_id IN (SELECT id FROM leads WHERE person_id = ?) AND status = 'databank_claim' AND received_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)");
+            $stmtQPerson->bind_param("i", $personId);
+            $stmtQPerson->execute();
+            $personClaimsToday = $stmtQPerson->get_result()->fetch_assoc()['cnt'] ?? 0;
+            $stmtQPerson->close();
+
+            if ($personClaimsToday >= 2) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã đạt giới hạn nhận tối đa của ngày hôm nay (tối đa 2 Sale nhận/ngày).']);
+                break;
+            }
+
+            // 7. Create CRM Contact for the claiming Sale
+            $fullName = $person['full_name'] ?: 'Khách hàng Databank';
+            $parts = explode(' ', trim($fullName));
+            $lastName = array_shift($parts) ?? '';
+            $firstName = implode(' ', $parts);
+            if (empty($firstName)) {
+                $firstName = $lastName;
+                $lastName = '';
+            }
+
+            $stmtProj = $conn->prepare("SELECT project_id FROM contacts WHERE person_id = ? AND project_id IS NOT NULL LIMIT 1");
+            $stmtProj->bind_param("i", $personId);
+            $stmtProj->execute();
+            $projRes = $stmtProj->get_result()->fetch_assoc();
+            $projectId = $projRes ? $projRes['project_id'] : NULL;
+            $stmtProj->close();
+
+            $createdBy = $saleId;
+            $stmtIns = $conn->prepare("
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'databank', 'lead', 'chua_xac_dinh')
+            ");
+            $stmtIns->bind_param("iiiissss", $personId, $projectId, $saleId, $createdBy, $firstName, $lastName, $person['email'], $person['phone']);
+            $stmtIns->execute();
+            $stmtIns->close();
+
+            $stmtLead = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stmtLead->bind_param("i", $personId);
+            $stmtLead->execute();
+            $lRow = $stmtLead->get_result()->fetch_assoc();
+            $stmtLead->close();
+            $leadId = $lRow ? $lRow['id'] : 0;
+
+            logDistribution($conn, $leadId, $saleId, null, 'databank_claim', 'Sale tự nhận từ Kho chung (Databank)', false);
+
+            $conn->commit();
+
+            if (!empty($leadId)) {
+                triggerTwoWaySync($conn, $leadId);
+            }
+
+            echo json_encode(['success' => true, 'message' => 'Nhận khách hàng thành công!']);
+        } catch (Exception $ex) {
+            $conn->rollback();
+            echo json_encode(['success' => false, 'message' => 'Lỗi: ' . $ex->getMessage()]);
+        }
+        break;
+
+    case 'get_public_leads':
+        if (!$decodedUser) {
+            respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
+        }
+
+        $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+
+        $sql = "SELECT p.id, p.full_name, p.phone, p.email, p.released_to_kho_at,
+                       (SELECT project_id FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as project_id,
+                       (SELECT source FROM contacts WHERE person_id = p.id ORDER BY id ASC LIMIT 1) as original_source
+                FROM persons p
+                WHERE p.is_public = 1
+                ORDER BY p.released_to_kho_at DESC";
+
+        $res = $conn->query($sql);
+        $publicLeads = [];
+        if ($res) {
+            while ($row = $res->fetch_assoc()) {
+                if (!$isStaffAdmin) {
+                    $row['phone'] = maskPhone($row['phone']);
+                    $row['email'] = maskEmail($row['email']);
                 }
+                $publicLeads[] = $row;
             }
         }
+        echo json_encode(['success' => true, 'data' => $publicLeads]);
         break;
 
     default:

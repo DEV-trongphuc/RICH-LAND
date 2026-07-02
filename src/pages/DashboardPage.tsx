@@ -264,7 +264,7 @@ export const DashboardPage: React.FC = () => {
       {/* Header */}
       <div className="page-header" style={{ marginBottom: '1.5rem' }}>
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>Báo cáo Tổng quan</h1>
+          <h1 className="page-title">Báo cáo Tổng quan</h1>
           <p className="page-subtitle">Phân tích hiệu suất kinh doanh đến {new Date().toLocaleDateString('vi-VN')}</p>
         </div>
         <div className="flex gap-3">

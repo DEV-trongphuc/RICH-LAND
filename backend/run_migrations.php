@@ -1522,8 +1522,34 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_day', '2')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '300')");
-    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('backpressure_limit', '5')");
-    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '151') ON DUPLICATE KEY UPDATE setting_value = '151'");
+    // Databank migrations
+    $chkIsPublic = $conn->query("SHOW COLUMNS FROM persons LIKE 'is_public'");
+    if ($chkIsPublic && $chkIsPublic->num_rows === 0) {
+        $conn->query("ALTER TABLE persons ADD COLUMN is_public TINYINT(1) DEFAULT 0");
+        $logMsg("Đã thêm is_public cho persons", "success");
+    }
+    $chkReleasedAt = $conn->query("SHOW COLUMNS FROM persons LIKE 'released_to_kho_at'");
+    if ($chkReleasedAt && $chkReleasedAt->num_rows === 0) {
+        $conn->query("ALTER TABLE persons ADD COLUMN released_to_kho_at DATETIME DEFAULT NULL");
+        $logMsg("Đã thêm released_to_kho_at cho persons", "success");
+    }
+    $chkPublicCount = $conn->query("SHOW COLUMNS FROM persons LIKE 'public_count'");
+    if ($chkPublicCount && $chkPublicCount->num_rows === 0) {
+        $conn->query("ALTER TABLE persons ADD COLUMN public_count INT DEFAULT 0");
+        $logMsg("Đã thêm public_count cho persons", "success");
+    }
+    $chkSecExpires = $conn->query("SHOW COLUMNS FROM contacts LIKE 'security_expires_at'");
+    if ($chkSecExpires && $chkSecExpires->num_rows === 0) {
+        $conn->query("ALTER TABLE contacts ADD COLUMN security_expires_at DATETIME DEFAULT NULL");
+        $logMsg("Đã thêm security_expires_at cho contacts", "success");
+    }
+    $chkParallelAssigned = $conn->query("SHOW COLUMNS FROM contacts LIKE 'parallel_assigned'");
+    if ($chkParallelAssigned && $chkParallelAssigned->num_rows === 0) {
+        $conn->query("ALTER TABLE contacts ADD COLUMN parallel_assigned TINYINT(1) DEFAULT 0");
+        $logMsg("Đã thêm parallel_assigned cho contacts", "success");
+    }
+
+    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '152') ON DUPLICATE KEY UPDATE setting_value = '152'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 

@@ -1678,13 +1678,24 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         $backpressureLimit = 5;
     }
     
-    // Count lead tính công (excluding Not Lead / status = 'rejected') in status 'chua_xac_dinh'
+    // Count lead tính công in 'chua_xac_dinh' or 'quan_tam' with no notes created by owner
     $stmtKhtn = $conn->prepare("
         SELECT COUNT(*) as cnt 
-        FROM contacts 
-        WHERE owner_id = ? 
-          AND pipeline_status = 'chua_xac_dinh'
-          AND status != 'rejected'
+        FROM contacts c
+        WHERE c.owner_id = ? 
+          AND c.status != 'rejected'
+          AND (
+              c.pipeline_status = 'chua_xac_dinh'
+              OR (
+                  c.pipeline_status = 'quan_tam'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM notes n 
+                      WHERE n.entity_type = 'contact' 
+                        AND n.entity_id = c.id 
+                        AND n.user_id = c.owner_id
+                  )
+              )
+          )
     ");
     $stmtKhtn->bind_param("i", $consultantId);
     $stmtKhtn->execute();
@@ -3212,11 +3223,12 @@ function ensurePersonAndContact($conn, $leadId) {
         }
 
         $stmtContact = $conn->prepare("
-            INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh')
+            INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', DATE_ADD(NOW(), INTERVAL 3 HOUR))
             ON DUPLICATE KEY UPDATE 
                 owner_id = VALUES(owner_id),
-                status = 'lead'
+                status = 'lead',
+                security_expires_at = IF(owner_id != VALUES(owner_id), DATE_ADD(NOW(), INTERVAL 3 HOUR), security_expires_at)
         ");
         if ($stmtContact) {
             $createdBy = 1;

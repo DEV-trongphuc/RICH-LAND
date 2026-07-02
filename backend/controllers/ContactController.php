@@ -142,14 +142,35 @@ class ContactController {
             $s->execute([$auth['tenant_id']]); $stageId = $s->fetchColumn();
         }
 
+        // Resolve person_id (Master Identity Link)
+        $personId = null;
+        if ($phone) {
+            $phoneClean = preg_replace('/[^0-9]/', '', $phone);
+            if ($phoneClean) {
+                $fullName = trim($b['first_name'] . ' ' . ($b['last_name'] ?? ''));
+                $stmtPerson = $this->db->prepare("
+                    INSERT INTO persons (phone, email, full_name, is_public) 
+                    VALUES (?, ?, ?, 0) 
+                    ON DUPLICATE KEY UPDATE 
+                        email = IF(email IS NULL OR email = '', VALUES(email), email),
+                        full_name = IF(full_name IS NULL OR full_name = '', VALUES(full_name), full_name)
+                ");
+                $stmtPerson->execute([$phoneClean, $email, $fullName]);
+
+                $stmtGetP = $this->db->prepare("SELECT id FROM persons WHERE phone = ? LIMIT 1");
+                $stmtGetP->execute([$phoneClean]);
+                $personId = $stmtGetP->fetchColumn();
+            }
+        }
+
         $birthday = empty($b['birthday']) ? null : $b['birthday'];
         $last_contact = empty($b['last_contact']) ? null : $b['last_contact'];
 
         $stmt = $this->db->prepare("
             INSERT INTO contacts (tenant_id,company_id,owner_id,created_by,first_name,last_name,
                 email,phone,mobile,job_title,department,source,status,tags,notes,stage_id,
-                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score,person_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -161,7 +182,8 @@ class ContactController {
             $tags, $b['notes'] ?? null, $stageId,
             $birthday, $b['address'] ?? null, $b['city'] ?? null, $b['ward'] ?? null,
             $b['expected_revenue'] ?? 0, $b['win_probability'] ?? 50,
-            $last_contact, $b['lead_score'] ?? 0
+            $last_contact, $b['lead_score'] ?? 0,
+            $personId
         ]);
         $id = (int)$this->db->lastInsertId();
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
@@ -340,7 +362,7 @@ class ContactController {
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
 
-            // AUTO TRIGGER META CAPI EVENTS ON STATE TRANSITION
+            // AUTO TRIGGER META CAPI EVENTS ON STATE TRANSITION AND UPDATE SECURITY TIMERS / DATABANK STATUS
             if ($newStatus && $newStatus !== $currStatus) {
                 require_once __DIR__ . '/../config/CapiHelper.php';
                 if ($newStatus === 'dong_y_gap' || $newStatus === 'da_gap') {
@@ -349,6 +371,22 @@ class ContactController {
                     CapiHelper::sendEvent($this->db, $id, 'BAD');
                 } elseif ($newStatus === 'dat_coc') {
                     CapiHelper::sendEvent($this->db, $id, 'Purchase');
+                }
+
+                // Update security_expires_at
+                $securityExpires = $this->getSecurityExpiration($newStatus);
+                $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
+                $stmtTimer->execute([$securityExpires, $id]);
+
+                // Withdraw from databank if dat_coc
+                if ($newStatus === 'dat_coc') {
+                    $stmtGetPerson = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ?");
+                    $stmtGetPerson->execute([$id]);
+                    $pId = $stmtGetPerson->fetchColumn();
+                    if ($pId) {
+                        $stmtUpPerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
+                        $stmtUpPerson->execute([$pId]);
+                    }
                 }
             }
         }
@@ -408,5 +446,22 @@ class ContactController {
         $stmt->execute($params);
         
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " liên hệ");
+    }
+
+    private function getSecurityExpiration(string $status): ?string {
+        switch ($status) {
+            case 'chua_xac_dinh':
+                return date('Y-m-d H:i:s', strtotime('+3 hours'));
+            case 'quan_tam':
+                return date('Y-m-d H:i:s', strtotime('+1 day'));
+            case 'dong_y_gap':
+                return date('Y-m-d H:i:s', strtotime('+4 days'));
+            case 'da_gap':
+                return date('Y-m-d H:i:s', strtotime('+5 days'));
+            case 'booking':
+                return date('Y-m-d H:i:s', strtotime('+3 months'));
+            default:
+                return null;
+        }
     }
 }

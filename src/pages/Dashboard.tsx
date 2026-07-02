@@ -587,7 +587,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       {/* Header */}
       <div className="page-header" style={{ animation: 'slideUp 0.4s ease-out both', animationDelay: '50ms' }}>
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800 }}>{t("Tổng quan Phân bổ Data")}</h1>
+          <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
           <p className="page-subtitle">{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
         </div>
         <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto' }}>

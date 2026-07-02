@@ -376,7 +376,7 @@ const AccountsInner = () => {
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <UserCog size={28} color="var(--color-primary)" /> {t('Quản lý Tài khoản')}
           </h1>
           <p className="page-subtitle" style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.25rem' }}>{t('Quản trị hệ thống và phân quyền truy cập cho nhân viên.')}</p>

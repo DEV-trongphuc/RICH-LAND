@@ -1222,7 +1222,7 @@ const SalePortalInner = ({ location }: { isActive: boolean; searchParams: URLSea
         {/* Dashboard header */}
         <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>{t("Tổng quan Phân bổ Data")}</h1>
+            <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
           </div>
           <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto', flexWrap: 'wrap' }}>

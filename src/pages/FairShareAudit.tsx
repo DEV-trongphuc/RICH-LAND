@@ -910,7 +910,7 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Scale size={28} color="var(--color-primary)" /> {t("Đối Soát Độ Công Bằng Phân Phối")}
           </h1>
           <p className="page-subtitle">{t("Kiểm tra toán học & đo lường độ lệch chuẩn, chỉ số Gini để đảm bảo data được chia công bằng.")}</p>

@@ -749,18 +749,29 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [isBlocking, setIsBlocking] = useState<boolean>(false);
   const isTicketLead = selectedLead?.status === 'error' || selectedLead?.report_status === 'approved' || selectedLead?.report_status === 'pending';
 
-  // Calendar View Mode States
-  const [localViewMode, setLocalViewMode] = useState<'list' | 'calendar' | 'rules'>('list');
+  // Calendar / Databank View Mode States
+  const [localViewMode, setLocalViewMode] = useState<'list' | 'calendar' | 'rules' | 'databank'>('list');
   useEffect(() => {
     if (location.pathname === '/calendar') {
       setLocalViewMode('calendar');
     } else if (location.pathname === '/rules') {
       setLocalViewMode('rules');
     } else {
-      setLocalViewMode('list');
+      const viewParam = searchParams.get('view');
+      if (viewParam === 'databank') {
+        setLocalViewMode('databank');
+      } else {
+        setLocalViewMode('list');
+      }
     }
-  }, [location.pathname]);
+  }, [location.pathname, searchParams]);
   const viewMode = localViewMode;
+
+  const [publicLeads, setPublicLeads] = useState<any[]>([]);
+  const [publicTotalCount, setPublicTotalCount] = useState(0);
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [publicPage, setPublicPage] = useState(1);
+  const [isClaimingLeadId, setIsClaimingLeadId] = useState<number | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarData, setCalendarData] = useState<any>({});
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -776,6 +787,48 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       [saleName]: !prev[saleName]
     }));
   };
+
+  const fetchPublicLeads = async () => {
+    setPublicLoading(true);
+    try {
+      const json = await fetchAPI(`get_public_leads&page=${publicPage}&pageSize=${ITEMS_PER_PAGE}&search=${encodeURIComponent(searchTerm)}`);
+      if (json.success) {
+        setPublicLeads(json.data || []);
+        setPublicTotalCount(json.total_count || (json.data ? json.data.length : 0));
+      } else {
+        toast.error(json.message || t('Lỗi tải dữ liệu kho data chung'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi tải dữ liệu kho data chung: ') + e.message);
+    }
+    setPublicLoading(false);
+  };
+
+  const handleClaimLead = async (personId: number) => {
+    setIsClaimingLeadId(personId);
+    try {
+      const json = await fetchAPI('claim_public_lead', {
+        method: 'POST',
+        body: JSON.stringify({ person_id: personId })
+      });
+      if (json.success) {
+        toast.success(json.message || t('Nhận data thành công!'));
+        fetchPublicLeads();
+        window.dispatchEvent(new CustomEvent('lead-claimed'));
+      } else {
+        toast.error(json.message || t('Nhận data thất bại'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+    setIsClaimingLeadId(null);
+  };
+
+  useEffect(() => {
+    if (isActive && viewMode === 'databank') {
+      fetchPublicLeads();
+    }
+  }, [isActive, viewMode, publicPage, searchTerm]);
 
   const fetchCalendarStats = async () => {
     setCalendarLoading(true);
@@ -1343,6 +1396,31 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               >
                 <Calendar size={13} /> <span className="hide-on-mobile">{t('Lịch biểu')}</span>
               </button>
+              <button
+                type="button"
+                className={`btn-toggle-view ${viewMode === 'databank' ? 'active' : ''}`}
+                onClick={() => {
+                  setLocalViewMode('databank');
+                  navigate('/data?view=databank');
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'databank' ? 'var(--color-primary)' : 'transparent',
+                  color: viewMode === 'databank' ? 'white' : 'var(--color-text-muted)',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  height: '28px'
+                }}
+              >
+                <Database size={13} /> <span className="hide-on-mobile">{t('Kho chung (Databank)')}</span>
+              </button>
               {isAdmin && (
                 <button
                   type="button"
@@ -1483,88 +1561,92 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           />
         </div>
 
-        <div className="responsive-filter-item">
-          <CustomSelect
-            options={[
-              { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
-              { value: 'Hôm nay', label: t('Hôm nay') },
-              { value: 'Hôm qua', label: t('Hôm qua') },
-              { value: 'Tuần này', label: t('Tuần này') },
-              { value: 'Tuần trước', label: t('Tuần trước') },
-              { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
-              { value: '7 ngày qua', label: t('7 ngày qua') },
-              { value: '30 ngày qua', label: t('30 ngày qua') },
-              { value: 'Tháng này', label: t('Tháng này') },
-              { value: 'Tháng trước', label: t('Tháng trước') }
-            ]}
-            value={dateFilter}
-            onChange={val => updateParams('date', val.toString())}
-            width={160}
-          />
-        </div>
+        {viewMode !== 'databank' && (
+          <>
+            <div className="responsive-filter-item">
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
+                  { value: 'Hôm nay', label: t('Hôm nay') },
+                  { value: 'Hôm qua', label: t('Hôm qua') },
+                  { value: 'Tuần này', label: t('Tuần này') },
+                  { value: 'Tuần trước', label: t('Tuần trước') },
+                  { value: 'Tuần trước nữa', label: t('Tuần trước nữa') },
+                  { value: '7 ngày qua', label: t('7 ngày qua') },
+                  { value: '30 ngày qua', label: t('30 ngày qua') },
+                  { value: 'Tháng này', label: t('Tháng này') },
+                  { value: 'Tháng trước', label: t('Tháng trước') }
+                ]}
+                value={dateFilter}
+                onChange={val => updateParams('date', val.toString())}
+                width={160}
+              />
+            </div>
 
-        <div className="responsive-filter-item">
-          <CustomSelect
-            options={[
-              { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
-              { value: 'assigned', label: t('Đã chia') },
-              { value: 'compensation', label: t('Data Bù') },
-              { value: 'pending_work_hours', label: t('Chờ giờ làm') },
-              { value: 'pending', label: t('Chờ chia') },
-              { value: 'reminder', label: t('Nhắc lại') },
-              { value: 'silent', label: t('Chỉ đồng bộ') },
-              { value: 'error', label: t('Ticket') },
-              { value: 'blacklisted', label: t('Blacklist') },
-              { value: 'pending_approval', label: t('Tạm giữ') },
-              { value: 'rejected', label: t('Dưới chuẩn') }
-            ]}
-            value={statusFilter.includes(',') ? statusFilter.split(',') : [statusFilter]}
-            onChange={val => {
-              const nextVal = Array.isArray(val)
-                ? (val.includes('all') ? 'all' : val.join(','))
-                : val.toString();
-              updateParams('status', nextVal);
-            }}
-            multiple={true}
-            width={170}
-          />
-        </div>
+            <div className="responsive-filter-item">
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
+                  { value: 'assigned', label: t('Đã chia') },
+                  { value: 'compensation', label: t('Data Bù') },
+                  { value: 'pending_work_hours', label: t('Chờ giờ làm') },
+                  { value: 'pending', label: t('Chờ chia') },
+                  { value: 'reminder', label: t('Nhắc lại') },
+                  { value: 'silent', label: t('Chỉ đồng bộ') },
+                  { value: 'error', label: t('Ticket') },
+                  { value: 'blacklisted', label: t('Blacklist') },
+                  { value: 'pending_approval', label: t('Tạm giữ') },
+                  { value: 'rejected', label: t('Dưới chuẩn') }
+                ]}
+                value={statusFilter.includes(',') ? statusFilter.split(',') : [statusFilter]}
+                onChange={val => {
+                  const nextVal = Array.isArray(val)
+                    ? (val.includes('all') ? 'all' : val.join(','))
+                    : val.toString();
+                  updateParams('status', nextVal);
+                }}
+                multiple={true}
+                width={170}
+              />
+            </div>
 
-        <div className="responsive-filter-item">
-          <CustomSelect
-            options={[
-              { value: 'all', label: t('Tất cả vòng'), icon: <Tag size={16} /> },
-              ...rounds.map(r => ({
-                value: r.round_name,
-                label: r.round_name
-              }))
-            ]}
-            value={roundFilter}
-            onChange={val => updateParams('round', val.toString())}
-            width={160}
-          />
-        </div>
+            <div className="responsive-filter-item">
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả vòng'), icon: <Tag size={16} /> },
+                  ...rounds.map(r => ({
+                    value: r.round_name,
+                    label: r.round_name
+                  }))
+                ]}
+                value={roundFilter}
+                onChange={val => updateParams('round', val.toString())}
+                width={160}
+              />
+            </div>
 
-        <div className="responsive-filter-item">
-          <CustomSelect
-            options={[
-              { value: 'all', label: t('Tất cả TVV'), icon: <User size={16} /> },
-              ...consultants.map(c => ({
-                value: c.name,
-                label: c.name,
-                avatar: c.avatar
-              }))
-            ]}
-            value={consultantFilter}
-            onChange={val => updateParams('consultant', val.toString())}
-            showAvatars={true}
-            searchable={true}
-            width={180}
-          />
-        </div>
+            <div className="responsive-filter-item">
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả TVV'), icon: <User size={16} /> },
+                  ...consultants.map(c => ({
+                    value: c.name,
+                    label: c.name,
+                    avatar: c.avatar
+                  }))
+                ]}
+                value={consultantFilter}
+                onChange={val => updateParams('consultant', val.toString())}
+                showAvatars={true}
+                searchable={true}
+                width={180}
+              />
+            </div>
+          </>
+        )}
 
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-          {t('Tổng cộng')}: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{totalCount}</strong> {t('data')}
+          {t('Tổng cộng')}: <strong style={{ color: 'var(--color-text)', marginLeft: 4 }}>{viewMode === 'databank' ? publicTotalCount : totalCount}</strong> {t('data')}
         </div>
       </div>
 
@@ -1697,6 +1779,129 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 ) : days}
               </div>
             </div>
+          </div>
+        </div>
+      ) : viewMode === 'databank' ? (
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }} className="fade-in-view">
+          <div className="card" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 0 }}>
+            <div style={{ flex: 1, overflow: 'auto' }} className="table-wrap custom-scrollbar">
+              {publicLoading ? (
+                <div style={{ padding: '2rem' }}>
+                  <TableSkeleton />
+                </div>
+              ) : publicLeads.length === 0 ? (
+                <div style={{ padding: '3rem 1rem' }}>
+                  <EmptyCard
+                    icon={<Database size={32} color="var(--color-text-muted)" />}
+                    title={t('Kho chung trống')}
+                    description={t('Không có dữ liệu trong Kho chung (Databank)')}
+                  />
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#f8fafc', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Họ tên')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Số điện thoại')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Email')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Nguồn')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Giải phóng lúc')}</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700 }}>{t('Hành động')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {publicLeads.map((lead: any) => (
+                      <tr key={lead.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.01)' : '#fff9fa'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                        <td style={{ padding: '12px 16px', fontWeight: 600 }}>{lead.full_name || t('Khách hàng')}</td>
+                        <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{lead.phone || '-'}</td>
+                        <td style={{ padding: '12px 16px' }}>{lead.email || '-'}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span className="badge" style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-muted)', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}>
+                            {lead.original_source || 'Databank'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{lead.released_to_kho_at || '-'}</td>
+                        <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                          <button
+                            onClick={() => handleClaimLead(lead.id)}
+                            disabled={isClaimingLeadId !== null}
+                            style={{
+                              background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)',
+                              border: 'none',
+                              color: '#ffffff',
+                              padding: '6px 16px',
+                              borderRadius: '6px',
+                              fontSize: '0.8125rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              e.currentTarget.style.boxShadow = '0 4px 10px rgba(189, 29, 45, 0.35)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.transform = 'translateY(0)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(189, 29, 45, 0.2)';
+                            }}
+                          >
+                            {isClaimingLeadId === lead.id ? t('Đang nhận...') : t('Nhận Data')}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Pagination for Databank */}
+            {publicTotalCount > ITEMS_PER_PAGE && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  {t('Hiển thị')} <strong>{Math.min(publicTotalCount, (publicPage - 1) * ITEMS_PER_PAGE + 1)}</strong> - <strong>{Math.min(publicTotalCount, publicPage * ITEMS_PER_PAGE)}</strong> {t('trên')} <strong>{publicTotalCount}</strong>
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    disabled={publicPage <= 1}
+                    onClick={() => setPublicPage(prev => Math.max(1, prev - 1))}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '6px',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: publicPage <= 1 ? 'not-allowed' : 'pointer',
+                      color: 'var(--color-text)'
+                    }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    disabled={publicPage * ITEMS_PER_PAGE >= publicTotalCount}
+                    onClick={() => setPublicPage(prev => prev + 1)}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '6px',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: publicPage * ITEMS_PER_PAGE >= publicTotalCount ? 'not-allowed' : 'pointer',
+                      color: 'var(--color-text)'
+                    }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (

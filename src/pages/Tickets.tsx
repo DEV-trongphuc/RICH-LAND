@@ -993,7 +993,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
       {/* ── Header ── */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
         <div>
-          <h1 className="page-title" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10, margin: 0 }}>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <TicketIcon size={28} color="var(--color-primary)" /> {t('Ticket Lỗi Data')}
             <button
               onClick={() => setShowInfoModal(true)}

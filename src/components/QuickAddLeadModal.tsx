@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Upload, Trash2 } from 'lucide-react';
 import { CustomModal } from './ui/CustomModal';
 import { CustomSelect } from './ui/CustomSelect';
 import { Avatar } from './ui/Avatar';
@@ -111,8 +111,16 @@ export const QuickAddLeadModal = () => {
   const [existingSources, setExistingSources] = useState<string[]>([]);
   const [showSourceSuggestions, setShowSourceSuggestions] = useState(false);
 
+  // Bulk import and distribution state
+  const [activeTab, setActiveTab] = useState<'single' | 'bulk'>('single');
+  const [bulkInputText, setBulkInputText] = useState('');
+  const [bulkParsedLeads, setBulkParsedLeads] = useState<any[]>([]);
+  const [distributionMode, setDistributionMode] = useState<'auto_round' | 'direct_databank'>('auto_round');
+  const [bulkSubtab, setBulkSubtab] = useState<'text' | 'file'>('text');
+
   const previewTimerRef = useRef<any>(null);
   const sourceRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleQuickInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -986,48 +994,191 @@ export const QuickAddLeadModal = () => {
 
   }, [manualData, isOpen]);
 
-  const handleManualSubmit = async () => {
-    if (!manualData.phone && !manualData.email) {
-      toast.error(t('Vui lòng nhập SĐT hoặc Email'));
+  const parseBulkData = (text: string) => {
+    if (!text.trim()) return [];
+    const lines = text.split(/\r?\n/);
+    const leads: any[] = [];
+    
+    lines.forEach(line => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+      
+      let parts: string[] = [];
+      if (trimmedLine.includes('\t')) {
+        parts = trimmedLine.split('\t');
+      } else if (trimmedLine.includes(';')) {
+        parts = trimmedLine.split(';');
+      } else {
+        parts = trimmedLine.split(',');
+      }
+      
+      parts = parts.map(p => p.trim());
+      if (parts.length === 0 || (parts.length === 1 && !parts[0])) return;
+      
+      let phone = '';
+      let email = '';
+      let name = '';
+      let source = '';
+      let type = '';
+      let note = '';
+      
+      const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+      const phoneRegex = /(?:\+?84|0)(?:\s*[\.\-]?\s*\d){9,10}/;
+      
+      const remainingParts: string[] = [];
+      parts.forEach(part => {
+        if (emailRegex.test(part)) {
+          email = part;
+        } else {
+          const phoneMatch = part.match(phoneRegex);
+          if (phoneMatch) {
+            phone = beautifyPhone(phoneMatch[0]);
+          } else {
+            remainingParts.push(part);
+          }
+        }
+      });
+      
+      if (remainingParts.length > 0) {
+        name = remainingParts[0];
+      }
+      if (remainingParts.length > 1) {
+        const second = remainingParts[1];
+        const isSrc = ['fb', 'facebook', 'zalo', 'google', 'gg', 'tiktok', 'youtube', 'mkt', 'ads'].some(k => second.toLowerCase().includes(k));
+        if (isSrc) {
+          source = second;
+        } else {
+          type = second;
+        }
+      }
+      if (remainingParts.length > 2) {
+        if (!source) {
+          source = remainingParts[2];
+        } else if (!type) {
+          type = remainingParts[2];
+        } else {
+          note = remainingParts[2];
+        }
+      }
+      if (remainingParts.length > 3) {
+        note = remainingParts.slice(3).join(' - ');
+      }
+      
+      if (phone || email) {
+        leads.push({
+          name: name || 'Khách hàng',
+          phone,
+          email,
+          source: source || 'Bulk_Import',
+          type: type || 'Khác',
+          note: note || ''
+        });
+      }
+    });
+    return leads;
+  };
+
+  const handleTextBulkParse = () => {
+    const parsed = parseBulkData(bulkInputText);
+    if (parsed.length === 0) {
+      toast.error(t('Không tìm thấy dữ liệu hợp lệ (Cần có SĐT hoặc Email)'));
       return;
     }
+    setBulkParsedLeads(parsed);
+    toast.success(t('Đã phân tích thành công ') + parsed.length + t(' liên hệ'));
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const parsed = parseBulkData(text);
+      if (parsed.length === 0) {
+        toast.error(t('Không tìm thấy dữ liệu hợp lệ trong file'));
+        return;
+      }
+      setBulkParsedLeads(parsed);
+      toast.success(t('Đã tải và phân tích thành công ') + parsed.length + t(' liên hệ'));
+    };
+    reader.readAsText(file);
+  };
+
+  const removeBulkLeadRow = (index: number) => {
+    setBulkParsedLeads(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleManualSubmit = async () => {
     setIsSubmittingManual(true);
     try {
-      const payload = {
-        data: manualData,
-        override_round_id: previewCons?.round_id,
-        override_consultant_id: overrideConsId ? Number(overrideConsId) : null,
-        compensate_skipped: compensateSkipped,
-        skipped_consultant_id: previewCons?.consultant?.consultant_id
-      };
+      if (activeTab === 'single') {
+        if (!manualData.phone && !manualData.email) {
+          toast.error(t('Vui lòng nhập SĐT hoặc Email'));
+          setIsSubmittingManual(false);
+          return;
+        }
+        
+        const payload = {
+          data: manualData,
+          override_round_id: distributionMode === 'auto_round' ? previewCons?.round_id : null,
+          override_consultant_id: distributionMode === 'auto_round' && overrideConsId ? Number(overrideConsId) : null,
+          compensate_skipped: compensateSkipped,
+          skipped_consultant_id: distributionMode === 'auto_round' ? previewCons?.consultant?.consultant_id : null,
+          distribution_mode: distributionMode
+        };
 
-      const json = await fetchAPI('manual_insert_lead', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
+        const json = await fetchAPI('manual_insert_lead', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
 
-      if (json.success) {
-        toast.success(json.message || t('Thêm thành công!'));
-        setIsOpen(false);
-        // Reset form
-        setManualData({ name: '', phone: '', email: '', source: '', type: '', note: '' });
-        setQuickInput('');
-        setPreviewCons(null);
-        setOverrideConsId('');
-        setShowOverrideSelector(false);
-        setCompensateSkipped(true);
-        // Trigger table refresh
-        window.dispatchEvent(new CustomEvent('lead-added'));
+        if (json.success) {
+          toast.success(json.message || t('Thêm thành công!'));
+          setIsOpen(false);
+          setManualData({ name: '', phone: '', email: '', source: '', type: '', note: '' });
+          setQuickInput('');
+          setPreviewCons(null);
+          setOverrideConsId('');
+          setShowOverrideSelector(false);
+          setCompensateSkipped(true);
+          window.dispatchEvent(new CustomEvent('lead-added'));
+        } else {
+          toast.error(json.message || t('Thêm thất bại'));
+        }
       } else {
-        toast.error(json.message || t('Thêm thất bại'));
+        if (bulkParsedLeads.length === 0) {
+          toast.error(t('Danh sách liên hệ trống'));
+          setIsSubmittingManual(false);
+          return;
+        }
+
+        const payload = {
+          data: bulkParsedLeads,
+          distribution_mode: distributionMode
+        };
+
+        const json = await fetchAPI('manual_insert_lead', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+
+        if (json.success) {
+          toast.success(json.message || t('Import thành công!'));
+          setIsOpen(false);
+          setBulkInputText('');
+          setBulkParsedLeads([]);
+          window.dispatchEvent(new CustomEvent('lead-added'));
+        } else {
+          toast.error(json.message || t('Import thất bại'));
+        }
       }
     } catch (e: any) {
       toast.error(t('Lỗi: ') + e.message);
     }
     setIsSubmittingManual(false);
-  };
-
-  return (
+  };  return (
     <CustomModal
       isOpen={isOpen}
       onClose={() => {
@@ -1035,263 +1186,540 @@ export const QuickAddLeadModal = () => {
         setQuickInput('');
         setShowOverrideSelector(false);
       }}
-      title={t("Thêm Data Thủ Công")}
-      width="650px"
+      title={t("Thêm Mới Khách Hàng")}
+      width={activeTab === 'bulk' && bulkParsedLeads.length > 0 ? "800px" : "650px"}
     >
-      <div className="quick-add-modal-body" style={{ padding: '0 0 1.25rem 0', background: 'transparent' }}>
-        {/* Dán nhanh thông tin */}
-        <div style={{
-          marginBottom: '1.25rem',
-          padding: '12px 14px',
-          background: theme === 'dark' ? 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(237, 216, 252, 0.05) 100%)' : 'linear-gradient(135deg, #fff5f6 0%, #edd8fc 100%)',
-          borderRadius: '12px',
-          border: theme === 'dark' ? '1px dashed rgba(189, 29, 45, 0.4)' : '1px dashed #e63946',
-          boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(192, 132, 252, 0.08)'
-        }}>
-          <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: '#a31422', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', letterSpacing: '0.5px' }}>
-            AI VIP PROMAX ULTRA
-          </label>
-          <textarea
-            className="form-input"
-            rows={2}
-            style={{
-              resize: 'none',
-              fontSize: '0.8125rem',
-              lineHeight: 1.4,
-              background: theme === 'dark' ? 'var(--color-bg)' : 'white',
-              border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe',
-              borderRadius: '8px',
-              padding: '8px 10px',
-              width: '100%',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-              color: theme === 'dark' ? 'var(--color-text)' : 'inherit'
-            }}
-            placeholder={t("Ví dụ: Trần Văn Hiền - 0364200518 - tìm hiểu liên thông - Chưa hỏi được gì - FB_Ads")}
-            value={quickInput}
-            onChange={handleQuickInputChange}
-          />
-        </div>
+      {/* Tabs */}
+      <div style={{
+        display: 'flex',
+        background: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9',
+        padding: '4px',
+        borderRadius: '10px',
+        marginBottom: '1.25rem',
+        border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0'
+      }}>
+        <button
+          onClick={() => setActiveTab('single')}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            borderRadius: '8px',
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'single' ? (theme === 'dark' ? '#b91c1c' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)') : 'transparent',
+            color: activeTab === 'single' ? '#ffffff' : (theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#64748b'),
+            boxShadow: activeTab === 'single' ? '0 2px 6px rgba(189, 29, 45, 0.2)' : 'none',
+            transition: 'all 0.25s'
+          }}
+        >
+          {t('Nhập 1 khách')}
+        </button>
+        <button
+          onClick={() => setActiveTab('bulk')}
+          style={{
+            flex: 1,
+            padding: '8px 12px',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            borderRadius: '8px',
+            border: 'none',
+            cursor: 'pointer',
+            background: activeTab === 'bulk' ? (theme === 'dark' ? '#b91c1c' : 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)') : 'transparent',
+            color: activeTab === 'bulk' ? '#ffffff' : (theme === 'dark' ? 'rgba(255, 255, 255, 0.6)' : '#64748b'),
+            boxShadow: activeTab === 'bulk' ? '0 2px 6px rgba(189, 29, 45, 0.2)' : 'none',
+            transition: 'all 0.25s'
+          }}
+        >
+          {t('Thêm hàng loạt')}
+        </button>
+      </div>
 
-        <div className="quick-add-preview-box" style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginBottom: '1.25rem' }}>
-          <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <RefreshCw size={16} className={isPreviewing ? "spin" : ""} color="var(--color-primary)" /> Live Preview
-          </h4>
-
-          {isPreviewing ? (
-            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Đang kiểm tra...')}</div>
-          ) : !previewCons ? (
-            <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Nhập SĐT hoặc Email để xem trước vòng chia.')}</div>
-          ) : previewCons.round_id === null ? (
-            <div style={{ color: 'var(--color-danger)', fontSize: '0.8125rem', fontWeight: 600 }}>{t('Không khớp với luật chia nào. (Data sẽ lưu trạng thái Chưa phân bổ)')}</div>
-          ) : (
+      {/* Distribution Mode */}
+      <div style={{
+        marginBottom: '1.25rem',
+        background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+        padding: '12px 16px',
+        borderRadius: '10px',
+        border: theme === 'dark' ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid #e2e8f0'
+      }}>
+        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'block' }}>
+          {t('Cách thức phân bổ')}
+        </label>
+        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
+            <input
+              type="radio"
+              name="distribution_mode"
+              checked={distributionMode === 'auto_round'}
+              onChange={() => setDistributionMode('auto_round')}
+              style={{ accentColor: '#bd1d2d' }}
+            />
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
-                  {t('Sẽ rơi vào Vòng:')} <strong style={{ color: 'var(--color-primary)', marginLeft: 4 }}>{previewCons.consultant?.round_name || t('Vòng ') + previewCons.round_id}</strong>
-                  {previewCons.is_fallback && (
-                    <span style={{ marginLeft: 8, fontSize: '0.75rem', background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2', color: theme === 'dark' ? '#f87171' : '#ef4444', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
-                      Vòng mặc định (Fallback)
-                    </span>
-                  )}
-                </div>
-              </div>
+              <strong>{t('Tự động chia (Auto Round)')}</strong>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Quay vòng theo luật phân phối hoạt động')}</div>
+            </div>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text)' }}>
+            <input
+              type="radio"
+              name="distribution_mode"
+              checked={distributionMode === 'direct_databank'}
+              onChange={() => setDistributionMode('direct_databank')}
+              style={{ accentColor: '#bd1d2d' }}
+            />
+            <div>
+              <strong>{t('Đưa thẳng vào Kho chung (Databank)')}</strong>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Lưu trữ công khai cho các Sale chủ động nhận')}</div>
+            </div>
+          </label>
+        </div>
+      </div>
 
-              <div style={{ background: theme === 'dark' ? 'var(--color-surface)' : 'white', padding: '12px', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Dòng 1: Sale dự kiến nhận */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Avatar src={previewCons.consultant?.avatar} name={previewCons.consultant?.name || '?'} size={32} />
-                    <div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Sale dự kiến nhận')}</div>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || t('Không có TVV hoạt động')}</div>
+      <div className="quick-add-modal-body" style={{ padding: '0 0 1.25rem 0', background: 'transparent' }}>
+        
+        {activeTab === 'single' ? (
+          <>
+            <div style={{
+              marginBottom: '1.25rem',
+              padding: '12px 14px',
+              background: theme === 'dark' ? 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(237, 216, 252, 0.05) 100%)' : 'linear-gradient(135deg, #fff5f6 0%, #edd8fc 100%)',
+              borderRadius: '12px',
+              border: theme === 'dark' ? '1px dashed rgba(189, 29, 45, 0.4)' : '1px dashed #e63946',
+              boxShadow: theme === 'dark' ? 'none' : '0 2px 8px rgba(192, 132, 252, 0.08)'
+            }}>
+              <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', color: '#a31422', display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px', letterSpacing: '0.5px' }}>
+                AI VIP PROMAX ULTRA
+              </label>
+              <textarea
+                className="form-input"
+                rows={2}
+                style={{
+                  resize: 'none',
+                  fontSize: '0.8125rem',
+                  lineHeight: 1.4,
+                  background: theme === 'dark' ? 'var(--color-bg)' : 'white',
+                  border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #ddd6fe',
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  width: '100%',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  color: theme === 'dark' ? 'var(--color-text)' : 'inherit'
+                }}
+                placeholder={t("Ví dụ: Trần Văn Hiền - 0364200518 - tìm hiểu liên thông - FB_Ads")}
+                value={quickInput}
+                onChange={handleQuickInputChange}
+              />
+            </div>
+
+            {distributionMode === 'auto_round' && (
+              <div className="quick-add-preview-box" style={{ background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc', padding: '1rem', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginBottom: '1.25rem' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <RefreshCw size={16} className={isPreviewing ? "spin" : ""} color="var(--color-primary)" /> Live Preview
+                </h4>
+
+                {isPreviewing ? (
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Đang kiểm tra...')}</div>
+                ) : !previewCons ? (
+                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Nhập SĐT hoặc Email để xem trước vòng chia.')}</div>
+                ) : previewCons.round_id === null ? (
+                  <div style={{ color: 'var(--color-danger)', fontSize: '0.8125rem', fontWeight: 600 }}>{t('Không khớp với luật chia nào. (Data sẽ lưu trạng thái Chưa phân bổ)')}</div>
+                ) : (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ fontSize: '0.875rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {t('Sẽ rơi vào Vòng:')} <strong style={{ color: 'var(--color-primary)', marginLeft: 4 }}>{previewCons.consultant?.round_name || t('Vòng ') + previewCons.round_id}</strong>
+                        {previewCons.is_fallback && (
+                          <span style={{ marginLeft: 8, fontSize: '0.75rem', background: theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : '#fee2e2', color: theme === 'dark' ? '#f87171' : '#ef4444', padding: '2px 8px', borderRadius: 10, fontWeight: 700 }}>
+                            Vòng mặc định (Fallback)
+                          </span>
+                        )}
+                      </div>
                     </div>
+
+                    <div style={{ background: theme === 'dark' ? 'var(--color-surface)' : 'white', padding: '12px', borderRadius: 12, border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0', marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <Avatar src={previewCons.consultant?.avatar} name={previewCons.consultant?.name || '?'} size={32} />
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Sale dự kiến nhận')}</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{previewCons.consultant?.name || t('Không có TVV hoạt động')}</div>
+                          </div>
+                        </div>
+
+                        {!showOverrideSelector && !overrideConsId && (
+                          <button
+                            type="button"
+                            onClick={() => setShowOverrideSelector(true)}
+                            style={{
+                              background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc',
+                              border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              padding: '4px 8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'all 0.2s',
+                              outline: 'none'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : '#f1f5f9';
+                              e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-text-muted)' : '#94a3b8';
+                              e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#334155';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#f8fafc';
+                              e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-border)' : '#cbd5e1';
+                              e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text-muted)' : '#64748b';
+                            }}
+                          >
+                            {t('Chỉ định Sale khác')}
+                          </button>
+                        )}
+                      </div>
+
+                      {(showOverrideSelector || !!overrideConsId) && (
+                        <>
+                          <hr style={{ border: 0, borderTop: '1px dashed var(--color-border)', margin: 0 }} />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {(() => {
+                              const selectedForceCons = consultants.find(c => String(c.id) === overrideConsId);
+                              return (
+                                <>
+                                  <Avatar src={selectedForceCons?.avatar} name={selectedForceCons?.name || '?'} size={32} />
+                                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Chỉ định Sale nhận (Ép lượt)')}</div>
+                                    <div style={{ maxWidth: 240 }}>
+                                      <CustomSelect
+                                        options={[
+                                          { value: '', label: t('-- Chọn để ép (Override) --') },
+                                          ...consultants
+                                            .filter(c => !previewCons?.consultant || String(c.id) !== String(previewCons.consultant.consultant_id))
+                                            .map(c => ({
+                                              value: c.id.toString(),
+                                              label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
+                                              avatar: c.avatar,
+                                              disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
+                                              disabledType: 'sale' as const
+                                            }))
+                                        ]}
+                                        showAvatars={true}
+                                        value={overrideConsId}
+                                        onChange={val => setOverrideConsId(val.toString())}
+                                        width="100%"
+                                        direction="up"
+                                      />
+                                    </div>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>
+                      {t('* Nếu bạn chọn ép (Override), người được chọn sẽ nhận Data này bất kể tỷ lệ vòng xoay.')}
+                    </div>
+
+                    {showOverrideSelector && previewCons.consultant && (
+                      <div style={{ marginTop: 12, padding: '12px 16px', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fefce8', border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef08a', borderRadius: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ fontSize: '0.8125rem', color: theme === 'dark' ? '#fbbf24' : '#854d0e', fontWeight: 600 }}>
+                            {t('Tự động bù 1 lượt cho ')}<strong style={{ color: theme === 'dark' ? '#f59e0b' : '#713f12' }}>{previewCons.consultant?.name}</strong>{t(' ở lượt tiếp theo')}
+                          </div>
+                          <div
+                            className={`custom-toggle ${compensateSkipped ? 'active' : ''}`}
+                            onClick={() => setCompensateSkipped(!compensateSkipped)}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  {!showOverrideSelector && !overrideConsId && (
-                    <button
-                      type="button"
-                      onClick={() => setShowOverrideSelector(true)}
-                      style={{
-                        background: theme === 'dark' ? 'var(--color-bg)' : '#f8fafc',
-                        border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        padding: '4px 8px',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        color: theme === 'dark' ? 'var(--color-text-muted)' : '#64748b',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        transition: 'all 0.2s',
-                        outline: 'none'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : '#f1f5f9';
-                        e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-text-muted)' : '#94a3b8';
-                        e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#334155';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#f8fafc';
-                        e.currentTarget.style.borderColor = theme === 'dark' ? 'var(--color-border)' : '#cbd5e1';
-                        e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text-muted)' : '#64748b';
-                      }}
-                    >
-                      Chỉ định Sale khác
-                    </button>
-                  )}
-                </div>
-
-                {(showOverrideSelector || !!overrideConsId) && (
-                  <>
-                    <hr style={{ border: 0, borderTop: '1px dashed var(--color-border)', margin: 0 }} />
-                    {/* Dòng 2: Chỉ định Sale nhận (Override) */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {(() => {
-                        const selectedForceCons = consultants.find(c => String(c.id) === overrideConsId);
-                        return (
-                          <>
-                            <Avatar src={selectedForceCons?.avatar} name={selectedForceCons?.name || '?'} size={32} />
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Chỉ định Sale nhận (Ép lượt)')}</div>
-                              <div style={{ maxWidth: 240 }}>
-                                <CustomSelect
-                                  options={[
-                                    { value: '', label: t('-- Chọn để ép (Override) --') },
-                                    ...consultants
-                                      .filter(c => !previewCons?.consultant || String(c.id) !== String(previewCons.consultant.consultant_id))
-                                      .map(c => ({
-                                        value: c.id.toString(),
-                                        label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
-                                        avatar: c.avatar,
-                                        disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
-                                        disabledType: 'sale' as const
-                                      }))
-                                  ]}
-                                  showAvatars={true}
-                                  value={overrideConsId}
-                                  onChange={val => setOverrideConsId(val.toString())}
-                                  width="100%"
-                                  direction="up"
-                                />
-                              </div>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </>
                 )}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 8, fontStyle: 'italic' }}>
-                * Nếu bạn chọn ép (Override), người được chọn sẽ nhận Data này bất kể tỷ lệ vòng xoay.
+            )}
+
+            <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Họ tên')}</label>
+                <input className="form-input" placeholder={t("VD: Nguyễn Văn A")} value={manualData.name} onChange={e => setManualData({ ...manualData, name: e.target.value })} />
               </div>
-
-              {showOverrideSelector && previewCons.consultant && (
-                <div style={{ marginTop: 12, padding: '12px 16px', background: theme === 'dark' ? 'rgba(245, 158, 11, 0.08)' : '#fefce8', border: theme === 'dark' ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid #fef08a', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ fontSize: '0.8125rem', color: theme === 'dark' ? '#fbbf24' : '#854d0e', fontWeight: 600 }}>
-                      Tự động bù 1 lượt cho <strong style={{ color: theme === 'dark' ? '#f59e0b' : '#713f12' }}>{previewCons.consultant?.name}</strong> ở lượt tiếp theo
-                    </div>
-                    <div
-                      className={`custom-toggle ${compensateSkipped ? 'active' : ''}`}
-                      onClick={() => setCompensateSkipped(!compensateSkipped)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Họ tên')}</label>
-            <input className="form-input" placeholder={t("VD: Nguyễn Văn A")} value={manualData.name} onChange={e => setManualData({ ...manualData, name: e.target.value })} />
-          </div>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Số điện thoại (*)')}</label>
-            <input className="form-input" placeholder="VD: 0912345678" value={manualData.phone} onChange={e => setManualData({ ...manualData, phone: beautifyPhone(e.target.value) })} />
-          </div>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
-            <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({ ...manualData, email: e.target.value })} />
-          </div>
-          <div ref={sourceRef} style={{ position: 'relative', zIndex: showSourceSuggestions ? 50 : 1 }}>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
-            <input
-              className="form-input"
-              placeholder="VD: FB_Ads"
-              value={manualData.source}
-              onChange={e => setManualData({ ...manualData, source: e.target.value })}
-              onFocus={() => setShowSourceSuggestions(true)}
-            />
-            {showSourceSuggestions && (
-              (() => {
-                const filtered = existingSources.filter(src =>
-                  src.toLowerCase().includes((manualData.source || '').toLowerCase())
-                );
-                if (filtered.length === 0) return null;
-                return (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      left: 0,
-                      right: 0,
-                      zIndex: 1000,
-                      background: theme === 'dark' ? 'var(--color-surface)' : 'white',
-                      border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                      maxHeight: '180px',
-                      overflowY: 'auto',
-                      marginTop: '4px'
-                    }}
-                  >
-                    {filtered.map((src, idx) => (
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Số điện thoại (*)')}</label>
+                <input className="form-input" placeholder="VD: 0912345678" value={manualData.phone} onChange={e => setManualData({ ...manualData, phone: beautifyPhone(e.target.value) })} />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Email</label>
+                <input className="form-input" placeholder="VD: email@gmail.com" value={manualData.email} onChange={e => setManualData({ ...manualData, email: e.target.value })} />
+              </div>
+              <div ref={sourceRef} style={{ position: 'relative', zIndex: showSourceSuggestions ? 50 : 1 }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Nguồn (Source)')}</label>
+                <input
+                  className="form-input"
+                  placeholder="VD: FB_Ads"
+                  value={manualData.source}
+                  onChange={e => setManualData({ ...manualData, source: e.target.value })}
+                  onFocus={() => setShowSourceSuggestions(true)}
+                />
+                {showSourceSuggestions && (
+                  (() => {
+                    const filtered = existingSources.filter(src =>
+                      src.toLowerCase().includes((manualData.source || '').toLowerCase())
+                    );
+                    if (filtered.length === 0) return null;
+                    return (
                       <div
-                        key={idx}
-                        onClick={() => handleSelectSource(src)}
                         style={{
-                          padding: '8px 12px',
-                          fontSize: '0.8125rem',
-                          cursor: 'pointer',
-                          color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
-                          transition: 'background-color 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#fff5f6';
-                          e.currentTarget.style.color = '#a31422';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                          e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#1e293b';
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 1000,
+                          background: theme === 'dark' ? 'var(--color-surface)' : 'white',
+                          border: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                          maxHeight: '180px',
+                          overflowY: 'auto',
+                          marginTop: '4px'
                         }}
                       >
-                        {src}
+                        {filtered.map((src, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => handleSelectSource(src)}
+                            style={{
+                              padding: '8px 12px',
+                              fontSize: '0.8125rem',
+                              cursor: 'pointer',
+                              color: theme === 'dark' ? 'var(--color-text)' : '#1e293b',
+                              transition: 'background-color 0.2s',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = theme === 'dark' ? 'var(--color-bg)' : '#fff5f6';
+                              e.currentTarget.style.color = '#a31422';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                              e.currentTarget.style.color = theme === 'dark' ? 'var(--color-text)' : '#1e293b';
+                            }}
+                          >
+                            {src}
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                );
-              })()
+                    );
+                  })()
+                )}
+              </div>
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Loại (Type)')}</label>
+                <input className="form-input" placeholder={t("VD: Mua nhà")} value={manualData.type} onChange={e => setManualData({ ...manualData, type: e.target.value })} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Ghi chú')}</label>
+                <textarea className="form-input" rows={3} style={{ resize: 'vertical', minHeight: '80px', lineHeight: 1.5, padding: '10px 12px' }} placeholder={t("Ghi chú thêm (Hỗ trợ nhiều dòng)...")} value={manualData.note} onChange={e => setManualData({ ...manualData, note: e.target.value })} />
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Bulk Import Sub-tabs */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '5px' }}>
+              <button
+                onClick={() => setBulkSubtab('text')}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: bulkSubtab === 'text' ? (theme === 'dark' ? '#b91c1c' : '#bd1d2d') : 'transparent',
+                  color: bulkSubtab === 'text' ? '#ffffff' : 'var(--color-text-muted)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {t('Dán văn bản')}
+              </button>
+              <button
+                onClick={() => setBulkSubtab('file')}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: bulkSubtab === 'file' ? (theme === 'dark' ? '#b91c1c' : '#bd1d2d') : 'transparent',
+                  color: bulkSubtab === 'file' ? '#ffffff' : 'var(--color-text-muted)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {t('Tải file CSV/TXT')}
+              </button>
+            </div>
+
+            {bulkSubtab === 'text' ? (
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>
+                  {t('Dán danh sách khách hàng (Hỗ trợ định dạng CSV, Semicolon hoặc Tab excel)')}
+                </label>
+                <textarea
+                  className="form-input"
+                  rows={6}
+                  value={bulkInputText}
+                  onChange={e => setBulkInputText(e.target.value)}
+                  style={{ fontFamily: 'monospace', fontSize: '0.8125rem', lineHeight: 1.4 }}
+                  placeholder={`Nguyễn Văn A, 0912345678, email@gmail.com, FB_Ads, Căn hộ, Ghi chú\nNguyễn Văn B, 0923456789, email2@gmail.com, Zalo, Đất nền, Ghi chú 2`}
+                />
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={handleTextBulkParse}
+                  style={{ marginTop: '10px', background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)', border: 'none' }}
+                >
+                  {t('Phân tích dữ liệu')}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
+                  {t('Tải file dữ liệu')}
+                </label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: '2px dashed var(--color-border)',
+                    borderRadius: '12px',
+                    padding: '2.5rem 1rem',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    background: theme === 'dark' ? 'rgba(255, 255, 255, 0.01)' : '#f8fafc',
+                    transition: 'all 0.2s'
+                  }}
+                  onDragOver={e => e.preventDefault()}
+                  onDrop={e => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const parsed = parseBulkData(event.target?.result as string);
+                        setBulkParsedLeads(parsed);
+                        toast.success(t('Đã tải và phân tích thành công ') + parsed.length + t(' liên hệ'));
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                >
+                  <Upload size={32} style={{ margin: '0 auto 10px auto', color: 'var(--color-primary)' }} />
+                  <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Kéo & thả file ở đây hoặc click để chọn file')}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Chấp nhận các file .csv hoặc .txt định dạng UTF-8')}</div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".csv,.txt"
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {bulkParsedLeads.length > 0 && (
+              <div style={{ marginTop: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                    {t('Danh sách xem trước')} ({bulkParsedLeads.length})
+                  </h4>
+                  <button
+                    onClick={() => setBulkParsedLeads([])}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--color-danger)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Trash2 size={14} /> {t('Xóa tất cả')}
+                  </button>
+                </div>
+
+                <div style={{
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '10px',
+                  background: theme === 'dark' ? 'var(--color-surface)' : '#ffffff'
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                    <thead>
+                      <tr style={{ background: theme === 'dark' ? 'rgba(0,0,0,0.2)' : '#f8fafc', borderBottom: '1px solid var(--color-border)' }}>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Tên')}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('SĐT')}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Email')}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Nguồn')}</th>
+                        <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>{t('Loại')}</th>
+                        <th style={{ padding: '8px 12px', width: '50px' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkParsedLeads.map((lead, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                          <td style={{ padding: '8px 12px' }}>{lead.name}</td>
+                          <td style={{ padding: '8px 12px' }}>{lead.phone}</td>
+                          <td style={{ padding: '8px 12px' }}>{lead.email || '-'}</td>
+                          <td style={{ padding: '8px 12px' }}>{lead.source}</td>
+                          <td style={{ padding: '8px 12px' }}>{lead.type}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => removeBulkLeadRow(idx)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--color-text-muted)',
+                                cursor: 'pointer',
+                                padding: '2px'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.color = 'var(--color-danger)'}
+                              onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </div>
-          <div>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Loại (Type)')}</label>
-            <input className="form-input" placeholder={t("VD: Mua nhà")} value={manualData.type} onChange={e => setManualData({ ...manualData, type: e.target.value })} />
-          </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Ghi chú')}</label>
-            <textarea className="form-input" rows={3} style={{ resize: 'vertical', minHeight: '80px', lineHeight: 1.5, padding: '10px 12px' }} placeholder={t("Ghi chú thêm (Hỗ trợ nhiều dòng)...")} value={manualData.note} onChange={e => setManualData({ ...manualData, note: e.target.value })} />
-          </div>
-        </div>
+        )}
+
       </div>
       <div style={{ padding: '1rem', background: theme === 'dark' ? 'var(--color-surface)' : '#f8fafc', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', position: 'sticky', bottom: '-1.5rem', margin: '0 -1.5rem -1.5rem -1.5rem', zIndex: 10 }}>
         <button className="btn outline" onClick={() => setIsOpen(false)}>{t('Hủy')}</button>
-        <button className="btn primary" onClick={handleManualSubmit} disabled={isSubmittingManual || (!manualData.phone && !manualData.email)} style={{ background: 'var(--color-primary)' }}>
-          {isSubmittingManual ? t('Đang lưu...') : t('Lưu & Giao Data')}
+        <button
+          className="btn primary"
+          onClick={handleManualSubmit}
+          disabled={isSubmittingManual || (activeTab === 'single' ? (!manualData.phone && !manualData.email) : bulkParsedLeads.length === 0)}
+          style={{ background: 'linear-gradient(135deg, #bd1d2d 0%, #e63946 100%)', border: 'none' }}
+        >
+          {isSubmittingManual ? t('Đang lưu...') : (activeTab === 'single' ? t('Lưu & Giao Data') : t('Import và Giao ') + bulkParsedLeads.length + t(' Data'))}
         </button>
       </div>
     </CustomModal>

@@ -816,16 +816,16 @@ ul {
 }
 
 .btn.primary {
-  background: var(--color-primary);
+  background: linear-gradient(135deg, #BD1D2D 0%, #a31422 100%);
   color: #fff;
-  border: 1px solid var(--color-primary);
-  box-shadow: 0 4px 14px 0 rgba(163, 20, 34, 0.3);
+  border: none;
+  box-shadow: 0 4px 12px rgba(163, 20, 34, 0.25);
 }
 
 .btn.primary:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(163, 20, 34, 0.4);
+  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px rgba(163, 20, 34, 0.4);
 }
 
 .btn.primary:active {
@@ -1327,9 +1327,10 @@ select:focus {
 }
 
 .page-title {
-  font-size: 1.375rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 800;
   color: var(--color-text);
+  margin: 0;
 }
 
 .page-subtitle {
@@ -3191,14 +3192,17 @@ th.col-check {
    OPTIMIZED DARK THEME BUTTONS & SEMANTICS (Contrast Fixes)
    ================================================ */
 [data-theme="dark"] .btn.primary {
-  color: #060913 !important;
-  /* Dark navy text on light violet background for premium contrast */
-  font-weight: 800;
-  box-shadow: 0 4px 12px 0 rgba(167, 139, 250, 0.2);
+  background: linear-gradient(135deg, #BD1D2D 0%, #a31422 100%) !important;
+  color: #fff !important;
+  font-weight: 700;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(163, 20, 34, 0.4);
 }
 
 [data-theme="dark"] .btn.primary:hover {
-  box-shadow: 0 6px 18px 0 rgba(167, 139, 250, 0.35);
+  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%) !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 6px 16px rgba(163, 20, 34, 0.55) !important;
 }
 
 [data-theme="dark"] .btn.success {
