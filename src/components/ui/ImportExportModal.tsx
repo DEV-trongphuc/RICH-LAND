@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Download, FileText, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
@@ -64,10 +65,11 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, on
     addToast('Đang tải file mẫu...', 'success');
   };
 
-  return (
+  return typeof document !== 'undefined' ? createPortal(
     <AnimatePresence>
-      <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
-        <motion.div 
+      {isOpen && (
+        <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+          <motion.div 
           style={{ width: '100%', maxWidth: 600, background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', boxShadow: 'var(--shadow-2xl)', position: 'relative' }}
           initial={{ opacity: 0, y: 20, scale: 0.95 }} 
           animate={{ opacity: 1, y: 0, scale: 1 }} 
@@ -183,7 +185,8 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, on
           )}
         </motion.div>
       </div>
-    </AnimatePresence>
-
-  );
+      )}
+    </AnimatePresence>,
+    document.body
+  ) : null;
 };

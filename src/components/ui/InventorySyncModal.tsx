@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, FileSpreadsheet, Plus, Trash2, Database, 
   RefreshCw, AlertCircle, ExternalLink, Edit2
@@ -294,7 +295,7 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
 
   if (!isOpen) return null;
 
-  return (
+  return typeof document !== 'undefined' ? createPortal(
     <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', zIndex: 9999 }} onClick={onClose}>
       <div className="modal-sheet" style={{ width: '95vw', maxWidth: '1100px', height: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: '16px' }} onClick={e => e.stopPropagation()}>
         {/* Header */}
@@ -612,6 +613,7 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>,
+    document.body
+  ) : null;
 };
