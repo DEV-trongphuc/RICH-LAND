@@ -1571,6 +1571,24 @@ try {
         SET c.owner_id = u.id
     ");
 
+    // Self-healing check: ensure notification columns exist in leads table
+    $chkColZNS = $conn->query("SHOW COLUMNS FROM leads LIKE 'zalo_notify_status'");
+    if ($chkColZNS && $chkColZNS->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN zalo_notify_status VARCHAR(50) DEFAULT 'none'");
+    }
+    $chkColENS = $conn->query("SHOW COLUMNS FROM leads LIKE 'email_notify_status'");
+    if ($chkColENS && $chkColENS->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN email_notify_status VARCHAR(50) DEFAULT 'none'");
+    }
+    $chkColZNSA = $conn->query("SHOW COLUMNS FROM leads LIKE 'zalo_notify_sent_at'");
+    if ($chkColZNSA && $chkColZNSA->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN zalo_notify_sent_at DATETIME NULL");
+    }
+    $chkColENSA = $conn->query("SHOW COLUMNS FROM leads LIKE 'email_notify_sent_at'");
+    if ($chkColENSA && $chkColENSA->num_rows === 0) {
+        $conn->query("ALTER TABLE leads ADD COLUMN email_notify_sent_at DATETIME NULL");
+    }
+
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
 
     // 7. night_shift_registrations table

@@ -95,7 +95,7 @@ export const Login = () => {
         else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@richland.net'; }
 
         login(`demo_token_sale_${cId}`, { username: cEmail.split('@')[0], email: cEmail, name: name, role: 'sale', consultant_id: cId });
-        navigate('/sale-portal');
+        navigate('/');
       } else {
         login('demo_token_12345', { username: (email || 'admin@richland.net').split('@')[0], email: email || 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
         navigate('/');
@@ -393,7 +393,7 @@ export const Login = () => {
                   const json = await res.json();
                   if (json.success) {
                     login(json.token, json.user);
-                    navigate('/sale-portal');
+                    navigate('/');
                   } else {
                     setError(t(json.message) || 'Đăng nhập Sale thất bại');
                   }
