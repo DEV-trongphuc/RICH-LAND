@@ -8,6 +8,7 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { TagInput } from '../components/ui/TagInput';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
+import { compressToWebP } from '../utils/imageCompress';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { ActivityModal } from '../components/ui/ActivityModal';
@@ -575,10 +576,11 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                       <h4 className="panel-title" style={{ margin: 0 }}>Tài liệu Doanh nghiệp</h4>
                       <label className="btn outline sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <input type="file" style={{ display: 'none' }} onChange={(e) => {
+                        <input type="file" style={{ display: 'none' }} onChange={async (e) => {
                           if (e.target.files?.[0]) {
                             const file = e.target.files[0];
-                            setDocs(prev => [{ id: Date.now(), name: file.name, date: new Date().toLocaleDateString('vi-VN'), size: (file.size / 1024 / 1024).toFixed(1) + ' MB', type: file.name.split('.').pop() || 'file' }, ...prev]);
+                            const compressed = await compressToWebP(file);
+                            setDocs(prev => [{ id: Date.now(), name: compressed.name, date: new Date().toLocaleDateString('vi-VN'), size: (compressed.size / 1024 / 1024).toFixed(1) + ' MB', type: compressed.name.split('.').pop() || 'file' }, ...prev]);
                             addToast('Đã tải lên tài liệu doanh nghiệp mới.', 'success');
                           }
                         }} />

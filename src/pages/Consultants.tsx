@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
+import { compressToWebP } from '../utils/imageCompress';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -465,8 +466,9 @@ const ConsultantsInner = () => {
 
     setIsUploadingAvatar(true);
     try {
+      const compressedFile = await compressToWebP(file);
       const fd = new FormData();
-      fd.append('avatar', file);
+      fd.append('avatar', compressedFile);
 
       const oldAvatar = formData.avatar || '';
       const query = `upload_avatar&old_avatar=${encodeURIComponent(oldAvatar)}`;

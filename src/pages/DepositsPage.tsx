@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchAPI } from '../utils/api';
+import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
 import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban } from 'lucide-react';
 
@@ -151,10 +152,11 @@ export default function DepositsPage() {
   const handleUploadUnc = async (e: React.ChangeEvent<HTMLInputElement>, depositId: number, milestoneId: number) => {
     if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append('file', file);
 
     try {
+      const compressedFile = await compressToWebP(file);
+      const formData = new FormData();
+      formData.append('file', compressedFile);
       const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
       const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=deposits/${depositId}/milestones/${milestoneId}/unc&token=${token}`;
 

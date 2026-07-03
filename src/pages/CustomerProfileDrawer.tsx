@@ -14,6 +14,7 @@ import { MentionInput } from '../components/ui/MentionInput';
 import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
 import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { Avatar } from '../components/ui/Avatar';
+import { compressToWebP } from '../utils/imageCompress';
 import { TicketDrawer } from './TicketDrawer';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { numberToText } from '../utils/numberToText';
@@ -91,7 +92,7 @@ const TABS = [
 const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> = ({ activityId, initialCount = 0 }) => {
   const { addToast } = useUIStore();
   const [comments, setComments] = useState<any[]>([]);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -134,9 +135,10 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
     e.target.value = '';
 
     setUploading(true);
-    const fd = new FormData();
-    fd.append('file', file);
     try {
+      const compressed = await compressToWebP(file);
+      const fd = new FormData();
+      fd.append('file', compressed);
       const res = await api.post('/upload', fd);
       setAttachment(res.data.data?.url ?? '');
       addToast('Tải ảnh lên thành công', 'success');
@@ -917,6 +919,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
+  const toggleTaskDone = async (taskId: number, currentDone: boolean) => {
+    setTasks(p => p.map(x => x.id === taskId ? { ...x, done: !currentDone } : x));
+    try {
+      const nextStatus = !currentDone ? 'completed' : 'planned';
+      await api.put(`/activities/${taskId}`, { status: nextStatus });
+      addToast(nextStatus === 'completed' ? 'Đã hoàn thành công việc' : 'Đã mở lại công việc', 'success');
+      setDrawerActivities(prev => prev.map(a => a.id === taskId ? { ...a, status: nextStatus } : a));
+    } catch (err: any) {
+      setTasks(p => p.map(x => x.id === taskId ? { ...x, done: currentDone } : x));
+      addToast(err.response?.data?.message || 'Lỗi khi cập nhật trạng thái công việc', 'error');
+    }
+  };
+
   const deleteDeal = async (id: number) => {
     showConfirm({
       title: 'Xóa cơ hội bán hàng',
@@ -1596,7 +1611,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <input
                                   type="datetime-local"
                                   className="form-input sm"
-                                  style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '180px' }}
+                                  style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '240px' }}
                                   value={formData.created_at ? formData.created_at.substring(0, 16) : ''}
                                   onChange={e => {
                                     const val = e.target.value.replace('T', ' ') + ':00';
@@ -2257,7 +2272,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div
                               key={t.id}
                               className="card-panel"
-                              onClick={() => setTasks(p => p.map(x => x.id === t.id ? { ...x, done: !x.done } : x))}
+                              onClick={() => toggleTaskDone(t.id, t.done)}
                               style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1rem', opacity: t.done ? 0.6 : 1, cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
                               onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'}
                               onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
@@ -2610,10 +2625,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hồ sơ & Tài liệu</h3>
                         {isOwnerOrAdmin && (
                           <label className="btn outline sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <input type="file" style={{ display: 'none' }} onChange={(e) => {
+                            <input type="file" style={{ display: 'none' }} onChange={async (e) => {
                               if (e.target.files?.[0]) {
                                 const file = e.target.files[0];
-                                setDocs(prev => [{ id: Date.now(), name: file.name, date: new Date().toLocaleDateString('vi-VN'), size: (file.size / 1024 / 1024).toFixed(1) + ' MB', type: file.name.split('.').pop() || 'file' }, ...prev]);
+                                const compressed = await compressToWebP(file);
+                                setDocs(prev => [{ id: Date.now(), name: compressed.name, date: new Date().toLocaleDateString('vi-VN'), size: (compressed.size / 1024 / 1024).toFixed(1) + ' MB', type: compressed.name.split('.').pop() || 'file' }, ...prev]);
                                 addToast('Đã tải lên tài liệu mới.', 'success');
                               }
                             }} />

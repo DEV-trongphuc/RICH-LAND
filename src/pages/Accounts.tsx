@@ -6,6 +6,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
+import { compressToWebP } from '../utils/imageCompress';
 import toast from 'react-hot-toast';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -63,8 +64,9 @@ const AccountsInner = () => {
 
     setIsUploadingAvatar(true);
     try {
+      const compressedFile = await compressToWebP(file);
       const fd = new FormData();
-      fd.append('avatar', file);
+      fd.append('avatar', compressedFile);
 
       const oldAvatar = formData.avatar || '';
       const query = `upload_avatar&old_avatar=${encodeURIComponent(oldAvatar)}`;

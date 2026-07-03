@@ -5,6 +5,7 @@ import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { compressToWebP } from '../utils/imageCompress';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { AddressSelect } from '../components/ui/AddressSelect';
@@ -329,11 +330,12 @@ export default function ProjectsPage() {
   const handleUploadFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !selectedProjectId) return;
     const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append('file', file);
 
     setUploadingDoc(true);
     try {
+      const compressedFile = await compressToWebP(file);
+      const formData = new FormData();
+      formData.append('file', compressedFile);
       const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
       const url = `${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=projects/${selectedProjectId}/documents&token=${token}`;
       

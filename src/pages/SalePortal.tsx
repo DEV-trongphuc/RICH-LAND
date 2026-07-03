@@ -22,6 +22,7 @@ import toast from 'react-hot-toast';
 import { useUIStore } from '../store/uiStore';
 
 import { fetchAPI } from '../utils/api';
+import { compressToWebP } from '../utils/imageCompress';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -748,8 +749,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       let selfieUrl = '';
       
       if (fileToUpload) {
+        const compressedFile = await compressToWebP(fileToUpload);
         const formData = new FormData();
-        formData.append('file', fileToUpload);
+        formData.append('file', compressedFile);
         const uploadRes = await fetchAPI('upload', {
           method: 'POST',
           body: formData
@@ -911,8 +913,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     setIsUploadingAvatar(true);
     try {
+      const compressedFile = await compressToWebP(file);
       const fd = new FormData();
-      fd.append('avatar', file);
+      fd.append('avatar', compressedFile);
 
       const oldAvatar = editAvatar || '';
       const query = `upload_avatar&old_avatar=${encodeURIComponent(oldAvatar)}`;

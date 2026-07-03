@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
+import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
 import { CustomModal } from './ui/CustomModal';
 import { Avatar } from './ui/Avatar';
@@ -101,8 +102,9 @@ export const ProfileModal = () => {
 
     setIsUploadingAvatar(true);
     try {
+      const compressedFile = await compressToWebP(file);
       const fd = new FormData();
-      fd.append('avatar', file);
+      fd.append('avatar', compressedFile);
 
       const oldAvatar = profileData.avatar || '';
       const query = `upload_avatar&old_avatar=${encodeURIComponent(oldAvatar)}`;

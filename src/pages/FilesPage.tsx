@@ -9,6 +9,7 @@ import {
   MoreHorizontal, Share2, Info, Building2
 } from 'lucide-react';
 import api from '../api/axios';
+import { compressToWebP } from '../utils/imageCompress';
 import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
@@ -160,8 +161,9 @@ export const FilesPage: React.FC = () => {
     if (!selectedFile) return;
     setLoading(true);
     try {
+      const compressedFile = await compressToWebP(selectedFile);
       const formData = new FormData();
-      formData.append('file', selectedFile);
+      formData.append('file', compressedFile);
       formData.append('name', uploadFormData.name);
       formData.append('category', uploadFormData.category);
       formData.append('visibility', activeTab);
