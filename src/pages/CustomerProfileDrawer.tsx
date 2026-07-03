@@ -2361,10 +2361,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     </p>
                                   </div>
                                 </div>
-                                {isAdmin && (
-                                  <button className="btn ghost text-danger sm" onClick={handleRemoveCoopAttachment} style={{ padding: '8px' }}>
-                                    <Trash2 size={16} />
-                                  </button>
+                                {isOwnerOrAdmin && (
+                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                    <button className="btn-icon sm" title="Đổi tên" onClick={async () => {
+                                      const filename = coopSlip.attachment_url.split('/').pop() || '';
+                                      const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
+                                      const newName = prompt('Nhập tên mới cho tài liệu hợp tác:', cleanName);
+                                      if (newName && newName.trim()) {
+                                        try {
+                                          await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim() });
+                                          await fetchCoopSlip();
+                                          addToast('Đã đổi tên tài liệu hợp tác.', 'success');
+                                        } catch (err) {
+                                          addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                        }
+                                      }
+                                    }}>
+                                      <Pencil size={14} />
+                                    </button>
+                                    <button className="btn-icon sm text-danger" title="Xóa" onClick={handleRemoveCoopAttachment}>
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             ) : (
@@ -2372,7 +2390,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
                                   Chưa có tài liệu/hợp đồng đính kèm cho phiếu này.
                                 </p>
-                                {isAdmin && (
+                                {isOwnerOrAdmin && (
                                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                     <input
                                       type="file"

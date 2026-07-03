@@ -306,8 +306,23 @@ class CooperationController {
     }
 
     public function uploadAttachment(array $auth, int $id): void {
-        if ($auth['role'] !== 'admin' && $auth['role'] !== 'superadmin' && $auth['role'] !== 'super_admin' && $auth['role'] !== 'manager') {
-            respond(403, null, 'Bạn không có quyền tải lên tài liệu cho phiếu hợp tác', false);
+        $tid = $auth['tenant_id'];
+
+        // Owner or Admin/Manager check
+        $stmtOwner = $this->db->prepare("
+            SELECT c.owner_id 
+            FROM cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            WHERE cs.id = ? AND c.tenant_id = ?
+        ");
+        $stmtOwner->execute([$id, $tid]);
+        $ownerId = $stmtOwner->fetchColumn();
+
+        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
+                     ($ownerId && (int)$ownerId === (int)$auth['user_id']);
+
+        if (!$isAllowed) {
+            respond(403, null, 'Bạn không có quyền tải lên tài liệu cho phiếu hợp tác này', false);
         }
 
         if (empty($_FILES['file'])) {
@@ -329,7 +344,6 @@ class CooperationController {
             respond(422, null, "Định dạng tệp .$ext không được hỗ trợ", false);
         }
 
-        $tid = $auth['tenant_id'];
         $targetDir = UPLOAD_DIR . "/cooperation/$tid";
         if (!is_dir($targetDir)) {
             mkdir($targetDir, 0755, true);
@@ -356,11 +370,24 @@ class CooperationController {
     }
 
     public function deleteAttachment(array $auth, int $id): void {
-        if ($auth['role'] !== 'admin' && $auth['role'] !== 'superadmin' && $auth['role'] !== 'super_admin' && $auth['role'] !== 'manager') {
-            respond(403, null, 'Bạn không có quyền xóa tài liệu đính kèm', false);
-        }
-
         $tid = $auth['tenant_id'];
+
+        // Owner or Admin/Manager check
+        $stmtOwner = $this->db->prepare("
+            SELECT c.owner_id 
+            FROM cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            WHERE cs.id = ? AND c.tenant_id = ?
+        ");
+        $stmtOwner->execute([$id, $tid]);
+        $ownerId = $stmtOwner->fetchColumn();
+
+        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
+                     ($ownerId && (int)$ownerId === (int)$auth['user_id']);
+
+        if (!$isAllowed) {
+            respond(403, null, 'Bạn không có quyền xóa tài liệu đính kèm này', false);
+        }
 
         $stmt = $this->db->prepare("
             UPDATE cooperation_slips cs
@@ -371,5 +398,64 @@ class CooperationController {
         $stmt->execute([$id, $tid]);
 
         respond(200, null, 'Xóa tài liệu đính kèm thành công');
+    }
+
+    public function renameAttachment(array $auth, int $id): void {
+        $tid = $auth['tenant_id'];
+        
+        // Ownership / permission check
+        $stmtOwner = $this->db->prepare("
+            SELECT cs.attachment_url, c.owner_id 
+            FROM cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            WHERE cs.id = ? AND c.tenant_id = ?
+        ");
+        $stmtOwner->execute([$id, $tid]);
+        $row = $stmtOwner->fetch();
+        if (!$row) {
+            respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
+        }
+        
+        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
+                     ((int)$row['owner_id'] === (int)$auth['user_id']);
+                     
+        if (!$isAllowed) {
+            respond(403, null, 'Bạn không có quyền đổi tên tài liệu này', false);
+        }
+
+        $b = getBody();
+        $newName = trim($b['name'] ?? '');
+        if (empty($newName)) {
+            respond(422, null, 'Tên tài liệu mới không được bỏ trống', false);
+        }
+
+        $oldUrl = $row['attachment_url'];
+        if (empty($oldUrl)) {
+            respond(400, null, 'Phiếu hợp tác chưa có tài liệu để đổi tên', false);
+        }
+
+        $oldPath = UPLOAD_DIR . '/' . str_replace('uploads/', '', $oldUrl);
+        $ext = strtolower(pathinfo($oldPath, PATHINFO_EXTENSION));
+        
+        $newNameClean = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($newName, PATHINFO_FILENAME));
+        $newFileName = time() . '_' . $newNameClean . '.' . $ext;
+        
+        $targetDir = dirname($oldPath);
+        $newPath = $targetDir . '/' . $newFileName;
+        $dbPath = "uploads/cooperation/$tid/$newFileName";
+
+        if (file_exists($oldPath) && is_file($oldPath)) {
+            if (rename($oldPath, $newPath)) {
+                $stmt = $this->db->prepare("UPDATE cooperation_slips SET attachment_url = ? WHERE id = ?");
+                $stmt->execute([$dbPath, $id]);
+                respond(200, ['file_url' => $dbPath], 'Đổi tên tài liệu thành công');
+            } else {
+                respond(500, null, 'Không thể đổi tên tệp vật lý trên server', false);
+            }
+        } else {
+            $stmt = $this->db->prepare("UPDATE cooperation_slips SET attachment_url = ? WHERE id = ?");
+            $stmt->execute([$dbPath, $id]);
+            respond(200, ['file_url' => $dbPath], 'Đổi tên tài liệu thành công');
+        }
     }
 }

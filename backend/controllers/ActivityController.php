@@ -38,7 +38,7 @@ class ActivityController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'due_date';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'ASC';
 
-        if ($auth['role'] === 'sales') {
+        if (in_array($auth['role'], ['sales', 'sale'], true) && !$relType && !$relId) {
             $where[] = 'a.user_id = ?';
             $params[] = $auth['user_id'];
         }
