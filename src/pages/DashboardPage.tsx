@@ -21,8 +21,14 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton } from '../components/ui/Skeleton';
 
-const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n || 0);
-const FMT_VND = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n || 0);
+const FMT = (n: any) => {
+  const num = Number(n || 0);
+  return num >= 1e9 ? (num / 1e9).toFixed(1) + 'T' : num >= 1e6 ? (num / 1e6).toFixed(0) + 'M' : num >= 1e3 ? (num / 1e3).toFixed(0) + 'K' : String(num);
+};
+const FMT_VND = (n: any) => {
+  const num = Number(n || 0);
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(num);
+};
 
 const MOCK_STATS = {
   won_value: 0,
@@ -144,13 +150,32 @@ export const DashboardPage: React.FC = () => {
         api.get('/reports/inventory'),
       ]);
       setStats(s.data.data || MOCK_STATS);
-      setRevenueChart(rev.data.data || []);
-      setPipelineFunnel(pipe.data.data || []);
-      const srcColors = ['#3b82f6', '#BD1D2D', '#10b981', '#f59e0b', '#ef4444', '#6b7280'];
-      const srcData = (src.data.data || []).map((x: any, i: number) => ({ ...x, color: srcColors[i % srcColors.length] }));
+      setRevenueChart((rev.data.data || []).map((x: any) => ({
+        ...x,
+        revenue: Number(x.revenue || 0),
+        cost: Number(x.cost || 0)
+      })));
+      setPipelineFunnel((pipe.data.data || []).map((x: any) => ({
+        ...x,
+        deal_count: Number(x.deal_count || 0),
+        total_value: Number(x.total_value || 0)
+      })));
+      const srcColors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#0d9488', '#BD1D2D'];
+      const srcData = (src.data.data || []).map((x: any, i: number) => ({
+        ...x,
+        count: Number(x.count || 0),
+        color: srcColors[i % srcColors.length]
+      }));
       setLeadSources(srcData);
-      setLeaderboard(lead.data.data || []);
-      setTagStats((tags.data.data || []).slice(0, 12));
+      setLeaderboard((lead.data.data || []).map((x: any) => ({
+        ...x,
+        won_value: Number(x.won_value || 0),
+        won_count: Number(x.won_count || 0)
+      })));
+      setTagStats((tags.data.data || []).slice(0, 12).map((x: any) => ({
+        ...x,
+        count: Number(x.count || 0)
+      })));
       setInventoryStats(inventory.data.data);
     } catch (e: any) {
       setStats(null);
@@ -436,21 +461,26 @@ export const DashboardPage: React.FC = () => {
               <ComposedChart data={revenueChart} margin={{ left: -10, right: 5 }}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.18} />
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.2} />
                     <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorDashboardCost" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f97316" stopOpacity={0.9}/>
+                    <stop offset="100%" stopColor="#ea580c" stopOpacity={0.75}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={38} />
+                <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={42} />
                 <Tooltip 
-                  formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']} 
+                  cursor={false}
+                  formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name]} 
                   contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }}
                   labelStyle={{ color: 'var(--color-text)', fontWeight: 700 }}
                   itemStyle={{ color: 'var(--color-primary)' }}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Bar dataKey="cost" name="Chi phí" fill="var(--color-danger)" fillOpacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={14} />
+                <Area type="monotone" name="Doanh thu" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                <Bar dataKey="cost" name="Chi phí" fill="url(#colorDashboardCost)" radius={[3, 3, 0, 0]} maxBarSize={14} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
@@ -572,7 +602,7 @@ export const DashboardPage: React.FC = () => {
                   <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <YAxis type="category" dataKey="tag" tick={{ fontSize: 11, fill: 'var(--color-text)', fontWeight: 600 }} width={90} axisLine={false} tickLine={false} />
                   <Tooltip
-                    cursor={{ fill: 'var(--color-primary-light)' }}
+                    cursor={false}
                     formatter={(v: any) => [v + ' lead', 'Số lead']}
                     contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }}
                     labelStyle={{ color: 'var(--color-text)', fontWeight: 700 }}

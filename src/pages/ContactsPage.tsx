@@ -23,7 +23,7 @@ import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../contexts/AuthContext';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 const STATUS_LABEL: Record<string,string> = { lead:'Lead mới', qualified:'Đủ điều kiện', customer:'Khách hàng', churned:'Đã rời' };
 const STATUS_CLASS: Record<string,string> = { lead:'info', qualified:'warning', customer:'success', churned:'danger' };
@@ -738,7 +738,7 @@ export const ContactsPage: React.FC = () => {
         <div className="card" style={{ overflow: 'visible' }}>
           {viewMode === 'list' ? (
 
-            <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 220px)', overflowY: 'auto' }}>
+            <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', boxShadow: '0 1px 0 var(--color-border)' }}>
                   <tr>

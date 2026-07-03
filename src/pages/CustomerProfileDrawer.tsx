@@ -543,6 +543,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { t } = useLanguage();
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   const renderFormattedText = (text: string) => {
     if (!text) return '';
     // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))

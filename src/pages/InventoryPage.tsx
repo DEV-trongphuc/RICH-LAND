@@ -20,7 +20,7 @@ import { DEV_MODE } from '../config/env';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 interface Batch {
   id: number;
@@ -409,7 +409,7 @@ export default function InventoryPage() {
             </div>
             <span className="badge info">{globalLogs.length} giao dịch</span>
           </div>
-          <div className="table-wrap">
+          <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
             <table>
               <thead>
                 <tr>
@@ -484,7 +484,7 @@ export default function InventoryPage() {
         <>
           {viewMode === 'list' ? (
             <div className="card" style={{ borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
-              <div className="table-wrap">
+              <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
                 <table>
                   <thead>
                     <tr>

@@ -17,7 +17,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 const fmtDate = (d: any) => {
@@ -328,7 +328,7 @@ export const InvoicesPage: React.FC = () => {
 
       {/* Table */}
       <div className="card" style={{ overflow: 'visible' }}>
-        <div className="table-wrap responsive-table-wrap mobile-card-table">
+        <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
           <table>
             <thead>
               <tr>

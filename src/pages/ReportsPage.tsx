@@ -12,7 +12,7 @@ import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 
-const COLORS = ['#a31422', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#BD1D2D', '#BD1D2D'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#0d9488', '#ec4899', '#f43f5e', '#a31422'];
 const T_LABEL: Record<string, string> = {
   'call': 'Cuộc gọi',
   'email': 'Email',
@@ -24,8 +24,14 @@ const T_LABEL: Record<string, string> = {
 const MONTHLY: any[] = [];
 const BY_OWNER: any[] = [];
 
-const FMT = (n: number) => n >= 1e9 ? (n / 1e9).toFixed(1) + 'T' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : (n / 1e3).toFixed(0) + 'K';
-const FMT_VND = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
+const FMT = (n: any) => {
+  const num = Number(n || 0);
+  return num >= 1e9 ? (num / 1e9).toFixed(1) + 'T' : num >= 1e6 ? (num / 1e6).toFixed(0) + 'M' : num >= 1e3 ? (num / 1e3).toFixed(0) + 'K' : String(num);
+};
+const FMT_VND = (n: any) => {
+  const num = Number(n || 0);
+  return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
+};
 
 export const ReportsPage: React.FC = () => {
   const { addToast } = useUIStore();
@@ -126,7 +132,13 @@ export const ReportsPage: React.FC = () => {
     setLoading(true);
     try {
       const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to } });
-      setPipelineData(r.data.data);
+      const raw = r.data.data || [];
+      const mapped = raw.map((item: any) => ({
+        ...item,
+        count: Number(item.count || 0),
+        total_value: Number(item.total_value || 0)
+      }));
+      setPipelineData(mapped);
     } catch (e: any) {
       // silent fail
     } finally { setLoading(false); }
@@ -157,7 +169,12 @@ export const ReportsPage: React.FC = () => {
     setLoading(true);
     try {
       const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to } });
-      setActivityData(r.data.data);
+      const raw = r.data.data;
+      if (raw) {
+        if (raw.by_type) raw.by_type = raw.by_type.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
+        if (raw.by_user_type) raw.by_user_type = raw.by_user_type.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
+      }
+      setActivityData(raw);
     } catch (e: any) {
       console.error("Failed to fetch activities", e);
     } finally { setLoading(false); }
@@ -195,7 +212,13 @@ export const ReportsPage: React.FC = () => {
     setLoading(true);
     try {
       const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to } });
-      setCustomerData(r.data.data);
+      const raw = r.data.data;
+      if (raw) {
+        if (raw.by_source) raw.by_source = raw.by_source.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
+        if (raw.by_score) raw.by_score = raw.by_score.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
+        if (raw.trend) raw.trend = raw.trend.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
+      }
+      setCustomerData(raw);
     } catch (e: any) {
       console.error(e);
     } finally { setLoading(false); }
@@ -231,7 +254,13 @@ export const ReportsPage: React.FC = () => {
     setLoading(true);
     try {
       const r = await api.get('/reports/companies');
-      setCompanyData(r.data.data);
+      const raw = r.data.data;
+      if (raw) {
+        if (raw.by_industry) raw.by_industry = raw.by_industry.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
+        if (raw.by_size) raw.by_size = raw.by_size.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
+        if (raw.by_city) raw.by_city = raw.by_city.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
+      }
+      setCompanyData(raw);
     } catch (e: any) {
       console.error(e);
     } finally { setLoading(false); }
@@ -263,7 +292,12 @@ export const ReportsPage: React.FC = () => {
     setLoading(true);
     try {
       const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to } });
-      setExpenseData(r.data.data);
+      const raw = r.data.data;
+      if (raw) {
+        if (raw.by_category) raw.by_category = raw.by_category.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
+        if (raw.trend) raw.trend = raw.trend.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
+      }
+      setExpenseData(raw);
     } catch (e: any) {
       console.error(e);
     } finally { setLoading(false); }
@@ -374,14 +408,24 @@ export const ReportsPage: React.FC = () => {
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={salesData?.by_month || MONTHLY} margin={{ left: -10 }}>
+                  <defs>
+                    <linearGradient id="colorSalesRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#a31422" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#7e0e17" stopOpacity={1}/>
+                    </linearGradient>
+                    <linearGradient id="colorSalesCost" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#ea580c" stopOpacity={1}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={FMT} tick={{ fontSize: 9, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={36} />
-                  <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']}
+                  <YAxis tickFormatter={FMT} tick={{ fontSize: 9, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={42} />
+                  <Tooltip cursor={false} formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name]}
                     contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
                   <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', marginTop: '6px' }} />
-                  <Bar dataKey="revenue" name="Doanh thu" fill="#a31422" radius={[4, 4, 0, 0]} maxBarSize={12} />
-                  <Bar dataKey="cost" name="Chi phí" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                  <Bar dataKey="revenue" name="Doanh thu" fill="url(#colorSalesRevenue)" radius={[4, 4, 0, 0]} maxBarSize={16} />
+                  <Bar dataKey="cost" name="Chi phí" fill="url(#colorSalesCost)" radius={[4, 4, 0, 0]} maxBarSize={16} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -571,11 +615,17 @@ export const ReportsPage: React.FC = () => {
               <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={customerData?.trend || []}>
+                    <defs>
+                      <linearGradient id="colorCustomerGrowth" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={1}/>
+                        <stop offset="100%" stopColor="#6366f1" stopOpacity={1}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                    <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                    <Tooltip cursor={false} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                    <Bar dataKey="count" fill="url(#colorCustomerGrowth)" radius={[4, 4, 0, 0]} maxBarSize={24} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -586,11 +636,17 @@ export const ReportsPage: React.FC = () => {
             <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={customerData?.by_score || []}>
+                  <defs>
+                    <linearGradient id="colorCustomerScore" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#4f46e5" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#3730a3" stopOpacity={1}/>
+                    </linearGradient>
+                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
                   <XAxis dataKey="bucket" label={{ value: 'Điểm tiềm năng', position: 'insideBottom', offset: -5, style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10 }} />
                   <YAxis label={{ value: 'Số lượng', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                  <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                  <Tooltip cursor={false} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                  <Bar dataKey="count" fill="url(#colorCustomerScore)" radius={[4, 4, 0, 0]} maxBarSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -751,7 +807,7 @@ export const ReportsPage: React.FC = () => {
             
             <div className="card" style={{ padding: '1.5rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>Tóm tắt hoạt động nhân viên</h3>
-              <div className="table-wrap">
+              <div className="table-wrap" style={{ maxHeight: '280px', overflowY: 'auto' }}>
                 <table>
                   <thead>
                     <tr><th>Nhân viên</th><th>Tổng</th></tr>
@@ -784,7 +840,7 @@ export const ReportsPage: React.FC = () => {
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontWeight: 700 }}>Chi tiết hoạt động theo loại</h3>
             </div>
-            <div className="table-wrap">
+            <div className="table-wrap" style={{ maxHeight: '280px', overflowY: 'auto' }}>
               <table>
                 <thead>
                   <tr><th>Nhân viên</th><th>Cuộc gọi</th><th>Email</th><th>Cuộc họp</th><th>Task</th><th>Ghi chú</th><th>Tổng</th></tr>

@@ -14,7 +14,7 @@ import { CalendarView } from '../components/CalendarView';
 import { LayoutList } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 const MOCK_ACTIVITIES: any[] = [];

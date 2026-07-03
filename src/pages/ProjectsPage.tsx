@@ -480,7 +480,7 @@ export default function ProjectsPage() {
                 <div>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-3 bg-primary/10 rounded-lg text-primary" style={{ color: 'var(--color-primary)' }}>
+                      <div className="p-3 bg-blue-500/10 rounded-lg text-blue-500" style={{ color: '#3b82f6' }}>
                         <Building2 size={24} />
                       </div>
                       <div>

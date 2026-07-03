@@ -20,7 +20,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 const fmtDate = (d: any) => {
@@ -347,7 +347,7 @@ export const QuotesPage: React.FC = () => {
 
       {/* Table */}
       <div className="card overflow-hidden">
-        <div className="table-wrap">
+        <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
           <table>
             <thead>
               <tr>

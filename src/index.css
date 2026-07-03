@@ -3577,6 +3577,118 @@ button:active,
 @media (max-width: 640px) {
   .flex-col-mobile {
     flex-direction: column !important;
-    align-items: flex-start !important;
   }
+}
+
+/* Compact & Snug Design Overrides ("Gọn & Không quá to") */
+.card, .stat-kpi {
+  padding: 1rem !important; /* Keep card paddings snug */
+}
+
+.page-header {
+  padding: 1.25rem 1.5rem !important; /* Shorter header area */
+  margin-bottom: 1rem !important;
+}
+
+.page-title {
+  font-size: 1.5rem !important; /* Make title smaller/tighter */
+  font-weight: 800 !important;
+}
+
+.page-subtitle {
+  font-size: 0.75rem !important; /* Compact subtitle */
+  margin-top: 2px !important;
+}
+
+/* Snug list tables */
+table th {
+  padding: 0.75rem 1rem !important; /* Reduced padding from 1rem */
+  font-size: 0.725rem !important;
+}
+
+table td {
+  padding: 0.75rem 1rem !important; /* Reduced padding from 1rem */
+  font-size: 0.785rem !important;
+}
+
+/* Compact form fields and buttons */
+.form-group {
+  margin-bottom: 0.875rem !important;
+}
+
+.form-label {
+  font-size: 0.75rem !important;
+  margin-bottom: 4px !important;
+}
+
+.form-input, .form-select, .form-textarea {
+  font-size: 0.8125rem !important;
+  padding: 6px 10px !important; /* Compact input padding */
+  height: 34px !important;
+}
+
+.form-textarea {
+  height: auto !important;
+  min-height: 80px !important;
+}
+
+.btn {
+  height: 34px !important; /* Slightly smaller button height */
+  padding: 0 0.875rem !important;
+  font-size: 0.8125rem !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.btn.sm {
+  height: 28px !important;
+  padding: 0 0.625rem !important;
+  font-size: 0.725rem !important;
+}
+
+/* Secure z-index hierarchy */
+.overlay-backdrop {
+  z-index: 11000 !important; /* Ensure dialogs are always on top */
+}
+
+/* Drawer overlays */
+.drawer-backdrop {
+  z-index: 10500 !important;
+}
+
+.drawer-sheet {
+  z-index: 10600 !important;
+}
+
+/* Mobile Header / Sidebar alignment */
+header, .navbar {
+  z-index: 90 !important; /* Lower than drawer backdrop */
+}
+
+/* Table wrapping and column protection */
+.table-wrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin !important;
+}
+
+/* For tables that have many columns, prevent squeezing below 960px */
+.table-wrap table {
+  width: 100% !important;
+  min-width: 960px !important;
+  border-collapse: collapse !important;
+}
+
+/* Ensure single line content and ellipsis for long text in cells */
+table td, table th {
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 240px !important;
+}
+
+/* Allow text wrap on specific utility cells if needed */
+table td.wrap-cell, table th.wrap-cell {
+  white-space: normal !important;
+  word-break: break-word !important;
+  max-width: none !important;
 }

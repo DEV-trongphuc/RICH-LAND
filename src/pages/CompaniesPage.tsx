@@ -15,7 +15,7 @@ import { useDebounce } from '../hooks/useDebounce';
 const STATUSES = ['active', 'inactive', 'prospect'];
 const ST_LABEL: Record<string, string> = { active: 'Hoạt động', inactive: 'Ngừng', prospect: 'Tiềm năng' };
 const ST_CLASS: Record<string, string> = { active: 'success', inactive: 'danger', prospect: 'warning' };
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 export const CompaniesPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
@@ -291,7 +291,7 @@ export const CompaniesPage: React.FC = () => {
       {/* List View */}
       {!loading && viewMode === 'list' && (
         <div className="card" style={{ overflow: 'visible' }}>
-          <div className="table-wrap">
+          <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
             <table style={{ width: '100%' }}>
               <thead>
                 <tr>

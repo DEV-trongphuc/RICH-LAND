@@ -626,7 +626,7 @@ const ConsultantsInner = () => {
       {/* Main Content Area */}
       {activeTab === 'consultants' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
+          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0, maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
             <table className="mobile-table-compact">
               <thead>
                 <tr>
@@ -842,7 +842,7 @@ const ConsultantsInner = () => {
       </div>
       ) : activeTab === 'teams' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
+          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0, maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
             <table className="mobile-table-compact">
               <thead>
                 <tr>
@@ -1071,7 +1071,7 @@ const ConsultantsInner = () => {
                       <CustomSelect
                         options={[
                           { value: '', label: `-- ${t('Không thuộc nhóm nào')} --` },
-                          ...teams.map(t => ({ value: String(t.id), label: `${t.name} (${t.branch || t('Không có chi nhánh')})` }))
+                          ...teams.map(team => ({ value: String(team.id), label: `${team.name} (${team.branch || t('Không có chi nhánh')})` }))
                         ]}
                         value={String(formData.team_id || '')}
                         onChange={val => setFormData({ ...formData, team_id: String(val) })}

@@ -40,6 +40,17 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   const [baseData, setBaseData] = useState<any>(entity || {});
   const [baseTags, setBaseTags] = useState<string[]>(entity?.tags || []);
 

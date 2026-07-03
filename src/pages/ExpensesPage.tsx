@@ -22,7 +22,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 10;
 
 const MOCK_EXPENSES: any[] = [
   { id: 1, title: 'Thuê văn phòng tháng 6', amount: 15000000, date: '2026-05-01', category: 'Vận hành', creator_name: 'Admin', status: 'approved', vendor_name: 'Minh House', has_vat_invoice: true, is_vat_inclusive: true },
@@ -398,7 +398,7 @@ export const ExpensesPage: React.FC = () => {
 
       {/* Main table */}
       <div className="card" style={{ overflow: 'visible' }}>
-        <div className="table-wrap">
+        <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
           <table>
             <thead>
               <tr>
