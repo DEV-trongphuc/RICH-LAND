@@ -43,7 +43,7 @@ class CooperationController {
             
             $shareholdersDetails = [];
             foreach ($shares as $uid => $percent) {
-                $stmtU = $this->db->prepare("SELECT full_name, email, avatar FROM users WHERE id = ?");
+                $stmtU = $this->db->prepare("SELECT full_name, email, avatar_url FROM users WHERE id = ?");
                 $stmtU->execute([(int)$uid]);
                 $u = $stmtU->fetch();
                 if ($u) {
@@ -51,7 +51,7 @@ class CooperationController {
                         'user_id' => (int)$uid,
                         'name' => $u['full_name'],
                         'email' => $u['email'],
-                        'avatar' => $u['avatar'] ?? null,
+                        'avatar' => $u['avatar_url'] ?? null,
                         'percentage' => (int)$percent,
                         'signed' => isset($signatures[$uid]),
                         'signature_time' => $signatures[$uid]['time'] ?? null,
