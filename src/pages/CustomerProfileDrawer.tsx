@@ -2787,7 +2787,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                             )}
 
-                            {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
+                            {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <button 
                                   className="btn outline sm"
