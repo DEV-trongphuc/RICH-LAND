@@ -16,6 +16,11 @@ class ContactController {
         $owner   = $_GET['owner_id'] ?? '';
         $stage   = $_GET['stage_id'] ?? '';
         $companyId = $_GET['company_id'] ?? '';
+        $projectId = $_GET['project_id'] ?? '';
+        $tag     = $_GET['tag'] ?? '';
+        $from    = $_GET['from'] ?? '';
+        $to      = $_GET['to'] ?? '';
+        $dateField = $_GET['date_field'] ?? 'created_at';
         $segment = $_GET['segment'] ?? 'all';
         $sortBy  = $_GET['sort'] ?? 'created_at';
         $order   = $_GET['order'] ?? 'DESC';
@@ -46,6 +51,19 @@ class ContactController {
         if ($owner)  { $where[] = 'c.owner_id = ?'; $params[] = (int)$owner; }
         if ($stage)  { $where[] = 'c.stage_id = ?'; $params[] = (int)$stage; }
         if ($companyId) { $where[] = 'c.company_id = ?'; $params[] = (int)$companyId; }
+        if ($projectId !== '') { $where[] = 'c.project_id = ?'; $params[] = (int)$projectId; }
+        if ($tag !== '') { $where[] = 'c.tags LIKE ?'; $params[] = '%"' . $tag . '"%'; }
+        
+        if ($from !== '') {
+            $whereField = in_array($dateField, ['created_at', 'updated_at', 'last_contact']) ? $dateField : 'created_at';
+            $where[] = "c.{$whereField} >= ?";
+            $params[] = $from . ' 00:00:00';
+        }
+        if ($to !== '') {
+            $whereField = in_array($dateField, ['created_at', 'updated_at', 'last_contact']) ? $dateField : 'created_at';
+            $where[] = "c.{$whereField} <= ?";
+            $params[] = $to . ' 23:59:59';
+        }
 
         switch ($segment) {
             case 'hot':        $where[] = 'c.lead_score >= 80'; break;

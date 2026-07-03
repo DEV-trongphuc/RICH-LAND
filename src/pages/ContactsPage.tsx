@@ -39,13 +39,15 @@ const calcScore = (c: any) => {
   return Math.min(100, Math.max(0,s));
 };
 
-const SEGMENTS = [
-  { key:'all',         label:'Tất cả',              icon:'' },
-  { key:'hot',         label:'Hot (≥80đ)',          icon:'' },
-  { key:'customer',    label:'Khách hàng',           icon:'' },
-  { key:'has_deal',    label:'Có deal đang mở',      icon:'' },
-  { key:'no_contact',  label:'Không liên hệ >30n',   icon:'' },
-  { key:'new_week',    label:'Mới trong tuần',        icon:'' },
+const SEGMENTS = [];
+
+const SOURCE_OPTIONS = [
+  { value: '', label: 'Tất cả nguồn' },
+  { value: 'facebook', label: 'Facebook' },
+  { value: 'google', label: 'Google Ads' },
+  { value: 'referral', label: 'Giới thiệu' },
+  { value: 'website', label: 'Website' },
+  { value: 'other', label: 'Khác' }
 ];
 
 const FMT_VND = (n: number) => n ? new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n) : '—';
@@ -68,6 +70,34 @@ export const ContactsPage: React.FC = () => {
   const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
   const [creating, setCreating] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
+
+  // Advanced Filter state
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+  const [filterOwnerId, setFilterOwnerId] = useState('');
+  const [filterProjectId, setFilterProjectId] = useState('');
+  const [filterTag, setFilterTag] = useState('');
+  const [dateFilterType, setDateFilterType] = useState<'range' | 'before' | 'after'>('range');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
+  const [filterBeforeDate, setFilterBeforeDate] = useState('');
+  const [filterAfterDate, setFilterAfterDate] = useState('');
+  const [projects, setProjects] = useState<any[]>([]);
+  const [activeFilters, setActiveFilters] = useState({
+    status: '',
+    source: '',
+    ownerId: '',
+    projectId: '',
+    tag: '',
+    dateField: 'created_at' as 'created_at' | 'updated_at' | 'last_contact',
+    dateType: 'range' as 'range' | 'before' | 'after',
+    fromDate: '',
+    toDate: '',
+    beforeDate: '',
+    afterDate: '',
+    dateActive: false
+  });
 
   useEffect(() => {
     if (showCreateModal && user) {
@@ -135,11 +165,32 @@ export const ContactsPage: React.FC = () => {
         );
       }
 
-      // Segment filtering
-      if (segment !== 'all') {
-        if (segment === 'hot') list = list.filter(c => (c.lead_score || calcScore(c)) >= 80);
-        else if (segment === 'customer') list = list.filter(c => c.status === 'customer');
-        else if (segment === 'has_deal') list = list.filter(c => (c.open_deal_value || 0) > 0);
+      // Advanced filters mapping for Mock Mode
+      if (activeFilters.status) {
+        list = list.filter(c => c.status === activeFilters.status);
+      }
+      if (activeFilters.source) {
+        list = list.filter(c => c.source === activeFilters.source);
+      }
+      if (activeFilters.ownerId) {
+        list = list.filter(c => String(c.owner_id) === activeFilters.ownerId);
+      }
+      if (activeFilters.projectId) {
+        list = list.filter(c => String(c.project_id) === activeFilters.projectId);
+      }
+      if (activeFilters.tag) {
+        list = list.filter(c => Array.isArray(c.tags) && c.tags.includes(activeFilters.tag));
+      }
+      if (activeFilters.dateActive) {
+        const field = activeFilters.dateField;
+        if (activeFilters.dateType === 'range') {
+          if (activeFilters.fromDate) list = list.filter(c => new Date(c[field]) >= new Date(activeFilters.fromDate));
+          if (activeFilters.toDate) list = list.filter(c => new Date(c[field]) <= new Date(activeFilters.toDate));
+        } else if (activeFilters.dateType === 'before') {
+          if (activeFilters.beforeDate) list = list.filter(c => new Date(c[field]) <= new Date(activeFilters.beforeDate));
+        } else if (activeFilters.dateType === 'after') {
+          if (activeFilters.afterDate) list = list.filter(c => new Date(c[field]) >= new Date(activeFilters.afterDate));
+        }
       }
 
       setContacts(list.map(c => ({ ...c, score: c.lead_score || calcScore(c) })));
@@ -154,15 +205,26 @@ export const ContactsPage: React.FC = () => {
         page, 
         limit: PAGE_SIZE, 
         search: debouncedSearch, 
-        segment,
         sort: sortBy === 'score_desc' ? 'lead_score' : (sortBy === 'deal_desc' ? 'open_deal_value' : 'created_at'),
         order: 'DESC'
       };
       
-      if (dateFilterActive && (dateRange.from || dateRange.to)) {
-        params.from = dateRange.from;
-        params.to = dateRange.to;
-        params.date_field = filterDateField;
+      if (activeFilters.status) params.status = activeFilters.status;
+      if (activeFilters.source) params.source = activeFilters.source;
+      if (activeFilters.ownerId) params.owner_id = activeFilters.ownerId;
+      if (activeFilters.projectId) params.project_id = activeFilters.projectId;
+      if (activeFilters.tag) params.tag = activeFilters.tag;
+
+      if (activeFilters.dateActive) {
+        params.date_field = activeFilters.dateField;
+        if (activeFilters.dateType === 'range') {
+          if (activeFilters.fromDate) params.from = activeFilters.fromDate;
+          if (activeFilters.toDate) params.to = activeFilters.toDate;
+        } else if (activeFilters.dateType === 'before') {
+          if (activeFilters.beforeDate) params.to = activeFilters.beforeDate;
+        } else if (activeFilters.dateType === 'after') {
+          if (activeFilters.afterDate) params.from = activeFilters.afterDate;
+        }
       }
 
       const r = await api.get('/contacts', { params });
@@ -180,7 +242,7 @@ export const ContactsPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [page, debouncedSearch, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
+  }, [page, debouncedSearch, sortBy, activeFilters]);
 
   useEffect(() => {
     // Fetch sales/users for assignment once (only for admin/manager who have permission)
@@ -188,6 +250,65 @@ export const ContactsPage: React.FC = () => {
       api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
     }
   }, [user]);
+
+  useEffect(() => {
+    api.get('/projects').then(r => {
+      const d = r.data.data;
+      setProjects(Array.isArray(d) ? d : (d?.items || []));
+    }).catch(() => {});
+  }, []);
+
+  const handleApplyFilters = () => {
+    setPage(1);
+    const dateActive = 
+      (dateFilterType === 'range' && (filterFromDate || filterToDate)) ||
+      (dateFilterType === 'before' && filterBeforeDate) ||
+      (dateFilterType === 'after' && filterAfterDate);
+
+    setActiveFilters({
+      status: filterStatus,
+      source: filterSource,
+      ownerId: filterOwnerId,
+      projectId: filterProjectId,
+      tag: filterTag.trim(),
+      dateField: filterDateField as any,
+      dateType: dateFilterType,
+      fromDate: filterFromDate,
+      toDate: filterToDate,
+      beforeDate: filterBeforeDate,
+      afterDate: filterAfterDate,
+      dateActive: !!dateActive
+    });
+  };
+
+  const handleResetFilters = () => {
+    setFilterStatus('');
+    setFilterSource('');
+    setFilterOwnerId('');
+    setFilterProjectId('');
+    setFilterTag('');
+    setFilterDateField('created_at');
+    setDateFilterType('range');
+    setFilterFromDate('');
+    setFilterToDate('');
+    setFilterBeforeDate('');
+    setFilterAfterDate('');
+    setPage(1);
+    setActiveFilters({
+      status: '',
+      source: '',
+      ownerId: '',
+      projectId: '',
+      tag: '',
+      dateField: 'created_at',
+      dateType: 'range',
+      fromDate: '',
+      toDate: '',
+      beforeDate: '',
+      afterDate: '',
+      dateActive: false
+    });
+  };
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -300,19 +421,7 @@ export const ContactsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Smart Segments */}
-      <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1rem', overflowX:'auto', paddingBottom:4 }}>
-        {SEGMENTS.map(s => {
-          const cnt = segmentCounts[s.key] || 0;
-          return (
-            <button key={s.key} onClick={() => { setSegment(s.key); setPage(1); }}
-              style={{ padding:'0.5rem 1rem', borderRadius:'var(--radius-full)', border:`1px solid ${segment===s.key?'var(--color-primary)':'var(--color-border)'}`, background:segment===s.key?'var(--color-primary)':'var(--color-surface)', color:segment===s.key?'white':'var(--color-text)', fontWeight:600, fontSize:'0.8125rem', whiteSpace:'nowrap', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'6px' }}>
-              {s.icon && <span>{s.icon}</span>}{s.label}
-              <span style={{ background:segment===s.key?'rgba(255,255,255,0.25)':'var(--color-bg)', borderRadius:10, padding:'1px 6px', fontSize:'0.7rem', fontWeight:700 }}>{cnt}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Smart Segments Removed */}
 
       {/* Search + filter row */}
       <div className="card" style={{ padding:'0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', alignItems:'center', flexWrap: 'wrap' }}>
@@ -337,26 +446,15 @@ export const ContactsPage: React.FC = () => {
           </AnimatePresence>
         </div>
 
-        {/* Date filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <CustomSelect
-            value={filterDateField}
-            onChange={v => setFilterDateField(v as any)}
-            options={[
-              { value: 'created_at', label: 'Ngày tạo' },
-              { value: 'updated_at', label: 'Cập nhật' }
-            ]}
-          />
-          <PeriodFilter
-            value={datePeriod}
-            onChange={(p, r) => { setDatePeriod(p); setDateRange(r); setDateFilterActive(true); setPage(1); }}
-          />
-          {dateFilterActive && (
-            <button className="btn ghost sm" onClick={() => { setDateFilterActive(false); setDateRange({ from: '', to: '' }); }}>
-              <X size={13} /> Bỏ lọc ngày
-            </button>
-          )}
-        </div>
+        {/* Advanced filter toggle */}
+        <button 
+          className={`btn sm ${showAdvancedFilters ? 'primary' : 'outline'}`} 
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', borderRadius: '10px' }}
+        >
+          <Filter size={14} />
+          <span>Bộ lọc nâng cao</span>
+        </button>
         
         <div style={{ flex: 1 }} />
         
@@ -401,6 +499,164 @@ export const ContactsPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Collapsible Advanced Filters Panel */}
+      <AnimatePresence>
+        {showAdvancedFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ overflow: 'hidden', marginBottom: '0.75rem' }}
+          >
+            <div className="card" style={{ padding: '1.25rem', border: '1px solid var(--color-primary-light)', background: 'var(--color-surface)', borderRadius: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+                
+                {/* Trạng thái */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Trạng thái</label>
+                  <CustomSelect
+                    value={filterStatus}
+                    onChange={v => setFilterStatus(v)}
+                    options={[
+                      { value: '', label: 'Tất cả trạng thái' },
+                      { value: 'lead', label: 'Lead mới' },
+                      { value: 'qualified', label: 'Đủ điều kiện' },
+                      { value: 'customer', label: 'Khách hàng VIP' },
+                      { value: 'churned', label: 'Đã rời' }
+                    ]}
+                  />
+                </div>
+
+                {/* Dự án */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Dự án giao dịch</label>
+                  <CustomSelect
+                    value={filterProjectId}
+                    onChange={v => setFilterProjectId(v)}
+                    options={[
+                      { value: '', label: 'Tất cả dự án' },
+                      ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                    ]}
+                  />
+                </div>
+
+                {/* Nguồn */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Nguồn khách hàng</label>
+                  <CustomSelect
+                    value={filterSource}
+                    onChange={v => setFilterSource(v)}
+                    options={SOURCE_OPTIONS}
+                  />
+                </div>
+
+                {/* Sale phụ trách */}
+                {!isSale && (
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Sale phụ trách</label>
+                    <CustomSelect
+                      value={filterOwnerId}
+                      onChange={v => setFilterOwnerId(v)}
+                      options={[
+                        { value: '', label: 'Tất cả sales' },
+                        ...users.map(u => ({ value: String(u.id), label: u.full_name }))
+                      ]}
+                    />
+                  </div>
+                )}
+
+                {/* Nhãn / Tags */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Phân loại (Tag)</label>
+                  <input
+                    className="form-input"
+                    placeholder="Nhập tên tag cần lọc..."
+                    value={filterTag}
+                    onChange={e => setFilterTag(e.target.value)}
+                    style={{ height: '38px', borderRadius: '10px' }}
+                  />
+                </div>
+
+                {/* Kiểu lọc thời gian */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Lọc theo ngày nào</label>
+                  <CustomSelect
+                    value={filterDateField}
+                    onChange={v => setFilterDateField(v as any)}
+                    options={[
+                      { value: 'created_at', label: 'Ngày tạo' },
+                      { value: 'updated_at', label: 'Ngày cập nhật' },
+                      { value: 'last_contact', label: 'Ngày tương tác cuối' }
+                    ]}
+                  />
+                </div>
+
+                {/* Kiểu lọc ngày */}
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Kiểu lọc thời gian</label>
+                  <CustomSelect
+                    value={dateFilterType}
+                    onChange={v => setDateFilterType(v as any)}
+                    options={[
+                      { value: 'range', label: 'Trong khoảng' },
+                      { value: 'before', label: 'Trước ngày' },
+                      { value: 'after', label: 'Sau ngày' }
+                    ]}
+                  />
+                </div>
+
+                {/* inputs ngày tương ứng */}
+                {dateFilterType === 'range' && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Từ ngày</label>
+                      <input type="date" className="form-input" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Đến ngày</label>
+                      <input type="date" className="form-input" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                    </div>
+                  </>
+                )}
+                {dateFilterType === 'before' && (
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Trước ngày</label>
+                    <input type="date" className="form-input" value={filterBeforeDate} onChange={e => setFilterBeforeDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                  </div>
+                )}
+                {dateFilterType === 'after' && (
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Sau ngày</label>
+                    <input type="date" className="form-input" value={filterAfterDate} onChange={e => setFilterAfterDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                  </div>
+                )}
+
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                <button
+                  className="btn outline sm"
+                  onClick={handleResetFilters}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '10px', fontWeight: 600 }}
+                >
+                  Đặt lại
+                </button>
+                <button
+                  className="btn primary sm"
+                  onClick={handleApplyFilters}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', borderRadius: '10px', fontWeight: 600 }}
+                >
+                  Lọc kết quả
+                </button>
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ColumnCustomizer 
         isOpen={showColumns} 
