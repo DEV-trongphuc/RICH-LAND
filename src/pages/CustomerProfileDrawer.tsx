@@ -563,7 +563,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setTasks(state.activities.filter((a: any) => a.contact_id === contact.id && a.type === 'task').map((a: any) => ({
         id: a.id,
         title: a.subject,
-        done: a.status === 'completed',
+        done: a.status === 'done',
         priority: a.priority || 'medium',
         due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—'
       })));
@@ -603,7 +603,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setTasks(rawActivities.filter((a: any) => a.type === 'task').map((a: any) => ({
         id: a.id,
         title: a.subject,
-        done: a.status === 'completed',
+        done: a.status === 'done',
         priority: a.priority,
         due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—'
       })));
@@ -979,9 +979,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const toggleTaskDone = async (taskId: number, currentDone: boolean) => {
     setTasks(p => p.map(x => x.id === taskId ? { ...x, done: !currentDone } : x));
     try {
-      const nextStatus = !currentDone ? 'completed' : 'planned';
+      const nextStatus = !currentDone ? 'done' : 'planned';
       await api.put(`/activities/${taskId}`, { status: nextStatus });
-      addToast(nextStatus === 'completed' ? 'Đã hoàn thành công việc' : 'Đã mở lại công việc', 'success');
+      addToast(nextStatus === 'done' ? 'Đã hoàn thành công việc' : 'Đã mở lại công việc', 'success');
       setDrawerActivities(prev => prev.map(a => a.id === taskId ? { ...a, status: nextStatus } : a));
     } catch (err: any) {
       setTasks(p => p.map(x => x.id === taskId ? { ...x, done: currentDone } : x));
