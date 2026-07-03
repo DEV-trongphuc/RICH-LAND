@@ -745,7 +745,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const renderFormattedText = (text: string) => {
     if (!text) return '';
-    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9]+)/g;
+    // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))
+    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
     const parts = text.split(regex);
     return parts.map((part, index) => {
       if (part.startsWith('http://') || part.startsWith('https://')) {
@@ -761,21 +762,67 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </a>
         );
       } else if (part.startsWith('@')) {
-        const cleanName = part.substring(1).replace(/_/g, ' ');
+        const cleanMention = part.substring(1).toLowerCase();
+        // Look up user to find avatar
+        const taggedUser = users.find((u: any) => {
+          const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase();
+          return normalizedUser === cleanMention;
+        });
+
+        const displayName = taggedUser?.full_name || part.substring(1).replace(/_/g, ' ');
+        const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
+
         return (
           <span
             key={index}
             style={{
-              color: 'var(--color-primary)',
-              fontWeight: 700,
-              background: 'rgba(167, 139, 250, 0.12)',
-              padding: '1px 5px',
-              borderRadius: '4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#dc2626', // Red text
+              background: 'rgba(239, 68, 68, 0.08)', // Light red background tint
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              padding: '2px 8px',
+              borderRadius: '9999px',
               margin: '0 2px',
-              display: 'inline-block'
+              fontWeight: 600,
+              fontSize: '0.85em',
+              verticalAlign: 'middle'
             }}
           >
-            @{cleanName}
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt={displayName} 
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+              />
+            ) : (
+              <span 
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  background: '#ef4444',
+                  color: '#fff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '9px',
+                  fontWeight: 'bold',
+                  lineHeight: 1
+                }}
+              >
+                {initial}
+              </span>
+            )}
+            @{displayName}
           </span>
         );
       }
@@ -7051,6 +7098,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
                       <MentionInput
+                        users={users}
                         className="form-input"
                         placeholder="Viết bình luận... (Nhập @ để nhắc tên)"
                         value={newCommentText}

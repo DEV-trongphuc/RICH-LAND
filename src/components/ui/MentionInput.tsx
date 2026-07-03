@@ -11,6 +11,7 @@ interface User {
 interface MentionInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
   onChange: (e: any) => void;
+  users?: User[];
 }
 
 const FALLBACK_USERS = [
@@ -20,7 +21,7 @@ const FALLBACK_USERS = [
   { id: 9904, full_name: "Minh Khôi (Manager)", role: "manager" }
 ];
 
-export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...props }) => {
+export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, users: propUsers, ...props }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,6 +29,10 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
+    if (propUsers && propUsers.length > 0) {
+      setUsers(propUsers);
+      return;
+    }
     // Fetch users for mentions
     api.get('/users').then(res => {
       const d = res.data.data;
@@ -41,7 +46,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
       console.error("MentionInput failed to load users:", err);
       setUsers(FALLBACK_USERS);
     });
-  }, []);
+  }, [propUsers]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

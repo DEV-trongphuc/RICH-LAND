@@ -37,19 +37,108 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   const [contacts, setContacts] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
+
+  const renderFormattedText = (text: string) => {
+    if (!text) return '';
+    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.startsWith('http://') || part.startsWith('https://')) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
+          >
+            {part}
+          </a>
+        );
+      } else if (part.startsWith('@')) {
+        const cleanMention = part.substring(1).toLowerCase();
+        const taggedUser = users.find((u: any) => {
+          const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase();
+          return normalizedUser === cleanMention;
+        });
+
+        const displayName = taggedUser?.full_name || part.substring(1).replace(/_/g, ' ');
+        const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
+
+        return (
+          <span
+            key={index}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#dc2626', // Red text
+              background: 'rgba(239, 68, 68, 0.08)', // Light red background tint
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              margin: '0 2px',
+              fontWeight: 600,
+              fontSize: '0.85em',
+              verticalAlign: 'middle'
+            }}
+          >
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt={displayName} 
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+              />
+            ) : (
+              <span 
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  background: '#ef4444',
+                  color: '#fff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '9px',
+                  fontWeight: 'bold',
+                  lineHeight: 1
+                }}
+              >
+                {initial}
+              </span>
+            )}
+            @{displayName}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
 
   const fetchLists = async () => {
     setLoadingLists(true);
     try {
-      const [rC, rCo, rT] = await Promise.all([
+      const [rC, rCo, rT, rU] = await Promise.all([
         api.get('/contacts'),
         api.get('/companies'),
-        api.get('/tags')
+        api.get('/tags'),
+        api.get('/users').catch(() => ({ data: { data: [] } }))
       ]);
       setContacts(rC.data.data?.items || []);
       setCompanies(rCo.data.data?.items || []);
       setAllTags(rT.data.data || []);
+      const ud = rU.data.data;
+      setUsers(Array.isArray(ud) ? ud : (ud?.items || []));
     } catch (e: any) {
       // Keep empty or mock
     } finally {
@@ -355,7 +444,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                   <strong style={{ fontSize: '0.875rem' }}>{n.author_name || n.user_name || 'Hệ thống'}</strong>
                                   <span className="text-xs text-muted">{n.created_at ? new Date(n.created_at).toLocaleString('vi-VN') : ''}</span>
                                 </div>
-                                <p style={{ fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>{n.body}</p>
+                                <p style={{ fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>{renderFormattedText(n.body)}</p>
                               </div>
                             </div>
                           ))}

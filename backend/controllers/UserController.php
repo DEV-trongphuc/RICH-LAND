@@ -25,9 +25,15 @@ class UserController {
 
     public function index(array $auth): void {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
-        $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE tenant_id=? ORDER BY full_name");
-        $stmt->execute([$auth['tenant_id']]);
-        respond(200,$stmt->fetchAll());
+        try {
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE tenant_id=? ORDER BY full_name");
+            $stmt->execute([$auth['tenant_id']]);
+            respond(200,$stmt->fetchAll());
+        } catch (PDOException $e) {
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE tenant_id=? ORDER BY full_name");
+            $stmt->execute([$auth['tenant_id']]);
+            respond(200,$stmt->fetchAll());
+        }
     }
     public function store(array $auth): void {
         if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
@@ -61,8 +67,13 @@ class UserController {
     }
     public function show(array $auth,int $id): void {
         if (!in_array($auth['role'], ['admin', 'super_admin'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
-        $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE id=? AND tenant_id=?");
-        $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
+        try {
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE id=? AND tenant_id=?");
+            $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
+        } catch (PDOException $e) {
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
+            $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
+        }
         if(!$row) respond(404,null,'Không tìm thấy người dùng',false);
         respond(200,$row);
     }
