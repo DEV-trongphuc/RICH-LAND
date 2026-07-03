@@ -112,8 +112,8 @@ class ActivityController {
         }
 
         $this->db->prepare("
-            INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,done_at,related_type,related_id,tags,participant_ids,progress,require_approval,approver_id,approval_status)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,done_at,related_type,related_id,tags,participant_ids,progress,require_approval,approver_id,approval_status,link)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $targetUserId, $b['type'],
             $b['subject'], $b['body']??null, $status, $b['priority']??'medium',
@@ -121,12 +121,14 @@ class ActivityController {
             $b['tags']??null, $b['participant_ids']??null,
             (int)($b['progress']??0), (int)($b['require_approval']??0),
             empty($b['approver_id']) ? null : (int)$b['approver_id'],
-            $b['approval_status']??null
+            $b['approval_status']??null,
+            $b['link']??null
         ]);
         $actId = (int)$this->db->lastInsertId();
 
-        // If status is done, update contact's last_contact
-        if ($status === 'done' && !empty($b['related_id'])) {
+        // If status is done, update contact's last_contact (only for communication types: call, meeting, email)
+        $commTypes = ['call', 'meeting', 'email'];
+        if ($status === 'done' && in_array($b['type'], $commTypes, true) && !empty($b['related_id'])) {
             if (($b['related_type'] ?? '') === 'contact') {
                 $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
                      ->execute([(int)$b['related_id'], $auth['tenant_id']]);
@@ -212,7 +214,7 @@ class ActivityController {
             }
         }
 
-        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','tags','participant_ids','progress','require_approval','approver_id','approval_status'];
+        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','tags','participant_ids','progress','require_approval','approver_id','approval_status','link'];
         $sets=[];$params=[];
         foreach($fields as $f){
             if(array_key_exists($f,$b)){
@@ -251,12 +253,13 @@ class ActivityController {
         $stmt = $this->db->prepare("UPDATE activities SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
 
-        // If status changed to done, update contact's last_contact
+        // If status changed to done, update contact's last_contact (only for communication types: call, meeting, email)
         if (isset($b['status']) && $b['status'] === 'done') {
-            $checkRel = $this->db->prepare("SELECT related_type, related_id FROM activities WHERE id=?");
+            $checkRel = $this->db->prepare("SELECT type, related_type, related_id FROM activities WHERE id=?");
             $checkRel->execute([$id]);
             $rel = $checkRel->fetch();
-            if ($rel && !empty($rel['related_id'])) {
+            $commTypes = ['call', 'meeting', 'email'];
+            if ($rel && in_array($rel['type'], $commTypes, true) && !empty($rel['related_id'])) {
                 if ($rel['related_type'] === 'contact') {
                     $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
                          ->execute([(int)$rel['related_id'], $auth['tenant_id']]);

@@ -1719,6 +1719,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       });
       setNewCommentText('');
       await fetchTaskComments(selectedTaskForDetails.id);
+      fetchData();
       addToast('Đã đăng bình luận thành công!', 'success');
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi gửi bình luận', 'error');
@@ -1730,6 +1731,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     try {
       await api.delete(`/activities/comments/${commentId}`);
       await fetchTaskComments(selectedTaskForDetails.id);
+      fetchData();
       addToast('Đã xóa bình luận thành công!', 'success');
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi xóa bình luận', 'error');
@@ -5537,7 +5539,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         type="date"
                         value={selectedTaskForDetails.due_date || ''}
                         onChange={e => handleUpdateTaskDetail({ due_date: e.target.value })}
-                        style={{ fontSize: '0.75rem', height: '32px', padding: '4px 8px' }}
+                        style={{ fontSize: '0.85rem', height: '38px', padding: '8px 12px', width: '100%' }}
                       />
                     </div>
                   </div>

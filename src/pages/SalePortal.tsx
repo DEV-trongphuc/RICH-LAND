@@ -724,7 +724,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const loadTaskComments = async (taskId: number) => {
     setLoadingTaskComments(true);
     try {
-      const res = await api.get(`/activities/comments?activity_id=${taskId}`);
+      const res = await api.get(`/activities/${taskId}/comments`);
       if (res.data.success) {
         setTaskComments(res.data.data || []);
       }
@@ -866,8 +866,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const handlePostTaskComment = async () => {
     if ((!newCommentText.trim() && pendingAttachments.length === 0) || !selectedTaskForDetails) return;
     try {
-      const res = await api.post('/activities/comments', {
-        activity_id: selectedTaskForDetails.id,
+      const res = await api.post(`/activities/${selectedTaskForDetails.id}/comments`, {
         content: newCommentText.trim(),
         attachments: pendingAttachments
       });
@@ -884,7 +883,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const handleDeleteTaskComment = async (commentId: number) => {
     try {
-      const res = await api.delete(`/activities/comments?id=${commentId}`);
+      const res = await api.delete(`/activities/comments/${commentId}`);
       if (res.data.success) {
         loadTaskComments(selectedTaskForDetails.id);
       }
