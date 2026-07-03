@@ -52,7 +52,8 @@ class CooperationController {
                         'percentage' => (int)$percent,
                         'signed' => isset($signatures[$uid]),
                         'signature_time' => $signatures[$uid]['time'] ?? null,
-                        'signature_ip' => $signatures[$uid]['ip'] ?? null
+                        'signature_ip' => $signatures[$uid]['ip'] ?? null,
+                        'signature_img' => $signatures[$uid]['signature_img'] ?? null
                     ];
                 }
             }
@@ -182,12 +183,14 @@ class CooperationController {
         }
 
         $signatures = json_decode($slip['signatures_json'], true) ?: [];
+        $body = getBody();
         
         // Add signature
         $signatures[$userId] = [
             'time' => date('Y-m-d H:i:s'),
             'ip' => $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0',
-            'role' => $auth['role']
+            'role' => $auth['role'],
+            'signature_img' => $body['signature_img'] ?? null
         ];
 
         $signaturesJson = json_encode($signatures);

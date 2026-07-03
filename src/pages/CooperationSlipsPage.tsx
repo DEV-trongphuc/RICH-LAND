@@ -13,6 +13,7 @@ interface CooperationSlip {
   signatures_json: string;
   status: 'pending_signatures' | 'pending_manager_approval' | 'approved' | 'rejected' | 'disputed';
   dispute_details: string | null;
+  attachment_url?: string | null;
   created_at: string;
   created_by: number;
   first_name: string;
@@ -58,6 +59,83 @@ export default function CooperationSlipsPage() {
   const [filterTime, setFilterTime] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSale, setFilterSale] = useState('all');
+
+  // Signature Modal state
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [signingSlip, setSigningSlip] = useState<CooperationSlip | null>(null);
+  
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const isDrawing = React.useRef(false);
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.strokeStyle = '#0f172a'; // dark slate/black color for signature
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    isDrawing.current = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Prevent scrolling on touch devices
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    isDrawing.current = false;
+  };
+
+  const getPos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    
+    if ('touches' in e) {
+      if (e.touches.length === 0) return { x: 0, y: 0 };
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
+    } else {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const handleOpenSignModal = (slip: CooperationSlip) => {
+    setSigningSlip(slip);
+    setIsSignModalOpen(true);
+  };
 
   const toggleSlip = (id: number) => {
     setExpandedSlips(prev => ({
@@ -229,11 +307,16 @@ export default function CooperationSlipsPage() {
     }
   };
 
-  const handleSignSlip = async (slipId: number) => {
+  const handleSignSlip = async (slipId: number, signatureImg: string) => {
     try {
-      const res = await fetchAPI(`cooperation-slips/${slipId}/sign`, { method: 'POST' });
+      const res = await fetchAPI(`cooperation-slips/${slipId}/sign`, { 
+        method: 'POST',
+        body: JSON.stringify({ signature_img: signatureImg })
+      });
       if (res.success) {
         setSuccess('Ký xác nhận phiếu hợp tác thành công!');
+        setIsSignModalOpen(false);
+        setSigningSlip(null);
         loadData();
       } else {
         setError(res.message || 'Lỗi ký xác nhận');
@@ -460,7 +543,7 @@ export default function CooperationSlipsPage() {
                         )}
                         {isShareholder && !hasSigned && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleSignSlip(slip.id); }}
+                            onClick={(e) => { e.stopPropagation(); handleOpenSignModal(slip); }}
                             className="btn sm primary"
                             style={{ height: '28px', padding: '0 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                           >
@@ -558,6 +641,11 @@ export default function CooperationSlipsPage() {
                                 </span>
                               )}
                             </div>
+                            {sh.signed && (sh as any).signature_img && (
+                              <div style={{ marginTop: '8px', borderTop: '1px dashed var(--color-border-light)', paddingTop: '6px', textAlign: 'center' }}>
+                                <img src={(sh as any).signature_img} style={{ height: '40px', objectFit: 'contain', display: 'inline-block' }} alt="Chữ ký" />
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -575,6 +663,127 @@ export default function CooperationSlipsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Signature Modal */}
+      {isSignModalOpen && signingSlip && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card animate-fade" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Đọc tài liệu &amp; Ký xác nhận điện tử</h2>
+              <button onClick={() => { setIsSignModalOpen(false); setSigningSlip(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
+            </div>
+
+            {/* Document Reader Area */}
+            <div>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>1. Đọc tài liệu đính kèm:</h3>
+              {signingSlip.attachment_url ? (
+                <>
+                  {(signingSlip.attachment_url.toLowerCase().endsWith('.png') ||
+                    signingSlip.attachment_url.toLowerCase().endsWith('.jpg') ||
+                    signingSlip.attachment_url.toLowerCase().endsWith('.jpeg') ||
+                    signingSlip.attachment_url.toLowerCase().endsWith('.webp')) ? (
+                    <div style={{ textAlign: 'center', background: 'var(--color-bg-light)', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                      <img 
+                        src={`https://open.domation.net/richland/${signingSlip.attachment_url}`} 
+                        style={{ maxWidth: '100%', maxHeight: '240px', objectFit: 'contain' }} 
+                        alt="Tài liệu hợp tác" 
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '1rem', background: 'rgba(163, 20, 34, 0.04)', borderRadius: '8px', border: '1px dashed var(--color-primary)' }}>
+                      <FileText size={24} color="var(--color-primary)" />
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 700 }}>Tài liệu hợp tác đính kèm</p>
+                        <a 
+                          href={`https://open.domation.net/richland/${signingSlip.attachment_url}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                        >
+                          Bấm để tải về / Xem tài liệu ở tab mới
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                  Phiếu hợp tác này không đính kèm tệp tài liệu bổ sung. Vui lòng kiểm tra tỷ lệ phân chia bên dưới.
+                </div>
+              )}
+            </div>
+
+            {/* Shares info recap */}
+            <div style={{ background: 'var(--color-bg-light)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem' }}>
+              <strong>Tỷ lệ phân chia: </strong>
+              {signingSlip.shareholders.map((s, idx) => (
+                <span key={s.user_id}>
+                  {s.name} ({s.percentage}%)
+                  {idx < signingSlip.shareholders.length - 1 ? ', ' : ''}
+                </span>
+              ))}
+            </div>
+
+            {/* Signature Area */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
+                <button 
+                  onClick={clearCanvas} 
+                  style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  Xóa vẽ lại
+                </button>
+              </div>
+              <canvas
+                ref={canvasRef}
+                width={560}
+                height={160}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                style={{
+                  width: '100%',
+                  height: '160px',
+                  background: '#ffffff',
+                  border: '2px dashed var(--color-border)',
+                  borderRadius: '8px',
+                  cursor: 'crosshair',
+                  touchAction: 'none'
+                }}
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+                
+                const buffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                const isBlank = !buffer.some(color => color !== 0);
+                if (isBlank) {
+                  alert('Vui lòng vẽ chữ ký của bạn trước khi bấm xác nhận.');
+                  return;
+                }
+
+                const signatureImg = canvas.toDataURL('image/png');
+                handleSignSlip(signingSlip.id, signatureImg);
+              }}
+              className="btn primary w-full"
+              style={{ height: '42px', fontWeight: 700 }}
+            >
+              Tôi đồng ý và Ký xác nhận
+            </button>
+          </div>
         </div>
       )}
 

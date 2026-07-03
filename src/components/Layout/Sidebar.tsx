@@ -80,7 +80,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
       { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true },
       { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt },
-      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager'] }
+      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager'], badgeKey: 'coopSlips' }
     ]
   },
   {
@@ -126,36 +126,52 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     return () => clearTimeout(timer);
   }, [location.pathname, location.search, isCollapsed]);
 
-  // Poll pending ticket count every 60s
+  // Poll pending counts every 60s
   useEffect(() => {
-    if (user?.role !== 'admin' && user?.role !== 'superadmin' && (user?.role as string) !== 'manager') return;
+    if (!user) return;
     const fetchPending = async () => {
       try {
-        const [resReports, resHeld, resCoop] = await Promise.all([
-          fetchAPI('get_reports&status=pending'),
-          fetchAPI('get_held_leads&pageSize=1&date=all'),
-          fetchAPI('cooperation-slips')
-        ]);
+        const role = user.role as string;
+        const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager';
 
-        let countReports = 0;
-        let countHeld = 0;
-        let countCoop = 0;
+        if (isAdminOrManager) {
+          const [resReports, resHeld, resCoop] = await Promise.all([
+            fetchAPI('get_reports&status=pending'),
+            fetchAPI('get_held_leads&pageSize=1&date=all'),
+            fetchAPI('cooperation-slips')
+          ]);
 
-        if (resReports.success) {
-          countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
+          let countReports = 0;
+          let countHeld = 0;
+          let countCoop = 0;
+
+          if (resReports.success) {
+            countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
+          }
+
+          if (resHeld.success) {
+            countHeld = resHeld.total_count ?? 0;
+          }
+
+          if (resCoop.success) {
+            countCoop = (resCoop.data || []).filter((s: any) => s.status === 'pending_manager_approval').length;
+          }
+
+          setPendingTickets(countReports);
+          setHeldLeadsCount(countHeld);
+          setPendingCoopCount(countCoop);
+        } else if (role === 'sale') {
+          const resCoop = await fetchAPI('cooperation-slips');
+          let countUnsigned = 0;
+          if (resCoop.success) {
+            const slips = resCoop.data || [];
+            countUnsigned = slips.filter((s: any) => {
+              const sh = s.shareholders?.find((x: any) => x.user_id === user.consultant_id);
+              return s.status === 'pending_signatures' && sh && !sh.signed;
+            }).length;
+          }
+          setPendingCoopCount(countUnsigned);
         }
-
-        if (resHeld.success) {
-          countHeld = resHeld.total_count ?? 0;
-        }
-
-        if (resCoop.success) {
-          countCoop = (resCoop.data || []).filter((s: any) => s.status === 'pending_manager_approval').length;
-        }
-
-        setPendingTickets(countReports);
-        setHeldLeadsCount(countHeld);
-        setPendingCoopCount(countCoop);
       } catch { /* silent */ }
     };
     fetchPending();
