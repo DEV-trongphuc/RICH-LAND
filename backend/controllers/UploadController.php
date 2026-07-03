@@ -11,7 +11,7 @@ class UploadController {
             $b = getBody();
             $fileUrl = $b['file_url'] ?? $_GET['file_url'] ?? null;
             $uploadDirBase = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads');
-            if ($fileUrl && (strpos($fileUrl, "/uploads/tenant_{$tid}/") !== false || strpos($fileUrl, "/storage/uploads/tenant_{$tid}/") !== false)) {
+            if ($fileUrl && (strpos($fileUrl, "uploads/tenant_{$tid}/") !== false || strpos($fileUrl, "storage/uploads/tenant_{$tid}/") !== false)) {
                 $storageDir = $uploadDirBase . "/tenant_{$tid}/";
                 $filename = basename($fileUrl);
                 $filePath = $storageDir . $filename;
@@ -86,7 +86,7 @@ class UploadController {
             }
 
             // Return relative URL
-            $url = "/backend/uploads/tenant_{$tid}/" . $filename;
+            $url = "uploads/tenant_{$tid}/" . $filename;
             respond(200, ['url' => $url], 'Tải lên thành công');
         } else {
             respond(500, null, 'Không thể lưu file trên server');

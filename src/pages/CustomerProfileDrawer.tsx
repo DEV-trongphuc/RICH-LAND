@@ -2544,9 +2544,35 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                               </div>
-                              {ev.note && (
-                                <div style={{ padding: '0.875rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', marginTop: '0.5rem', border: '1px solid var(--color-border-light)' }}>
-                                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>{formatNote(ev.note)}</p>
+                              {ev.note && (() => {
+                                const linkMatch = ev.note.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m);
+                                const hasLink = !!linkMatch;
+                                const linkUrl = hasLink ? linkMatch[1].trim() : '';
+                                const displayNoteText = hasLink ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : ev.note;
+
+                                return (
+                                  <div style={{ padding: '0.875rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', marginTop: '0.5rem', border: '1px solid var(--color-border-light)' }}>
+                                    {displayNoteText && (
+                                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>{formatNote(displayNoteText)}</p>
+                                    )}
+
+                                    {linkUrl && (
+                                      <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
+                                        {/\.(jpg|jpeg|png|gif|webp)$/i.test(linkUrl) ? (
+                                          <Camera size={14} style={{ color: '#10b981' }} />
+                                        ) : (
+                                          <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                                        )}
+                                        <a
+                                          href={resolveAttachmentUrl(linkUrl)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                        >
+                                          {linkUrl.split('/').pop()}
+                                        </a>
+                                      </div>
+                                    )}
                                   
                                   {/* Rich Metadata Rendering */}
                                   {ev.type === 'call' && (ev as any).metadata?.recording_url && (
@@ -2576,8 +2602,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       </div>
                                     </div>
                                   )}
-                                </div>
-                              )}
+                                  </div>
+                                );
+                              })()}
                               <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} />
                             </div>
                           </motion.div>

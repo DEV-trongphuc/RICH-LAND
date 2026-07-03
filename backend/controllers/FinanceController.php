@@ -723,7 +723,11 @@ class FinanceController
             if (!empty($entities)) {
                 foreach ($entities as $ee) {
                     if ($ee['entity_type'] === 'contact') {
-                        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', "Ghi nhận Chi phí: {$data['title']}", "Khoản chi phí trị giá " . number_format($ee['amount'] ?? 0, 0, ',', '.') . "đ đã được liên kết với khách hàng.", 'contact', (int) $ee['entity_id']);
+                        $body = "Khoản chi phí trị giá " . number_format($ee['amount'] ?? 0, 0, ',', '.') . "đ đã được liên kết với khách hàng.";
+                        if (!empty($data['image_url'])) {
+                            $body .= "\nTài liệu/Link đính kèm: " . $data['image_url'];
+                        }
+                        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', "Ghi nhận Chi phí: {$data['title']}", $body, 'contact', (int) $ee['entity_id']);
                     }
                 }
             }
