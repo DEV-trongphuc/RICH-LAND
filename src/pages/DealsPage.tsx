@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Pagination } from '../components/ui/Pagination';
-import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import confetti from 'canvas-confetti';
@@ -738,7 +738,7 @@ export const DealsPage: React.FC = () => {
               <div key={stage.id}
                 style={{ 
                   minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, 
-                  background: 'transparent',
+                  background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: 'var(--radius-lg)',
                   display: 'flex', flexDirection: 'column', maxHeight: '100%',
@@ -969,18 +969,51 @@ export const DealsPage: React.FC = () => {
       {/* Transition Modal */}
       <AnimatePresence>
         {transitionModal && transitionModal.isOpen && (
-          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setTransitionModal(null)}>
+          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11000 }} onClick={() => setTransitionModal(null)}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               onClick={e => e.stopPropagation()}
               style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '400px', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-2xl)' }}
             >
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật Pipeline</h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
-                Từ <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> 
-                {' '}➔{' '}
-                <strong style={{ color: stages.find(s => s.id === transitionModal.toStage)?.color }}>{stages.find(s => s.id === transitionModal.toStage)?.name}</strong>
-              </p>
+              {(() => {
+                const fromIndex = stages.findIndex(s => s.id === transitionModal.fromStage);
+                const toIndex = stages.findIndex(s => s.id === transitionModal.toStage);
+                const skipped = (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex + 1)
+                  ? stages.slice(fromIndex + 1, toIndex).map(s => s.name)
+                  : (fromIndex !== -1 && toIndex !== -1 && fromIndex > toIndex + 1)
+                  ? stages.slice(toIndex + 1, fromIndex).map(s => s.name)
+                  : [];
+                return (
+                  <>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật Pipeline</h3>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
+                      Từ <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> 
+                      {' '}➔{' '}
+                      <strong style={{ color: stages.find(s => s.id === transitionModal.toStage)?.color }}>{stages.find(s => s.id === transitionModal.toStage)?.name}</strong>
+                    </p>
+
+                    {skipped.length > 0 && (
+                      <div style={{
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        marginBottom: '1.25rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.875rem' }}>
+                          <AlertCircle size={16} /> Nhảy cóc giai đoạn!
+                        </div>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                          Bạn đang di chuyển qua nhiều giai đoạn. Bỏ qua các bước: <strong style={{ color: 'var(--color-text)' }}>{skipped.join(', ')}</strong>.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                 <label className="form-label">Ghi chú Audit Trail <span style={{ color: 'var(--color-danger)' }}>*</span></label>
@@ -1034,7 +1067,7 @@ export const DealsPage: React.FC = () => {
       {/* Stage Picker for Mobile Quick Move */}
       <AnimatePresence>
         {stagePickerItem && (
-          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000 }} onClick={() => setStagePickerItem(null)}>
+          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 11000 }} onClick={() => setStagePickerItem(null)}>
             <motion.div 
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               onClick={e => e.stopPropagation()}

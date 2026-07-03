@@ -65,7 +65,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
   return (
     <AnimatePresence>
-      <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div className="overlay-backdrop" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
         <motion.div 
           className="modal-sheet" 
           style={{ width: '100%', maxWidth: 640, padding: 0 }}
