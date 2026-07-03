@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
+import { CustomModal } from '../components/ui/CustomModal';
+import { CustomSelect } from '../components/ui/CustomSelect';
 import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban } from 'lucide-react';
 
 interface Deposit {
@@ -82,8 +84,35 @@ export default function DepositsPage() {
       ]);
 
       if (resDep.success) setDeposits(resDep.data || []);
-      if (resCont.success) setContacts(resCont.items || []);
-      if (resProj.success) setProjects(resProj.data || []);
+      if (resCont.success) {
+        const allContacts = resCont.items || [];
+        const filteredContacts = (user?.role === 'sale') 
+          ? allContacts.filter((c: any) => String(c.owner_id) === String(user.id))
+          : allContacts;
+        setContacts(filteredContacts);
+      }
+      if (resProj.success) {
+        const allProjects = resProj.data || [];
+        if (user?.role === 'sale') {
+          const filteredProjs = [];
+          for (const p of allProjects) {
+            try {
+              const rosterRes = await fetchAPI(`projects/${p.id}/roster`);
+              if (rosterRes.success && Array.isArray(rosterRes.data)) {
+                const isMember = rosterRes.data.some((m: any) => String(m.user_id) === String(user.id));
+                if (isMember) {
+                  filteredProjs.push(p);
+                }
+              }
+            } catch (err) {
+              filteredProjs.push(p);
+            }
+          }
+          setProjects(filteredProjs);
+        } else {
+          setProjects(allProjects);
+        }
+      }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');
     } finally {
@@ -442,146 +471,142 @@ export default function DepositsPage() {
       )}
 
       {/* Create Modal */}
-      {isCreateOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: '500px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Khởi tạo phiếu đặt cọc</h2>
-              <button onClick={() => setIsCreateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
+      <CustomModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        title="Khởi tạo phiếu đặt cọc"
+        width="620px"
+      >
+        <div style={{ padding: '0.5rem 0' }}>
+          <form onSubmit={handleCreateDeposit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto', paddingRight: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Khách hàng</label>
+                <CustomSelect
+                  options={contacts.map(c => ({
+                    value: String(c.id),
+                    label: `${c.last_name} ${c.first_name} (${c.phone})`
+                  }))}
+                  value={selectedContactId}
+                  onChange={val => setSelectedContactId(val.toString())}
+                  placeholder="-- Chọn khách hàng --"
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Dự án</label>
+                <CustomSelect
+                  options={projects.map(p => ({
+                    value: String(p.id),
+                    label: p.name
+                  }))}
+                  value={selectedProjectId}
+                  onChange={val => setSelectedProjectId(val.toString())}
+                  placeholder="-- Chọn dự án --"
+                />
+              </div>
             </div>
-            <form onSubmit={handleCreateDeposit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '75vh', overflowY: 'auto', paddingRight: '4px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label className="form-label">Khách hàng</label>
-                  <select
-                    required
-                    value={selectedContactId}
-                    onChange={e => setSelectedContactId(e.target.value)}
-                    className="form-input"
-                  >
-                    <option value="">-- Chọn khách hàng --</option>
-                    {contacts.map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.last_name} {c.first_name} ({c.phone})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label">Dự án</label>
-                  <select
-                    required
-                    value={selectedProjectId}
-                    onChange={e => setSelectedProjectId(e.target.value)}
-                    className="form-input"
-                  >
-                    <option value="">-- Chọn dự án --</option>
-                    {projects.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
-                </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Mã căn hộ</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="VD: A-12.05"
+                  value={unitCode}
+                  onChange={e => setUnitCode(e.target.value.toUpperCase())}
+                  className="form-input"
+                  style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem' }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Giá bán (VND)</label>
+                <input
+                  type="number"
+                  required
+                  value={price}
+                  onChange={e => setPrice(e.target.value)}
+                  className="form-input"
+                  style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem' }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Hoa hồng (VND)</label>
+                <input
+                  type="number"
+                  value={expectedCommission}
+                  onChange={e => setExpectedCommission(e.target.value)}
+                  className="form-input"
+                  style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem' }}
+                />
+              </div>
+            </div>
+
+            {/* Milestones config */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 700 }}>Lịch trình thanh toán</h4>
+                <button
+                  type="button"
+                  onClick={handleAddMilestoneInput}
+                  style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                  className="hover:underline"
+                >
+                  <Plus size={14} /> Thêm đợt tiền
+                </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                <div>
-                  <label className="form-label">Mã căn hộ</label>
+              {milestonesInput.map((m, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <input
                     type="text"
                     required
-                    placeholder="VD: A-12.05"
-                    value={unitCode}
-                    onChange={e => setUnitCode(e.target.value.toUpperCase())}
+                    placeholder={`Tên đợt ${idx + 1}`}
+                    value={m.name}
+                    onChange={e =>
+                      setMilestonesInput(prev =>
+                        prev.map((item, i) => (i === idx ? { ...item, name: e.target.value } : item))
+                      )
+                    }
                     className="form-input"
+                    style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem', flex: 1 }}
                   />
-                </div>
-                <div>
-                  <label className="form-label">Giá bán (VND)</label>
                   <input
                     type="number"
                     required
-                    value={price}
-                    onChange={e => setPrice(e.target.value)}
+                    placeholder="Số tiền (VND)"
+                    value={m.amount}
+                    onChange={e =>
+                      setMilestonesInput(prev =>
+                        prev.map((item, i) => (i === idx ? { ...item, amount: e.target.value } : item))
+                      )
+                    }
                     className="form-input"
+                    style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem', width: '150px' }}
                   />
+                  {milestonesInput.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMilestoneInput(idx)}
+                      style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex' }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
-                <div>
-                  <label className="form-label">Hoa hồng (VND)</label>
-                  <input
-                    type="number"
-                    value={expectedCommission}
-                    onChange={e => setExpectedCommission(e.target.value)}
-                    className="form-input"
-                  />
-                </div>
-              </div>
+              ))}
+            </div>
 
-              {/* Milestones config */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700 }}>Lịch trình thanh toán</h4>
-                  <button
-                    type="button"
-                    onClick={handleAddMilestoneInput}
-                    style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
-                    className="hover:underline"
-                  >
-                    <Plus size={14} /> Thêm đợt tiền
-                  </button>
-                </div>
-
-                {milestonesInput.map((m, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <input
-                      type="text"
-                      required
-                      placeholder={`Tên đợt ${idx + 1}`}
-                      value={m.name}
-                      onChange={e =>
-                        setMilestonesInput(prev =>
-                          prev.map((item, i) => (i === idx ? { ...item, name: e.target.value } : item))
-                        )
-                      }
-                      className="form-input"
-                      style={{ fontSize: '0.75rem', padding: '6px 10px', flex: 1 }}
-                    />
-                    <input
-                      type="number"
-                      required
-                      placeholder="Số tiền (VND)"
-                      value={m.amount}
-                      onChange={e =>
-                        setMilestonesInput(prev =>
-                          prev.map((item, i) => (i === idx ? { ...item, amount: e.target.value } : item))
-                        )
-                      }
-                      className="form-input"
-                      style={{ fontSize: '0.75rem', padding: '6px 10px', width: '130px' }}
-                    />
-                    {milestonesInput.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMilestoneInput(idx)}
-                        style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex' }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              <button
-                type="submit"
-                className="btn primary w-full"
-                style={{ height: '38px', marginTop: '0.5rem' }}
-              >
-                Tạo phiếu đặt cọc
-              </button>
-            </form>
-          </div>
+            <button
+              type="submit"
+              className="btn primary w-full"
+              style={{ height: '38px', marginTop: '0.5rem' }}
+            >
+              Tạo phiếu đặt cọc
+            </button>
+          </form>
         </div>
-      )}
+      </CustomModal>
 
       {/* Cancel Modal */}
       {isCancelOpen && (

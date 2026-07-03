@@ -86,7 +86,7 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi', '/attendance'];
-  const userPaths = ['/', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share'];
+  const userPaths = ['/', '/workspace', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -131,10 +131,17 @@ const AppTabs = () => {
           </Suspense>
         )}
       </div>
+      <div style={{ display: currentPath === '/workspace' ? 'block' : 'none' }} className={currentPath === '/workspace' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/workspace') && (
+          <Suspense fallback={<PageLoader />}>
+            <SalePortal embedMode={true} activeTabProp="workspace" />
+          </Suspense>
+        )}
+      </div>
       <div style={{ display: currentPath === '/data' ? 'block' : 'none' }} className={currentPath === '/data' ? 'page-enter-active' : ''}>
         {visitedPaths.includes('/data') && (
           <Suspense fallback={<PageLoader />}>
-            <DataList />
+            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="data" /> : <DataList />}
           </Suspense>
         )}
       </div>

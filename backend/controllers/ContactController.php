@@ -34,7 +34,7 @@ class ContactController {
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
         // Role-based visibility: Sale can only see their own contacts
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $where[] = 'c.owner_id = ?';
             $params[] = $auth['user_id'];
         }
@@ -70,6 +70,7 @@ class ContactController {
             case 'customer':   $where[] = "c.status = 'customer'"; break;
             case 'has_deal':   $where[] = "EXISTS (SELECT 1 FROM deals d WHERE d.contact_id = c.id AND d.deleted_at IS NULL)"; break;
             case 'no_contact': $where[] = "c.last_contact < DATE_SUB(NOW(), INTERVAL 30 DAY)"; break;
+            case 'not_contacted': $where[] = 'c.last_contact IS NULL'; break;
             case 'new_week':   $where[] = "c.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; break;
         }
 

@@ -1551,6 +1551,26 @@ try {
         $conn->query("ALTER TABLE activities ADD COLUMN participant_ids VARCHAR(255) NULL DEFAULT NULL AFTER tags");
         $logMsg("Đã thêm cột participant_ids cho activities", "success");
     }
+    $chkActProgress = $conn->query("SHOW COLUMNS FROM activities LIKE 'progress'");
+    if ($chkActProgress && $chkActProgress->num_rows === 0) {
+        $conn->query("ALTER TABLE activities ADD COLUMN progress INT(11) NOT NULL DEFAULT 0 AFTER participant_ids");
+        $logMsg("Đã thêm cột progress cho activities", "success");
+    }
+    $chkActReqApproval = $conn->query("SHOW COLUMNS FROM activities LIKE 'require_approval'");
+    if ($chkActReqApproval && $chkActReqApproval->num_rows === 0) {
+        $conn->query("ALTER TABLE activities ADD COLUMN require_approval TINYINT(1) NOT NULL DEFAULT 0 AFTER progress");
+        $logMsg("Đã thêm cột require_approval cho activities", "success");
+    }
+    $chkActApprover = $conn->query("SHOW COLUMNS FROM activities LIKE 'approver_id'");
+    if ($chkActApprover && $chkActApprover->num_rows === 0) {
+        $conn->query("ALTER TABLE activities ADD COLUMN approver_id INT(11) NULL DEFAULT NULL AFTER require_approval");
+        $logMsg("Đã thêm cột approver_id cho activities", "success");
+    }
+    $chkActApprovalStatus = $conn->query("SHOW COLUMNS FROM activities LIKE 'approval_status'");
+    if ($chkActApprovalStatus && $chkActApprovalStatus->num_rows === 0) {
+        $conn->query("ALTER TABLE activities ADD COLUMN approval_status VARCHAR(50) NULL DEFAULT NULL AFTER approver_id");
+        $logMsg("Đã thêm cột approval_status cho activities", "success");
+    }
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");

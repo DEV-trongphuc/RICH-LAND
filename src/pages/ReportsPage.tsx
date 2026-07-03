@@ -3,6 +3,7 @@ import { BarChart3, TrendingUp, Users, Briefcase, Download, ArrowUpRight, ArrowD
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line } from 'recharts';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useUIStore } from '../store/uiStore';
+import { useAuth } from '../contexts/AuthContext';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
@@ -28,6 +29,7 @@ const FMT_VND = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 
 export const ReportsPage: React.FC = () => {
   const { addToast } = useUIStore();
+  const { user } = useAuth();
   const [tab, setTab] = useState<'sales' | 'pipeline' | 'customers' | 'companies' | 'expenses' | 'activities'>('sales');
   const [period, setPeriod] = useState<Period>('this_quarter');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_quarter'));
@@ -281,7 +283,15 @@ export const ReportsPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">Báo cáo & Phân tích</h1>
-          <p className="page-subtitle">Dữ liệu tổng hợp toàn hệ thống</p>
+          {((user?.role as any) === 'sale' || (user?.role as any) === 'sales') ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+              <span className="page-subtitle" style={{ margin: 0 }}>Dữ liệu của</span>
+              <Avatar name={(user as any)?.full_name || 'Sale'} src={(user as any)?.avatar_url} size={22} />
+              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{(user as any)?.full_name}</span>
+            </div>
+          ) : (
+            <p className="page-subtitle">Dữ liệu tổng hợp toàn hệ thống</p>
+          )}
         </div>
         <div className="flex gap-2">
           <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); }} />

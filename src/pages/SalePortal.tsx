@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -8,8 +8,10 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { createPortal } from 'react-dom';
 
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
@@ -92,7 +94,7 @@ interface SalePortalProps {
   searchParams?: URLSearchParams;
   setSearchParams?: any;
   location?: any;
-  activeTabProp?: 'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants';
+  activeTabProp?: 'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants';
   embedMode?: boolean;
 }
 
@@ -101,6 +103,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const routerLocation = useLocation();
   const loc = location || routerLocation;
   const { user, token, login, logout } = useAuth();
+  const currentUser = user;
   const { language, setLanguage, t } = useLanguage();
   const { showConfirm } = useUIStore();
 
@@ -265,11 +268,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [profileDrawerTab, setProfileDrawerTab] = useState<string>('info');
 
   // Tab & Layout states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants'>(activeTabProp || 'dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'workspace' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants'>(activeTabProp || 'dashboard');
   const [sourceViewMode, setSourceViewMode] = useState<'connection' | 'lead'>('connection');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [vacationConfirmOpen, setVacationConfirmOpen] = useState(false);
+
+  // Filter states for workspace tasks
+  const [wsSearch, setWsSearch] = useState('');
+  const [wsPriority, setWsPriority] = useState('');
+  const [wsStatus, setWsStatus] = useState('planned'); // Default: hide completed
+  const [wsDatePreset, setWsDatePreset] = useState('all');
+  const [wsStartDate, setWsStartDate] = useState('');
+  const [wsEndDate, setWsEndDate] = useState('');
+  const [wsTasks, setWsTasks] = useState<any[]>([]);
+  const filteredWsTasks = useMemo(() => {
+    if (!wsSearch) return wsTasks;
+    const searchVal = wsSearch.toLowerCase();
+    return wsTasks.filter(task => {
+      const subject = task.subject ? String(task.subject).toLowerCase() : '';
+      const body = task.body ? String(task.body).toLowerCase() : '';
+      const contactName = task.contact_name ? String(task.contact_name).toLowerCase() : '';
+      const companyName = task.company_name ? String(task.company_name).toLowerCase() : '';
+      const dealName = task.deal_name ? String(task.deal_name).toLowerCase() : '';
+      return (
+        subject.includes(searchVal) ||
+        body.includes(searchVal) ||
+        contactName.includes(searchVal) ||
+        companyName.includes(searchVal) ||
+        dealName.includes(searchVal)
+      );
+    });
+  }, [wsTasks, wsSearch]);
+  const [loadingWsTasks, setLoadingWsTasks] = useState(false);
+  const [wsContacts, setWsContacts] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+
+  // Task details modal states inside SalePortal
+  const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<any>(null);
+  const [taskComments, setTaskComments] = useState<any[]>([]);
+  const [loadingTaskComments, setLoadingTaskComments] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [isUpdatingTask, setIsUpdatingTask] = useState(false);
+  const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
+  const [showParticipantDropdown, setShowParticipantDropdown] = useState(false);
+  const [showApproverDropdown, setShowApproverDropdown] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   useEffect(() => {
     if (activeTabProp) {
@@ -547,6 +591,245 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       console.error(e);
     } finally {
       setLoadingTasks(false);
+    }
+  };
+
+  const fetchWorkspaceTasks = async () => {
+    if (!token) return;
+    setLoadingWsTasks(true);
+    try {
+      let url = '/activities?type=task&limit=100';
+      if (wsPriority) url += `&priority=${wsPriority}`;
+      if (wsStatus) url += `&status=${wsStatus}`;
+      
+      let start = '';
+      let end = '';
+      if (wsDatePreset === 'today') {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        start = todayStr;
+        end = todayStr;
+      } else if (wsDatePreset === 'tomorrow') {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomStr = tomorrow.toISOString().slice(0, 10);
+        start = tomStr;
+        end = tomStr;
+      } else if (wsDatePreset === 'week') {
+        const today = new Date();
+        const first = today.getDate() - today.getDay();
+        const last = first + 6;
+        start = new Date(today.setDate(first)).toISOString().slice(0, 10);
+        end = new Date(today.setDate(last)).toISOString().slice(0, 10);
+      } else if (wsDatePreset === 'overdue') {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        end = yesterday.toISOString().slice(0, 10);
+      } else if (wsDatePreset === 'custom') {
+        start = wsStartDate;
+        end = wsEndDate;
+      }
+
+      if (start) url += `&start_date=${start}`;
+      if (end) url += `&end_date=${end}`;
+
+      const res = await api.get(url);
+      if (res.data && res.data.data) {
+        setWsTasks(res.data.data.items || res.data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingWsTasks(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'workspace') {
+      fetchWorkspaceTasks();
+    }
+  }, [activeTab, wsPriority, wsStatus, wsDatePreset, wsStartDate, wsEndDate]);
+
+  useEffect(() => {
+    if (activeTab === 'workspace') {
+      api.get('/contacts?limit=100').then(res => {
+        if (res.data && res.data.data) {
+          const items = res.data.data.items || res.data.data || [];
+          setWsContacts(items);
+        }
+      }).catch(() => {});
+
+      api.get('/users').then(r => {
+        const d = r.data.data;
+        setUsers(Array.isArray(d) ? d : (d?.items || []));
+      }).catch(() => {});
+    }
+  }, [activeTab]);
+
+  const loadTaskComments = async (taskId: number) => {
+    setLoadingTaskComments(true);
+    try {
+      const res = await api.get(`/activities/comments?activity_id=${taskId}`);
+      if (res.data.success) {
+        setTaskComments(res.data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTaskComments(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTaskForDetails?.id) {
+      loadTaskComments(selectedTaskForDetails.id);
+    } else {
+      setTaskComments([]);
+    }
+  }, [selectedTaskForDetails?.id]);
+
+  const handlePostTaskComment = async () => {
+    if (!newCommentText.trim() || !selectedTaskForDetails) return;
+    try {
+      const res = await api.post('/activities/comments', {
+        activity_id: selectedTaskForDetails.id,
+        content: newCommentText.trim()
+      });
+      if (res.data.success) {
+        setNewCommentText('');
+        loadTaskComments(selectedTaskForDetails.id);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t('Lỗi khi thêm bình luận'));
+    }
+  };
+
+  const handleDeleteTaskComment = async (commentId: number) => {
+    try {
+      const res = await api.delete(`/activities/comments?id=${commentId}`);
+      if (res.data.success) {
+        loadTaskComments(selectedTaskForDetails.id);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t('Lỗi khi xóa bình luận'));
+    }
+  };
+
+  const resolveAttachmentUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    const base = api.defaults.baseURL || '';
+    const cleanBase = base.replace(/\/api\/?$/, '');
+    return `${cleanBase}/${path}`;
+  };
+
+  const handleDetailTaskFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedTaskForDetails) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('Dung lượng tệp tối đa cho phép là 10MB'));
+      return;
+    }
+    setUploadingFile(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', file.name);
+    formData.append('category', 'general');
+    formData.append('visibility', 'shared');
+    if (selectedTaskForDetails.related_type === 'contact' && selectedTaskForDetails.related_id) {
+      formData.append('contact_id', selectedTaskForDetails.related_id.toString());
+    }
+    try {
+      const uploadRes = await api.post('/cloud-files/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (uploadRes.data.success && uploadRes.data.data) {
+        const fileUrl = uploadRes.data.data.file_url;
+        await handleUpdateTaskDetail({ link: fileUrl });
+        toast.success(t('Tải tệp lên thành công'));
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(t('Lỗi khi tải tệp lên'));
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleUpdateTaskDetail = async (updatedFields: any) => {
+    if (!selectedTaskForDetails) return;
+    setIsUpdatingTask(true);
+    try {
+      const payload: any = {};
+      if ('title' in updatedFields) payload.subject = updatedFields.title;
+      
+      const currentDesc = 'description' in updatedFields ? updatedFields.description : (selectedTaskForDetails.description || '');
+      const currentLink = 'link' in updatedFields ? updatedFields.link : (selectedTaskForDetails.link || '');
+      
+      if ('description' in updatedFields || 'link' in updatedFields) {
+        payload.body = currentDesc + (currentLink ? `\n\nTài liệu/Link đính kèm: ${currentLink}` : '');
+      }
+
+      const directFields = ['user_id', 'status', 'priority', 'due_date', 'tags', 'participant_ids', 'progress', 'require_approval', 'approver_id', 'approval_status'];
+      directFields.forEach(f => {
+        if (f in updatedFields) payload[f] = updatedFields[f];
+      });
+
+      if ('user_id' in updatedFields) {
+        const newAssigneeId = String(updatedFields.user_id);
+        const currentParticipants = (selectedTaskForDetails.participant_ids || '').split(',').filter(Boolean);
+        const nextParticipants = currentParticipants.filter(id => id !== newAssigneeId);
+        payload.participant_ids = nextParticipants.join(',');
+        updatedFields.participant_ids = payload.participant_ids;
+      }
+
+      const nextProgress = 'progress' in updatedFields ? updatedFields.progress : selectedTaskForDetails.progress;
+      const nextReqApproval = 'require_approval' in updatedFields ? updatedFields.require_approval : selectedTaskForDetails.require_approval;
+      const nextApprovalStatus = 'approval_status' in updatedFields ? updatedFields.approval_status : selectedTaskForDetails.approval_status;
+
+      if (nextProgress === 100) {
+        if (nextReqApproval === 1) {
+          if (nextApprovalStatus === 'approved') {
+            payload.status = 'done';
+            payload.approval_status = 'approved';
+            updatedFields.status = 'done';
+            updatedFields.approval_status = 'approved';
+          } else if (nextApprovalStatus === 'rejected') {
+            payload.status = 'planned';
+            payload.approval_status = 'rejected';
+            payload.progress = 90;
+            updatedFields.status = 'planned';
+            updatedFields.approval_status = 'rejected';
+            updatedFields.progress = 90;
+          } else {
+            payload.status = 'planned';
+            payload.approval_status = 'pending';
+            updatedFields.status = 'planned';
+            updatedFields.approval_status = 'pending';
+          }
+        } else {
+          payload.status = 'done';
+          payload.approval_status = null;
+          updatedFields.status = 'done';
+          updatedFields.approval_status = null;
+        }
+      } else {
+        payload.status = 'planned';
+        payload.approval_status = null;
+        updatedFields.status = 'planned';
+        updatedFields.approval_status = null;
+      }
+
+      const res = await api.put(`/activities/${selectedTaskForDetails.id}`, payload);
+      if (res.status === 200) {
+        setSelectedTaskForDetails((prev: any) => ({ ...prev, ...updatedFields }));
+        fetchWorkspaceTasks();
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi khi cập nhật công việc'));
+    } finally {
+      setIsUpdatingTask(false);
     }
   };
 
@@ -1356,7 +1639,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const activeChartData = flowViewMode === 'day' ? getDailyChartData() : hourlyChartData;
 
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const params = new URLSearchParams(loc.search);
+    return params.get('status') || 'all';
+  });
+
+  const uncontactedCount = useMemo(() => {
+    return (data.leads || []).filter((l: any) => !l.contact_last_contact && l.status !== 'reminder').length;
+  }, [data.leads]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(loc.search);
+    const statusParam = params.get('status');
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+  }, [loc.search]);
 
   const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
     if (status === 'assigned' && reportStatus === 'pending') {
@@ -1422,6 +1720,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         if (lead.report_status !== 'approved') return false;
       } else if (statusFilter === 'approved_no_comp_ticket') {
         if (lead.report_status !== 'approved_no_comp') return false;
+      } else if (statusFilter === 'not_contacted') {
+        if (lead.contact_last_contact) return false;
       } else if (statusFilter === 'rejected_ticket') {
         if (lead.report_status !== 'rejected') return false;
       }
@@ -1620,6 +1920,374 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }
 
   // Active Sale Portal View
+  const renderWorkspaceView = () => {
+    const currentUser = user;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {/* Workspace Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 className="page-title">{t("Bàn làm việc")}</h1>
+            <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+              {t("Quản lý toàn bộ công việc cần thực hiện, lọc chi tiết theo tiến độ và độ ưu tiên.")}
+            </p>
+          </div>
+          <button 
+            className="btn primary" 
+            onClick={() => {
+              setTaskForm({
+                title: '',
+                priority: 'medium',
+                due_date: new Date().toISOString().slice(0, 10),
+                description: '',
+                link: '',
+                related_id: ''
+              });
+              setShowTaskModal(true);
+            }}
+          >
+            <Plus size={16} /> {t('Tạo công việc')}
+          </button>
+        </div>
+
+        {uncontactedCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: 'rgba(239, 68, 68, 0.05)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: '16px',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 20px -6px rgba(239, 68, 68, 0.08)',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
+            }}
+            whileHover={{ 
+              scale: 1.005, 
+              borderColor: 'rgba(239, 68, 68, 0.45)',
+              boxShadow: '0 8px 30px -6px rgba(239, 68, 68, 0.15)'
+            }}
+            onClick={() => {
+              navigate('/data?status=not_contacted');
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.12)',
+                color: '#ef4444',
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: 'inset 0 2px 4px rgba(239, 68, 68, 0.06)'
+              }}>
+                <AlertCircle size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em' }}>
+                  Yêu cầu liên hệ khách hàng mới
+                </span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                  Bạn đang có <strong style={{ color: '#ef4444', fontSize: '0.95rem', fontWeight: 800 }}>{uncontactedCount}</strong> data khách hàng chưa liên hệ. Vui lòng kiểm tra và liên hệ ngay.
+                </span>
+              </div>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              color: '#ef4444', 
+              fontWeight: 800, 
+              fontSize: '0.875rem',
+              background: 'rgba(239, 68, 68, 0.08)',
+              padding: '8px 16px',
+              borderRadius: '10px',
+              transition: 'background 0.2s'
+            }}>
+              <span>Xem ngay</span>
+              <ChevronRight size={16} />
+            </div>
+          </motion.div>
+        )}
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1.8fr 1fr 1fr 1fr',
+          gap: '12px',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border-light)',
+          borderRadius: '16px',
+          padding: '1.25rem',
+          boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)'
+        }}>
+          {/* Search Input */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tìm kiếm</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="Tìm theo tên, mô tả..."
+              value={wsSearch}
+              onChange={e => setWsSearch(e.target.value)}
+              style={{ height: '38px', fontSize: '0.8rem', padding: '8px 12px' }}
+            />
+          </div>
+
+          {/* Priority Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Độ ưu tiên</label>
+            <CustomSelect
+              options={[
+                { value: '', label: 'Tất cả độ ưu tiên' },
+                { value: 'high', label: 'Cao' },
+                { value: 'medium', label: 'Trung bình' },
+                { value: 'low', label: 'Thấp' }
+              ]}
+              value={wsPriority}
+              onChange={val => setWsPriority(String(val))}
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Trạng thái</label>
+            <CustomSelect
+              options={[
+                { value: 'planned', label: 'Chưa hoàn thành' },
+                { value: '', label: 'Tất cả trạng thái' },
+                { value: 'done', label: 'Đã hoàn thành' }
+              ]}
+              value={wsStatus}
+              onChange={val => setWsStatus(String(val))}
+            />
+          </div>
+
+          {/* Date Preset Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thời gian hạn</label>
+            <CustomSelect
+              options={[
+                { value: 'all', label: 'Tất cả thời gian' },
+                { value: 'today', label: 'Hôm nay' },
+                { value: 'tomorrow', label: 'Ngày mai' },
+                { value: 'week', label: 'Tuần này' },
+                { value: 'overdue', label: 'Quá hạn' },
+                { value: 'custom', label: 'Tùy chỉnh ngày...' }
+              ]}
+              value={wsDatePreset}
+              onChange={val => setWsDatePreset(String(val))}
+            />
+          </div>
+        </div>
+
+        {/* Custom Date Pickers if custom preset is selected */}
+        {wsDatePreset === 'custom' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '16px',
+            padding: '1rem 1.25rem',
+            marginTop: '-0.5rem',
+            boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Từ ngày:</span>
+              <input
+                type="date"
+                className="form-input"
+                value={wsStartDate}
+                onChange={e => setWsStartDate(e.target.value)}
+                style={{ height: '36px', width: '150px', padding: '4px 8px', fontSize: '0.8rem' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Đến ngày:</span>
+              <input
+                type="date"
+                className="form-input"
+                value={wsEndDate}
+                onChange={e => setWsEndDate(e.target.value)}
+                style={{ height: '36px', width: '150px', padding: '4px 8px', fontSize: '0.8rem' }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Task Grid */}
+        {loadingWsTasks ? (
+          <div style={{ padding: '3rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
+            <RefreshCw className="spin" size={24} style={{ color: 'var(--color-primary)', marginBottom: 8 }} />
+            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Đang tải danh sách công việc...</div>
+          </div>
+        ) : filteredWsTasks.length === 0 ? (
+          <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)' }}>
+            <CheckSquare size={36} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Không tìm thấy công việc nào phù hợp với bộ lọc.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+            {filteredWsTasks.map(task => {
+              const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
+              const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
+              
+              let dateBadgeColor = 'var(--color-text-muted)';
+              let dateBadgeBg = 'var(--color-bg)';
+              if (isOverdue) {
+                dateBadgeColor = 'var(--color-danger)';
+                dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
+              } else if (isToday) {
+                dateBadgeColor = 'var(--color-warning)';
+                dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
+              }
+
+              const link = task.body ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
+              const description = task.body ? task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
+              const participantCount = task.participant_ids ? task.participant_ids.split(',').filter(Boolean).length : 0;
+              const progressVal = task.progress || 0;
+
+              return (
+                <div 
+                  key={task.id} 
+                  style={{
+                    padding: '1.25rem',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    boxShadow: '0 4px 18px -4px rgba(0, 0, 0, 0.04)',
+                    transition: 'all 0.2s',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}
+                  className="hover-lift"
+                  onClick={() => {
+                    const parsedTask = {
+                      id: task.id,
+                      title: task.subject,
+                      done: task.status === 'done',
+                      priority: task.priority,
+                      due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+                      link,
+                      description,
+                      user_id: task.user_id,
+                      user_name: task.user_name || 'Hệ thống',
+                      tags: task.tags || '',
+                      participant_ids: task.participant_ids || '',
+                      progress: task.progress || 0,
+                      require_approval: task.require_approval || 0,
+                      approver_id: task.approver_id,
+                      approval_status: task.approval_status
+                    };
+                    setSelectedTaskForDetails(parsedTask);
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '0.925rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
+                      {task.subject}
+                    </h3>
+                    {task.priority === 'high' && (
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
+                        {t('Khẩn cấp')}
+                      </span>
+                    )}
+                  </div>
+
+                  {description && (
+                    <p style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--color-text-muted)',
+                      margin: 0,
+                      lineHeight: 1.4,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {description}
+                    </p>
+                  )}
+
+                  {/* Progress Bar indicator */}
+                  <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>{progressVal}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '4px', background: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ width: `${progressVal}%`, height: '100%', background: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)', transition: 'width 0.3s' }} />
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  {task.tags && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {task.tags.split(',').filter(Boolean).map((tag: string) => (
+                        <span key={tag} style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.06)', color: '#059669', fontWeight: 600 }}>
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <hr style={{ border: 0, borderTop: '1px solid var(--color-border-light)', margin: 0 }} />
+
+                  {/* Footer metadata */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      {task.due_date && (
+                        <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Calendar size={11} /> {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
+                        </span>
+                      )}
+                      
+                      {task.related_type === 'contact' && task.related_id && (
+                        <span
+                          style={{
+                            fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
+                            color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: '4px'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenContactProfile(Number(task.related_id));
+                          }}
+                        >
+                          <Avatar name={task.contact_name || t('Khách hàng')} size={14} />
+                          {task.contact_name || t('Khách hàng')}
+                        </span>
+                      )}
+                    </div>
+
+                    {participantCount > 0 && (
+                      <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                        Người liên quan: <strong style={{ color: 'var(--color-primary)' }}>+{participantCount}</strong>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Task Details Modal moved to root level */}
+      </div>
+    );
+  };
+
   const renderDashboardView = () => {
     const kpis = [
       { key: 'data', status: 'all', label: t('DATA KHÁCH HÀNG'), value: data.stats.total_received, sub: t('Tổng nhận được bàn giao'), color: '#a31422', bg: 'rgba(163, 20, 34, 0.08)', icon: FileText },
@@ -1780,196 +2448,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           })}
         </div>
 
-        {/* Row 1.5: My Tasks (Công việc cần làm) */}
-        <div className="card animate-fade" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CheckSquare size={18} color="var(--color-primary)" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                {t('CÔNG VIỆC CẦN LÀM')}
-              </h3>
-            </div>
-            <button className="btn primary sm" onClick={() => {
-              setTaskForm({
-                title: '',
-                priority: 'medium',
-                due_date: new Date().toISOString().slice(0, 10),
-                description: '',
-                link: '',
-                related_id: ''
-              });
-              setShowTaskModal(true);
-            }}>
-              <Plus size={14} /> {t('Tạo công việc')}
-            </button>
-          </div>
 
-          {loadingTasks ? (
-            <div style={{ padding: '2rem', textAlign: 'center' }}><RefreshCw className="spin" /> {t('Đang tải công việc...')}</div>
-          ) : portalTasks.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-              {t('Tuyệt vời! Bạn không có công việc nào chưa hoàn thành hôm nay.')}
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
-              {portalTasks.map(task => {
-                const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
-                const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
-                
-                let dateBadgeColor = 'var(--color-text-muted)';
-                let dateBadgeBg = 'var(--color-bg)';
-                if (isOverdue) {
-                  dateBadgeColor = 'var(--color-danger)';
-                  dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
-                } else if (isToday) {
-                  dateBadgeColor = 'var(--color-warning)';
-                  dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
-                }
-
-                // Extract description and link
-                const link = task.body ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
-                const description = task.body ? task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
-
-                // Accent color for priority
-                let accentColor = '#9ca3af'; // low
-                if (task.priority === 'high') accentColor = 'var(--color-danger)';
-                else if (task.priority === 'medium') accentColor = 'var(--color-warning)';
-
-                const participantCount = task.participant_ids ? task.participant_ids.split(',').filter(Boolean).length : 0;
-
-                return (
-                  <div 
-                    key={task.id} 
-                    style={{
-                      padding: '1.25rem',
-                      background: 'var(--color-surface)',
-                      border: '1px solid var(--color-border-light)',
-                      borderLeft: `4px solid ${accentColor}`,
-                      borderRadius: '12px',
-                      display: 'flex',
-                      gap: '1rem',
-                      alignItems: 'flex-start',
-                      boxShadow: '0 4px 18px -4px rgba(0, 0, 0, 0.04)',
-                      transition: 'all 0.2s',
-                      position: 'relative',
-                      cursor: 'pointer'
-                    }}
-                    className="hover-lift"
-                    onClick={() => {
-                      if (task.related_type === 'contact' && task.related_id) {
-                        handleOpenContactProfile(Number(task.related_id), 'tasks');
-                      }
-                    }}
-                  >
-                    {/* Circle Checkbox Button */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleTaskStatus(task.id);
-                      }}
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        border: '2px solid var(--color-border)',
-                        background: 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginTop: 2,
-                        cursor: 'pointer',
-                        color: 'var(--color-success)',
-                        transition: 'all 0.2s',
-                        flexShrink: 0
-                      }}
-                      className="hover:border-success"
-                      title={t('Đánh dấu hoàn thành')}
-                    >
-                      <CheckSquare size={12} style={{ opacity: 0.1 }} />
-                    </button>
-
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                      {/* Title & Tags */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.3 }}>
-                          {task.subject}
-                        </div>
-                        {task.priority === 'high' && (
-                          <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
-                            {t('Khẩn cấp')}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Description Snippet */}
-                      {description && (
-                        <p style={{
-                          fontSize: '0.8rem',
-                          color: 'var(--color-text-muted)',
-                          margin: '4px 0 8px 0',
-                          lineHeight: 1.4,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis'
-                        }}>
-                          {description}
-                        </p>
-                      )}
-
-                      {/* Tags List */}
-                      {task.tags && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-                          {task.tags.split(',').filter(Boolean).map((tag: string) => (
-                            <span key={tag} style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.06)', color: '#059669', fontWeight: 600 }}>
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Footer Metadata */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '4px' }}>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          {task.due_date && (
-                            <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              📅 {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
-                            </span>
-                          )}
-                          
-                          {task.related_type === 'contact' && task.related_id && (
-                            <span
-                              style={{
-                                fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
-                                color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: '4px'
-                              }}
-                            >
-                              👤 {task.contact_name || t('Khách hàng')}
-                            </span>
-                          )}
-
-                          {link && (
-                            <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: 'var(--color-primary)', background: 'rgba(79, 70, 229, 0.06)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              📎 {t('Tài liệu')}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Co-workers icon */}
-                        {participantCount > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }} title={t('Người liên quan')}>
-                            👥 <span style={{ color: 'var(--color-primary)' }}>+{participantCount}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
         {/* Row 1: Charts & Recent Leads feed */}
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '6fr 4fr', gap: '1.25rem' }}>
@@ -2472,6 +2951,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 { value: 'pending_ticket', label: t('Ticket chờ duyệt') },
                 { value: 'approved_ticket', label: t('Ticket đã bù') },
                 { value: 'approved_no_comp_ticket', label: t('Lỗi không bù') },
+                { value: 'not_contacted', label: t('Chưa liên hệ'), icon: <AlertCircle size={16} /> },
                 { value: 'rejected_ticket', label: t('Ticket bị từ chối') }
               ]}
               value={statusFilter}
@@ -4328,7 +4808,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {
                   title: 'TỔNG QUAN',
                   items: [
-                    { name: 'Dashboard', key: 'dashboard', icon: LayoutDashboard }
+                    { name: 'Tổng quan', key: 'dashboard', icon: LayoutDashboard },
+                    { name: 'Bàn làm việc', key: 'workspace', icon: CheckSquare }
                   ]
                 },
                 {
@@ -4957,6 +5438,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* Render views based on activeTab */}
             <div key={activeTab} className="subtab-enter-active">
               {activeTab === 'dashboard' && renderDashboardView()}
+              {activeTab === 'workspace' && renderWorkspaceView()}
               {activeTab === 'data' && renderDataView()}
               {activeTab === 'databank' && renderDatabankView()}
               {activeTab === 'calendar' && renderCalendarView()}
@@ -5985,7 +6467,544 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
       </CustomModal>
 
+      {/* Task Details Modal at root level to prevent clipping */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {selectedTaskForDetails && (
+            <div className="overlay-backdrop" style={{ zIndex: 11000, padding: 0 }} onClick={() => {
+            setSelectedTaskForDetails(null);
+            setShowAssigneeDropdown(false);
+            setShowParticipantDropdown(false);
+            setShowApproverDropdown(false);
+          }}>
+            <motion.div
+              className="modal-sheet modal-lg"
+              style={{ width: '100vw', maxWidth: '100vw', height: '100vh', margin: 0, borderRadius: 0, display: 'flex', flexDirection: 'column' }}
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ type: 'tween', duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header" style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: 38, height: 38, borderRadius: '10px', background: 'rgba(245,158,11,0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.15rem', margin: 0 }}>Chi tiết công việc cần làm</h3>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0, marginTop: 2 }}>
+                      Người tạo: <strong>{selectedTaskForDetails.user_name}</strong>
+                    </p>
+                  </div>
+                </div>
+                <button className="btn-icon" onClick={() => {
+                  setSelectedTaskForDetails(null);
+                  setShowAssigneeDropdown(false);
+                  setShowParticipantDropdown(false);
+                  setShowApproverDropdown(false);
+                }}><X size={18} /></button>
+              </div>
 
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '13fr 11fr', gap: '1.5rem', padding: '1.5rem 2rem', flex: 1, overflowY: 'auto' }}>
+                
+                {/* Approval Banner */}
+                {selectedTaskForDetails.require_approval === 1 && selectedTaskForDetails.progress === 100 && (
+                  <div style={{
+                    gridColumn: 'span 2',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    background: selectedTaskForDetails.approval_status === 'pending' ? 'rgba(245, 158, 11, 0.06)' : selectedTaskForDetails.approval_status === 'approved' ? 'rgba(16, 185, 129, 0.06)' : 'rgba(239, 68, 68, 0.06)',
+                    border: `1px solid ${selectedTaskForDetails.approval_status === 'pending' ? 'var(--color-warning)' : selectedTaskForDetails.approval_status === 'approved' ? 'var(--color-success)' : 'var(--color-danger)'}`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                      {selectedTaskForDetails.approval_status === 'pending' ? (
+                        `Đang chờ Người duyệt (${users.find((u: any) => String(u.id) === String(selectedTaskForDetails.approver_id))?.full_name || 'Chưa phân công'}) phê duyệt hoàn thành.`
+                      ) : selectedTaskForDetails.approval_status === 'approved' ? (
+                        'Công việc đã được phê duyệt hoàn thành.'
+                      ) : (
+                        'Yêu cầu phê duyệt hoàn thành bị từ chối.'
+                      )}
+                    </span>
+                    {selectedTaskForDetails.approval_status === 'pending' && currentUser && (String(currentUser.id) === String(selectedTaskForDetails.approver_id) || currentUser.role === 'admin') && (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn success sm"
+                          style={{ color: 'white', padding: '4px 12px', fontSize: '0.78rem' }}
+                          onClick={() => handleUpdateTaskDetail({ status: 'done', approval_status: 'approved' })}
+                        >
+                          Duyệt hoàn thành
+                        </button>
+                        <button
+                          type="button"
+                          className="btn danger sm"
+                          style={{ color: 'white', padding: '4px 12px', fontSize: '0.78rem' }}
+                          onClick={() => handleUpdateTaskDetail({ status: 'planned', approval_status: 'rejected', progress: 90 })}
+                        >
+                          Từ chối
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Left Column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Tên công việc</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={selectedTaskForDetails.title}
+                      onChange={e => setSelectedTaskForDetails({ ...selectedTaskForDetails, title: e.target.value })}
+                      onBlur={() => handleUpdateTaskDetail({ title: selectedTaskForDetails.title })}
+                      style={{ fontWeight: 600, fontSize: '0.95rem' }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Mô tả chi tiết</label>
+                    <textarea
+                      className="form-input"
+                      rows={4}
+                      value={selectedTaskForDetails.description || ''}
+                      onChange={e => setSelectedTaskForDetails({ ...selectedTaskForDetails, description: e.target.value })}
+                      onBlur={() => handleUpdateTaskDetail({ description: selectedTaskForDetails.description })}
+                      placeholder="Chưa có mô tả..."
+                      style={{ fontSize: '0.85rem', minHeight: 80 }}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ background: 'var(--color-bg)', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>Tài liệu hoặc Link đính kèm</label>
+                      <label className="btn outline sm" style={{ cursor: 'pointer', margin: 0, padding: '3px 10px', fontSize: '0.75rem' }}>
+                        Tải tệp lên
+                        <input type="file" onChange={handleDetailTaskFileUpload} style={{ display: 'none' }} disabled={uploadingFile} />
+                      </label>
+                    </div>
+                    
+                    {selectedTaskForDetails.link ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                          <Paperclip size={14} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                          <a
+                            href={resolveAttachmentUrl(selectedTaskForDetails.link)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: '0.8rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          >
+                            {selectedTaskForDetails.link.includes('uploads/') ? selectedTaskForDetails.link.split('/').pop().replace(/^\d+_/, '') : selectedTaskForDetails.link}
+                          </a>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-icon sm text-danger"
+                          style={{ padding: 2 }}
+                          onClick={() => handleUpdateTaskDetail({ link: '' })}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', padding: '0.25rem' }}>
+                        Chưa có tệp đính kèm.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Comments */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
+                    <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                      Bình luận & Trao đổi ({taskComments.length})
+                    </h4>
+
+                    <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '2px' }} className="custom-scrollbar">
+                      {loadingTaskComments ? (
+                        <div style={{ textAlign: 'center', padding: '0.5rem', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>Đang tải bình luận...</div>
+                      ) : taskComments.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '1.25rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', background: 'var(--color-bg)', borderRadius: '8px' }}>
+                          Chưa có bình luận nào cho công việc này.
+                        </div>
+                      ) : (
+                        taskComments.map((c: any) => (
+                          <div key={c.id} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'var(--color-bg)', padding: '8px 12px', borderRadius: '10px' }}>
+                            <Avatar name={c.user_name} size={24} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>{c.user_name}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                                    {new Date(c.created_at).toLocaleString('vi-VN')}
+                                  </span>
+                                  {currentUser && (currentUser.id === c.user_id || currentUser.role === 'admin') && (
+                                    <button
+                                      type="button"
+                                      style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--color-danger)' }}
+                                      onClick={() => handleDeleteTaskComment(c.id)}
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', marginTop: 4, margin: 0, whiteSpace: 'pre-wrap' }}>
+                                {c.content}
+                              </p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Viết bình luận..."
+                        value={newCommentText}
+                        onChange={e => setNewCommentText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handlePostTaskComment(); }}
+                        style={{ fontSize: '0.8rem', flex: 1, height: '34px', padding: '4px 12px' }}
+                      />
+                      <button type="button" className="btn primary icon-only" onClick={handlePostTaskComment} style={{ width: 34, height: 34, padding: 0 }}>
+                        <Send size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.5rem' }}>
+                  
+                  {/* Progress Slider */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>Tiến độ công việc</label>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)' }}>{selectedTaskForDetails.progress || 0}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="10"
+                      value={selectedTaskForDetails.progress || 0}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setSelectedTaskForDetails({ ...selectedTaskForDetails, progress: val });
+                      }}
+                      onMouseUp={e => {
+                        const val = Number((e.target as HTMLInputElement).value);
+                        handleUpdateTaskDetail({ progress: val });
+                      }}
+                      onTouchEnd={e => {
+                        const val = Number((e.target as HTMLInputElement).value);
+                        handleUpdateTaskDetail({ progress: val });
+                      }}
+                      style={{
+                        width: '100%',
+                        cursor: 'pointer',
+                        accentColor: 'var(--color-primary)',
+                        height: '6px',
+                        borderRadius: '3px',
+                        background: '#e5e7eb'
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      <span>0%</span>
+                      <span>50%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  {/* Approval Toggle */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Yêu cầu phê duyệt</span>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <div 
+                          style={{
+                            width: 38,
+                            height: 20,
+                            borderRadius: 10,
+                            background: selectedTaskForDetails.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
+                            position: 'relative',
+                            transition: 'background 0.2s'
+                          }}
+                          onClick={() => {
+                            const next = selectedTaskForDetails.require_approval === 1 ? 0 : 1;
+                            handleUpdateTaskDetail({ require_approval: next });
+                          }}
+                        >
+                          <div 
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: '50%',
+                              background: 'white',
+                              position: 'absolute',
+                              top: 2,
+                              left: selectedTaskForDetails.require_approval === 1 ? 20 : 2,
+                              transition: 'left 0.2s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                            }}
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Approver Select */}
+                  {selectedTaskForDetails.require_approval === 1 && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Người duyệt</label>
+                      {(() => {
+                        const approver = users.find((u: any) => String(u.id) === String(selectedTaskForDetails.approver_id));
+                        return (
+                          <div style={{ position: 'relative' }}>
+                            <div 
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
+                              onClick={() => {
+                                setShowApproverDropdown(!showApproverDropdown);
+                                setShowAssigneeDropdown(false);
+                                setShowParticipantDropdown(false);
+                              }}
+                            >
+                              <Avatar src={approver?.avatar_url} name={approver?.full_name || 'Chọn người duyệt...'} size={22} />
+                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: approver ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                                {approver?.full_name || 'Chọn người duyệt...'}
+                              </span>
+                            </div>
+                            {showApproverDropdown && (
+                              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
+                                {users.map((u: any) => (
+                                  <div 
+                                    key={u.id} 
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
+                                    className="hover:bg-bg"
+                                    onClick={() => {
+                                      handleUpdateTaskDetail({ approver_id: Number(u.id) });
+                                      setShowApproverDropdown(false);
+                                    }}
+                                  >
+                                    <Avatar src={u.avatar_url} name={u.full_name} size={20} />
+                                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text)' }}>{u.full_name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Assignee Select */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Người thực hiện</label>
+                    {(() => {
+                      const assignee = users.find((u: any) => String(u.id) === String(selectedTaskForDetails.user_id));
+                      return (
+                        <div style={{ position: 'relative' }}>
+                          <div 
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
+                            onClick={() => {
+                              setShowAssigneeDropdown(!showAssigneeDropdown);
+                              setShowParticipantDropdown(false);
+                              setShowApproverDropdown(false);
+                            }}
+                          >
+                            <Avatar src={assignee?.avatar_url} name={assignee?.full_name || 'Chọn người thực hiện...'} size={22} />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: assignee ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                              {assignee?.full_name || 'Chọn người thực hiện...'}
+                            </span>
+                          </div>
+                          {showAssigneeDropdown && (
+                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
+                              {users.map((u: any) => (
+                                <div 
+                                  key={u.id} 
+                                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
+                                  className="hover:bg-bg"
+                                  onClick={() => {
+                                    handleUpdateTaskDetail({ user_id: Number(u.id) });
+                                    setShowAssigneeDropdown(false);
+                                  }}
+                                >
+                                  <Avatar src={u.avatar_url} name={u.full_name} size={20} />
+                                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text)' }}>{u.full_name}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Co-workers Select */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Người liên quan</label>
+                    {(() => {
+                      const currentParticipantIds = (selectedTaskForDetails.participant_ids || '').split(',').filter(Boolean);
+                      const mainAssigneeId = String(selectedTaskForDetails.user_id || '');
+                      const participantUsers = users.filter((u: any) => currentParticipantIds.includes(String(u.id)) && String(u.id) !== mainAssigneeId);
+                      const availableUsersToAdd = users.filter((u: any) => String(u.id) !== mainAssigneeId && !currentParticipantIds.includes(String(u.id)));
+
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {participantUsers.map((u: any) => (
+                              <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Avatar src={u.avatar_url} name={u.full_name} size={20} />
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>{u.full_name}</span>
+                                </div>
+                                <button 
+                                  type="button" 
+                                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', padding: 0 }}
+                                  onClick={() => {
+                                    const next = currentParticipantIds.filter(id => id !== String(u.id));
+                                    handleUpdateTaskDetail({ participant_ids: next.join(',') });
+                                  }}
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ))}
+                            {participantUsers.length === 0 && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '2px 0' }}>
+                                Chưa có người liên quan.
+                              </div>
+                            )}
+                          </div>
+
+                          {availableUsersToAdd.length > 0 && (
+                            <div style={{ position: 'relative' }}>
+                              <div 
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
+                                onClick={() => {
+                                  setShowParticipantDropdown(!showParticipantDropdown);
+                                  setShowAssigneeDropdown(false);
+                                  setShowApproverDropdown(false);
+                                }}
+                              >
+                                <Plus size={14} style={{ color: 'var(--color-primary)' }} />
+                                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>Thêm người liên quan</span>
+                              </div>
+                              {showParticipantDropdown && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
+                                  {availableUsersToAdd.map((u: any) => (
+                                    <div 
+                                      key={u.id} 
+                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
+                                      className="hover:bg-bg"
+                                      onClick={() => {
+                                        const current = [...currentParticipantIds, String(u.id)];
+                                        handleUpdateTaskDetail({ participant_ids: current.join(',') });
+                                        setShowParticipantDropdown(false);
+                                      }}
+                                    >
+                                      <Avatar src={u.avatar_url} name={u.full_name} size={18} />
+                                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{u.full_name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Priority & Due Date */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Độ ưu tiên</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'low', label: 'Thấp' },
+                          { value: 'medium', label: 'Trung bình' },
+                          { value: 'high', label: 'Cao' }
+                        ]}
+                        value={selectedTaskForDetails.priority}
+                        onChange={val => handleUpdateTaskDetail({ priority: val.toString() })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Hạn hoàn thành</label>
+                      <input
+                        className="form-input"
+                        type="date"
+                        value={selectedTaskForDetails.due_date || ''}
+                        onChange={e => handleUpdateTaskDetail({ due_date: e.target.value })}
+                        style={{ fontSize: '0.85rem', height: '38px', padding: '8px 12px' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tags */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Thẻ tag</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '6px' }}>
+                      {(selectedTaskForDetails.tags || '').split(',').filter(Boolean).map((t: string) => (
+                        <span key={t} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '10px', background: 'rgba(16,185,129,0.1)', color: '#059669', fontWeight: 600 }}>
+                          {t}
+                          <X
+                            size={10}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                              const current = (selectedTaskForDetails.tags || '').split(',').filter(Boolean);
+                              const next = current.filter(x => x !== t);
+                              handleUpdateTaskDetail({ tags: next.join(',') });
+                            }}
+                          />
+                        </span>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Gõ tag & nhấn Enter..."
+                      style={{ fontSize: '0.85rem', height: '38px', padding: '8px 12px' }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          const input = e.currentTarget;
+                          const val = input.value.trim();
+                          if (val) {
+                            const current = (selectedTaskForDetails.tags || '').split(',').filter(Boolean);
+                            if (!current.includes(val)) {
+                              current.push(val);
+                              handleUpdateTaskDetail({ tags: current.join(',') });
+                            }
+                            input.value = '';
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer" style={{ padding: '0.75rem 1.5rem' }}>
+                <button className="btn outline" onClick={() => {
+                  setSelectedTaskForDetails(null);
+                  setShowAssigneeDropdown(false);
+                  setShowParticipantDropdown(false);
+                  setShowApproverDropdown(false);
+                }} style={{ minWidth: 100 }}>Đóng</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>,
+      document.body
+    )}
 
       <style>{`
         @keyframes spin {

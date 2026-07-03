@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock, Home } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock, Home, CheckSquare } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
@@ -184,13 +184,20 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   }, [user]);
 
   const visibleGroups = SIDEBAR_GROUPS.map(group => {
-    const filteredItems = group.items.filter((item: any) => {
+    let items = [...group.items];
+    if (group.title === 'TỔNG QUAN' && user?.role === 'sale') {
+      items = [
+        { name: 'Tổng quan', href: '/', icon: LayoutDashboard, end: true },
+        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare }
+      ];
+    }
+    const filteredItems = items.filter((item: any) => {
       const role = user?.role as string;
       const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
       const isManagerOrAdmin = isAdmin || role === 'manager';
 
       if (item.adminOnly && !isManagerOrAdmin) {
-        if ((role === 'sale' || role === 'sales') && (item.href === '/accounts' || item.href === '/consultants')) {
+        if (role === 'sale' && (item.href === '/accounts' || item.href === '/consultants')) {
           // Allow Sales to view these specific pages
         } else {
           return false;
@@ -384,7 +391,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : 0;
                   const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href && location.search === '');
-                  const displayName = href === '/' && user?.role === 'sale' ? t('Bàn làm việc') : t(name);
+                  const displayName = t(name);
 
                   return (
                     <NavLink

@@ -2004,8 +2004,7 @@ switch ($action) {
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason, dr.created_at as report_created_at,
                    IFNULL(sc.lead_recall_minutes, 0) as lead_recall_minutes,
                    sc.sheet_name as connection_name,
-                   c_real.id as contact_id
-            FROM distribution_logs dl
+                   c_real.id as contact_id, c_real.last_contact as contact_last_contact FROM distribution_logs dl
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
@@ -14296,3 +14295,4 @@ require_once __DIR__ . '/cron_daily_report.php';
 runDailyReportCron($conn);
 
 $conn->close();
+
