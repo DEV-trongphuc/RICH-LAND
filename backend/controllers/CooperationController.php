@@ -137,7 +137,7 @@ class CooperationController {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
         }
 
-        $allowedStatuses = ['pending_signatures', 'approved', 'pending_manager_approval'];
+        $allowedStatuses = ['pending_signatures', 'approved', 'pending_manager_approval', 'approved_pending_signatures'];
         if (!in_array($slip['status'], $allowedStatuses)) {
             respond(400, null, 'Không thể cập nhật tỷ lệ trong trạng thái hiện tại', false);
         }
@@ -156,13 +156,14 @@ class CooperationController {
         $sharesJson = json_encode($shares);
         $reason = trim($b['reason'] ?? '');
 
-        // If updated by admin/manager, keep current status and signatures. Otherwise, reset signatures and request change/approval.
-        $newStatus = $slip['status'];
-        $signaturesVal = $slip['signatures_json'];
-        if (!$isManagerOrAdmin) {
-            $signaturesVal = '{}';
+        // If updated by admin/manager, reset signatures but change status to 'approved_pending_signatures' (which bypasses manager approval).
+        // Otherwise, reset signatures and request change/approval.
+        $signaturesVal = '{}';
+        if ($isManagerOrAdmin) {
+            $newStatus = 'approved_pending_signatures';
+        } else {
             $newStatus = 'pending_signatures';
-            if ($slip['status'] === 'approved' || $slip['status'] === 'pending_manager_approval') {
+            if ($slip['status'] === 'approved' || $slip['status'] === 'pending_manager_approval' || $slip['status'] === 'approved_pending_signatures') {
                 $newStatus = 'pending_manager_approval';
             }
         }
@@ -243,8 +244,11 @@ class CooperationController {
 
         $signaturesJson = json_encode($signatures);
         
-        // If all shareholders signed, move to pending_manager_approval
+        // If all shareholders signed, move to pending_manager_approval or approved (if pre-approved by admin/manager)
         $status = 'pending_signatures';
+        if ($slip['status'] === 'approved_pending_signatures') {
+            $status = 'approved_pending_signatures';
+        }
         $allSigned = true;
         foreach ($shares as $uid => $percent) {
             if (!isset($signatures[$uid])) {
@@ -254,7 +258,11 @@ class CooperationController {
         }
 
         if ($allSigned) {
-            $status = 'pending_manager_approval';
+            if ($slip['status'] === 'approved_pending_signatures') {
+                $status = 'approved';
+            } else {
+                $status = 'pending_manager_approval';
+            }
         }
 
         $stmt = $this->db->prepare("UPDATE cooperation_slips SET signatures_json = ?, status = ? WHERE id = ?");

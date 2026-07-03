@@ -17,7 +17,7 @@ interface CooperationSlip {
   total_percentage: number;
   shares_json: string;
   signatures_json: string;
-  status: 'pending_signatures' | 'pending_manager_approval' | 'approved' | 'rejected' | 'disputed';
+  status: 'pending_signatures' | 'pending_manager_approval' | 'approved' | 'rejected' | 'disputed' | 'approved_pending_signatures';
   dispute_details: string | null;
   attachment_url?: string | null;
   created_at: string;
@@ -724,7 +724,7 @@ export default function CooperationSlipsPage() {
                       </span>
                       
                       {/* Delete icon */}
-                      {(isManager || (String(slip.created_by) === String(user?.id) && slip.status === 'pending_signatures')) && (
+                      {(isManager || (String(slip.created_by) === String(user?.id) && (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures'))) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteSlip(slip.id); }}
                           className="btn sm outline text-danger"
@@ -780,7 +780,7 @@ export default function CooperationSlipsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
                       
                       {/* Sign / Update buttons */}
-                      {slip.status === 'pending_signatures' && (String(slip.created_by) === String(user?.id) || isManager) && (
+                      {(slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (String(slip.created_by) === String(user?.id) || isManager) && (
                         <button
                           onClick={() => handleOpenUpdateShares(slip)}
                           className="btn sm outline"
@@ -799,7 +799,7 @@ export default function CooperationSlipsPage() {
                           >
                             <PenTool size={11} /> Ký
                           </button>
-                          {slip.status === 'pending_signatures' && (
+                          {(slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (
                             <button
                               onClick={() => handleRejectSlip(slip.id)}
                               className="btn sm outline"

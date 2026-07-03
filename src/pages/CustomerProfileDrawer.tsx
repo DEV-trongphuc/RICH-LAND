@@ -2706,8 +2706,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                       flex: 1,
-                                      pointerEvents: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange)) ? 'none' : 'auto',
-                                      opacity: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected')) ? 0.6 : 1
+                                      pointerEvents: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'approved_pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange)) ? 'none' : 'auto',
+                                      opacity: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'approved_pending_signatures' && coopSlip.status !== 'rejected')) ? 0.6 : 1
                                     }}>
                                       <CustomSelect
                                         value={share.user_id}
@@ -2745,12 +2745,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           newShares[idx].percentage = e.target.value;
                                           setCoopShares(newShares);
                                         }}
-                                        disabled={coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange}
+                                        disabled={coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'approved_pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange}
                                         style={{ textAlign: 'right' }}
                                       />
                                       <span style={{ fontWeight: 600 }}>%</span>
                                     </div>
-                                    {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
+                                    {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
                                       <button 
                                         className="btn ghost text-danger sm" 
                                         onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
