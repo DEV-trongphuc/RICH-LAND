@@ -510,6 +510,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [portalTasks, setPortalTasks] = useState<any[]>([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
 
+  const [pendingCoopSlips, setPendingCoopSlips] = useState<any[]>([]);
+  const [loadingCoops, setLoadingCoops] = useState(false);
+
+  const fetchPortalCoops = async () => {
+    if (!token) return;
+    setLoadingCoops(true);
+    try {
+      const res = await fetchAPI('cooperation-slips');
+      if (res.success) {
+        const slips = res.data || [];
+        const filtered = slips.filter((s: any) => {
+          const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(user?.consultant_id));
+          return s.status === 'pending_signatures' && sh && !sh.signed;
+        });
+        setPendingCoopSlips(filtered);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCoops(false);
+    }
+  };
+
   const fetchPortalTasks = async () => {
     if (!token) return;
     setLoadingTasks(true);
@@ -540,6 +563,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
     setLoading(true);
     fetchPortalTasks();
+    fetchPortalCoops();
 
 
     loadCheckInStatus();
@@ -1961,6 +1985,105 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
           )}
         </div>
+
+        {/* PHIẾU HỢP TÁC CHỜ KÝ */}
+        {pendingCoopSlips.length > 0 && (
+          <div className="card animate-fade" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', marginBottom: '1.25rem', border: '1px solid rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Scale size={18} color="var(--color-warning)" />
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {t('PHIẾU HỢP TÁC CHỜ KÝ')}
+                  <span style={{
+                    background: 'var(--color-warning)',
+                    color: 'white',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    lineHeight: 1
+                  }}>
+                    {pendingCoopSlips.length}
+                  </span>
+                </h3>
+              </div>
+              <button 
+                className="btn outline warning sm" 
+                onClick={() => navigate('/cooperation-slips')}
+                style={{ borderColor: 'var(--color-warning)', color: 'var(--color-warning)' }}
+              >
+                {t('Xem tất cả phiếu')}
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+              {pendingCoopSlips.map((slip: any) => {
+                const myShare = slip.shareholders?.find((x: any) => String(x.user_id) === String(user?.consultant_id));
+                const percentage = myShare ? myShare.percentage : 0;
+                
+                return (
+                  <div 
+                    key={slip.id} 
+                    style={{
+                      padding: '1rem', 
+                      background: 'var(--color-surface)', 
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '12px', 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      boxShadow: 'var(--shadow-sm)', 
+                      transition: 'all 0.2s'
+                    }}
+                    className="hover-lift"
+                  >
+                    <div style={{ display: 'flex', gap: '0.875rem', alignItems: 'center', minWidth: 0, flex: 1 }}>
+                      <div style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        color: 'var(--color-warning)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Scale size={18} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {slip.customer_name || t('Khách hàng')}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {slip.project_name || t('Dự án')} • {t('Căn')}: {slip.unit_code}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingLeft: '8px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-warning)' }}>
+                          {percentage}%
+                        </div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                          {t('Tỷ lệ chia')}
+                        </div>
+                      </div>
+                      <button 
+                        className="btn sm" 
+                        style={{ background: 'var(--color-warning)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}
+                        onClick={() => navigate('/cooperation-slips')}
+                      >
+                        {t('Ký ngay')}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Row 2: Round distribution card & Source Ratio PieChart */}
 

@@ -160,7 +160,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           setPendingTickets(countReports);
           setHeldLeadsCount(countHeld);
           setPendingCoopCount(countCoop);
-        } else if (role === 'sale') {
+        } else if (role === 'sale' || role === 'sales') {
           const resCoop = await fetchAPI('cooperation-slips');
           let countUnsigned = 0;
           if (resCoop.success) {
@@ -190,7 +190,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       const isManagerOrAdmin = isAdmin || role === 'manager';
 
       if (item.adminOnly && !isManagerOrAdmin) {
-        if (role === 'sale' && (item.href === '/accounts' || item.href === '/consultants')) {
+        if ((role === 'sale' || role === 'sales') && (item.href === '/accounts' || item.href === '/consultants')) {
           // Allow Sales to view these specific pages
         } else {
           return false;

@@ -127,7 +127,7 @@ const AppTabs = () => {
       <div style={{ display: currentPath === '/' ? 'block' : 'none' }} className={currentPath === '/' ? 'page-enter-active' : ''}>
         {visitedPaths.includes('/') && (
           <Suspense fallback={<PageLoader />}>
-            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="dashboard" /> : <Dashboard />}
+            {((user?.role as any) === 'sale' || (user?.role as any) === 'sales') ? <SalePortal embedMode={true} activeTabProp="dashboard" /> : <Dashboard />}
           </Suspense>
         )}
       </div>

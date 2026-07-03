@@ -38,6 +38,39 @@ interface Props {
 
 const FMT = (v: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Number(v) || 0);
 
+function numberToVietnameseWords(num: number): string {
+  const units = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+  if (num === 0) return 'Không phần trăm';
+  if (num === 100) return 'Một trăm phần trăm';
+  
+  let words = '';
+  const tens = Math.floor(num / 10);
+  const ones = num % 10;
+  
+  if (tens > 1) {
+    words += units[tens] + ' mươi';
+    if (ones === 1) {
+      words += ' mốt';
+    } else if (ones === 5) {
+      words += ' lăm';
+    } else if (ones > 0) {
+      words += ' ' + units[ones];
+    }
+  } else if (tens === 1) {
+    words += 'mười';
+    if (ones === 5) {
+      words += ' lăm';
+    } else if (ones > 0) {
+      words += ' ' + units[ones];
+    }
+  } else {
+    words += units[ones];
+  }
+  
+  const result = words.trim();
+  return (result.charAt(0).toUpperCase() + result.slice(1) + ' phần trăm').trim();
+}
+
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return '—';
   const cleanStr = dateStr.replace(' ', 'T');
@@ -551,6 +584,74 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [isRequestingChange, setIsRequestingChange] = useState(false);
   const [changeReason, setChangeReason] = useState('');
 
+  const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const isDrawing = React.useRef(false);
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    isDrawing.current = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing.current) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    isDrawing.current = false;
+  };
+
+  const getPos = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    
+    if ('touches' in e) {
+      if (e.touches.length === 0) return { x: 0, y: 0 };
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
+    } else {
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+  };
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
   const fetchCoopSlip = async () => {
     if (!contact?.id) return;
     setCoopLoading(true);
@@ -703,15 +804,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopLoading(false);
   };
 
-  const handleSignCoopSlip = async () => {
+  const handleSignCoopSlip = async (signatureImg: string) => {
     if (!coopSlip) return;
     setCoopLoading(true);
     try {
       const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/sign`, {
-        method: 'POST'
+        method: 'POST',
+        body: JSON.stringify({ signature_img: signatureImg })
       });
       if (res.success) {
         addToast('Đã ký xác nhận phân chia hoa hồng thành công!', 'success');
+        setIsSignModalOpen(false);
         await fetchCoopSlip();
       } else {
         addToast(res.message || 'Lỗi ký xác nhận', 'error');
@@ -720,6 +823,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast(e.message, 'error');
     }
     setCoopLoading(false);
+  };
+
+  const handleSubmitSignature = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const blank = document.createElement('canvas');
+    blank.width = canvas.width;
+    blank.height = canvas.height;
+    if (canvas.toDataURL() === blank.toDataURL()) {
+      addToast('Vui lòng vẽ chữ ký của bạn trước khi xác nhận', 'error');
+      return;
+    }
+    
+    const signatureImg = canvas.toDataURL('image/png');
+    handleSignCoopSlip(signatureImg);
   };
 
   const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
@@ -1883,6 +2002,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   {tasks.filter(t => !t.done).length}
                                 </span>
                               )}
+                              {tab.id === 'cooperation' && coopSlip && (coopSlip.status === 'pending_signatures' || coopSlip.status === 'pending_manager_approval') && (
+                                <span style={{
+                                  background: 'var(--color-danger)',
+                                  color: 'white',
+                                  fontSize: '0.625rem',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  lineHeight: 1
+                                }}>
+                                  {coopSlip.status === 'pending_signatures' ? 'Chờ ký' : 'Chờ duyệt'}
+                                </span>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -2681,7 +2816,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--color-text)' }}>
                                 Bạn là một bên trong phiếu hợp tác này. Vui lòng ký xác nhận tỷ lệ chia sẻ hoa hồng.
                               </p>
-                              <button className="btn primary" onClick={handleSignCoopSlip}>
+                              <button className="btn primary" onClick={() => setIsSignModalOpen(true)}>
                                 <PenTool size={16} /> Ký xác nhận
                               </button>
                             </div>
@@ -2693,19 +2828,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                               {coopSlip.shareholders?.map((sh: any) => (
                                 <div key={sh.user_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '8px', borderBottom: '1px solid var(--color-border-light)' }}>
-                                  <div>
-                                    <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{sh.name}</p>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sh.email}</p>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <Avatar src={sh.avatar} name={sh.name} size="md" />
+                                    <div>
+                                      <p style={{ fontWeight: 600, fontSize: '0.9rem' }}>{sh.name}</p>
+                                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sh.email}</p>
+                                    </div>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)' }}>{sh.percentage}%</span>
+                                    <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)' }}>{sh.percentage}%</span>
                                     {sh.signed ? (
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#10b981', fontSize: '0.8125rem', fontWeight: 600 }}>
                                         <CheckCircle2 size={16} /> Đã ký ({new Date(sh.signature_time).toLocaleDateString('vi-VN')})
                                       </div>
                                     ) : (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f59e0b', fontSize: '0.8125rem', fontWeight: 600 }}>
-                                        <Clock size={16} /> Chờ ký
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-warning)', fontSize: '0.8125rem', fontWeight: 700 }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--color-warning)', display: 'inline-block' }} />
+                                        Chờ ký
                                       </div>
                                     )}
                                   </div>
@@ -4448,6 +4587,127 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         contacts={contacts}
         users={users}
       />
+
+      {/* Signature Modal */}
+      {isSignModalOpen && coopSlip && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card animate-fade" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Đọc tài liệu &amp; Ký xác nhận điện tử</h2>
+              <button onClick={() => { setIsSignModalOpen(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
+            </div>
+
+            {/* Document Reader Area */}
+            <div>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>1. Đọc tài liệu đính kèm:</h3>
+              {coopSlip.attachment_url ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {coopSlip.attachment_url.split(',').map((url: string, urlIdx: number) => (
+                    <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                      <FileText size={24} style={{ color: 'var(--color-primary)' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {url.split('/').pop() || 'Tài liệu hợp tác đính kèm'}
+                        </p>
+                        <a 
+                          href={`https://open.domation.net/richland/${url}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
+                        >
+                          Bấm để mở xem tài liệu ở tab mới ↗
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                  Phiếu hợp tác này không đính kèm tệp tài liệu bổ sung. Vui lòng kiểm tra tỷ lệ phân chia bên dưới.
+                </div>
+              )}
+            </div>
+
+            {/* Shares info recap */}
+            <div style={{ padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>Tỷ lệ phân chia của các thành viên:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {coopSlip.shareholders?.map((sh: any) => (
+                  <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Avatar src={sh.avatar} name={sh.name} size="md" />
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{sh.name}</span>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
+                          {numberToVietnameseWords(sh.percentage)}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {sh.percentage}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Signature Area */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
+                <button 
+                  onClick={clearCanvas} 
+                  style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  Xóa vẽ lại
+                </button>
+              </div>
+              <canvas
+                ref={canvasRef}
+                width={550}
+                height={200}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                style={{
+                  border: '2px dashed var(--color-border)',
+                  borderRadius: '8px',
+                  background: 'var(--color-bg-light)',
+                  cursor: 'crosshair',
+                  display: 'block',
+                  touchAction: 'none',
+                  width: '100%',
+                  height: '200px'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+              <button 
+                className="btn outline" 
+                style={{ flex: 1 }} 
+                onClick={() => { setIsSignModalOpen(false); }}
+                disabled={coopLoading}
+              >
+                Hủy
+              </button>
+              <button 
+                className="btn primary" 
+                style={{ flex: 1 }} 
+                onClick={handleSubmitSignature}
+                disabled={coopLoading}
+              >
+                {coopLoading ? 'Đang gửi...' : 'Ký số điện tử'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>,
     document.body
   );
