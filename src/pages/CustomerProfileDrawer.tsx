@@ -156,7 +156,9 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
       }
       const fd = new FormData();
       fd.append('file', fileToUpload);
-      const res = await api.post('/upload', fd);
+      const res = await api.post('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       setAttachment(res.data.data?.url ?? '');
       addToast('Tải tệp đính kèm lên thành công', 'success');
     } catch (e: any) {
@@ -410,6 +412,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
   const [newNote, setNewNote] = useState('');
+  const [noteAttachment, setNoteAttachment] = useState<string | null>(null);
+  const [uploadingNoteFile, setUploadingNoteFile] = useState(false);
   const [noteChannel, setNoteChannel] = useState<'text' | 'call' | 'meet'>('text');
   const [customDocs, setCustomDocs] = useState('');
   const [customObstacle, setCustomObstacle] = useState('');
@@ -420,7 +424,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [noteDuration, setNoteDuration] = useState<string>('');
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
   const [noteObstacle, setNoteObstacle] = useState<string>('');
-  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number }[]>([]);
+  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; attachment_url?: string | null }[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
   const [users, setUsers] = useState<any[]>([]);
@@ -1096,9 +1100,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     text += `Nội dung: ${newNote.trim()}`;
     try {
       await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
-        body: text, type: 'internal'
+        body: text, type: 'internal', attachment_url: noteAttachment
       });
       setNewNote('');
+      setNoteAttachment(null);
       setNoteChannel('text');
       setNoteType('normal');
       setNoteDuration('');
@@ -1112,6 +1117,40 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast(err.response?.data?.message || 'Lỗi khi lưu ghi chú', 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleNoteAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+      return;
+    }
+
+    e.target.value = '';
+    setUploadingNoteFile(true);
+    try {
+      let fileToUpload = file;
+      if (file.type.startsWith('image/')) {
+        fileToUpload = await compressToWebP(file);
+      }
+      const fd = new FormData();
+      fd.append('file', fileToUpload);
+      const res = await api.post('/upload', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        setNoteAttachment(res.data.data?.url ?? '');
+        addToast('Tải tài liệu đính kèm ghi chú thành công', 'success');
+      } else {
+        addToast(res.data.message || 'Lỗi khi tải tệp lên', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi tải tệp lên', 'error');
+    } finally {
+      setUploadingNoteFile(false);
     }
   };
 
@@ -3145,6 +3184,44 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           />
                         </div>
 
+                        {/* Note Attachment */}
+                        <div style={{ marginBottom: '1.25rem' }}>
+                          {noteAttachment ? (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {/\.(jpg|jpeg|png|gif|webp)$/i.test(noteAttachment) ? (
+                                  <Camera size={18} style={{ color: '#10b981' }} />
+                                ) : (
+                                  <FileText size={18} style={{ color: 'var(--color-primary)' }} />
+                                )}
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{noteAttachment.split('/').pop()}</span>
+                              </div>
+                              <button className="btn ghost text-danger sm" onClick={() => setNoteAttachment(null)} style={{ padding: '6px' }}>
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="file"
+                                id="note-file-upload"
+                                style={{ display: 'none' }}
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,image/*"
+                                onChange={handleNoteAttachmentUpload}
+                                disabled={uploadingNoteFile}
+                              />
+                              <label htmlFor="note-file-upload" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
+                                {uploadingNoteFile ? (
+                                  <Loader2 size={14} className="spin" />
+                                ) : (
+                                  <Paperclip size={14} />
+                                )}
+                                {uploadingNoteFile ? 'Đang tải lên...' : 'Đính kèm tài liệu'}
+                              </label>
+                            </div>
+                          )}
+                        </div>
+
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                           <button className="btn primary" onClick={addNote} disabled={isSubmitting || !newNote.trim()}>
                             {isSubmitting ? <Loader2 size={14} className="spin" /> : <Send size={14} />} 
@@ -3162,6 +3239,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ flex: 1 }}>
                                   <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
+                                  {n.attachment_url && (
+                                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
+                                        <Camera size={14} style={{ color: '#10b981' }} />
+                                      ) : (
+                                        <FileText size={14} style={{ color: 'var(--color-primary)' }} />
+                                      )}
+                                      <a
+                                        href={n.attachment_url.startsWith('http') ? n.attachment_url : `${api.defaults.baseURL || ''}/${n.attachment_url}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                      >
+                                        {n.attachment_url.split('/').pop()}
+                                      </a>
+                                    </div>
+                                  )}
                                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem' }}>
                                     Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
                                   </p>

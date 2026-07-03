@@ -816,7 +816,9 @@ export const ExpensesPage: React.FC = () => {
                             if (form.image_url) {
                               uploadData.append('previous_url', form.image_url);
                             }
-                            const res = await api.post('/upload', uploadData);
+                            const res = await api.post('/upload', uploadData, {
+                              headers: { 'Content-Type': 'multipart/form-data' }
+                            });
                             if (res.data && res.data.success && res.data.data?.url) {
                               setForm({ ...form, image_url: res.data.data.url });
                               addToast('Tải lên và nén ảnh hóa đơn thành công!', 'success');

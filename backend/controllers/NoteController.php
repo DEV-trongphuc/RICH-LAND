@@ -85,12 +85,13 @@ class NoteController {
         $b = getBody();
         if (empty($b['body'])) respond(422, null, 'Nội dung ghi chú là bắt buộc', false);
         $this->db->prepare("
-            INSERT INTO notes (tenant_id, user_id, entity_type, entity_id, body, type, parent_id, is_pinned)
-            VALUES (?,?,?,?,?,?,?,?)
+            INSERT INTO notes (tenant_id, user_id, entity_type, entity_id, body, type, parent_id, is_pinned, attachment_url)
+            VALUES (?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $auth['user_id'], $type, $entityId,
             $b['body'], $b['type'] ?? 'internal',
-            $b['parent_id'] ?? null, $b['is_pinned'] ?? 0
+            $b['parent_id'] ?? null, $b['is_pinned'] ?? 0,
+            $b['attachment_url'] ?? null
         ]);
         $id = (int)$this->db->lastInsertId();
 
