@@ -246,9 +246,8 @@ class CooperationController {
     }
 
     public function rejectSlip(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
         $b = getBody();
-        $details = trim($b['reason'] ?? 'Không được duyệt');
+        $details = trim($b['reason'] ?? 'Không đồng ý ký');
 
         $stmtSlip = $this->db->prepare("
             SELECT cs.*, c.tenant_id 
@@ -261,6 +260,16 @@ class CooperationController {
 
         if (!$slip) {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
+        }
+
+        $shares = json_decode($slip['shares_json'] ?? '[]', true) ?: [];
+        $userId = $auth['user_id'];
+        $isShareholder = isset($shares[$userId]);
+        $isCreator = $slip['created_by'] == $userId;
+        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager']);
+
+        if (!$isShareholder && !$isCreator && !$isManagerOrAdmin) {
+            respond(403, null, 'Bạn không có quyền từ chối hoặc phản hồi phiếu này', false);
         }
 
         // Return to pending_signatures so sales can update percentages

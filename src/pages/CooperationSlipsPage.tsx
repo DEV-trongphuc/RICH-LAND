@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip } from 'lucide-react';
+import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
+import type { Period, DateRange } from '../components/ui/PeriodFilter';
 
 interface CooperationSlip {
   id: number;
@@ -58,7 +60,8 @@ export default function CooperationSlipsPage() {
 
   const [expandedSlips, setExpandedSlips] = useState<Record<number, boolean>>({});
 
-  const [filterTime, setFilterTime] = useState('all');
+  const [period, setPeriod] = useState<Period>('30d');
+  const [dateRange, setDateRange] = useState<DateRange>(() => getDateRange('30d'));
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSale, setFilterSale] = useState('all');
 
@@ -203,35 +206,15 @@ export default function CooperationSlipsPage() {
         if (!matchSale) return false;
       }
 
-      // 3. Filter by Time
-      if (filterTime !== 'all') {
-        const date = new Date(slip.created_at);
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        if (filterTime === 'today') {
-          if (date < today) return false;
-        } else if (filterTime === 'yesterday') {
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          if (date < yesterday || date >= today) return false;
-        } else if (filterTime === '7days') {
-          const sevenDaysAgo = new Date(today);
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-          if (date < sevenDaysAgo) return false;
-        } else if (filterTime === '30days') {
-          const thirtyDaysAgo = new Date(today);
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          if (date < thirtyDaysAgo) return false;
-        } else if (filterTime === 'month') {
-          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-          if (date < firstDayOfMonth) return false;
-        }
+      // 3. Filter by Time/Date Range
+      const slipDateStr = slip.created_at.slice(0, 10);
+      if (slipDateStr < dateRange.from || slipDateStr > dateRange.to) {
+        return false;
       }
 
       return true;
     });
-  }, [slips, searchQuery, filterSale, filterTime]);
+  }, [slips, searchQuery, filterSale, dateRange]);
 
   const handleDeleteSlip = async (slipId: number) => {
     setCustomConfirm({
@@ -468,28 +451,14 @@ export default function CooperationSlipsPage() {
         </div>
 
         {/* Filter Time */}
-        <div style={{ width: '160px' }}>
-          <select
-            value={filterTime}
-            onChange={e => setFilterTime(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '8px 12px',
-              borderRadius: '8px',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-bg-light)',
-              color: 'var(--color-text)',
-              fontSize: '0.875rem',
-              cursor: 'pointer'
+        <div>
+          <PeriodFilter
+            value={period}
+            onChange={(p, r) => {
+              setPeriod(p);
+              setDateRange(r);
             }}
-          >
-            <option value="all">Mọi thời gian</option>
-            <option value="today">Hôm nay</option>
-            <option value="yesterday">Hôm qua</option>
-            <option value="7days">7 ngày qua</option>
-            <option value="30days">30 ngày qua</option>
-            <option value="month">Tháng này</option>
-          </select>
+          />
         </div>
 
         {/* Filter Sale (Only show if Manager/Admin) */}
@@ -622,13 +591,22 @@ export default function CooperationSlipsPage() {
                           </button>
                         )}
                         {isShareholder && !hasSigned && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleOpenSignModal(slip); }}
-                            className="btn sm primary"
-                            style={{ height: '28px', padding: '0 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          >
-                            <PenTool size={12} /> Ký
-                          </button>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleOpenSignModal(slip); }}
+                              className="btn sm primary"
+                              style={{ height: '28px', padding: '0 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <PenTool size={12} /> Ký
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRejectSlip(slip.id); }}
+                              className="btn sm outline"
+                              style={{ height: '28px', padding: '0 10px', fontSize: '0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }}
+                            >
+                              Phản ánh / Từ chối
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -757,11 +735,46 @@ export default function CooperationSlipsPage() {
                       </div>
                     </div>
 
+                    {/* Attachment preview inside expanded card panel */}
+                    {slip.attachment_url && (
+                      <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }} onClick={e => e.stopPropagation()}>
+                        <h4 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Paperclip size={14} /> Tài liệu đính kèm:
+                        </h4>
+                        {(slip.attachment_url.toLowerCase().endsWith('.png') ||
+                          slip.attachment_url.toLowerCase().endsWith('.jpg') ||
+                          slip.attachment_url.toLowerCase().endsWith('.jpeg') ||
+                          slip.attachment_url.toLowerCase().endsWith('.webp')) ? (
+                          <div style={{ display: 'inline-block', position: 'relative', cursor: 'zoom-in' }} onClick={(e) => { e.stopPropagation(); window.open(`https://open.domation.net/richland/${slip.attachment_url}`, '_blank'); }}>
+                            <img 
+                              src={`https://open.domation.net/richland/${slip.attachment_url}`} 
+                              style={{ maxHeight: '120px', borderRadius: '8px', border: '1px solid var(--color-border)', objectFit: 'contain' }} 
+                              alt="Tài liệu hợp tác đính kèm"
+                            />
+                            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Click để xem kích thước lớn</div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', width: 'fit-content' }}>
+                            <FileText size={16} color="var(--color-primary)" />
+                            <a 
+                              href={`https://open.domation.net/richland/${slip.attachment_url}`} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline' }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              Xem tài liệu hợp tác đính kèm
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Dispute Reason */}
                     {slip.status === 'rejected' && slip.dispute_details && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--color-danger)', borderRadius: '8px', fontSize: '0.75rem' }}>
                         <ShieldAlert size={16} />
-                        <span>Lý do sếp bác bỏ: <strong>{slip.dispute_details}</strong>. Vui lòng cập nhật lại tỷ lệ chia sẻ và ký xác nhận lại.</span>
+                        <span>Ý kiến phản hồi / Lý do từ chối: <strong>{slip.dispute_details}</strong>. Vui lòng cập nhật lại tỷ lệ chia sẻ và ký xác nhận lại.</span>
                       </div>
                     )}
                   </div>
