@@ -369,6 +369,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showDealModal, setShowDealModal] = useState(false);
+  const [editingDealId, setEditingDealId] = useState<number | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -711,15 +712,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       // Fetch Deals
       const dealsRes = await api.get(`/deals?contact_id=${contact.id}`);
-      setDeals((dealsRes.data.data?.items || []).map((d: any) => ({
+      const dealsList = (dealsRes.data.data?.items || []).map((d: any) => ({
         id: d.id,
         title: d.title,
         value: d.value,
         stage: d.stage_name || 'Chưa xác định',
+        stage_id: d.stage_id,
         prob: d.probability,
         close: d.expected_close_date || d.expected_close,
+        description: d.description || '',
+        priority: d.priority || 'medium',
         stage_color: d.stage_color || '#3b82f6'
-      })));
+      }));
+      setDeals(dealsList);
+
+      // Auto-sync contact expected_revenue & win_probability based on current deals
+      const totalRev = dealsList.length > 0 ? dealsList.reduce((sum, d) => sum + (Number(d.value) || 0), 0) : 0;
+      const avgProb = dealsList.length > 0 ? Math.round(dealsList.reduce((total, d) => total + (Number(d.prob) || 0), 0) / dealsList.length) : 0;
+      if (totalRev !== Number(formData.expected_revenue || 0) || avgProb !== Number(formData.win_probability || 0)) {
+        api.put(`/contacts/${contact.id}`, {
+          expected_revenue: totalRev,
+          win_probability: avgProb
+        }).then(() => {
+          setFormData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
+          setBaseData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
+        }).catch(err => console.error("Error syncing contact metrics:", err));
+      }
 
       // Fetch Invoices
       const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
@@ -1081,13 +1099,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
-  const handleCreateDeal = async () => {
+  const handleSaveDeal = async () => {
     if (!dealForm.title.trim() || isSubmitting) return;
     setIsSubmitting(true);
     try {
       const selectedStageId = (dealForm.stage === 'lead' || !dealForm.stage) ? null : Number(dealForm.stage);
-      await api.post('/deals', {
-        contact_id: contact.id,
+      const payload = {
         title: dealForm.title,
         value: Number(dealForm.value) || 0,
         stage_id: selectedStageId,
@@ -1095,13 +1112,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         expected_close_date: dealForm.expected_close || null,
         description: dealForm.description || null,
         priority: dealForm.priority || 'medium'
-      });
+      };
+
+      if (editingDealId) {
+        await api.put(`/deals/${editingDealId}`, payload);
+        addToast('Đã cập nhật cơ hội thành công', 'success');
+      } else {
+        await api.post('/deals', {
+          ...payload,
+          contact_id: contact.id
+        });
+        addToast('Đã tạo cơ hội mới thành công', 'success');
+      }
       setShowDealModal(false);
       setDealForm({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '', description: '', priority: 'medium' });
+      setEditingDealId(null);
       fetchData();
-      addToast('Đã tạo cơ hội mới thành công', 'success');
     } catch (e: any) {
-      addToast(e?.response?.data?.message || 'Lỗi khi tạo cơ hội', 'error');
+      addToast(e?.response?.data?.message || 'Lỗi khi lưu cơ hội', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -2454,6 +2482,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <button className="btn primary sm" onClick={() => {
                           const initialStage = stages[0]?.id?.toString() || 'lead';
                           setDealForm({ title: '', value: '', stage: initialStage, probability: 50, expected_close: '', description: '', priority: 'medium' });
+                          setEditingDealId(null);
                           setShowDealModal(true);
                         }}><Plus size={14} /> Tạo deal mới</button>
                       </div>
@@ -2475,6 +2504,26 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
+                                    <button 
+                                      className="btn-icon sm" 
+                                      title="Chỉnh sửa" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDealForm({
+                                          title: d.title,
+                                          value: String(d.value || ''),
+                                          stage: d.stage_id ? d.stage_id.toString() : 'lead',
+                                          probability: d.prob || 50,
+                                          expected_close: d.close || '',
+                                          description: d.description || '',
+                                          priority: d.priority || 'medium'
+                                        });
+                                        setEditingDealId(d.id);
+                                        setShowDealModal(true);
+                                      }}
+                                    >
+                                      <Pencil size={14} />
+                                    </button>
                                     <button
                                       className="btn-icon sm text-danger"
                                       style={{ opacity: 0.4, transition: 'opacity 0.2s', padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
@@ -3431,7 +3480,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <DollarSign size={20} />
                   </div>
                   <div>
-                    <h3 style={{ fontWeight: 800 }}>Tạo cơ hội (Deal) mới</h3>
+                    <h3 style={{ fontWeight: 800 }}>{editingDealId ? 'Chỉnh sửa cơ hội (Deal)' : 'Tạo cơ hội (Deal) mới'}</h3>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Liên kết với: <strong>{fullName}</strong></p>
                   </div>
                 </div>
@@ -3504,8 +3553,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
               <div className="modal-footer">
                 <button className="btn outline" onClick={() => setShowDealModal(false)} disabled={isSubmitting}>Hủy</button>
-                <button className="btn primary" onClick={handleCreateDeal} disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang lưu...' : 'Tạo Deal'}
+                <button className="btn primary" onClick={handleSaveDeal} disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang lưu...' : (editingDealId ? 'Lưu thay đổi' : 'Tạo Deal')}
                 </button>
               </div>
             </motion.div>
