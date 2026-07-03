@@ -400,7 +400,6 @@ if (!in_array($action, $publicActions)) {
         'get_accounts',
         'get_admin_logs',
         'save_settings',
-        'get_settings',
         'add_consultant',
         'edit_consultant',
         'delete_consultant',

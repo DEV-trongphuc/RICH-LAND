@@ -2315,13 +2315,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                           {/* Status and summary */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                          <div style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            padding: '1rem 1.25rem', 
+                            background: coopSlip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : 'var(--color-bg-light)', 
+                            borderRadius: '12px', 
+                            border: coopSlip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid var(--color-border)' 
+                          }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Trạng thái phiếu:</span>
                               <span className={`badge ${
                                 coopSlip.status === 'approved' ? 'success' : 
                                 coopSlip.status === 'rejected' ? 'danger' : 
-                                coopSlip.status === 'pending_manager_approval' ? 'info' : 'warning'
+                                coopSlip.status === 'pending_manager_approval' ? 'warning' : 'warning'
                               }`}>
                                 {coopSlip.status === 'approved' ? 'Đã duyệt' : 
                                  coopSlip.status === 'rejected' ? 'Bị từ chối' : 

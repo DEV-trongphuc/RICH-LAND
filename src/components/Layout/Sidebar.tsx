@@ -39,7 +39,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
-      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' }
+      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },
+      { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, adminOnly: true }
     ]
   },
   {
@@ -78,7 +79,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
       { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
       { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true },
-      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale },
       { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt }
     ]
   },
@@ -162,8 +162,9 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     const filteredItems = group.items.filter((item: any) => {
       const role = user?.role as string;
       const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
+      const isManagerOrAdmin = isAdmin || role === 'manager';
 
-      if (item.adminOnly && !isAdmin) {
+      if (item.adminOnly && !isManagerOrAdmin) {
         if (role === 'sale' && (item.href === '/accounts' || item.href === '/consultants')) {
           // Allow Sales to view these specific pages
         } else {
