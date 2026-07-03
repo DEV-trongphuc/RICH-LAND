@@ -169,10 +169,10 @@ class CooperationController {
         $stmt->execute([$sharesJson, $sum, $newStatus, $reason ?: null, $id]);
 
         if ($newStatus === 'pending_manager_approval') {
-            $stmtUser = $this->db->prepare("SELECT full_name, name FROM users WHERE id = ?");
+            $stmtUser = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
             $stmtUser->execute([$auth['user_id']]);
             $userRow = $stmtUser->fetch();
-            $userName = $userRow['full_name'] ?? $userRow['name'] ?? 'Nhân viên';
+            $userName = $userRow['full_name'] ?? 'Nhân viên';
 
             $stmtMgrs = $this->db->prepare("
                 SELECT id FROM users 
