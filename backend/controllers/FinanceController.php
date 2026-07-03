@@ -510,9 +510,70 @@ class FinanceController
         }
 
         // Summary totals respecting filters
-        $sTotal = $this->db->prepare("SELECT COALESCE(SUM(e.amount),0) as total, COALESCE(SUM(CASE WHEN e.status='approved' THEN e.amount END),0) as approved FROM expenses e WHERE $w");
+        $sTotal = $this->db->prepare("SELECT COALESCE(SUM(e.amount),0) as total, COALESCE(SUM(CASE WHEN e.status='approved' THEN e.amount END),0) as approved, COALESCE(SUM(CASE WHEN e.status='pending' THEN e.amount END),0) as pending, COUNT(*) as total_count, COALESCE(SUM(CASE WHEN e.status='approved' THEN 1 ELSE 0 END),0) as approved_count, COALESCE(SUM(CASE WHEN e.status='pending' THEN 1 ELSE 0 END),0) as pending_count FROM expenses e WHERE $w");
         $sTotal->execute($params);
-        $summary = $sTotal->fetch();
+        $currentSummary = $sTotal->fetch();
+
+        $sMax = $this->db->prepare("SELECT amount, title FROM expenses e WHERE $w ORDER BY e.amount DESC LIMIT 1");
+        $sMax->execute($params);
+        $maxItem = $sMax->fetch() ?: null;
+
+        $prevTotal = 0.0;
+        $prevApproved = 0.0;
+        $prevPending = 0.0;
+
+        if ($from && $to) {
+            $fromTs = strtotime($from);
+            $toTs = strtotime($to);
+            $diffSeconds = $toTs - $fromTs;
+            $diffDays = round($diffSeconds / (24 * 3600)) + 1;
+
+            $prevFrom = date('Y-m-d', strtotime("-$diffDays days", $fromTs));
+            $prevTo = date('Y-m-d', strtotime("-1 day", $fromTs));
+
+            $prevWhere = ['e.tenant_id=?', 'e.deleted_at IS NULL'];
+            $prevParams = [$tid];
+            if ($auth['role'] === 'sales') {
+                $prevWhere[] = 'e.created_by = ?';
+                $prevParams[] = $auth['user_id'];
+            }
+            if ($status) {
+                $prevWhere[] = 'e.status=?';
+                $prevParams[] = $status;
+            }
+            if ($category) {
+                $prevWhere[] = 'e.category=?';
+                $prevParams[] = $category;
+            }
+            $prevWhere[] = 'e.date >= ?';
+            $prevParams[] = $prevFrom;
+            $prevWhere[] = 'e.date <= ?';
+            $prevParams[] = $prevTo;
+
+            $pw = implode(' AND ', $prevWhere);
+            $sPrev = $this->db->prepare("SELECT COALESCE(SUM(e.amount),0) as total, COALESCE(SUM(CASE WHEN e.status='approved' THEN e.amount END),0) as approved, COALESCE(SUM(CASE WHEN e.status='pending' THEN e.amount END),0) as pending FROM expenses e WHERE $pw");
+            $sPrev->execute($prevParams);
+            $prevSummary = $sPrev->fetch();
+            if ($prevSummary) {
+                $prevTotal = (float)$prevSummary['total'];
+                $prevApproved = (float)$prevSummary['approved'];
+                $prevPending = (float)$prevSummary['pending'];
+            }
+        }
+
+        $summary = [
+            'total' => (float)$currentSummary['total'],
+            'approved' => (float)$currentSummary['approved'],
+            'pending' => (float)$currentSummary['pending'],
+            'total_count' => (int)$currentSummary['total_count'],
+            'approved_count' => (int)$currentSummary['approved_count'],
+            'pending_count' => (int)$currentSummary['pending_count'],
+            'max_amount' => $maxItem ? (float)$maxItem['amount'] : 0.0,
+            'max_title' => $maxItem ? $maxItem['title'] : '',
+            'prev_total' => $prevTotal,
+            'prev_approved' => $prevApproved,
+            'prev_pending' => $prevPending
+        ];
 
         respond(200, ['items' => $rows, 'total' => $total, 'page' => $page, 'limit' => $limit, 'summary' => $summary]);
     }

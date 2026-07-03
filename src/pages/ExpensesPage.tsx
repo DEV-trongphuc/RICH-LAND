@@ -94,7 +94,7 @@ export const ExpensesPage: React.FC = () => {
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
   const vendorRef = React.useRef<HTMLDivElement>(null);
 
-  const [summary, setSummary] = useState({ total: 0, approved: 0 });
+  const [summary, setSummary] = useState<any>({ total: 0, approved: 0 });
 
   const fetchExpenses = useCallback(async () => {
     if (DEV_MODE) {
@@ -165,10 +165,29 @@ export const ExpensesPage: React.FC = () => {
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
   // KPIs from server-side summary
-  const totalAmt = Number(summary.total);
-  const approvedAmt = Number(summary.approved);
-  const pendingAmt = totalAmt - approvedAmt;
-  const maxItem = items.reduce((mx, e) => Number(e.amount) > Number(mx?.amount || 0) ? e : mx, null as any);
+  const totalAmt = Number(summary.total || 0);
+  const approvedAmt = Number(summary.approved || 0);
+  const pendingAmt = Number(summary.pending || 0);
+  const prevTotal = Number(summary.prev_total || 0);
+  const prevApproved = Number(summary.prev_approved || 0);
+  const prevPending = Number(summary.prev_pending || 0);
+
+  const getChangePercent = (curr: number, prev: number) => {
+    if (prev === 0) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 100);
+  };
+
+  const getPeriodCompareText = (p: string) => {
+    switch (p) {
+      case 'this_month': return 'so với tháng trước';
+      case 'last_month': return 'so với tháng trước nữa';
+      case 'today': return 'so với hôm qua';
+      case 'this_week': return 'so với tuần trước';
+      case 'last_30_days': return 'so với 30 ngày trước';
+      default: return 'so với kỳ trước';
+    }
+  };
+
   const catBreakdown = CATEGORIES.map(c => ({
     ...c,
     total: items.filter(e => e.category === c.label).reduce((s, e) => s + Number(e.amount), 0),
@@ -261,41 +280,74 @@ export const ExpensesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards — NO borders */}
+      {/* KPI Cards — styled premium like the data distribution dashboard */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
           {
-            label: 'Tổng chi phí kỳ này', value: FMT(totalAmt), icon: TrendingDown,
-            color: '#ef4444', sub: `${items.length} khoản`,
+            label: 'Tổng chi phí kỳ này',
+            value: FMT(totalAmt),
+            icon: TrendingDown,
+            color: '#ef4444',
+            sub: `${summary.total_count || 0} khoản`,
+            change: getChangePercent(totalAmt, prevTotal),
+            badWhenUp: true
           },
           {
-            label: 'Đã phê duyệt', value: FMT(approvedAmt), icon: CheckCircle2,
+            label: 'Đã phê duyệt',
+            value: FMT(approvedAmt),
+            icon: CheckCircle2,
             color: '#10b981',
-            sub: `${items.filter(e => e.status === 'approved').length} khoản đã duyệt`,
+            sub: `${summary.approved_count || 0} khoản đã duyệt`,
+            change: getChangePercent(approvedAmt, prevApproved),
+            badWhenUp: false
           },
           {
-            label: 'Chờ phê duyệt', value: FMT(pendingAmt), icon: Clock,
+            label: 'Chờ phê duyệt',
+            value: FMT(pendingAmt),
+            icon: Clock,
             color: '#f59e0b',
-            sub: `${items.filter(e => e.status === 'pending').length} khoản đang chờ`,
+            sub: `${summary.pending_count || 0} khoản đang chờ`,
+            change: getChangePercent(pendingAmt, prevPending),
+            badWhenUp: true
           },
           {
-            label: 'Chi phí lớn nhất', value: maxItem ? FMT(maxItem.amount) : '—', icon: DollarSign,
+            label: 'Chi phí lớn nhất',
+            value: summary.max_amount ? FMT(summary.max_amount) : '—',
+            icon: DollarSign,
             color: '#a31422',
-            sub: maxItem?.title ? maxItem.title.slice(0, 24) + '...' : 'Chưa có dữ liệu',
+            sub: summary.max_title ? summary.max_title.slice(0, 24) + '...' : 'Chưa có dữ liệu',
+            change: 0,
+            badWhenUp: true
           },
-        ].map((k, i) => (
-          <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <div className="stat-kpi__header">
-              <div className="stat-kpi__label">{k.label}</div>
-              <div className="stat-kpi__icon" style={{ color: k.color }}>
-                <k.icon size={20} />
+        ].map((k, i) => {
+          const isDecrease = k.change < 0;
+          const isZero = k.change === 0;
+          const trendColor = isZero ? 'var(--color-text-muted)' : ((isDecrease !== k.badWhenUp) ? 'var(--color-success)' : 'var(--color-danger)');
+          const TrendIcon = isZero ? null : (isDecrease ? '▼' : '▲');
+          
+          return (
+            <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div className="stat-kpi__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div className="stat-kpi__label" style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-light)' }}>{k.label}</div>
+                <div className="stat-kpi__icon" style={{ color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <k.icon size={18} />
+                </div>
               </div>
-            </div>
-            {loading ? <div className="skeleton" style={{ height: 38, width: '85%', borderRadius: 6, marginBottom: 12 }} />
-              : <div className="stat-kpi__value">{k.value}</div>}
-            <div className="stat-kpi__sub">{k.sub}</div>
-          </motion.div>
-        ))}
+              {loading ? (
+                <div className="skeleton" style={{ height: 32, width: '85%', borderRadius: 6, marginBottom: 8 }} />
+              ) : (
+                <div className="stat-kpi__value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', margin: '0.125rem 0', lineHeight: 1.2 }}>{k.value}</div>
+              )}
+              <div className="stat-kpi__sub" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{k.sub}</div>
+              {!isZero && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: trendColor, marginTop: 'auto' }}>
+                  <span>{TrendIcon} {isDecrease ? '' : '+'}{k.change}%</span>
+                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{getPeriodCompareText(period)}</span>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Category breakdown mini-bar */}
