@@ -134,17 +134,27 @@ export default function CooperationSlipsPage() {
 
   const loadData = async () => {
     setLoading(true);
+    setError('');
     try {
-      const [resSlips, resUsers] = await Promise.all([
-        fetchAPI('cooperation-slips'),
-        fetchAPI('users')
-      ]);
+      const resSlips = await fetchAPI('cooperation-slips');
+      if (resSlips.success) {
+        setSlips(resSlips.data || []);
+      } else {
+        setError(resSlips.message || 'Lỗi tải danh sách phiếu hợp tác');
+      }
 
-      if (resSlips.success) setSlips(resSlips.data || []);
-      if (resUsers.success) {
-        // Only keep sales accounts
-        const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
-        setSalesAccounts(sales);
+      const role = user?.role as string;
+      const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager';
+      if (isAdminOrManager) {
+        try {
+          const resUsers = await fetchAPI('users');
+          if (resUsers.success) {
+            const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale');
+            setSalesAccounts(sales);
+          }
+        } catch (err) {
+          console.warn('Failed to load users for configurations:', err);
+        }
       }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');
