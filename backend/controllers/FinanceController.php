@@ -13,16 +13,33 @@ class FinanceController
     {
         if (!$contactId)
             return;
+        
+        $sInv = $this->db->prepare("SELECT COALESCE(SUM(total),0) as total, COUNT(*) as count, MAX(paid_at) as last_at FROM invoices WHERE contact_id = ? AND status = 'paid' AND deleted_at IS NULL");
+        $sInv->execute([$contactId]);
+        $inv = $sInv->fetch();
+
+        $sExp = $this->db->prepare("SELECT COALESCE(SUM(ee.amount),0) as total, COUNT(*) as count, MAX(e.approved_at) as last_at FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = ? AND e.status = 'approved' AND e.deleted_at IS NULL");
+        $sExp->execute([$contactId]);
+        $exp = $sExp->fetch();
+
+        $totalSpent = (float)$inv['total'] + (float)$exp['total'];
+        $orderCount = (int)$inv['count'] + (int)$exp['count'];
+        
+        $lastOrderAt = null;
+        if ($inv['last_at'] || $exp['last_at']) {
+            $lastOrderAt = ($inv['last_at'] && (!$exp['last_at'] || $inv['last_at'] > $exp['last_at'])) ? $inv['last_at'] : $exp['last_at'];
+        }
+
         $stmt = $this->db->prepare("
-            UPDATE contacts c
+            UPDATE contacts 
             SET 
-                total_spent = (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL),
-                order_count = (SELECT COUNT(*) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL),
-                last_order_at = (SELECT MAX(paid_at) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL),
-                status = CASE WHEN (SELECT COUNT(*) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL) > 0 THEN 'customer' ELSE status END
+                total_spent = ?,
+                order_count = ?,
+                last_order_at = ?,
+                status = CASE WHEN ? > 0 THEN 'customer' ELSE status END
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$contactId, $tid]);
+        $stmt->execute([$totalSpent, $orderCount, $lastOrderAt, $orderCount, $contactId, $tid]);
     }
 
     private function syncInvoiceContact(int $tid, int $invId): void
@@ -32,6 +49,16 @@ class FinanceController
         $cid = $stmt->fetchColumn();
         if ($cid)
             $this->syncContactStats($tid, (int) $cid);
+    }
+
+    private function syncExpenseContacts(int $tid, int $expId): void
+    {
+        $stmt = $this->db->prepare("SELECT entity_id FROM expense_entities WHERE expense_id = ? AND entity_type = 'contact'");
+        $stmt->execute([$expId]);
+        $contactIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($contactIds as $cid) {
+            $this->syncContactStats($tid, (int)$cid);
+        }
     }
 
     // ─────────────────────── INVOICES ───────────────────────────
@@ -453,8 +480,10 @@ class FinanceController
         $total = (int) $cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            SELECT e.*, u.full_name as creator_name
-            FROM expenses e LEFT JOIN users u ON e.created_by = u.id
+            SELECT e.*, u.full_name as creator_name, u2.full_name as approver_name
+            FROM expenses e 
+            LEFT JOIN users u ON e.created_by = u.id
+            LEFT JOIN users u2 ON e.approver_id = u2.id
             WHERE $w ORDER BY e.date DESC LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
@@ -489,7 +518,7 @@ class FinanceController
 
     public function showExpense(array $auth, int $id): void
     {
-        $sql = "SELECT e.*, u.full_name as creator_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
+        $sql = "SELECT e.*, u.full_name as creator_name, u2.full_name as approver_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id LEFT JOIN users u2 ON e.approver_id=u2.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales') {
             $sql .= " AND e.created_by=?";
@@ -501,10 +530,14 @@ class FinanceController
         if (!$row)
             respond(404, null, 'Không tìm thấy chi phí', false);
 
-        // Fetch linked entities
-        $sEE = $this->db->prepare("SELECT * FROM expense_entities WHERE expense_id=?");
+        // Fetch linked entities with names
+        $sEE = $this->db->prepare("SELECT ee.*, c.first_name, c.last_name FROM expense_entities ee LEFT JOIN contacts c ON ee.entity_type='contact' AND ee.entity_id=c.id WHERE ee.expense_id=?");
         $sEE->execute([$id]);
-        $row['entities'] = $sEE->fetchAll();
+        $entities = $sEE->fetchAll();
+        foreach ($entities as &$ee) {
+            $ee['name'] = trim(($ee['first_name'] ?? '') . ' ' . ($ee['last_name'] ?? ''));
+        }
+        $row['entities'] = $entities;
 
         respond(200, $row);
     }

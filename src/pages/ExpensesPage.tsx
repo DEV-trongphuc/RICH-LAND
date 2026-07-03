@@ -762,13 +762,34 @@ export const ExpensesPage: React.FC = () => {
                    <span className="text-danger font-bold text-xl">{FMT(viewItem.amount)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
-                  <span className="text-light font-bold text-sm">Danh mục</span>
-                  <span className="font-bold">{viewItem.category}</span>
+                   <span className="text-light font-bold text-sm">Danh mục</span>
+                   <span className="font-bold">{viewItem.category}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-light font-bold text-sm">Người nhập</span>
-                  <span className="font-bold">{viewItem.creator_name}</span>
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
+                   <span className="text-light font-bold text-sm">Áp dụng cho</span>
+                   <span className="font-bold text-right" style={{ maxWidth: "70%", wordBreak: "break-word" }}>
+                     {(viewItem.entities && viewItem.entities.length > 0) 
+                       ? viewItem.entities.map((e: any) => {
+                           const typeText = e.entity_type === 'contact' ? 'KHTN' : (e.entity_type === 'company' ? 'Công ty' : 'Cơ hội');
+                           return `${e.name || e.entity_id} (${typeText}${Number(e.amount) > 0 ? ': ' + FMT(e.amount) : ''})`;
+                         }).join(', ')
+                       : 'Không áp dụng'}
+                   </span>
                 </div>
+                <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
+                   <span className="text-light font-bold text-sm">Người tạo</span>
+                   <span className="font-bold text-right">
+                     {viewItem.creator_name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginLeft: '4px' }}>(lúc {viewItem.created_at ? new Date(viewItem.created_at).toLocaleString('vi-VN') : '—'})</span>
+                   </span>
+                </div>
+                {viewItem.status === 'approved' && (
+                  <div className="flex justify-between items-center">
+                     <span className="text-light font-bold text-sm">Người duyệt</span>
+                     <span className="font-bold text-right text-success">
+                       {viewItem.approver_name || 'Hệ thống'} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginLeft: '4px' }}>(lúc {viewItem.approved_at ? new Date(viewItem.approved_at).toLocaleString('vi-VN') : '—'})</span>
+                     </span>
+                  </div>
+                )}
               </div>
 
               {viewItem.notes && (
