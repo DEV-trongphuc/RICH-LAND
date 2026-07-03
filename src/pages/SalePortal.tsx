@@ -1815,6 +1815,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {portalTasks.map(task => {
                 const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
                 const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
+                
                 let dateBadgeColor = 'var(--color-text-muted)';
                 let dateBadgeBg = 'var(--color-bg)';
                 if (isOverdue) {
@@ -1825,65 +1826,141 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
                 }
 
+                // Extract description and link
+                const link = task.body ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
+                const description = task.body ? task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
+
+                // Accent color for priority
+                let accentColor = '#9ca3af'; // low
+                if (task.priority === 'high') accentColor = 'var(--color-danger)';
+                else if (task.priority === 'medium') accentColor = 'var(--color-warning)';
+
+                const participantCount = task.participant_ids ? task.participant_ids.split(',').filter(Boolean).length : 0;
+
                 return (
-                  <div key={task.id} style={{
-                    padding: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)',
-                    borderRadius: '12px', display: 'flex', gap: '1rem', alignItems: 'flex-start',
-                    boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
-                  }}
+                  <div 
+                    key={task.id} 
+                    style={{
+                      padding: '1.25rem',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderLeft: `4px solid ${accentColor}`,
+                      borderRadius: '12px',
+                      display: 'flex',
+                      gap: '1rem',
+                      alignItems: 'flex-start',
+                      boxShadow: '0 4px 18px -4px rgba(0, 0, 0, 0.04)',
+                      transition: 'all 0.2s',
+                      position: 'relative',
+                      cursor: 'pointer'
+                    }}
                     className="hover-lift"
+                    onClick={() => {
+                      if (task.related_type === 'contact' && task.related_id) {
+                        handleOpenContactProfile(Number(task.related_id), 'tasks');
+                      }
+                    }}
                   >
+                    {/* Circle Checkbox Button */}
                     <button
-                      onClick={() => handleToggleTaskStatus(task.id)}
-                      style={{
-                        width: 20, height: 20, borderRadius: '6px', border: '2px solid var(--color-border)',
-                        background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginTop: 2, cursor: 'pointer', color: 'var(--color-primary)'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleTaskStatus(task.id);
                       }}
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: '50%',
+                        border: '2px solid var(--color-border)',
+                        background: 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginTop: 2,
+                        cursor: 'pointer',
+                        color: 'var(--color-success)',
+                        transition: 'all 0.2s',
+                        flexShrink: 0
+                      }}
+                      className="hover:border-success"
                       title={t('Đánh dấu hoàn thành')}
                     >
-                      <CheckSquare size={12} style={{ opacity: 0.3 }} />
+                      <CheckSquare size={12} style={{ opacity: 0.1 }} />
                     </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div 
-                        onClick={() => {
-                          if (task.related_type === 'contact' && task.related_id) {
-                            handleOpenContactProfile(Number(task.related_id), 'tasks');
-                          }
-                        }}
-                        style={{ 
-                          fontWeight: 700, 
-                          fontSize: '0.9rem', 
-                          color: 'var(--color-text)', 
-                          marginBottom: 4,
-                          cursor: task.related_type === 'contact' && task.related_id ? 'pointer' : 'default'
-                        }}
-                        className={task.related_type === 'contact' && task.related_id ? 'hover:underline' : ''}
-                      >
-                        {task.subject}
-                      </div>
-                      {task.body && (
-                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: 8, whiteSpace: 'pre-wrap' }}>
-                          {task.body}
+
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {/* Title & Tags */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.3 }}>
+                          {task.subject}
                         </div>
-                      )}
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {task.due_date && (
-                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg }}>
-                            📅 {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
+                        {task.priority === 'high' && (
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
+                            {t('Khẩn cấp')}
                           </span>
                         )}
-                        {task.related_type === 'contact' && task.related_id && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenContactProfile(Number(task.related_id), 'tasks')}
-                            style={{
-                              fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
-                              color: 'var(--color-primary)', background: 'var(--color-primary-light)', border: 'none', cursor: 'pointer'
-                            }}
-                          >
-                            👤 {task.contact_name || t('Khách hàng')}
-                          </button>
+                      </div>
+
+                      {/* Description Snippet */}
+                      {description && (
+                        <p style={{
+                          fontSize: '0.8rem',
+                          color: 'var(--color-text-muted)',
+                          margin: '4px 0 8px 0',
+                          lineHeight: 1.4,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {description}
+                        </p>
+                      )}
+
+                      {/* Tags List */}
+                      {task.tags && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+                          {task.tags.split(',').filter(Boolean).map((tag: string) => (
+                            <span key={tag} style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.06)', color: '#059669', fontWeight: 600 }}>
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Footer Metadata */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '4px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {task.due_date && (
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              📅 {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
+                            </span>
+                          )}
+                          
+                          {task.related_type === 'contact' && task.related_id && (
+                            <span
+                              style={{
+                                fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
+                                color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: '4px'
+                              }}
+                            >
+                              👤 {task.contact_name || t('Khách hàng')}
+                            </span>
+                          )}
+
+                          {link && (
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: 'var(--color-primary)', background: 'rgba(79, 70, 229, 0.06)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              📎 {t('Tài liệu')}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Co-workers icon */}
+                        {participantCount > 0 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }} title={t('Người liên quan')}>
+                            👥 <span style={{ color: 'var(--color-primary)' }}>+{participantCount}</span>
+                          </div>
                         )}
                       </div>
                     </div>
