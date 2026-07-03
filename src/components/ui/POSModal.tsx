@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Search, Trash2, CheckCircle2, Package, Plus, X, User, DollarSign, Loader2, Truck } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, CheckCircle2, Package, Plus, X, User, DollarSign, Loader2, Truck, FileText } from 'lucide-react';
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 import { Tooltip } from './Tooltip';
@@ -158,13 +158,13 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{ background: 'var(--color-primary)', color: 'white', width: 48, height: 48, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px var(--color-primary-light)' }}>
-                    <ShoppingCart size={24} />
+                    <FileText size={24} />
                   </div>
                   <div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--color-text)' }}>Quầy Bán Hàng</h2>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.02em', color: 'var(--color-text)' }}>Lập Hóa Đơn / Phiếu Thu</h2>
                     <p style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      Hệ thống quản lý kho & bán hàng thông minh
-                      <Tooltip content="Mỗi giao dịch bán ra tại quầy sẽ tự động thực hiện trừ số lượng sản phẩm tương ứng trong kho hàng và lưu vết giao dịch." />
+                      Quản lý hóa đơn & dòng tiền bất động sản
+                      <Tooltip content="Mỗi hóa đơn tạo lập sẽ ghi nhận trực tiếp vào doanh thu dự án và liên kết với khách hàng tương ứng." />
                     </p>
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
               
               <div style={{ display: 'flex', alignItems: 'center', borderRadius: '16px', padding: '12px 18px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
                 <Search size={20} style={{ color: 'var(--color-primary)', marginRight: '12px' }} />
-                <input autoFocus style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)' }} placeholder="Quét mã vạch hoặc tìm tên sản phẩm..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} />
+                <input autoFocus style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)' }} placeholder="Tìm kiếm sản phẩm dự án, căn hộ, dịch vụ..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} />
               </div>
 
               <AnimatePresence>
@@ -202,11 +202,11 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
 
             <div style={{ padding: '2rem', flex: 1, overflow: 'auto', background: 'var(--color-bg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Sản phẩm phổ biến</h3>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Sản phẩm & Dịch vụ dự án</h3>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <span className="badge primary" style={{ cursor: 'pointer' }}>Tất cả</span>
-                  <span className="badge outline" style={{ cursor: 'pointer' }}>Phần mềm</span>
-                  <span className="badge outline" style={{ cursor: 'pointer' }}>Dịch vụ</span>
+                  <span className="badge outline" style={{ cursor: 'pointer' }}>Căn hộ/Đất nền</span>
+                  <span className="badge outline" style={{ cursor: 'pointer' }}>Ký gửi/Khác</span>
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.25rem' }}>
@@ -216,17 +216,17 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                     whileTap={{ scale: 0.98 }}
                     key={p.id} 
                     className="card cursor-pointer" 
-                    style={{ borderRadius: '24px', border: '1px solid var(--color-border-light)', background: 'var(--color-surface)', transition: 'all 0.2s', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} 
+                    style={{ borderRadius: '16px', border: '1px solid var(--color-border-light)', background: 'var(--color-surface)', transition: 'all 0.2s', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} 
                     onClick={() => addToCart(p)}
                    >
                      <div>
-                      <div style={{ width: 36, height: 36, background: 'var(--color-bg)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
-                        <Package size={18} color="var(--color-text-muted)" />
+                      <div style={{ width: 32, height: 32, background: 'var(--color-bg)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                        <Package size={16} color="var(--color-text-muted)" />
                       </div>
-                      <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', minHeight: '2.8rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>{p.name}</p>
+                      <p style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text)', minHeight: '2.4rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3 }}>{p.name}</p>
                       {!!p.track_inventory && (
-                        <p style={{ fontSize: '0.7rem', color: (p.stock_quantity || 0) <= 5 ? 'var(--color-danger)' : 'var(--color-text-light)', fontWeight: 700, marginTop: '4px' }}>
-                          Tồn kho: {p.stock_quantity || 0}
+                        <p style={{ fontSize: '0.68rem', color: (p.stock_quantity || 0) <= 5 ? 'var(--color-danger)' : 'var(--color-text-light)', fontWeight: 700, marginTop: '2px' }}>
+                          Số lượng: {p.stock_quantity || 0}
                         </p>
                       )}
                     </div>
@@ -307,59 +307,59 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
               )}
             </div>
 
-            <div style={{ padding: '2rem', flex: 1, overflow: 'auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Giỏ hàng</h3>
-                <span className="badge primary" style={{ borderRadius: '6px' }}>{cart.length} món</span>
+            <div style={{ padding: '1.5rem', flex: 1, overflow: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Chi tiết giao dịch</h3>
+                <span className="badge primary" style={{ borderRadius: '6px' }}>{cart.length} hạng mục</span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 {cart.map((item) => (
-                  <motion.div layout key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '1rem', borderRadius: '20px', boxShadow: 'var(--shadow-sm)', border: '1px solid transparent', transition: 'all 0.2s' }}>
+                  <motion.div layout key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid transparent', transition: 'all 0.2s' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 900, marginTop: '2px' }}>{FMT_PRICE(item.price)}</p>
+                      <p style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 900, marginTop: '2px' }}>{FMT_PRICE(item.price)}</p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
-                        <button className="btn ghost sm" style={{ padding: 0, width: 26, height: 26, borderRadius: '8px', minWidth: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'var(--color-bg)', padding: '2px 4px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                        <button className="btn ghost sm" style={{ padding: 0, width: 22, height: 22, borderRadius: '6px', minWidth: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                           setCart(prev => prev.map(x => x.id === item.id ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x));
                         }}>-</button>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 900, width: '20px', textAlign: 'center' }}>{item.quantity}</span>
-                        <button className="btn ghost sm" style={{ padding: 0, width: 26, height: 26, borderRadius: '8px', minWidth: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
+                        <span style={{ fontSize: '0.78rem', fontWeight: 900, width: '16px', textAlign: 'center' }}>{item.quantity}</span>
+                        <button className="btn ghost sm" style={{ padding: 0, width: 22, height: 22, borderRadius: '6px', minWidth: 22, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                           if (item.track_inventory && item.quantity >= item.stock_quantity) {
-                            addToast('Không thể vượt quá số lượng trong kho', 'warning');
+                            addToast('Không thể vượt quá số lượng dự kiến', 'warning');
                             return;
                           }
                           setCart(prev => prev.map(x => x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x));
                         }}>+</button>
                       </div>
-                      <button style={{ color: 'var(--color-danger)', padding: '6px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }} className="hover-bg" onClick={() => {
+                      <button style={{ color: 'var(--color-danger)', padding: '4px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px' }} className="hover-bg" onClick={() => {
                         setCart(prev => prev.filter(x => x.id !== item.id));
-                      }}><Trash2 size={16} /></button>
+                      }}><Trash2 size={14} /></button>
                     </div>
                   </motion.div>
                 ))}
                 {cart.length === 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 0', color: 'var(--color-text-light)', opacity: 0.4 }}>
-                    <ShoppingCart size={48} strokeWidth={1} style={{ marginBottom: '1rem' }} />
-                    <p style={{ fontSize: '0.9rem', fontWeight: 700 }}>Giỏ hàng trống</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3rem 0', color: 'var(--color-text-light)', opacity: 0.4 }}>
+                    <FileText size={40} strokeWidth={1} style={{ marginBottom: '0.75rem' }} />
+                    <p style={{ fontSize: '0.85rem', fontWeight: 700 }}>Chưa chọn sản phẩm giao dịch</p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div style={{ padding: '2rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', borderRadius: '0 0 32px 0' }}>
+            <div style={{ padding: '1.5rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', borderRadius: '0 0 32px 0' }}>
               {/* Shipping Section */}
-              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-light)' }}>PHÍ VẬN CHUYỂN</span>
-                  <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
-                    <button className={`btn sm ${shippingCustomerPay ? 'primary' : 'ghost'}`} onClick={() => setShippingCustomerPay(true)} style={{ fontSize: '0.75rem', padding: '2px 8px', height: '24px' }}>Khách trả</button>
-                    <button className={`btn sm ${!shippingCustomerPay ? 'primary' : 'ghost'}`} onClick={() => setShippingCustomerPay(false)} style={{ fontSize: '0.75rem', padding: '2px 8px', height: '24px' }}>Shop trả</button>
+              <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-light)' }}>CHI PHÍ DỊCH VỤ PHÁT SINH</span>
+                  <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                    <button className={`btn sm ${shippingCustomerPay ? 'primary' : 'ghost'}`} onClick={() => setShippingCustomerPay(true)} style={{ fontSize: '0.7rem', padding: '2px 6px', height: '20px' }}>Khách chịu</button>
+                    <button className={`btn sm ${!shippingCustomerPay ? 'primary' : 'ghost'}`} onClick={() => setShippingCustomerPay(false)} style={{ fontSize: '0.7rem', padding: '2px 6px', height: '20px' }}>Công ty chịu</button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', borderRadius: '12px', padding: '8px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                  <Truck size={16} style={{ color: 'var(--color-primary)', marginRight: '8px' }} />
+                <div style={{ display: 'flex', alignItems: 'center', borderRadius: '10px', padding: '6px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+                  <DollarSign size={14} style={{ color: 'var(--color-primary)', marginRight: '6px' }} />
                   <input 
                     type="number" 
                     style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} 
@@ -379,23 +379,23 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                 )}
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.25rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tổng tiền thanh toán</span>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.04em', lineHeight: 1, marginTop: '4px' }}>{FMT_PRICE(finalTotal)}</div>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tổng tiền thanh toán</span>
+                  <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.03em', lineHeight: 1, marginTop: '4px' }}>{FMT_PRICE(finalTotal)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}><CheckCircle2 size={14} /> Đã bao gồm VAT</span>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}><CheckCircle2 size={12} /> Đã bao gồm VAT</span>
                 </div>
               </div>
               <button 
                 className="btn primary lg" 
                 disabled={loading || cart.length === 0 || !selectedContact}
                 onClick={handleCheckout}
-                style={{ width: '100%', padding: '1.25rem', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)', fontSize: '1.05rem', fontWeight: 800, border: 'none', height: '64px', boxShadow: 'var(--shadow-lg)' }}
+                style={{ width: '100%', padding: '1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)', fontSize: '0.95rem', fontWeight: 800, border: 'none', height: '52px', boxShadow: 'var(--shadow-lg)' }}
               >
-                {loading ? <Loader2 size={24} className="spin" /> : <CheckCircle2 size={22} />}
-                THANH TOÁN & XUẤT HÓA ĐƠN
+                {loading ? <Loader2 size={20} className="spin" /> : <CheckCircle2 size={18} />}
+                XÁC NHẬN & XUẤT HÓA ĐƠN
               </button>
             </div>
           </div>
