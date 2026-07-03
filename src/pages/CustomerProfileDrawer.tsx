@@ -2006,10 +2006,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <span style={{
                                   background: 'var(--color-danger)',
                                   color: 'white',
-                                  fontSize: '0.625rem',
+                                  fontSize: '0.675rem',
                                   fontWeight: 700,
-                                  padding: '1px 6px',
-                                  borderRadius: '10px',
+                                  padding: '3px 8px',
+                                  borderRadius: '20px',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
