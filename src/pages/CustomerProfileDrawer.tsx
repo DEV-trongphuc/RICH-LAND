@@ -2555,25 +2555,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {notes.map(n => {
-                          const isCall = n.text.includes('[Nồi Đồng') || n.text.includes('(Call)');
-                          const isMeet = n.text.includes('[Nồi Áp Suất') || n.text.includes('(Meet)');
-                          const isText = n.text.includes('[Nồi Đất') || n.text.includes('(Text');
-
-                          let cardBg = 'var(--color-surface)';
-                          let leftBorder = '1px solid var(--color-border)';
-                          if (isCall) {
-                            cardBg = '#f5f3ff'; // light purple
-                            leftBorder = '4px solid #8b5cf6';
-                          } else if (isMeet) {
-                            cardBg = '#fffaf2'; // light amber/orange
-                            leftBorder = '4px solid #f59e0b';
-                          } else if (isText) {
-                            cardBg = '#f0f7ff'; // light blue
-                            leftBorder = '4px solid #3b82f6';
-                          }
+                          const cardBg = '#fefce8'; // pale yellow like note paper
+                          const leftBorder = '4px solid #eab308'; // golden yellow accent border
 
                           return (
-                            <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid var(--color-border)', borderLeft: leftBorder, borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+                            <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid #fef08a', borderLeft: leftBorder, borderRadius: '12px', boxShadow: '0 2px 8px rgba(234, 179, 8, 0.05)' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ flex: 1 }}>
                                   <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
