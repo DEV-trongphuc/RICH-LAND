@@ -1,11 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../api/axios';
+import { useAuth } from '../../contexts/AuthContext';
+import { Avatar } from './Avatar';
 
 interface User {
   id: number;
   full_name: string;
   role: string;
+  avatar_url?: string;
+  avatar?: string;
 }
 
 interface MentionInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -15,6 +19,7 @@ interface MentionInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaEle
 }
 
 export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, users: propUsers, ...props }) => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -106,6 +111,10 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
   };
 
   const filteredUsers = users.filter(u => {
+    // Do not show the currently logged in user
+    if (currentUser && u.id === currentUser.id) {
+      return false;
+    }
     const name = u.full_name ? String(u.full_name).toLowerCase() : '';
     const role = u.role ? String(u.role).toLowerCase() : '';
     return name.includes(searchQuery) || role.includes(searchQuery);
@@ -180,9 +189,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: avatarColor + '15', color: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
-                    {fullName[0]}
-                  </div>
+                  <Avatar name={fullName} src={u.avatar_url || u.avatar} size={20} />
                   <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>{fullName}</div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{roleName}</div>
                 </div>
