@@ -10,13 +10,22 @@ class UploadController {
         if ($method === 'DELETE' || (isset($_GET['_method']) && $_GET['_method'] === 'DELETE')) {
             $b = getBody();
             $fileUrl = $b['file_url'] ?? $_GET['file_url'] ?? null;
-            if ($fileUrl && strpos($fileUrl, "/storage/uploads/tenant_{$tid}/") !== false) {
-                $storageDir = __DIR__ . "/../storage/uploads/tenant_{$tid}/";
+            $uploadDirBase = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads');
+            if ($fileUrl && (strpos($fileUrl, "/uploads/tenant_{$tid}/") !== false || strpos($fileUrl, "/storage/uploads/tenant_{$tid}/") !== false)) {
+                $storageDir = $uploadDirBase . "/tenant_{$tid}/";
                 $filename = basename($fileUrl);
                 $filePath = $storageDir . $filename;
                 if (file_exists($filePath) && is_file($filePath)) {
                     unlink($filePath);
                     respond(200, null, 'Đã xóa tệp tin thành công khỏi hệ thống');
+                }
+
+                // Fallback for old storage dir just in case
+                $oldStorageDir = __DIR__ . "/../storage/uploads/tenant_{$tid}/";
+                $oldFilePath = $oldStorageDir . $filename;
+                if (file_exists($oldFilePath) && is_file($oldFilePath)) {
+                    unlink($oldFilePath);
+                    respond(200, null, 'Đã xóa tệp tin thành công khỏi hệ thống (thư mục cũ)');
                 }
             }
             respond(200, null, 'Không tìm thấy tệp hoặc đã được xóa trước đó');
@@ -50,7 +59,8 @@ class UploadController {
         }
 
         // Tenant-isolated storage directory
-        $storageDir = __DIR__ . "/../storage/uploads/tenant_{$tid}/";
+        $uploadDirBase = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads');
+        $storageDir = $uploadDirBase . "/tenant_{$tid}/";
         if (!is_dir($storageDir)) {
             mkdir($storageDir, 0755, true);
         }
@@ -61,16 +71,22 @@ class UploadController {
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
             // Delete old file if requested (strictly within tenant dir)
             $oldUrl = $_POST['previous_url'] ?? null;
-            if ($oldUrl && strpos($oldUrl, "/storage/uploads/tenant_{$tid}/") !== false) {
+            if ($oldUrl && (strpos($oldUrl, "/uploads/tenant_{$tid}/") !== false || strpos($oldUrl, "/storage/uploads/tenant_{$tid}/") !== false)) {
                 $oldFilename = basename($oldUrl);
                 $oldPath = $storageDir . $oldFilename;
                 if (file_exists($oldPath) && is_file($oldPath)) {
                     unlink($oldPath);
                 }
+
+                $oldStorageDir = __DIR__ . "/../storage/uploads/tenant_{$tid}/";
+                $oldFilePath = $oldStorageDir . $oldFilename;
+                if (file_exists($oldFilePath) && is_file($oldFilePath)) {
+                    unlink($oldFilePath);
+                }
             }
 
             // Return relative URL
-            $url = "/backend/storage/uploads/tenant_{$tid}/" . $filename;
+            $url = "/backend/uploads/tenant_{$tid}/" . $filename;
             respond(200, ['url' => $url], 'Tải lên thành công');
         } else {
             respond(500, null, 'Không thể lưu file trên server');
