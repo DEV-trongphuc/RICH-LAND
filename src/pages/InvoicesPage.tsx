@@ -39,7 +39,7 @@ export const InvoicesPage: React.FC = () => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [total, setTotal] = useState(0);
-  const [summary, setSummary] = useState({ total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
+  const [summary, setSummary] = useState<any>({ total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
 
   const fetchInvoices = useCallback(async () => {
     if (DEV_MODE) {
@@ -114,10 +114,30 @@ export const InvoicesPage: React.FC = () => {
   const canEditInvoice = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager';
 
   // KPIs from server summary
-  const totalRev = Number(summary.total_rev);
-  const paidAmt = Number(summary.paid_amt);
-  const pendingAmt = Number(summary.pending_amt);
-  const overdueAmt = Number(summary.overdue_amt);
+  const totalRev = Number(summary.total_rev || 0);
+  const paidAmt = Number(summary.paid_amt || 0);
+  const pendingAmt = Number(summary.pending_amt || 0);
+  const overdueAmt = Number(summary.overdue_amt || 0);
+  const prevTotalRev = Number(summary.prev_total_rev || 0);
+  const prevPaidAmt = Number(summary.prev_paid_amt || 0);
+  const prevPendingAmt = Number(summary.prev_pending_amt || 0);
+  const prevOverdueAmt = Number(summary.prev_overdue_amt || 0);
+
+  const getChangePercent = (curr: number, prev: number) => {
+    if (prev === 0) return curr > 0 ? 100 : 0;
+    return Math.round(((curr - prev) / prev) * 100);
+  };
+
+  const getPeriodCompareText = (p: string) => {
+    switch (p) {
+      case 'this_month': return 'so với tháng trước';
+      case 'last_month': return 'so với tháng trước nữa';
+      case 'today': return 'so với hôm qua';
+      case 'this_week': return 'so với tuần trước';
+      case 'last_30_days': return 'so với 30 ngày trước';
+      default: return 'so với kỳ trước';
+    }
+  };
 
   const STATUS_CONFIG: Record<string, { label: string; class: string; icon: React.ReactNode }> = {
     paid: { label: 'Đã thanh toán', class: 'success', icon: <CheckCircle2 size={11} /> },
@@ -209,21 +229,69 @@ export const InvoicesPage: React.FC = () => {
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Tổng doanh thu', value: FMT(totalRev), icon: TrendingUp, color: '#a31422', sub: `${items.length} hóa đơn` },
-          { label: 'Đã thu hồi', value: FMT(paidAmt), icon: CheckCircle2, color: '#10b981', sub: `${items.filter(i => i.status === 'paid').length} đã thanh toán` },
-          { label: 'Chờ thanh toán', value: FMT(pendingAmt), icon: Clock, color: '#f59e0b', sub: `${items.filter(i => i.status === 'pending').length} hóa đơn đang đợi` },
-          { label: 'Nợ quá hạn', value: FMT(overdueAmt), icon: AlertCircle, color: '#ef4444', sub: `${items.filter(i => i.status === 'overdue').length} hóa đơn quá hạn` },
-        ].map((k, i) => (
-          <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <div className="stat-kpi__header">
-              <div className="stat-kpi__label">{k.label}</div>
-              <div className="stat-kpi__icon" style={{ color: k.color }}><k.icon size={20} /></div>
-            </div>
-            {loading ? <div className="skeleton" style={{ height: 38, width: '85%', borderRadius: 6, marginBottom: 12 }} />
-              : <div className="stat-kpi__value">{k.value}</div>}
-            <div className="stat-kpi__sub">{k.sub}</div>
-          </motion.div>
-        ))}
+          {
+            label: 'Tổng doanh thu',
+            value: FMT(totalRev),
+            icon: TrendingUp,
+            color: '#a31422',
+            sub: `${items.length} hóa đơn`,
+            change: getChangePercent(totalRev, prevTotalRev),
+            badWhenUp: false
+          },
+          {
+            label: 'Đã thu hồi',
+            value: FMT(paidAmt),
+            icon: CheckCircle2,
+            color: '#10b981',
+            sub: `${items.filter(i => i.status === 'paid').length} đã thanh toán`,
+            change: getChangePercent(paidAmt, prevPaidAmt),
+            badWhenUp: false
+          },
+          {
+            label: 'Chờ thanh toán',
+            value: FMT(pendingAmt),
+            icon: Clock,
+            color: '#f59e0b',
+            sub: `${items.filter(i => i.status === 'pending').length} hóa đơn đang đợi`,
+            change: getChangePercent(pendingAmt, prevPendingAmt),
+            badWhenUp: true
+          },
+          {
+            label: 'Nợ quá hạn',
+            value: FMT(overdueAmt),
+            icon: AlertCircle,
+            color: '#ef4444',
+            sub: `${items.filter(i => i.status === 'overdue').length} hóa đơn quá hạn`,
+            change: getChangePercent(overdueAmt, prevOverdueAmt),
+            badWhenUp: true
+          },
+        ].map((k, i) => {
+          const isDecrease = k.change < 0;
+          const isZero = k.change === 0;
+          const trendColor = isZero ? 'var(--color-text-muted)' : ((isDecrease !== k.badWhenUp) ? 'var(--color-success)' : 'var(--color-danger)');
+          const TrendIcon = isZero ? null : (isDecrease ? '▼' : '▲');
+
+          return (
+            <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div className="stat-kpi__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <div className="stat-kpi__label" style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-light)' }}>{k.label}</div>
+                <div className="stat-kpi__icon" style={{ color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><k.icon size={18} /></div>
+              </div>
+              {loading ? (
+                <div className="skeleton" style={{ height: 32, width: '85%', borderRadius: 6, marginBottom: 8 }} />
+              ) : (
+                <div className="stat-kpi__value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', margin: '0.125rem 0', lineHeight: 1.2 }}>{k.value}</div>
+              )}
+              <div className="stat-kpi__sub" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{k.sub}</div>
+              {!isZero && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: trendColor, marginTop: 'auto' }}>
+                  <span>{TrendIcon} {isDecrease ? '' : '+'}{k.change}%</span>
+                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>{getPeriodCompareText(period)}</span>
+                </div>
+              )}
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Status filter tabs */}

@@ -113,7 +113,63 @@ class FinanceController
         // Summary totals respecting filters
         $sSummary = $this->db->prepare("SELECT COALESCE(SUM(i.total),0) as total_rev, COALESCE(SUM(CASE WHEN i.status='paid' THEN i.total END),0) as paid_amt, COALESCE(SUM(CASE WHEN i.status='pending' THEN i.total END),0) as pending_amt, COALESCE(SUM(CASE WHEN i.status='overdue' THEN i.total END),0) as overdue_amt FROM invoices i LEFT JOIN contacts ct ON i.contact_id = ct.id WHERE $w");
         $sSummary->execute($params);
-        $summary = $sSummary->fetch();
+        $currentSummary = $sSummary->fetch();
+
+        $prevTotalRev = 0.0;
+        $prevPaidAmt = 0.0;
+        $prevPendingAmt = 0.0;
+        $prevOverdueAmt = 0.0;
+
+        if ($from && $to) {
+            $fromTs = strtotime($from);
+            $toTs = strtotime($to);
+            $diffSeconds = $toTs - $fromTs;
+            $diffDays = round($diffSeconds / (24 * 3600)) + 1;
+
+            $prevFrom = date('Y-m-d', strtotime("-$diffDays days", $fromTs));
+            $prevTo = date('Y-m-d', strtotime("-1 day", $fromTs));
+
+            $prevWhere = ['i.tenant_id=?', 'i.deleted_at IS NULL'];
+            $prevParams = [$tid];
+            if ($contactId) {
+                $prevWhere[] = 'i.contact_id = ?';
+                $prevParams[] = (int)$contactId;
+            }
+            if ($auth['role'] === 'sales') {
+                $prevWhere[] = 'i.created_by = ?';
+                $prevParams[] = $auth['user_id'];
+            }
+            if ($status) {
+                $prevWhere[] = 'i.status=?';
+                $prevParams[] = $status;
+            }
+            $prevWhere[] = 'i.issue_date >= ?';
+            $prevParams[] = $prevFrom;
+            $prevWhere[] = 'i.issue_date <= ?';
+            $prevParams[] = $prevTo;
+
+            $pw = implode(' AND ', $prevWhere);
+            $sPrev = $this->db->prepare("SELECT COALESCE(SUM(i.total),0) as total_rev, COALESCE(SUM(CASE WHEN i.status='paid' THEN i.total END),0) as paid_amt, COALESCE(SUM(CASE WHEN i.status='pending' THEN i.total END),0) as pending_amt, COALESCE(SUM(CASE WHEN i.status='overdue' THEN i.total END),0) as overdue_amt FROM invoices i LEFT JOIN contacts ct ON i.contact_id = ct.id WHERE $pw");
+            $sPrev->execute($prevParams);
+            $prevSummary = $sPrev->fetch();
+            if ($prevSummary) {
+                $prevTotalRev = (float)$prevSummary['total_rev'];
+                $prevPaidAmt = (float)$prevSummary['paid_amt'];
+                $prevPendingAmt = (float)$prevSummary['pending_amt'];
+                $prevOverdueAmt = (float)$prevSummary['overdue_amt'];
+            }
+        }
+
+        $summary = [
+            'total_rev' => (float)$currentSummary['total_rev'],
+            'paid_amt' => (float)$currentSummary['paid_amt'],
+            'pending_amt' => (float)$currentSummary['pending_amt'],
+            'overdue_amt' => (float)$currentSummary['overdue_amt'],
+            'prev_total_rev' => $prevTotalRev,
+            'prev_paid_amt' => $prevPaidAmt,
+            'prev_pending_amt' => $prevPendingAmt,
+            'prev_overdue_amt' => $prevOverdueAmt
+        ];
 
         respond(200, ['items' => $stmt->fetchAll(), 'total' => $total, 'page' => $page, 'limit' => $limit, 'summary' => $summary]);
     }
