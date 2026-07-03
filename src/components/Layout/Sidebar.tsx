@@ -167,7 +167,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             const slips = resCoop.data || [];
             countUnsigned = slips.filter((s: any) => {
               const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(user.id));
-              return s.status === 'pending_signatures' && sh && !sh.signed;
+              return s.status !== 'rejected' && sh && !sh.signed;
             }).length;
           }
           setPendingCoopCount(countUnsigned);
