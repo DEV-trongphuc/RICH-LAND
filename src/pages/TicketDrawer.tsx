@@ -109,7 +109,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
           <motion.div
             className={styles.drawer}
             initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
           >
             {/* ── Header ── */}
             <div className={styles.header}>

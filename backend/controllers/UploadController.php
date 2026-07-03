@@ -5,11 +5,12 @@ class UploadController {
 
     public function handle(array $auth): void {
         $tid = $auth['tenant_id'];
-        if (!isset($_FILES['file'])) {
+        $fileKey = isset($_FILES['file']) ? 'file' : (isset($_FILES['avatar']) ? 'avatar' : null);
+        if (!$fileKey) {
             respond(400, null, 'Không có file nào được tải lên');
         }
 
-        $file = $_FILES['file'];
+        $file = $_FILES[$fileKey];
         if ($file['error'] !== UPLOAD_ERR_OK) {
             respond(500, null, 'Lỗi upload file: ' . $file['error']);
         }

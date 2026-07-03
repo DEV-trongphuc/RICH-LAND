@@ -1279,7 +1279,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             <motion.div
               className={styles.drawer}
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
             >
               <AnimatePresence>
                 {showAvatarModal && (
@@ -3706,7 +3706,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 520 }}
               initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
             >
               <div className="modal-header">
@@ -3805,7 +3805,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 520 }}
               initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
             >
               <div className="modal-header">
@@ -3919,7 +3919,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 540 }}
               initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 380 }}
+              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
             >
               <div className="modal-header">

@@ -1013,7 +1013,7 @@ export const ContactsPage: React.FC = () => {
               initial={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
               animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1, y: 0 }}
               exit={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
               style={isMobile ? { 
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
