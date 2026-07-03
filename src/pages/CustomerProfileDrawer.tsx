@@ -478,7 +478,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showQuoteEditor, setShowQuoteEditor] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
-  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; visible: boolean; x: number; y: number } | null>(null);
+  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; phone?: string; vacationMode?: number; visible: boolean; x: number; y: number } | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [tempAvatar, setTempAvatar] = useState('');
 
@@ -504,12 +504,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const showUserCard = (e: React.MouseEvent, name: string) => {
     e.stopPropagation();
-    const user = users.find(u => u.full_name === name || u.full_name.replace(/\s+/g, '_') === name);
+    const user = users.find(u => u.full_name === name || u.full_name.replace(/\s+/g, '_') === name || u.name === name || u.username === name);
     setQuickUserCard({
       id: user?.id || 0,
       name: user?.full_name || name,
       role: user?.role || 'Nhân viên',
       email: user?.email,
+      phone: user?.phone || user?.phone_number || '',
+      vacationMode: user?.vacation_mode,
       visible: true,
       x: e.clientX,
       y: e.clientY
@@ -1086,14 +1088,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       exit={{ opacity: 0, scale: 0.9, y: 10 }}
                       style={{
                         position: 'fixed',
-                        top: quickUserCard.y - 120,
-                        left: quickUserCard.x - 220,
+                        top: quickUserCard.y + 15,
+                        left: quickUserCard.x - 110,
                         zIndex: 3001,
                         width: 220,
                         background: 'var(--color-surface)',
                         borderRadius: '16px',
-                        boxShadow: '0 20px 50px -12px rgba(189, 29, 45, 0.25)',
-                        border: '1px solid var(--color-primary-light)',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                        border: '1px solid var(--color-border)',
                         overflow: 'hidden'
                       }}
                     >
@@ -1102,14 +1104,29 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'var(--color-surface)', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid var(--color-surface)', fontSize: '1.5rem', fontWeight: 800, color: '#BD1D2D' }}>
                           {quickUserCard.name.charAt(0).toUpperCase()}
                         </div>
-                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '4px' }}>{quickUserCard.name}</h4>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#BD1D2D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
-                        {quickUserCard.email && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.8125rem', padding: '8px', background: 'var(--color-bg)', borderRadius: '10px' }}>
-                            <Mail size={12} />
-                            <span style={{ fontWeight: 500 }}>{quickUserCard.email}</span>
-                          </div>
-                        )}
+                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '2px' }}>{quickUserCard.name}</h4>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#BD1D2D', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '4px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.625rem', padding: '2px 6px', borderRadius: '4px', background: quickUserCard.vacationMode === 1 ? 'var(--color-warning-light)' : 'var(--color-success-light)', color: quickUserCard.vacationMode === 1 ? 'var(--color-warning)' : 'var(--color-success)', fontWeight: 700 }}>
+                            {quickUserCard.vacationMode === 1 ? 'Đang nghỉ phép' : 'Đang hoạt động'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          {quickUserCard.email && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem', padding: '6px 8px', background: 'var(--color-bg)', borderRadius: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={quickUserCard.email}>
+                              <Mail size={11} style={{ flexShrink: 0 }} />
+                              <span style={{ fontWeight: 500 }}>{quickUserCard.email}</span>
+                            </div>
+                          )}
+                          {quickUserCard.phone && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem', padding: '6px 8px', background: 'var(--color-bg)', borderRadius: '8px' }}>
+                              <Phone size={11} style={{ flexShrink: 0 }} />
+                              <span style={{ fontWeight: 500 }}>{quickUserCard.phone}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </motion.div>
                   </>
@@ -1209,15 +1226,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* Actions Section */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
                     {/* Lead Score inline card */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface)', padding: '6px 12px', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end', margin: 0, lineHeight: 1 }}>
-                          Lead Score
-                          <Tooltip content="Điểm tiềm năng (Lead Score) tự động tính dựa trên lịch sử tương tác, email, cuộc gọi và độ lớn dự án." />
-                        </p>
-                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: score > 70 ? 'var(--color-success)' : 'var(--color-warning)', margin: 0, marginTop: '2px', lineHeight: 1 }}>{score}/100</p>
-                      </div>
-                      <LeadScoreRing score={score} size={32} />
+                    <div 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        background: 'var(--color-surface)', 
+                        padding: '4px', 
+                        borderRadius: '50%', 
+                        border: '1px solid var(--color-border-light)', 
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
+                      }}
+                    >
+                      <LeadScoreRing score={score} size={36} showLabel={true} />
                     </div>
 
                     <button

@@ -19,7 +19,7 @@ export const QRCodeCallModal: React.FC = () => {
         <>
           <div
             style={{
-              position: 'fixed', inset: 0, zIndex: 1000,
+              position: 'fixed', inset: 0, zIndex: 99999,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '2rem'
             }}
