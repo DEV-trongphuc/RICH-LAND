@@ -12,7 +12,9 @@ class CooperationController {
         $tid = $auth['tenant_id'];
 
         $sql = "
-            SELECT cs.*, c.first_name, c.last_name, c.phone, dep.unit_code, proj.name as project_name, dep.expected_commission
+            SELECT cs.*, c.first_name, c.last_name, c.phone, c.expected_revenue, 
+                   (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL) as actual_revenue,
+                   dep.unit_code, proj.name as project_name, dep.expected_commission
             FROM cooperation_slips cs
             JOIN contacts c ON cs.contact_id = c.id
             LEFT JOIN deposits dep ON cs.deposit_slip_id = dep.id

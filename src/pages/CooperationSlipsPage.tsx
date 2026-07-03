@@ -22,6 +22,8 @@ interface CooperationSlip {
   unit_code: string;
   project_name: string;
   expected_commission: number;
+  expected_revenue?: number;
+  actual_revenue?: number;
   shareholders: Shareholder[];
 }
 
@@ -531,6 +533,8 @@ export default function CooperationSlipsPage() {
             const hasSigned = slip.shareholders.find(s => s.user_id === user?.consultant_id)?.signed;
             const isShareholder = slip.shareholders.some(s => s.user_id === user?.consultant_id);
             const isExpanded = !!expandedSlips[slip.id];
+            const totalComm = Number(slip.expected_commission) || Number(slip.expected_revenue) || 0;
+            const totalActual = Number(slip.actual_revenue) || 0;
 
             return (
               <div
@@ -552,29 +556,33 @@ export default function CooperationSlipsPage() {
                 {/* General Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '50%',
-                      background: '#3b82f6',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.2)',
-                      border: '2px solid #ffffff',
-                      flexShrink: 0
-                    }}>
-                      {getInitials(`${slip.last_name} ${slip.first_name}`)}
+                    <div style={{ padding: '8px', background: 'rgba(163, 20, 34, 0.1)', borderRadius: '10px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FileText size={20} />
                     </div>
                     <div>
                       <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         Phiếu hợp tác #{slip.id} | Căn: {slip.unit_code || '—'} ({slip.project_name || 'Dự án khác'})
                       </h3>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
-                        Khách hàng: <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.last_name} {slip.first_name}</span> • Hoa hồng dự kiến: <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{(Number(slip.expected_commission) || 0).toLocaleString()} VND</span>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        Khách hàng:
+                        <span style={{
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          background: '#3b82f6',
+                          color: '#ffffff',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '0.6rem',
+                          flexShrink: 0,
+                          lineHeight: 1
+                        }}>
+                          {getInitials(`${slip.last_name} ${slip.first_name}`)}
+                        </span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.last_name} {slip.first_name}</span>
+                        • Hoa hồng dự kiến: <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{totalComm.toLocaleString()} VND</span> • Thực thu: <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{totalActual.toLocaleString()} VND</span>
                       </p>
                     </div>
                   </div>
@@ -714,7 +722,10 @@ export default function CooperationSlipsPage() {
                                   {sh.percentage}%
                                 </span>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 700, marginTop: '2px' }}>
-                                  {((slip.expected_commission * sh.percentage) / 100).toLocaleString()} VND
+                                  Dự kiến: {((totalComm * sh.percentage) / 100).toLocaleString()} VND
+                                </div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '1px' }}>
+                                  Thực tế: {((totalActual * sh.percentage) / 100).toLocaleString()} VND
                                 </div>
                               </div>
                             </div>
@@ -813,12 +824,15 @@ export default function CooperationSlipsPage() {
             {/* Shares info recap */}
             <div style={{ background: 'var(--color-bg-light)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem' }}>
               <strong>Tỷ lệ phân chia: </strong>
-              {signingSlip.shareholders.map((s, idx) => (
-                <span key={s.user_id}>
-                  {s.name} ({s.percentage}%)
-                  {idx < signingSlip.shareholders.length - 1 ? ', ' : ''}
-                </span>
-              ))}
+              {signingSlip.shareholders.map((s, idx) => {
+                const sComm = ((Number(signingSlip.expected_commission) || Number(signingSlip.expected_revenue) || 0) * s.percentage) / 100;
+                return (
+                  <span key={s.user_id}>
+                    {s.name} ({s.percentage}% - {sComm.toLocaleString()} VND)
+                    {idx < signingSlip.shareholders.length - 1 ? ', ' : ''}
+                  </span>
+                );
+              })}
             </div>
 
             {/* Signature Area */}
