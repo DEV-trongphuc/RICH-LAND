@@ -1143,7 +1143,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       style={{
                         background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)',
                         fontSize: '1.25rem', width: 56, height: 56, borderRadius: '18px',
-                        boxShadow: '0 8px 20px -4px rgba(189, 29, 45, 0.3)',
+                        boxShadow: '0 4px 12px rgba(189, 29, 45, 0.12)',
                         overflow: 'hidden',
                         cursor: 'pointer',
                         position: 'relative'
@@ -1225,21 +1225,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                   {/* Actions Section */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                    {/* Lead Score inline card */}
-                    <div 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        background: 'var(--color-surface)', 
-                        padding: '4px', 
-                        borderRadius: '50%', 
-                        border: '1px solid var(--color-border-light)', 
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
-                      }}
-                    >
-                      <LeadScoreRing score={score} size={36} showLabel={true} />
-                    </div>
+                     {/* Lead Score inline card */}
+                     <div 
+                       onClick={() => setActiveTab('scoring')}
+                       style={{ 
+                         display: 'flex', 
+                         alignItems: 'center', 
+                         justifyContent: 'center', 
+                         background: 'var(--color-surface)', 
+                         padding: '4px', 
+                         borderRadius: '50%', 
+                         border: '1px solid var(--color-border-light)', 
+                         boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                         cursor: 'pointer'
+                       }}
+                       title="Xem chi tiết Scoring"
+                     >
+                       <LeadScoreRing score={score} size={36} showLabel={true} />
+                     </div>
 
                     <button
                       className={`btn ${hasChanges ? 'primary' : 'outline'} sm`}
