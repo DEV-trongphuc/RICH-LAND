@@ -632,7 +632,14 @@ export const ExpensesPage: React.FC = () => {
                         sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
                       }))}
                       value={form.approver_id}
-                      onChange={val => setForm({ ...form, approver_id: Number(val) })}
+                      onChange={val => {
+                        const numVal = Number(val);
+                        setForm({ 
+                          ...form, 
+                          approver_id: numVal,
+                          related_user_ids: form.related_user_ids.filter((x: number) => x !== numVal)
+                        });
+                      }}
                       placeholder="Chọn người duyệt..."
                       searchable
                       showAvatars
@@ -656,7 +663,7 @@ export const ExpensesPage: React.FC = () => {
                         }
                       </div>
                       <CustomSelect
-                        options={users.filter((u:any) => !form.related_user_ids.includes(u.id)).map((u: any) => ({
+                        options={users.filter((u:any) => !form.related_user_ids.includes(u.id) && u.id !== form.approver_id).map((u: any) => ({
                           value: String(u.id),
                           label: u.full_name,
                           avatar: u.avatar_url,
