@@ -126,7 +126,8 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [attachment, setAttachment] = useState<string | null>(null);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
@@ -169,36 +170,33 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
     // Clear the input value so the same file can be selected again if needed
     e.target.value = '';
 
-    setUploading(true);
-    try {
-      let fileToUpload = file;
-      if (file.type.startsWith('image/')) {
-        fileToUpload = await compressToWebP(file);
-      }
-      const fd = new FormData();
-      fd.append('file', fileToUpload);
-      if (attachment) {
-        fd.append('previous_url', attachment);
-      }
-      const res = await api.post('/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setAttachment(res.data.data?.url ?? '');
-      addToast('Tải tệp đính kèm lên thành công', 'success');
-    } catch (e: any) {
-      addToast(e.response?.data?.message || 'Lỗi khi tải tệp lên', 'error');
-    } finally {
-      setUploading(false);
-    }
+    const previewUrl = URL.createObjectURL(file);
+    setAttachmentFile(file);
+    setAttachmentPreview(previewUrl);
+    addToast('Đã chọn tệp đính kèm', 'success');
   };
 
   const submitComment = async () => {
-    if (!text.trim() && !attachment) return;
+    if (!text.trim() && !attachmentFile) return;
     if (submitting) return; // Prevent double submit
     
     setSubmitting(true);
     try {
-      const payload = { content: text, attachments: attachment ? [attachment] : [] };
+      let uploadedUrl = '';
+      if (attachmentFile) {
+        let fileToUpload = attachmentFile;
+        if (attachmentFile.type.startsWith('image/')) {
+          fileToUpload = await compressToWebP(attachmentFile);
+        }
+        const fd = new FormData();
+        fd.append('file', fileToUpload);
+        const res = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        uploadedUrl = res.data.data?.url ?? '';
+      }
+
+      const payload = { content: text, attachments: uploadedUrl ? [uploadedUrl] : [] };
       const res = await api.post(`/activities/${activityId}/comments`, payload);
       
       // Lấy tên người dùng hiện tại từ storage (nếu có)
@@ -214,11 +212,15 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
         id: res.data?.data?.id || Date.now(),
         user_name: userName,
         content: text,
-        attachments: attachment ? [attachment] : [],
+        attachments: uploadedUrl ? [uploadedUrl] : [],
         created_at: new Date().toISOString()
       }]);
       setText('');
-      setAttachment(null);
+      if (attachmentPreview) {
+        URL.revokeObjectURL(attachmentPreview);
+      }
+      setAttachmentFile(null);
+      setAttachmentPreview(null);
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Lỗi khi gửi bình luận', 'error');
     } finally {
@@ -290,30 +292,25 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
                 </label>
               </div>
               
-              {attachment && (() => {
-                const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment);
-                const fullUrl = resolveAttachmentUrl(attachment);
+              {attachmentPreview && attachmentFile && (() => {
+                const isImg = attachmentFile.type.startsWith('image/');
                 return (
                   <div style={{ position: 'relative', display: 'inline-block', width: 'fit-content' }}>
                     {isImg ? (
-                      <img src={fullUrl} alt="preview" style={{ height: '60px', borderRadius: '8px', border: '1px solid var(--color-primary)' }} />
+                      <img src={attachmentPreview} alt="preview" style={{ height: '60px', borderRadius: '8px', border: '1px solid var(--color-primary)' }} />
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                         <FileText size={16} style={{ color: 'var(--color-primary)' }} />
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{attachment.split('/').pop()}</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{attachmentFile.name}</span>
                       </div>
                     )}
                     <button 
                       className="btn-icon sm" 
                       style={{ position: 'absolute', top: -6, right: -6, background: 'var(--color-danger)', color: 'white', padding: 2, height: 18, width: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      onClick={async () => {
-                        const fileToDelete = attachment;
-                        setAttachment(null);
-                        if (fileToDelete) {
-                          try {
-                            await api.delete('/upload', { data: { file_url: fileToDelete } });
-                          } catch (e) {}
-                        }
+                      onClick={() => {
+                        URL.revokeObjectURL(attachmentPreview);
+                        setAttachmentFile(null);
+                        setAttachmentPreview(null);
                       }}
                     >
                       <X size={12} />
@@ -325,7 +322,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
               <div style={{ textAlign: 'right' }}>
                 <button 
                   className="btn primary sm" 
-                  disabled={uploading || (!text.trim() && !attachment)}
+                  disabled={submitting || (!text.trim() && !attachmentFile)}
                   onClick={submitComment}
                   style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
@@ -442,8 +439,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
   const [newNote, setNewNote] = useState('');
-  const [noteAttachment, setNoteAttachment] = useState<string | null>(null);
-  const [uploadingNoteFile, setUploadingNoteFile] = useState(false);
+  const [noteAttachmentFile, setNoteAttachmentFile] = useState<File | null>(null);
+  const [noteAttachmentPreview, setNoteAttachmentPreview] = useState<string | null>(null);
   const [noteChannel, setNoteChannel] = useState<'text' | 'call' | 'meet'>('text');
   const [customDocs, setCustomDocs] = useState('');
   const [customObstacle, setCustomObstacle] = useState('');
@@ -1129,11 +1126,29 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
     text += `Nội dung: ${newNote.trim()}`;
     try {
+      let uploadedUrl = '';
+      if (noteAttachmentFile) {
+        let fileToUpload = noteAttachmentFile;
+        if (noteAttachmentFile.type.startsWith('image/')) {
+          fileToUpload = await compressToWebP(noteAttachmentFile);
+        }
+        const fd = new FormData();
+        fd.append('file', fileToUpload);
+        const res = await api.post('/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        uploadedUrl = res.data.data?.url ?? '';
+      }
+
       await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
-        body: text, type: 'internal', attachment_url: noteAttachment
+        body: text, type: 'internal', attachment_url: uploadedUrl || null
       });
       setNewNote('');
-      setNoteAttachment(null);
+      if (noteAttachmentPreview) {
+        URL.revokeObjectURL(noteAttachmentPreview);
+      }
+      setNoteAttachmentFile(null);
+      setNoteAttachmentPreview(null);
       setNoteChannel('text');
       setNoteType('normal');
       setNoteDuration('');
@@ -1160,31 +1175,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
 
     e.target.value = '';
-    setUploadingNoteFile(true);
-    try {
-      let fileToUpload = file;
-      if (file.type.startsWith('image/')) {
-        fileToUpload = await compressToWebP(file);
-      }
-      const fd = new FormData();
-      fd.append('file', fileToUpload);
-      if (noteAttachment) {
-        fd.append('previous_url', noteAttachment);
-      }
-      const res = await api.post('/upload', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      if (res.data.success) {
-        setNoteAttachment(res.data.data?.url ?? '');
-        addToast('Tải tài liệu đính kèm ghi chú thành công', 'success');
-      } else {
-        addToast(res.data.message || 'Lỗi khi tải tệp lên', 'error');
-      }
-    } catch (e: any) {
-      addToast(e.response?.data?.message || 'Lỗi khi tải tệp lên', 'error');
-    } finally {
-      setUploadingNoteFile(false);
-    }
+    const previewUrl = URL.createObjectURL(file);
+    setNoteAttachmentFile(file);
+    setNoteAttachmentPreview(previewUrl);
+    addToast('Đã chọn tài liệu đính kèm', 'success');
   };
 
   const handleTaskFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -3219,26 +3213,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                         {/* Note Attachment */}
                         <div style={{ marginBottom: '1.25rem' }}>
-                          {noteAttachment ? (
+                          {noteAttachmentPreview && noteAttachmentFile ? (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {/\.(jpg|jpeg|png|gif|webp)$/i.test(noteAttachment) ? (
+                                {noteAttachmentFile.type.startsWith('image/') ? (
                                   <Camera size={18} style={{ color: '#10b981' }} />
                                 ) : (
                                   <FileText size={18} style={{ color: 'var(--color-primary)' }} />
                                 )}
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{noteAttachment.split('/').pop()}</span>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{noteAttachmentFile.name}</span>
                               </div>
                               <button 
                                 className="btn ghost text-danger sm" 
-                                onClick={async () => {
-                                  const fileToDelete = noteAttachment;
-                                  setNoteAttachment(null);
-                                  if (fileToDelete) {
-                                    try {
-                                      await api.delete('/upload', { data: { file_url: fileToDelete } });
-                                    } catch (e) {}
+                                onClick={() => {
+                                  if (noteAttachmentPreview) {
+                                    URL.revokeObjectURL(noteAttachmentPreview);
                                   }
+                                  setNoteAttachmentFile(null);
+                                  setNoteAttachmentPreview(null);
                                 }} 
                                 style={{ padding: '6px' }}
                               >
@@ -3253,15 +3245,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 style={{ display: 'none' }}
                                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,image/*"
                                 onChange={handleNoteAttachmentUpload}
-                                disabled={uploadingNoteFile}
+                                disabled={isSubmitting}
                               />
                               <label htmlFor="note-file-upload" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
-                                {uploadingNoteFile ? (
-                                  <Loader2 size={14} className="spin" />
-                                ) : (
-                                  <Paperclip size={14} />
-                                )}
-                                {uploadingNoteFile ? 'Đang tải lên...' : 'Đính kèm tài liệu'}
+                                <Paperclip size={14} />
+                                Đính kèm tài liệu
                               </label>
                             </div>
                           )}
