@@ -1719,6 +1719,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   { value: 'assigned', label: t('Đã chia') },
                   { value: 'compensation', label: t('Data Bù') },
                   { value: 'pending_work_hours', label: t('Chờ giờ làm') },
+                  { value: 'databank_claim', label: 'Databank Claim' },
                   { value: 'pending', label: t('Chờ chia') },
                   { value: 'reminder', label: t('Nhắc lại') },
                   { value: 'silent', label: t('Chỉ đồng bộ') },

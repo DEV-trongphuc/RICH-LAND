@@ -1380,6 +1380,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (statusFilter !== 'all') {
       if (statusFilter === 'assigned') {
         if (!['assigned', 'rule_6_month', 'pending_work_hours', 'fallback', 'databank_claim'].includes(lead.status) || lead.report_status) return false;
+      } else if (statusFilter === 'databank_claim') {
+        if (lead.status !== 'databank_claim' || lead.report_status) return false;
       } else if (statusFilter === 'compensation') {
         if (lead.status !== 'compensation' || lead.report_status) return false;
       } else if (statusFilter === 'reminder') {
@@ -2242,6 +2244,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
                 { value: 'assigned', label: t('Đã chia') },
                 { value: 'compensation', label: t('Data Bù') },
+                { value: 'databank_claim', label: 'Databank Claim' },
                 { value: 'reminder', label: t('Nhắc lại') },
                 { value: 'pending_ticket', label: t('Ticket chờ duyệt') },
                 { value: 'approved_ticket', label: t('Ticket đã bù') },
