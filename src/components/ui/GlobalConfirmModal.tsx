@@ -32,7 +32,7 @@ export const GlobalConfirmModal: React.FC = () => {
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
         backgroundColor: 'rgba(15, 23, 42, 0.35)', backdropFilter: 'blur(8px)',
-        zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '1rem'
       }} onClick={handleCancel}>
         <motion.div 
