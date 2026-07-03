@@ -19,7 +19,7 @@ export const Login = () => {
 
     if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
       await new Promise(resolve => setTimeout(resolve, 500));
-      login('demo_token_12345', { username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
+      login('demo_token_12345', { id: 1, username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
       navigate('/');
       setLoading(false);
       return;
@@ -94,10 +94,10 @@ export const Login = () => {
         else if (email.includes('dung')) { cId = 3; name = 'Việt Dũng'; cEmail = 'vietdung@richland.net'; }
         else if (email.includes('tuan')) { cId = 4; name = 'Minh Tuấn'; cEmail = 'minhtuan@richland.net'; }
 
-        login(`demo_token_sale_${cId}`, { username: cEmail.split('@')[0], email: cEmail, name: name, role: 'sale', consultant_id: cId });
+        login(`demo_token_sale_${cId}`, { id: cId, username: cEmail.split('@')[0], email: cEmail, name: name, role: 'sale', consultant_id: cId });
         navigate('/');
       } else {
-        login('demo_token_12345', { username: (email || 'admin@richland.net').split('@')[0], email: email || 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
+        login('demo_token_12345', { id: 1, username: (email || 'admin@richland.net').split('@')[0], email: email || 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
         navigate('/');
       }
       setLoading(false);
@@ -305,7 +305,7 @@ export const Login = () => {
               onClick={() => {
                 setLoading(true);
                 setTimeout(() => {
-                  login('demo_token_12345', { username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
+                  login('demo_token_12345', { id: 1, username: 'admin', email: 'admin@richland.net', name: 'Admin Demo', role: 'admin' });
                   navigate('/');
                   setLoading(false);
                 }, 500);

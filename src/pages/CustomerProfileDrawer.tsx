@@ -692,10 +692,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   useEffect(() => {
-    if (activeTab === 'cooperation' && contact?.id) {
+    if (contact?.id) {
       fetchCoopSlip();
     }
-  }, [activeTab, contact?.id]);
+  }, [contact?.id]);
 
   const handleCreateCoopSlip = async () => {
     setCoopLoading(true);
