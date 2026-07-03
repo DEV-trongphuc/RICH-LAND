@@ -569,6 +569,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
 
   const [docs, setDocs] = useState<any[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [deals, setDeals] = useState<any[]>([]);
   const [drawerInvoices, setDrawerInvoices] = useState<any[]>([]);
   const [drawerQuotes, setDrawerQuotes] = useState<any[]>([]);
@@ -2875,13 +2876,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 fData.append('contact_id', String(contact.id));
                                 fData.append('category', 'general');
                                 fData.append('visibility', 'shared');
+                                setUploadProgress(0);
                                 try {
                                   await api.post('/cloud-files', fData, {
-                                    headers: { 'Content-Type': 'multipart/form-data' }
+                                    headers: { 'Content-Type': 'multipart/form-data' },
+                                    onUploadProgress: (progressEvent) => {
+                                      const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+                                      setUploadProgress(percent);
+                                    }
                                   });
+                                  setUploadProgress(null);
                                   fetchData();
                                   addToast('Đã tải lên tài liệu mới.', 'success');
                                 } catch (err: any) {
+                                  setUploadProgress(null);
                                   addToast('Lỗi khi tải tài liệu lên server', 'error');
                                 }
                               }
@@ -2891,6 +2899,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         )}
                       </div>
 
+                      {uploadProgress !== null && (
+                        <div style={{ padding: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', marginBottom: '1rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px' }}>
+                            <span style={{ color: 'var(--color-text)' }}>Đang tải tài liệu lên...</span>
+                            <span style={{ color: 'var(--color-primary)' }}>{uploadProgress}%</span>
+                          </div>
+                          <div style={{ width: '100%', height: '6px', background: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--color-primary)', transition: 'width 0.1s ease-out' }} />
+                          </div>
+                        </div>
+                      )}
+
                       {docs.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
                           <FileText size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
@@ -2899,57 +2919,66 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                          {docs.map(doc => (
-                            <div key={doc.id} className="card-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-surface)' }}>
-                              <div style={{ width: 40, height: 40, background: 'var(--color-info-light)', color: 'var(--color-info)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <FileText size={20} />
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <a 
-                                  href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.path}`} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-                                >
-                                  {doc.name}
-                                </a>
-                                <p className="text-xs text-light mt-1">Tải lên: {doc.date} • {doc.size}</p>
-                              </div>
-                              {isOwnerOrAdmin && (
-                                <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                                  <button className="btn-icon sm" title="Đổi tên" onClick={async () => {
-                                    const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
-                                    if (newName && newName.trim()) {
-                                      try {
-                                        await api.put(`/cloud-files/${doc.id}`, { name: newName.trim() });
-                                        fetchData();
-                                        addToast('Đã đổi tên tài liệu.', 'success');
-                                      } catch (err) {
-                                        addToast('Lỗi khi đổi tên tài liệu.', 'error');
-                                      }
-                                    }
-                                  }}><Pencil size={14} /></button>
-                                  <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
-                                    showConfirm({
-                                      title: 'Xóa tài liệu?',
-                                      message: `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
-                                      isDanger: true,
-                                      confirmText: 'Xóa',
-                                      onConfirm: async () => {
+                          {docs.map(doc => {
+                            const ext = doc.name.split('.').pop()?.toLowerCase();
+                            const isImg = ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+                            const fileUrl = `${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.path}`;
+                            return (
+                              <div key={doc.id} className="card-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-surface)' }}>
+                                <div style={{ width: 40, height: 40, background: 'var(--color-info-light)', color: 'var(--color-info)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                                  {isImg ? (
+                                    <img src={fileUrl} alt={doc.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                  ) : (
+                                    <FileText size={20} />
+                                  )}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <a 
+                                    href={fileUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                  >
+                                    {doc.name}
+                                  </a>
+                                  <p className="text-xs text-light mt-1">Tải lên: {doc.date} • {doc.size}</p>
+                                </div>
+                                {isOwnerOrAdmin && (
+                                  <div className="flex gap-2" style={{ flexShrink: 0 }}>
+                                    <button className="btn-icon sm" title="Đổi tên" onClick={async () => {
+                                      const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
+                                      if (newName && newName.trim()) {
                                         try {
-                                          await api.delete(`/cloud-files/${doc.id}`);
-                                          setDocs(prev => prev.filter(d => d.id !== doc.id));
-                                          addToast('Đã xóa tài liệu.', 'success');
+                                          await api.put(`/cloud-files/${doc.id}`, { name: newName.trim() });
+                                          fetchData();
+                                          addToast('Đã đổi tên tài liệu.', 'success');
                                         } catch (err) {
-                                          addToast('Lỗi khi xóa tài liệu.', 'error');
+                                          addToast('Lỗi khi đổi tên tài liệu.', 'error');
                                         }
                                       }
-                                    });
-                                  }}><Trash2 size={14} /></button>
-                                </div>
-                              )}
-                            </div>
-                          ))}
+                                    }}><Pencil size={14} /></button>
+                                    <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
+                                      showConfirm({
+                                        title: 'Xóa tài liệu?',
+                                        message: `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
+                                        isDanger: true,
+                                        confirmText: 'Xóa',
+                                        onConfirm: async () => {
+                                          try {
+                                            await api.delete(`/cloud-files/${doc.id}`);
+                                            setDocs(prev => prev.filter(d => d.id !== doc.id));
+                                            addToast('Đã xóa tài liệu.', 'success');
+                                          } catch (err) {
+                                            addToast('Lỗi khi xóa tài liệu.', 'error');
+                                          }
+                                        }
+                                      });
+                                    }}><Trash2 size={14} /></button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
