@@ -1021,6 +1021,10 @@ export default function CooperationSlipsPage() {
                           { value: '', label: '-- Chọn nhân viên --' },
                           ...salesAccounts
                             .filter(s => String(s.id) !== String(user?.consultant_id))
+                            .filter(s => {
+                              if (String(s.id) === String(item.user_id)) return true;
+                              return !sharesInput.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(s.id));
+                            })
                             .map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
                         ]}
                         size="sm"
@@ -1036,12 +1040,20 @@ export default function CooperationSlipsPage() {
                       placeholder="%"
                       value={item.percentage}
                       onChange={e => {
-                        const parsed = parseInt(e.target.value);
-                        let valStr = e.target.value;
-                        if (!isNaN(parsed)) {
-                          if (parsed > 100) valStr = '100';
-                          if (parsed < 0) valStr = '0';
+                        const parsed = parseInt(e.target.value) || 0;
+                        const otherSum = sharesInput.reduce((acc, val, i) => {
+                          if (i === idx) return acc;
+                          return acc + (parseInt(val.percentage) || 0);
+                        }, 0);
+                        const maxAllowed = Math.max(0, 100 - otherSum);
+                        let finalVal = parsed;
+                        if (finalVal > maxAllowed) {
+                          finalVal = maxAllowed;
                         }
+                        if (finalVal < 0) {
+                          finalVal = 0;
+                        }
+                        const valStr = e.target.value === '' ? '' : String(finalVal);
                         setSharesInput(prev =>
                           prev.map((val, i) => (i === idx ? { ...val, percentage: valStr } : val))
                         );

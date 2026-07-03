@@ -2564,6 +2564,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           { value: '', label: '-- Chọn nhân sự --' },
                                           ...salesUsers
                                             .filter(u => String(u.id) !== String(currentUser?.consultant_id) && String(u.id) !== String(currentUser?.id))
+                                            .filter(u => {
+                                              if (String(u.id) === String(share.user_id)) return true;
+                                              return !coopShares.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(u.id));
+                                            })
                                             .map(u => ({ value: String(u.id), label: u.full_name, sublabel: u.email, avatar: u.avatar }))
                                         ]}
                                         showAvatars
