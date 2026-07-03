@@ -6,6 +6,7 @@ import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertC
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
 
 interface CooperationSlip {
@@ -612,10 +613,7 @@ export default function CooperationSlipsPage() {
                   gap: '1rem',
                   cursor: 'pointer',
                   borderRadius: '12px',
-                  borderLeft: isExpanded ? '4px solid var(--color-primary)' : '1px solid var(--color-border)',
-                  borderTop: '1px solid var(--color-border)',
-                  borderRight: '1px solid var(--color-border)',
-                  borderBottom: '1px solid var(--color-border)',
+                  border: '1px solid var(--color-border)',
                   boxShadow: isExpanded ? '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05)' : '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.01)',
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   background: 'var(--color-surface)',
@@ -668,25 +666,24 @@ export default function CooperationSlipsPage() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách hàng:</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{
-                            width: '20px',
-                            height: '20px',
-                            borderRadius: '50%',
-                            background: 'var(--color-primary-light)',
-                            color: 'var(--color-primary)',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: '0.65rem',
-                            flexShrink: 0,
-                            lineHeight: 1
-                          }}>
-                            {getInitials(`${slip.last_name} ${slip.first_name}`)}
-                          </span>
+                          <Avatar 
+                            name={`${slip.last_name} ${slip.first_name}`} 
+                            size={20}
+                          />
                           <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text)' }}>
                             {slip.last_name} {slip.first_name}
                           </span>
+                        </div>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>•</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tỷ lệ chia:</span>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                          {slip.shareholders?.map((sh, sIdx) => (
+                            <span key={sh.user_id} style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <Avatar src={(sh as any).avatar} name={sh.name} size={18} />
+                              <span>{sh.name} ({sh.percentage}%)</span>
+                              {sIdx < slip.shareholders.length - 1 ? ',' : ''}
+                            </span>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -854,35 +851,20 @@ export default function CooperationSlipsPage() {
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{
-                                  width: '32px',
-                                  height: '32px',
-                                  borderRadius: '50%',
-                                  background: '#e0f2fe',
-                                  color: '#0284c7',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontWeight: 700,
-                                  fontSize: '0.8rem',
-                                  border: '1px solid #bae6fd',
-                                  flexShrink: 0
-                                }}>
-                                  {getInitials(sh.name)}
-                                </div>
+                                <Avatar src={(sh as any).avatar} name={sh.name} size="md" />
                                 <div>
                                   <h5 style={{ fontWeight: 700, fontSize: '0.825rem', color: 'var(--color-text)' }}>{sh.name}</h5>
                                   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{sh.email}</span>
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right' }}>
-                                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-primary)' }}>
+                                <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)' }}>
                                   {sh.percentage}%
                                 </span>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 700, marginTop: '2px' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>
                                   Dự kiến: {((baseComm * sh.percentage) / 100).toLocaleString()} VND
                                 </div>
-                                <div style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '1px' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '1px' }}>
                                   Thực tế: {((baseActual * sh.percentage) / 100).toLocaleString()} VND
                                 </div>
                               </div>
@@ -921,36 +903,56 @@ export default function CooperationSlipsPage() {
                         <Paperclip size={14} /> Tài liệu đính kèm:
                       </h4>
                       {slip.attachment_url ? (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', maxWidth: '500px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <FileText size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
-                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                              <a 
-                                href={`https://open.domation.net/richland/${slip.attachment_url}`} 
-                                target="_blank" 
-                                rel="noreferrer" 
-                                style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                              >
-                                {slip.attachment_url.split('/').pop() || 'Xem tài liệu hợp tác đính kèm'}
-                              </a>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', maxWidth: '500px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              <FileText size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                <a 
+                                  href={`https://open.domation.net/richland/${slip.attachment_url}`} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                >
+                                  {slip.attachment_url.split('/').pop() || 'Xem tài liệu hợp tác đính kèm'}
+                                </a>
+                              </div>
                             </div>
+                            {isManager && (
+                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
+                                <button 
+                                  className="btn sm outline"
+                                  style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px' }}
+                                  onClick={() => handleRenameCoopAttachment(slip.id, slip.attachment_url)}
+                                >
+                                  Đổi tên
+                                </button>
+                                <button 
+                                  className="btn sm outline text-danger"
+                                  style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
+                                  onClick={() => handleRemoveCoopAttachment(slip.id)}
+                                >
+                                  Xóa
+                                </button>
+                              </div>
+                            )}
                           </div>
                           {isManager && (
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
-                              <button 
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                              <input
+                                type="file"
+                                id={`coop-attachment-upload-${slip.id}`}
+                                style={{ display: 'none' }}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
+                                onChange={e => handleCoopAttachmentUpload(slip.id, e)}
+                              />
+                              <label 
+                                htmlFor={`coop-attachment-upload-${slip.id}`}
                                 className="btn sm outline"
-                                style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px' }}
-                                onClick={() => handleRenameCoopAttachment(slip.id, slip.attachment_url)}
+                                style={{ padding: '6px 12px', fontSize: '0.725rem', height: '30px', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: 'var(--color-text-light)', borderColor: 'var(--color-border)' }}
                               >
-                                Đổi tên
-                              </button>
-                              <button 
-                                className="btn sm outline text-danger"
-                                style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
-                                onClick={() => handleRemoveCoopAttachment(slip.id)}
-                              >
-                                Xóa
-                              </button>
+                                Tải lên tài liệu khác để thay thế
+                              </label>
                             </div>
                           )}
                         </div>
@@ -971,7 +973,7 @@ export default function CooperationSlipsPage() {
                               <label 
                                 htmlFor={`coop-attachment-upload-${slip.id}`}
                                 className="btn sm outline"
-                                style={{ padding: '6px 12px', fontSize: '0.725rem', height: '30px', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
+                                style={{ padding: '6px 12px', fontSize: '0.725rem', height: '30px', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: 'var(--color-text-light)', borderColor: 'var(--color-border)' }}
                               >
                                 Tải lên tài liệu mới
                               </label>
@@ -1039,22 +1041,7 @@ export default function CooperationSlipsPage() {
                 {signingSlip.shareholders.map(sh => (
                   <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{
-                        width: '32px',
-                        height: '32px',
-                        borderRadius: '50%',
-                        background: '#e0f2fe',
-                        color: '#0284c7',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: '0.8rem',
-                        border: '1px solid #bae6fd',
-                        flexShrink: 0
-                      }}>
-                        {getInitials(sh.name)}
-                      </div>
+                      <Avatar src={(sh as any).avatar} name={sh.name} size="md" />
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{sh.name}</span>
                         <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
