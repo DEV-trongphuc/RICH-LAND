@@ -33,11 +33,22 @@ class DepositController {
         $stmt->execute($params);
         $deposits = $stmt->fetchAll();
 
-        // Attach milestones for each deposit
-        foreach ($deposits as &$d) {
-            $stmtM = $this->db->prepare("SELECT * FROM deposit_milestones WHERE deposit_id = ? ORDER BY id ASC");
-            $stmtM->execute([$d['id']]);
-            $d['milestones'] = $stmtM->fetchAll();
+        // Attach milestones using Eager Loading (prevent N+1 queries)
+        if (!empty($deposits)) {
+            $depositIds = array_column($deposits, 'id');
+            $inClause = implode(',', array_fill(0, count($depositIds), '?'));
+            $stmtM = $this->db->prepare("SELECT * FROM deposit_milestones WHERE deposit_id IN ($inClause) ORDER BY id ASC");
+            $stmtM->execute($depositIds);
+            $allMilestones = $stmtM->fetchAll();
+            
+            // Map milestones to deposits
+            $milestonesMap = [];
+            foreach ($allMilestones as $m) {
+                $milestonesMap[$m['deposit_id']][] = $m;
+            }
+            foreach ($deposits as &$d) {
+                $d['milestones'] = $milestonesMap[$d['id']] ?? [];
+            }
         }
 
         respond(200, $deposits, 'Lấy danh sách phiếu cọc thành công');
@@ -92,8 +103,8 @@ class DepositController {
             }
 
             // Update contact pipeline stage to 'dat_coc' (Placed Deposit)
-            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ?");
-            $stmtUpC->execute([$contactId]);
+            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ? AND tenant_id = ?");
+            $stmtUpC->execute([$contactId, $auth['tenant_id']]);
 
             // Side effect: Automatically generate cooperation slip for commissions
             require_once __DIR__ . '/CooperationController.php';

@@ -63,10 +63,12 @@ class CooperationController {
     }
 
     public function autoGenerateSlip(int $contactId, int $depositId, int $creatorId): void {
-        // Find owner of contact
-        $stmtC = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ?");
+        // Find owner of contact with safety check
+        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id FROM contacts WHERE id = ?");
         $stmtC->execute([$contactId]);
-        $ownerId = (int)$stmtC->fetchColumn();
+        $contact = $stmtC->fetch();
+        if (!$contact) return;
+        $ownerId = (int)$contact['owner_id'];
 
         // Query all unique sales who interacted with this contact
         $stmtAct = $this->db->prepare("
