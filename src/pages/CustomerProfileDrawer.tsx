@@ -1849,6 +1849,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       <div className="card-panel">
+                        <h4 className="panel-title">Địa chỉ</h4>
+                        <AddressSelect
+                          value={formData.address || ''}
+                          onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
+                          placeholder="Chọn địa chỉ liên hệ..."
+                        />
+                      </div>
+
+                      <div className="card-panel">
                         <h4 className="panel-title">Phân loại & Trạng thái Sales</h4>
                         <div className="grid grid-2">
                           <div className="form-group">
@@ -1908,15 +1917,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             )}
                           </div>
                         </div>
-                      </div>
-
-                      <div className="card-panel">
-                        <h4 className="panel-title">Địa chỉ</h4>
-                        <AddressSelect
-                          value={formData.address || ''}
-                          onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
-                          placeholder="Chọn địa chỉ liên hệ..."
-                        />
                       </div>
                     </div>
                   )}
