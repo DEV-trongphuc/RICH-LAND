@@ -743,59 +743,76 @@ export const ExpensesPage: React.FC = () => {
               onClick={e => e.stopPropagation()}
               style={{ padding: '2rem' }}
             >
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className={`badge ${viewItem.status === 'approved' ? 'success' : 'warning'}`}>
-                      {viewItem.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
-                    </span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{viewItem.date && !isNaN(Date.parse(viewItem.date)) ? new Date(viewItem.date).toLocaleDateString('vi-VN') : '—'}</span>
-                  </div>
-                  <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)' }}>{viewItem.title}</h3>
+              {/* Close Button & Badge Header */}
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2">
+                  <span className={`badge ${viewItem.status === 'approved' ? 'success' : 'warning'}`} style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '8px' }}>
+                    {viewItem.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                  </span>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                    {viewItem.date && !isNaN(Date.parse(viewItem.date)) ? new Date(viewItem.date).toLocaleDateString('vi-VN') : '—'}
+                  </span>
                 </div>
-                <button className="btn-icon-bare" onClick={() => setViewItem(null)}><X size={20} /></button>
+                <button className="btn-icon-bare" onClick={() => setViewItem(null)} style={{ padding: 4 }}><X size={20} /></button>
               </div>
 
-              <div className="card-panel p-4 mb-6" style={{ background: 'var(--color-bg)' }}>
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
-                   <span className="text-light font-bold text-sm">Số tiền</span>
-                   <span className="text-danger font-bold text-xl">{FMT(viewItem.amount)}</span>
+              {/* Invoice Layout */}
+              <div className="card-panel" style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', marginBottom: '1.5rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '1.25rem', borderBottom: '2px dashed var(--color-border-light)', paddingBottom: '1.25rem' }}>
+                  <h4 style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.25rem' }}>Richland Data Automation</h4>
+                  <h2 style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '1.2rem', color: 'var(--color-text)', margin: 0 }}>HÓA ĐƠN CHI PHÍ</h2>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', margin: 0 }}>Mã số: #EXP-{viewItem.id}</p>
                 </div>
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
-                   <span className="text-light font-bold text-sm">Danh mục</span>
-                   <span className="font-bold">{viewItem.category}</span>
+
+                <div style={{ textAlign: 'center', padding: '1.25rem', background: 'var(--color-bg)', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid var(--color-border-light)' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>SỐ TIỀN CHI</span>
+                  <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--color-danger)', margin: 0, letterSpacing: '-0.02em' }}>{FMT(viewItem.amount)}</h1>
+                  <p style={{ fontSize: '0.775rem', fontWeight: 700, fontStyle: 'italic', color: 'var(--color-primary)', marginTop: '0.5rem', marginBottom: 0 }}>
+                    Bằng chữ: {numberToVietnameseText(Number(viewItem.amount))} đồng
+                  </p>
                 </div>
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
-                   <span className="text-light font-bold text-sm">Áp dụng cho</span>
-                   <span className="font-bold text-right" style={{ maxWidth: "70%", wordBreak: "break-word" }}>
-                     {(viewItem.entities && viewItem.entities.length > 0) 
-                       ? viewItem.entities.map((e: any) => {
-                           const typeText = e.entity_type === 'contact' ? 'KHTN' : (e.entity_type === 'company' ? 'Công ty' : 'Cơ hội');
-                           return `${e.name || e.entity_id} (${typeText}${Number(e.amount) > 0 ? ': ' + FMT(e.amount) : ''})`;
-                         }).join(', ')
-                       : 'Không áp dụng'}
-                   </span>
-                </div>
-                <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
-                   <span className="text-light font-bold text-sm">Người tạo</span>
-                   <span className="font-bold text-right">
-                     {viewItem.creator_name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginLeft: '4px' }}>(lúc {viewItem.created_at ? new Date(viewItem.created_at).toLocaleString('vi-VN') : '—'})</span>
-                   </span>
-                </div>
-                {viewItem.status === 'approved' && (
-                  <div className="flex justify-between items-center">
-                     <span className="text-light font-bold text-sm">Người duyệt</span>
-                     <span className="font-bold text-right text-success">
-                       {viewItem.approver_name || 'Hệ thống'} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.8rem', marginLeft: '4px' }}>(lúc {viewItem.approved_at ? new Date(viewItem.approved_at).toLocaleString('vi-VN') : '—'})</span>
-                     </span>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Nội dung chi</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{viewItem.title}</span>
                   </div>
-                )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Danh mục</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{viewItem.category}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Áp dụng cho</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)', textAlign: 'right', maxWidth: '65%', wordBreak: 'break-all' }}>
+                      {(viewItem.entities && viewItem.entities.length > 0)
+                        ? viewItem.entities.map((e: any) => {
+                            const typeText = e.entity_type === 'contact' ? 'KHTN' : (e.entity_type === 'company' ? 'Công ty' : 'Cơ hội');
+                            return `${e.name || e.entity_id} (${typeText}${Number(e.amount) > 0 ? ': ' + FMT(e.amount) : ''})`;
+                          }).join(', ')
+                        : 'Không áp dụng'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người tạo</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>
+                      {viewItem.creator_name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(lúc {viewItem.created_at ? new Date(viewItem.created_at).toLocaleString('vi-VN') : '—'})</span>
+                    </span>
+                  </div>
+                  {viewItem.status === 'approved' && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                      <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người duyệt</span>
+                      <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>
+                        {viewItem.approver_name || 'Admin'} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(lúc {viewItem.approved_at ? new Date(viewItem.approved_at).toLocaleString('vi-VN') : '—'})</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {viewItem.notes && (
-                <div className="mb-6">
-                   <span className="text-xs font-semibold uppercase text-light tracking-widest mb-2 block">Ghi chú</span>
-                   <p className="text-sm text-text-light bg-surface border border-border p-3 rounded-xl">{viewItem.notes}</p>
+                <div style={{ padding: '0.75rem 1rem', background: '#fffbeb', borderLeft: '4px solid #f59e0b', borderRadius: '8px', fontSize: '0.8125rem', color: '#b45309', marginBottom: '1.5rem' }}>
+                  <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', letterSpacing: '0.05em' }}>GHI CHÚ / THÔNG TIN THÊM:</span>
+                  {viewItem.notes}
                 </div>
               )}
 

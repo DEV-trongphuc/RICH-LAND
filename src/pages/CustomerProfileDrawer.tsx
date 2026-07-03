@@ -682,6 +682,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
     setLoadingRelated(true);
     try {
+      // Fetch fresh Contact details
+      try {
+        const contactRes = await api.get(`/contacts/${contact.id}`);
+        const freshContact = contactRes.data.data || contactRes.data;
+        if (freshContact && freshContact.id) {
+          setFormData(prev => ({ ...prev, ...freshContact }));
+          setBaseData(freshContact);
+        }
+      } catch (err) {}
+
       // Fetch Notes
       const notesRes = await api.get(`/notes?entity_type=contact&entity_id=${contact.id}`);
       setNotes((notesRes.data.data || []).map((n: any) => ({
@@ -1366,8 +1376,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div
                       className="avatar-placeholder lg"
                       style={{
-                        background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)',
-                        fontSize: '1.25rem', width: 56, height: 56, borderRadius: '18px',
+                        background: formData.avatar_url 
+                          ? `url(${formData.avatar_url}) center/cover` 
+                          : `linear-gradient(135deg, ${formData.stage_color || 'var(--color-primary)'} 0%, ${formData.stage_color ? formData.stage_color + 'cc' : '#8a0f1b'} 100%)`,
+                        fontSize: '1.25rem', width: 56, height: 56, borderRadius: '50%',
                         boxShadow: '0 4px 12px rgba(189, 29, 45, 0.12)',
                         overflow: 'hidden',
                         cursor: 'pointer',
@@ -1389,7 +1401,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           alignItems: 'center',
                           justifyContent: 'center',
                           transition: 'opacity 0.2s',
-                          borderRadius: '18px'
+                          borderRadius: '50%'
                         }}
                         onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                         onMouseLeave={e => e.currentTarget.style.opacity = '0'}
@@ -1397,7 +1409,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <Pencil size={16} color="white" />
                       </div>
                     </div>
-                    <div style={{ position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: '8px', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
+                    <div style={{ position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
                       <UserCheck size={11} className="text-success" />
                     </div>
                   </div>
