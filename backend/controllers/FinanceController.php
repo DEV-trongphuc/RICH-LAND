@@ -494,7 +494,7 @@ class FinanceController
         if (!empty($rows)) {
             $ids = array_column($rows, 'id');
             $in = str_repeat('?,', count($ids) - 1) . '?';
-            $sEE = $this->db->prepare("SELECT ee.*, c.first_name, c.last_name FROM expense_entities ee LEFT JOIN contacts c ON ee.entity_type='contact' AND ee.entity_id=c.id WHERE ee.expense_id IN ($in)");
+            $sEE = $this->db->prepare("SELECT ee.*, c.first_name, c.last_name, c.avatar_url FROM expense_entities ee LEFT JOIN contacts c ON ee.entity_type='contact' AND ee.entity_id=c.id WHERE ee.expense_id IN ($in)");
             $sEE->execute($ids);
             $allEntities = $sEE->fetchAll();
 
@@ -532,7 +532,7 @@ class FinanceController
             respond(404, null, 'Không tìm thấy chi phí', false);
 
         // Fetch linked entities with names
-        $sEE = $this->db->prepare("SELECT ee.*, c.first_name, c.last_name FROM expense_entities ee LEFT JOIN contacts c ON ee.entity_type='contact' AND ee.entity_id=c.id WHERE ee.expense_id=?");
+        $sEE = $this->db->prepare("SELECT ee.*, c.first_name, c.last_name, c.avatar_url FROM expense_entities ee LEFT JOIN contacts c ON ee.entity_type='contact' AND ee.entity_id=c.id WHERE ee.expense_id=?");
         $sEE->execute([$id]);
         $entities = $sEE->fetchAll();
         foreach ($entities as &$ee) {
@@ -566,8 +566,8 @@ class FinanceController
         try {
             $stmt = $this->db->prepare("
                 INSERT INTO expenses (tenant_id,created_by,title,category,amount,vat_amount,date,status,notes,
-                    vendor_name,has_vat_invoice,is_vat_inclusive)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                    vendor_name,has_vat_invoice,is_vat_inclusive,image_url)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             ");
             $stmt->execute([
                 $auth['tenant_id'],
@@ -581,7 +581,8 @@ class FinanceController
                 $data['notes'] ?? null,
                 $data['vendor_name'] ?? null,
                 $data['has_vat_invoice'] ?? 0,
-                $data['is_vat_inclusive'] ?? 0
+                $data['is_vat_inclusive'] ?? 0,
+                $data['image_url'] ?? null
             ]);
             $expId = (int) $this->db->lastInsertId();
 
@@ -633,7 +634,8 @@ class FinanceController
             'notes',
             'vendor_name',
             'has_vat_invoice',
-            'is_vat_inclusive'
+            'is_vat_inclusive',
+            'image_url'
         ];
         $sets = [];
         $params = [];

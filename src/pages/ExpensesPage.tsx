@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom';
 import {
   DollarSign, Plus, Search, Download, Truck, Coffee, Home,
   Briefcase, CreditCard, Tag, Eye, Pencil, Trash2, Loader2,
-  CheckCircle2, Clock, TrendingDown, X, ArrowUpRight, ArrowDownRight, ChevronDown, Building2, Wallet, User
+  CheckCircle2, Clock, TrendingDown, X, ArrowUpRight, ArrowDownRight, ChevronDown, Building2, Wallet, User,
+  Upload, Paperclip
 } from 'lucide-react';
+import { compressToWebP } from '../utils/imageCompress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -59,7 +61,8 @@ const EMPTY_FORM = {
   vendor_name: '',
   has_vat_invoice: false,
   is_vat_inclusive: false,
-  entities: [] as any[]
+  entities: [] as any[],
+  image_url: ''
 };
 
 export const ExpensesPage: React.FC = () => {
@@ -79,6 +82,7 @@ export const ExpensesPage: React.FC = () => {
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState<any>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [uploadingImg, setUploadingImg] = useState(false);
   // Unified delete confirmation under showConfirm store state
   const [viewItem, setViewItem] = useState<any>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -189,7 +193,8 @@ export const ExpensesPage: React.FC = () => {
       has_vat_invoice: Boolean(item.has_vat_invoice),
       is_vat_inclusive: Boolean(item.is_vat_inclusive),
       notes: item.notes || '',
-      entities: item.entities || []
+      entities: item.entities || [],
+      image_url: item.image_url || ''
     });
     setShowModal(true); 
   };
@@ -684,9 +689,97 @@ export const ExpensesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Ghi chú chi tiết</label>
-                  <textarea className="form-textarea" rows={3} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Mô tả thêm nếu cần..." style={{ minHeight: '80px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Ghi chú chi tiết</label>
+                    <textarea 
+                      className="form-textarea" 
+                      rows={3} 
+                      value={form.notes} 
+                      onChange={e => setForm({ ...form, notes: e.target.value })} 
+                      placeholder="Mô tả thêm nếu cần..." 
+                      style={{ minHeight: '90px', resize: 'vertical' }} 
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0, display: 'flex', flexDirection: 'column' }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Đính kèm hóa đơn / chứng từ</label>
+                    <div style={{
+                      flex: 1, border: '2px dashed var(--color-border)', borderRadius: '12px',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      padding: '8px', position: 'relative', cursor: 'pointer', background: 'var(--color-bg)',
+                      overflow: 'hidden', minHeight: '90px', transition: 'border-color 0.2s'
+                    }}
+                      onDragOver={e => e.preventDefault()}
+                      onClick={() => document.getElementById('expense-image-upload')?.click()}
+                    >
+                      {uploadingImg ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <div className="spinner sm"></div>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Đang nén & tải lên...</span>
+                        </div>
+                      ) : form.image_url ? (
+                        <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img 
+                            src={form.image_url.startsWith('http') ? form.image_url : `${import.meta.env.VITE_API_URL || '/backend'}${form.image_url}`} 
+                            alt="Hóa đơn" 
+                            style={{ maxWidth: '100%', maxHeight: '72px', objectFit: 'contain', borderRadius: '6px' }} 
+                          />
+                          <button 
+                            type="button"
+                            style={{
+                              position: 'absolute', top: -4, right: -4, background: 'rgba(239, 68, 68, 0.9)', 
+                              color: 'white', border: 'none', borderRadius: '50%', width: 18, height: 18, 
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setForm({ ...form, image_url: '' });
+                            }}
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-center" style={{ padding: '4px' }}>
+                          <Upload size={20} className="text-light" />
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Chọn hoặc kéo thả ảnh</span>
+                          <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)' }}>WEBP, PNG, JPG (tối đa 5MB)</span>
+                        </div>
+                      )}
+                      <input 
+                        type="file" 
+                        id="expense-image-upload" 
+                        accept="image/*" 
+                        style={{ display: 'none' }} 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingImg(true);
+                          try {
+                            // 1. Convert & compress to WebP
+                            const compressedFile = await compressToWebP(file);
+                            // 2. Upload WebP to server
+                            const uploadData = new FormData();
+                            uploadData.append('file', compressedFile);
+                            if (form.image_url) {
+                              uploadData.append('previous_url', form.image_url);
+                            }
+                            const res = await api.post('/upload', uploadData);
+                            if (res.data && res.data.success && res.data.data?.url) {
+                              setForm({ ...form, image_url: res.data.data.url });
+                              addToast('Tải lên và nén ảnh hóa đơn thành công!', 'success');
+                            } else {
+                              addToast('Tải ảnh thất bại', 'error');
+                            }
+                          } catch (err: any) {
+                            addToast('Lỗi khi nén & tải ảnh: ' + (err.message || err), 'error');
+                          } finally {
+                            setUploadingImg(false);
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-group" style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)' }}>
@@ -788,15 +881,26 @@ export const ExpensesPage: React.FC = () => {
                     <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Danh mục</span>
                     <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{viewItem.category}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem', alignItems: 'center' }}>
                     <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Áp dụng cho</span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-text)', textAlign: 'right', maxWidth: '65%', wordBreak: 'break-all' }}>
-                      {(viewItem.entities && viewItem.entities.length > 0)
-                        ? viewItem.entities.map((e: any) => {
-                            const typeText = e.entity_type === 'contact' ? 'KHTN' : (e.entity_type === 'company' ? 'Công ty' : 'Cơ hội');
-                            return `${e.name || e.entity_id} (${typeText}${Number(e.amount) > 0 ? ': ' + FMT(e.amount) : ''})`;
-                          }).join(', ')
-                        : 'Không áp dụng'}
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)', textAlign: 'right', maxWidth: '75%', display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
+                      {(viewItem.entities && viewItem.entities.length > 0) ? (
+                        viewItem.entities.map((e: any, idx: number) => {
+                          const typeText = e.entity_type === 'contact' ? 'KHTN' : (e.entity_type === 'company' ? 'Công ty' : 'Cơ hội');
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {e.entity_type === 'contact' && (
+                                <Avatar src={e.avatar_url} name={e.name} size={18} />
+                              )}
+                              <span>
+                                {e.name || e.entity_id} <span style={{ fontWeight: 500, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>({typeText}{Number(e.amount) > 0 ? ': ' + FMT(e.amount) : ''})</span>
+                              </span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        'Không áp dụng'
+                      )}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem', alignItems: 'center' }}>
@@ -807,12 +911,26 @@ export const ExpensesPage: React.FC = () => {
                     </span>
                   </div>
                   {viewItem.status === 'approved' && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center', borderBottom: viewItem.image_url ? '1px dotted var(--color-border-light)' : 'none', paddingBottom: viewItem.image_url ? '0.5rem' : 0 }}>
                       <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người duyệt</span>
                       <span style={{ fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Avatar src={viewItem.approver_avatar} name={viewItem.approver_name || 'Admin'} size={20} />
                         <span className="text-success">{viewItem.approver_name || 'Admin'}</span> <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(lúc {viewItem.approved_at ? new Date(viewItem.approved_at).toLocaleString('vi-VN') : '—'})</span>
                       </span>
+                    </div>
+                  )}
+                  {viewItem.image_url && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center', paddingTop: viewItem.status === 'approved' ? '0.5rem' : 0 }}>
+                      <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Đính kèm</span>
+                      <a 
+                        href={viewItem.image_url.startsWith('http') ? viewItem.image_url : `${import.meta.env.VITE_API_URL || '/backend'}${viewItem.image_url}`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'underline' }}
+                      >
+                        <Paperclip size={13} />
+                        Xem ảnh hóa đơn
+                      </a>
                     </div>
                   )}
                 </div>

@@ -1440,6 +1440,28 @@ try {
         $logMsg("Đã thêm team_id cho users", "success");
     }
 
+    // 3b. image_url in expenses
+    $chkCol = $conn->query("SHOW COLUMNS FROM expenses LIKE 'image_url'");
+    if ($chkCol && $chkCol->num_rows === 0) {
+        $conn->query("ALTER TABLE expenses ADD COLUMN image_url varchar(500) DEFAULT NULL");
+        $logMsg("Đã thêm image_url cho expenses", "success");
+    }
+
+    // 3c. default lost stage in pipeline_stages
+    $tenantsRes = $conn->query("SELECT id FROM tenants");
+    if ($tenantsRes) {
+        while ($tRow = $tenantsRes->fetch_assoc()) {
+            $tid = (int)$tRow['id'];
+            $chkLost = $conn->query("SELECT id FROM pipeline_stages WHERE tenant_id={$tid} AND is_lost=1");
+            if ($chkLost && $chkLost->num_rows === 0) {
+                $oRes = $conn->query("SELECT MAX(order_index) FROM pipeline_stages WHERE tenant_id={$tid}");
+                $maxIdx = $oRes ? (int)$oRes->fetch_row()[0] + 1 : 7;
+                $conn->query("INSERT INTO pipeline_stages (tenant_id, name, color, order_index, is_won, is_lost) VALUES ({$tid}, 'Thất bại/Từ chối', '#ef4444', {$maxIdx}, 0, 1)");
+                $logMsg("Đã tạo giai đoạn Thất bại/Từ chối cho tenant {$tid}", "success");
+            }
+        }
+    }
+
     // 4. check_ins table
     $conn->query("
         CREATE TABLE IF NOT EXISTS `check_ins` (

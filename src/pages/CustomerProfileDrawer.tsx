@@ -1652,26 +1652,29 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {activeTab === 'info' && (
                     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       {/* Quick Stats Dashboard */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                        <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
-                          <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DỰ KIẾN DOANH THU</span>
-                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', marginTop: '0.15rem' }}>{FMT(formData.expected_revenue || 0)}</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}><span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{formData.win_probability || 0}%</span> xác suất</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem' }}>
+                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>DỰ KIẾN DOANH THU</span>
+                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#10b981', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>{FMT(formData.expected_revenue || 0)}</span>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}><span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{formData.win_probability || 0}%</span> xác suất</span>
                         </div>
-                        <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
-                          <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>LẦN LIÊN HỆ CUỐI</span>
-                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.15rem' }}>
+                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>DOANH THU THỰC TẾ</span>
+                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-success)', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>{FMT(formData.actual_revenue || 0)}</span>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>{formData.paid_invoice_count || 0} hóa đơn</span>
+                        </div>
+                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>CHI TIÊU</span>
+                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>{formData.expense_count || 0} khoản chi</span>
+                        </div>
+                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>LẦN LIÊN HỆ CUỐI</span>
+                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>
                             {formData.last_contact ? new Date(formData.last_contact).toLocaleDateString('vi-VN') : 'Chưa có'}
                           </span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.last_contact ? AGO(formData.last_contact) : 'Cần liên hệ ngay'}
-                          </span>
-                        </div>
-                        <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
-                          <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TỔNG CHI TIÊU</span>
-                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.15rem' }}>{FMT(formData.total_spent || 0)}</span>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {formData.order_count || 0} đơn • {formData.last_order_at ? new Date(formData.last_order_at).toLocaleDateString('vi-VN') : '—'}
                           </span>
                         </div>
                       </div>
@@ -2506,63 +2509,120 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-                          {deals.map((d: any) => (
-                            <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', borderRadius: '16px' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                              <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
-                                <div>
-                                  <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
-                                  <span className="badge" style={{ background: `${d.stage_color}15`, color: d.stage_color, fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '8px' }}>{d.stage}</span>
+                          {deals.map((d: any) => {
+                            const wonStage = stages.find((s: any) => s.is_won === 1 || s.is_won === true);
+                            const lostStage = stages.find((s: any) => s.is_lost === 1 || s.is_lost === true);
+                            const isWon = wonStage && Number(d.stage_id) === Number(wonStage.id);
+                            const isLost = lostStage && Number(d.stage_id) === Number(lostStage.id);
+                            
+                            return (
+                              <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', borderRadius: '16px' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                                <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
+                                  <div>
+                                    <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
+                                    <span className="badge" style={{ background: `${d.stage_color}15`, color: d.stage_color, fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '8px' }}>{d.stage}</span>
+                                  </div>
+                                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
+                                      <button 
+                                        className="btn-icon sm" 
+                                        title="Chỉnh sửa" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDealForm({
+                                            title: d.title,
+                                            value: String(d.value || ''),
+                                            stage: d.stage_id ? d.stage_id.toString() : 'lead',
+                                            probability: d.prob || 50,
+                                            expected_close: d.close || '',
+                                            description: d.description || '',
+                                            priority: d.priority || 'medium'
+                                          });
+                                          setEditingDealId(d.id);
+                                          setShowDealModal(true);
+                                        }}
+                                      >
+                                        <Pencil size={14} />
+                                      </button>
+                                      <button
+                                        className="btn-icon sm text-danger"
+                                        style={{ opacity: 0.4, transition: 'opacity 0.2s', padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                        onClick={(e) => { e.stopPropagation(); deleteDeal(d.id); }}
+                                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                        onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    </div>
+                                    {(!isWon && !isLost) && (
+                                      <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }} onClick={e => e.stopPropagation()}>
+                                        <button
+                                          type="button"
+                                          style={{
+                                            fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px',
+                                            background: '#e6f4ea', color: '#137333',
+                                            border: '1px solid #137333', fontWeight: 700, cursor: 'pointer'
+                                          }}
+                                          onClick={async () => {
+                                            if (!wonStage) {
+                                              addToast('Không tìm thấy giai đoạn Đóng deal', 'error');
+                                              return;
+                                            }
+                                            try {
+                                              await api.patch(`/deals/${d.id}/stage`, { stage_id: wonStage.id });
+                                              addToast('Đã chốt cơ hội thành công!', 'success');
+                                              fetchData();
+                                            } catch (err: any) {
+                                              addToast(err.response?.data?.message || 'Lỗi khi chốt cơ hội', 'error');
+                                            }
+                                          }}
+                                        >
+                                          Chốt
+                                        </button>
+                                        <button
+                                          type="button"
+                                          style={{
+                                            fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px',
+                                            background: '#fce8e6', color: '#c5221f',
+                                            border: '1px solid #c5221f', fontWeight: 700, cursor: 'pointer'
+                                          }}
+                                          onClick={async () => {
+                                            if (!lostStage) {
+                                              addToast('Không tìm thấy giai đoạn Thất bại/Từ chối', 'error');
+                                              return;
+                                            }
+                                            try {
+                                              await api.patch(`/deals/${d.id}/stage`, { stage_id: lostStage.id });
+                                              addToast('Đã từ chối cơ hội', 'warning');
+                                              fetchData();
+                                            } catch (err: any) {
+                                              addToast(err.response?.data?.message || 'Lỗi khi từ chối cơ hội', 'error');
+                                            }
+                                          }}
+                                        >
+                                          Từ chối
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
-                                    <button 
-                                      className="btn-icon sm" 
-                                      title="Chỉnh sửa" 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setDealForm({
-                                          title: d.title,
-                                          value: String(d.value || ''),
-                                          stage: d.stage_id ? d.stage_id.toString() : 'lead',
-                                          probability: d.prob || 50,
-                                          expected_close: d.close || '',
-                                          description: d.description || '',
-                                          priority: d.priority || 'medium'
-                                        });
-                                        setEditingDealId(d.id);
-                                        setShowDealModal(true);
-                                      }}
-                                    >
-                                      <Pencil size={14} />
-                                    </button>
-                                    <button
-                                      className="btn-icon sm text-danger"
-                                      style={{ opacity: 0.4, transition: 'opacity 0.2s', padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                                      onClick={(e) => { e.stopPropagation(); deleteDeal(d.id); }}
-                                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                      onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
+                                <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderTop: '1px solid var(--color-border-light)' }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                                    <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14} /> Xác suất chốt</span>
+                                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.prob}%</span>
+                                  </div>
+                                  <div style={{ height: 8, background: 'var(--color-border-light)', borderRadius: 4, overflow: 'hidden', marginBottom: '1.25rem' }}>
+                                    <div style={{ width: `${d.prob}%`, height: '100%', background: `linear-gradient(90deg, ${d.stage_color}88 0%, ${d.stage_color} 100%)`, borderRadius: 4 }} />
+                                  </div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                                    <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Ngày dự kiến</span>
+                                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.close && d.close !== '0000-00-00' ? new Date(d.close).toLocaleDateString('vi-VN') : 'Chưa thiết lập'}</span>
                                   </div>
                                 </div>
                               </div>
-                              <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderTop: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
-                                  <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14} /> Xác suất chốt</span>
-                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.prob}%</span>
-                                </div>
-                                <div style={{ height: 8, background: 'var(--color-border-light)', borderRadius: 4, overflow: 'hidden', marginBottom: '1.25rem' }}>
-                                  <div style={{ width: `${d.prob}%`, height: '100%', background: `linear-gradient(90deg, ${d.stage_color}88 0%, ${d.stage_color} 100%)`, borderRadius: 4 }} />
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                                  <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Ngày dự kiến</span>
-                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.close && d.close !== '0000-00-00' ? new Date(d.close).toLocaleDateString('vi-VN') : 'Chưa thiết lập'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
