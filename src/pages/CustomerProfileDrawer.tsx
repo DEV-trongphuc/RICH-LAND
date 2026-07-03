@@ -279,8 +279,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
   const [newNote, setNewNote] = useState('');
-  const [noteChannel, setNoteChannel] = useState<'text' | 'call' | 'meet' | 'other'>('text');
-  const [customChannel, setCustomChannel] = useState('');
+  const [noteChannel, setNoteChannel] = useState<'text' | 'call' | 'meet'>('text');
+  const [customDocs, setCustomDocs] = useState('');
+  const [customObstacle, setCustomObstacle] = useState('');
   const [noteType, setNoteType] = useState<'normal' | 'quality'>('normal');
   const [noteDuration, setNoteDuration] = useState<string>('');
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
@@ -816,25 +817,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const addNote = async () => {
     if (!newNote.trim() || isSubmitting) return;
     setIsSubmitting(true);
-    let channelLabel = '';
-    if (noteChannel === 'text') channelLabel = 'Chat (Zalo/SMS)';
-    else if (noteChannel === 'call') channelLabel = 'Cuộc gọi';
-    else if (noteChannel === 'meet') channelLabel = 'Gặp trực tiếp';
-    else channelLabel = customChannel.trim() || 'Khác';
-
+    const channelLabel = noteChannel === 'text' ? 'Nối Đất (Text/Chat)' : noteChannel === 'call' ? 'Nối Đồng (Call)' : 'Nối Áp Suất (Gặp mặt)';
     let text = `[${channelLabel} - Tương tác ${noteType === 'normal' ? 'Thường' : 'Chất lượng'}]\n`;
     if (noteChannel === 'call' && noteDuration.trim()) {
       text += `Thời lượng cuộc gọi: ${noteDuration} giây\n`;
     }
     if (noteDocsSent.trim()) {
-      text += `Tài liệu đã gửi: ${noteDocsSent}\n`;
+      const docsArray = noteDocsSent.split(', ').map(d => d.trim());
+      const docsFinal = docsArray.map(d => d === 'Khác' ? (customDocs.trim() || 'Khác') : d).filter(Boolean);
+      text += `Tài liệu đã gửi: ${docsFinal.join(', ')}
+`;
     }
     if (noteObstacle) {
       const obstacleLabels: Record<string, string> = {
         'trust': '🧑 Chưa tin mình',
         'project': '🏙️ Chưa ưng dự án',
         'unit': '🏠 Chưa chọn căn',
-        'smooth': '✓ Đang xuôi'
+        'smooth': '✓ Đang xuôi',
+        'other': `➕ Khác: ${customObstacle.trim() || 'Chưa rõ'}`
       };
       text += `Trạng thái vướng mắc: ${obstacleLabels[noteObstacle] || noteObstacle}\n`;
     }
@@ -845,11 +845,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       });
       setNewNote('');
       setNoteChannel('text');
-      setCustomChannel('');
       setNoteType('normal');
       setNoteDuration('');
       setNoteDocsSent('');
+      setCustomDocs('');
       setNoteObstacle('');
+      setCustomObstacle('');
       fetchData(); // Reload all to stay in sync
       addToast('Đã lưu ghi chú', 'success');
     } catch (err: any) {
@@ -2312,60 +2313,47 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         {/* 1. Channel & Type Row */}
                         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
                           {/* Channel Select */}
-                          <div style={{ flex: '1 0 280px' }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Kênh tương tác</label>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                          <div style={{ flex: '1 0 200px' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Kênh tương tác (Nối)</label>
+                            <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
                               <button
                                 type="button"
                                 onClick={() => setNoteChannel('text')}
                                 style={{
-                                  flex: 1, minWidth: '70px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
                                   background: noteChannel === 'text' ? 'var(--color-surface)' : 'transparent',
                                   color: noteChannel === 'text' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                                   boxShadow: noteChannel === 'text' ? 'var(--shadow-sm)' : 'none',
                                   transition: 'all 0.2s'
                                 }}
                               >
-                                💬 Chat
+                                📝 Nối Đất
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setNoteChannel('call')}
                                 style={{
-                                  flex: 1, minWidth: '70px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
                                   background: noteChannel === 'call' ? 'var(--color-surface)' : 'transparent',
                                   color: noteChannel === 'call' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                                   boxShadow: noteChannel === 'call' ? 'var(--shadow-sm)' : 'none',
                                   transition: 'all 0.2s'
                                 }}
                               >
-                                📞 Gọi điện
+                                📞 Nối Đồng
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setNoteChannel('meet')}
                                 style={{
-                                  flex: 1, minWidth: '70px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
                                   background: noteChannel === 'meet' ? 'var(--color-surface)' : 'transparent',
                                   color: noteChannel === 'meet' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                                   boxShadow: noteChannel === 'meet' ? 'var(--shadow-sm)' : 'none',
                                   transition: 'all 0.2s'
                                 }}
                               >
-                                🤝 Gặp mặt
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setNoteChannel('other')}
-                                style={{
-                                  flex: 1, minWidth: '70px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                  background: noteChannel === 'other' ? 'var(--color-surface)' : 'transparent',
-                                  color: noteChannel === 'other' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                  boxShadow: noteChannel === 'other' ? 'var(--shadow-sm)' : 'none',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                ➕ Khác
+                                🤝 Nối Áp Suất
                               </button>
                             </div>
                           </div>
@@ -2406,19 +2394,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                         {/* 2. Optional Fields (Call Duration, Documents Sent) */}
                         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                          {noteChannel === 'other' && (
-                            <div style={{ flex: '1 0 150px' }}>
-                              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Nhập kênh khác</label>
-                              <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Ví dụ: Email, Facebook..."
-                                value={customChannel}
-                                onChange={e => setCustomChannel(e.target.value)}
-                                style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
-                              />
-                            </div>
-                          )}
                           {noteChannel === 'call' && (
                             <div style={{ flex: '1 0 150px' }}>
                               <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Thời lượng cuộc gọi (giây)</label>
@@ -2442,7 +2417,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 'Pháp lý dự án',
                                 'Chính sách bán hàng',
                                 'Brochure dự án',
-                                'Thiết kế chi tiết'
+                                'Thiết kế chi tiết',
+                                'Khác'
                               ].map(doc => {
                                 const selectedDocs = noteDocsSent ? noteDocsSent.split(', ').map(d => d.trim()) : [];
                                 const isSelected = selectedDocs.includes(doc);
@@ -2472,6 +2448,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 );
                               })}
                             </div>
+                            {noteDocsSent.split(', ').map(d => d.trim()).includes('Khác') && (
+                              <div style={{ marginTop: '8px' }}>
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="Nhập tên tài liệu khác khác (ngăn cách bằng dấu phẩy)..."
+                                  value={customDocs}
+                                  onChange={e => setCustomDocs(e.target.value)}
+                                  style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
 
@@ -2483,7 +2471,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               { id: 'trust', label: '🧑 Chưa tin mình', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
                               { id: 'project', label: '🏙️ Chưa ưng dự án', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
                               { id: 'unit', label: '🏠 Chưa chọn căn', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-                              { id: 'smooth', label: '✓ Đang xuôi', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' }
+                              { id: 'smooth', label: '✓ Đang xuôi', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
+                              { id: 'other', label: '➕ Khác', color: 'rgba(139, 92, 246, 0.1)', border: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' }
                             ].map(item => {
                               const isSelected = noteObstacle === item.id;
                               return (
@@ -2504,6 +2493,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               );
                             })}
                           </div>
+                          {noteObstacle === 'other' && (
+                            <div style={{ marginTop: '8px' }}>
+                              <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Nhập vướng mắc khác của khách..."
+                                value={customObstacle}
+                                onChange={e => setCustomObstacle(e.target.value)}
+                                style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Gợi ý hành động dựa trên vướng mắc */}

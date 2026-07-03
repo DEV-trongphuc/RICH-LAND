@@ -78,6 +78,25 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
     u.role.toLowerCase().includes(searchQuery)
   );
 
+  const stringToColor = (str: string) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const colors = [
+      '#3b82f6', // Blue
+      '#ef4444', // Red
+      '#10b981', // Green
+      '#f59e0b', // Amber
+      '#8b5cf6', // Violet
+      '#ec4899', // Pink
+      '#14b8a6', // Teal
+      '#f97316'  // Orange
+    ];
+    const idx = Math.abs(hash) % colors.length;
+    return colors[idx];
+  };
+
   return (
     <div style={{ position: 'relative', width: '100%' }}>
       <textarea
@@ -107,28 +126,31 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
               marginBottom: '4px'
             }}
           >
-            {filteredUsers.map(u => (
-              <div
-                key={u.id}
-                onClick={() => handleSelectUser(u)}
-                style={{
-                  padding: '8px 12px',
-                  cursor: 'pointer',
-                  borderBottom: '1px solid var(--color-border-light)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
-                  {u.full_name[0]}
+            {filteredUsers.map(u => {
+              const avatarColor = stringToColor(u.full_name);
+              return (
+                <div
+                  key={u.id}
+                  onClick={() => handleSelectUser(u)}
+                  style={{
+                    padding: '8px 12px',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid var(--color-border-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: avatarColor + '15', color: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
+                    {u.full_name[0]}
+                  </div>
+                  <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>{u.full_name}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.role}</div>
                 </div>
-                <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>{u.full_name}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.role}</div>
-              </div>
-            ))}
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
