@@ -38,6 +38,15 @@ interface Props {
 
 const FMT = (v: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Number(v) || 0);
 
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return '—';
+  const cleanStr = dateStr.replace(' ', 'T');
+  const d = new Date(cleanStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 const buildTasks = (c: any): any[] => {
   if (!c) return [];
   const { activities } = useMockStore.getState();
@@ -284,6 +293,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [noteChannel, setNoteChannel] = useState<'text' | 'call' | 'meet'>('text');
   const [customDocs, setCustomDocs] = useState('');
   const [customObstacle, setCustomObstacle] = useState('');
+  const [showAddCustomField, setShowAddCustomField] = useState(false);
+  const [customFieldKey, setCustomFieldKey] = useState('');
+  const [customFieldValue, setCustomFieldValue] = useState('');
   const [noteType, setNoteType] = useState<'normal' | 'quality'>('normal');
   const [noteDuration, setNoteDuration] = useState<string>('');
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
@@ -776,6 +788,51 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [drawerActivities, mockStore.activities, contact?.id]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
 
+  const handleAddCustomField = () => {
+    const key = customFieldKey.trim();
+    const val = customFieldValue.trim();
+    if (!key) {
+      addToast('Vui lòng nhập tên trường (Key).', 'error');
+      return;
+    }
+
+    const systemKeys = [
+      'id', 'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 
+      'email', 'phone', 'mobile', 'job_title', 'department', 'source', 'status', 
+      'notes', 'birthday', 'address', 'city', 'ward', 'expected_revenue', 
+      'win_probability', 'last_contact', 'created_at', 'updated_at', 'avatar_url', 'tags'
+    ];
+    if (systemKeys.includes(key.toLowerCase())) {
+      addToast(`Tên trường "${key}" trùng với tên hệ thống. Vui lòng chọn tên khác!`, 'error');
+      return;
+    }
+
+    const existingFields = formData.custom_fields || [];
+    const isConflict = existingFields.some((f: any) => f.label.toLowerCase() === key.toLowerCase());
+    if (isConflict) {
+      addToast(`Trường "${key}" đã tồn tại. Vui lòng chọn tên khác!`, 'error');
+      return;
+    }
+
+    const newField = {
+      id: Date.now(),
+      label: key,
+      field_type: 'text',
+      value: val,
+      is_required: false
+    };
+
+    setFormData((prev: any) => ({
+      ...prev,
+      custom_fields: [...(prev.custom_fields || []), newField]
+    }));
+
+    setCustomFieldKey('');
+    setCustomFieldValue('');
+    setShowAddCustomField(false);
+    addToast('Đã thêm trường tùy chỉnh mới', 'success');
+  };
+
   const handleSave = async () => {
     // Only send fields that ContactController accepts
     const allowedFields = [
@@ -1212,14 +1269,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '6px', flexWrap: 'wrap' }}>
                       <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
-                        <Clock size={12} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong></span>
+                        <Clock size={12} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.created_at)}</strong></span>
                       </p>
-                      {formData.updated_at && formData.updated_at !== formData.created_at && (
-                        <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
-                          <span style={{ color: 'var(--color-text-muted)' }}>|</span>
-                          <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{formData.updated_at ? new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong></span>
-                        </p>
-                      )}
+                      <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
+                        <span style={{ color: 'var(--color-text-muted)' }}>|</span>
+                        <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.updated_at || formData.created_at)}</strong></span>
+                      </p>
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
@@ -1255,7 +1310,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                        title="Xem chi tiết Scoring"
                      >
-                       <LeadScoreRing score={score} size={36} showLabel={true} />
+                       <LeadScoreRing score={score} size={44} showLabel={true} />
                      </div>
 
                     <button
@@ -1600,33 +1655,94 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </>
                         )}
 
-                        <div className="grid grid-2">
-                          <div className="form-group">
-                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian
-                            </label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
-                                <input
-                                  type="datetime-local"
-                                  className="form-input sm"
-                                  style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '240px' }}
-                                  value={formData.created_at ? formData.created_at.substring(0, 16) : ''}
-                                  onChange={e => {
-                                    const val = e.target.value.replace('T', ' ') + ':00';
-                                    setFormData((prev: any) => ({ ...prev, created_at: val }));
-                                  }}
-                                />
-                              </div>
-                              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Cập nhật:</span>
-                                <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
-                                  {formData.updated_at ? new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                </span>
-                              </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian
+                          </label>
+                          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
+                              <input
+                                type="datetime-local"
+                                className="form-input sm"
+                                style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '240px' }}
+                                value={formData.created_at ? formData.created_at.substring(0, 16).replace(' ', 'T') : ''}
+                                onChange={e => {
+                                  const val = e.target.value.replace('T', ' ') + ':00';
+                                  setFormData((prev: any) => ({ ...prev, created_at: val }));
+                                }}
+                              />
+                            </div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Cập nhật:</span>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
+                                {formatDateTime(formData.updated_at || formData.created_at)}
+                              </span>
                             </div>
                           </div>
+                        </div>
+                        
+                        <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px dashed var(--color-border-light)' }}>
+                          {!showAddCustomField ? (
+                            <button
+                              type="button"
+                              className="btn outline sm"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600, padding: '4px 10px', borderRadius: '6px' }}
+                              onClick={() => setShowAddCustomField(true)}
+                            >
+                              <Plus size={14} /> Thêm trường custom
+                            </button>
+                          ) : (
+                            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <h5 style={{ margin: 0, fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>Thêm trường tùy chỉnh mới</h5>
+                              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                  <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Tên trường (Key)</label>
+                                  <input
+                                    type="text"
+                                    className="form-input sm"
+                                    placeholder="Ví dụ: Sở thích"
+                                    value={customFieldKey}
+                                    onChange={e => setCustomFieldKey(e.target.value)}
+                                    style={{ height: '32px', fontSize: '0.75rem', borderRadius: '6px' }}
+                                  />
+                                </div>
+                                <div style={{ flex: 1, minWidth: '150px' }}>
+                                  <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>Giá trị (Value)</label>
+                                  <input
+                                    type="text"
+                                    className="form-input sm"
+                                    placeholder="Ví dụ: Bóng đá"
+                                    value={customFieldValue}
+                                    onChange={e => setCustomFieldValue(e.target.value)}
+                                    style={{ height: '32px', fontSize: '0.75rem', borderRadius: '6px' }}
+                                  />
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px' }}>
+                                <button
+                                  type="button"
+                                  className="btn ghost sm"
+                                  style={{ fontSize: '0.75rem', height: '28px', padding: '0 8px' }}
+                                  onClick={() => {
+                                    setShowAddCustomField(false);
+                                    setCustomFieldKey('');
+                                    setCustomFieldValue('');
+                                  }}
+                                >
+                                  Hủy
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn primary sm"
+                                  style={{ fontSize: '0.75rem', height: '28px', padding: '0 10px', fontWeight: 600 }}
+                                  onClick={handleAddCustomField}
+                                >
+                                  Thêm
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
 
