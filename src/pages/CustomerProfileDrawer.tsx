@@ -1823,16 +1823,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       },
                       {
                         title: 'Giao dịch & Công việc',
-                        tabs: ['cooperation', 'tasks', 'docs', 'deals', 'quotes', 'invoices']
+                        tabs: ['cooperation', 'tasks', 'docs', 'deals', 'quotes', 'invoices', 'expenses']
                       },
                       {
                         title: 'Nghiệp vụ & Hỗ trợ',
-                        tabs: ['ttl1', 'expenses', 'tickets']
+                        tabs: ['ttl1', 'tickets']
                       }
                     ];
 
                     return tabGroups.map((group, groupIdx) => {
-                      const allowedTabs = TABS.filter(tab => group.tabs.includes(tab.id) && (currentUser?.role !== 'sale' || (tab.id !== 'quotes' && tab.id !== 'expenses')));
+                      const allowedTabs = TABS.filter(tab => group.tabs.includes(tab.id) && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
                       if (allowedTabs.length === 0) return null;
 
                       return (

@@ -75,7 +75,7 @@ class DealController {
         $companyId = $_GET['company_id'] ?? '';
 
         $where=['d.tenant_id=?', 'd.deleted_at IS NULL']; $params=[$tid];
-        if ($auth['role'] === 'sales') {
+        if (in_array($auth['role'], ['sales', 'sale'], true) && !$contactId && !$companyId) {
             $where[] = 'd.owner_id = ?';
             $params[] = $auth['user_id'];
         }
