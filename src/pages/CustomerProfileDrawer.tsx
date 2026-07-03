@@ -2550,8 +2550,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                       flex: 1,
-                                      pointerEvents: (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange) ? 'none' : 'auto',
-                                      opacity: (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected') ? 0.6 : 1
+                                      pointerEvents: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange)) ? 'none' : 'auto',
+                                      opacity: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected')) ? 0.6 : 1
                                     }}>
                                       <CustomSelect
                                         value={share.user_id}
@@ -2563,7 +2563,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         options={[
                                           { value: '', label: '-- Chọn nhân sự --' },
                                           ...salesUsers
-                                            .filter(u => String(u.id) !== String(currentUser?.consultant_id) && String(u.id) !== String(currentUser?.id))
+                                            .filter(u => {
+                                              if (idx === 0) return true;
+                                              return String(u.id) !== String(currentUser?.consultant_id) && String(u.id) !== String(currentUser?.id);
+                                            })
                                             .filter(u => {
                                               if (String(u.id) === String(share.user_id)) return true;
                                               return !coopShares.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(u.id));

@@ -48,6 +48,39 @@ interface SalesAccount {
   email: string;
 }
 
+function numberToVietnameseWords(num: number): string {
+  const units = ['', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+  if (num === 0) return 'Không phần trăm';
+  if (num === 100) return 'Một trăm phần trăm';
+  
+  let words = '';
+  const tens = Math.floor(num / 10);
+  const ones = num % 10;
+  
+  if (tens > 1) {
+    words += units[tens] + ' mươi';
+    if (ones === 1) {
+      words += ' mốt';
+    } else if (ones === 5) {
+      words += ' lăm';
+    } else if (ones > 0) {
+      words += ' ' + units[ones];
+    }
+  } else if (tens === 1) {
+    words += 'mười';
+    if (ones === 5) {
+      words += ' lăm';
+    } else if (ones > 0) {
+      words += ' ' + units[ones];
+    }
+  } else {
+    words += units[ones];
+  }
+  
+  const result = words.trim();
+  return (result.charAt(0).toUpperCase() + result.slice(1) + ' phần trăm').trim();
+}
+
 export default function CooperationSlipsPage() {
   const { addToast } = useUIStore();
   const { user } = useAuth();
@@ -883,35 +916,22 @@ export default function CooperationSlipsPage() {
             <div>
               <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>1. Đọc tài liệu đính kèm:</h3>
               {signingSlip.attachment_url ? (
-                <>
-                  {(signingSlip.attachment_url.toLowerCase().endsWith('.png') ||
-                    signingSlip.attachment_url.toLowerCase().endsWith('.jpg') ||
-                    signingSlip.attachment_url.toLowerCase().endsWith('.jpeg') ||
-                    signingSlip.attachment_url.toLowerCase().endsWith('.webp')) ? (
-                    <div style={{ textAlign: 'center', background: 'var(--color-bg-light)', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                      <img 
-                        src={`https://open.domation.net/richland/${signingSlip.attachment_url}`} 
-                        style={{ maxWidth: '100%', maxHeight: '240px', objectFit: 'contain' }} 
-                        alt="Tài liệu hợp tác" 
-                      />
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '1rem', background: 'rgba(163, 20, 34, 0.04)', borderRadius: '8px', border: '1px dashed var(--color-primary)' }}>
-                      <FileText size={24} color="var(--color-primary)" />
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontSize: '0.875rem', fontWeight: 700 }}>Tài liệu hợp tác đính kèm</p>
-                        <a 
-                          href={`https://open.domation.net/richland/${signingSlip.attachment_url}`} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                        >
-                          Bấm để tải về / Xem tài liệu ở tab mới
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                </>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                  <FileText size={24} style={{ color: 'var(--color-primary)' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {signingSlip.attachment_url.split('/').pop() || 'Tài liệu hợp tác đính kèm'}
+                    </p>
+                    <a 
+                      href={`https://open.domation.net/richland/${signingSlip.attachment_url}`} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
+                    >
+                      Bấm để mở xem tài liệu ở tab mới ↗
+                    </a>
+                  </div>
+                </div>
               ) : (
                 <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                   Phiếu hợp tác này không đính kèm tệp tài liệu bổ sung. Vui lòng kiểm tra tỷ lệ phân chia bên dưới.
@@ -920,17 +940,41 @@ export default function CooperationSlipsPage() {
             </div>
 
             {/* Shares info recap */}
-            <div style={{ background: 'var(--color-bg-light)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem' }}>
-              <strong>Tỷ lệ phân chia: </strong>
-              {signingSlip.shareholders.map((s, idx) => {
-                const sComm = ((Number(signingSlip.expected_commission) || Number(signingSlip.expected_revenue) || 0) * s.percentage) / 100;
-                return (
-                  <span key={s.user_id}>
-                    {s.name} ({s.percentage}% - {sComm.toLocaleString()} VND)
-                    {idx < signingSlip.shareholders.length - 1 ? ', ' : ''}
-                  </span>
-                );
-              })}
+            <div style={{ padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>Tỷ lệ phân chia của các thành viên:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {signingSlip.shareholders.map(sh => (
+                  <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        background: '#e0f2fe',
+                        color: '#0284c7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        border: '1px solid #bae6fd',
+                        flexShrink: 0
+                      }}>
+                        {getInitials(sh.name)}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{sh.name}</span>
+                        <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontStyle: 'italic', marginTop: '2px' }}>
+                          {numberToVietnameseWords(sh.percentage)}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                      {sh.percentage}%
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Signature Area */}
@@ -1084,7 +1128,7 @@ export default function CooperationSlipsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflow: 'visible' }}>
                 {sharesInput.map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', overflow: 'visible' }}>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, pointerEvents: idx === 0 ? 'none' : 'auto', opacity: idx === 0 ? 0.8 : 1 }}>
                       <CustomSelect
                         value={item.user_id}
                         onChange={val =>
@@ -1095,7 +1139,10 @@ export default function CooperationSlipsPage() {
                         options={[
                           { value: '', label: '-- Chọn nhân viên --' },
                           ...salesAccounts
-                            .filter(s => String(s.id) !== String(user?.consultant_id))
+                            .filter(s => {
+                              if (idx === 0) return true;
+                              return String(s.id) !== String(user?.consultant_id);
+                            })
                             .filter(s => {
                               if (String(s.id) === String(item.user_id)) return true;
                               return !sharesInput.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(s.id));
