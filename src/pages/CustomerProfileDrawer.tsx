@@ -2316,7 +2316,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                           {/* Status and summary */}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Trạng thái phiếu:</span>
                               <span className={`badge ${
                                 coopSlip.status === 'approved' ? 'success' : 
@@ -2327,6 +2327,45 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                  coopSlip.status === 'rejected' ? 'Bị từ chối' : 
                                  coopSlip.status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký xác nhận'}
                               </span>
+                              
+                              {coopSlip.status === 'pending_manager_approval' && isAdmin && (
+                                <div style={{ display: 'flex', gap: '8px', marginLeft: '12px' }}>
+                                  <button 
+                                    className="btn primary sm" 
+                                    onClick={async () => {
+                                      if (window.confirm('Bạn có chắc chắn muốn duyệt phiếu hợp tác này không?')) {
+                                        try {
+                                          await api.post(`/cooperation-slips/${coopSlip.id}/approve`);
+                                          addToast('Đã phê duyệt phiếu hợp tác thành công!', 'success');
+                                          await fetchCoopSlip();
+                                        } catch (err: any) {
+                                          addToast(err.response?.data?.message || 'Lỗi khi duyệt phiếu', 'error');
+                                        }
+                                      }
+                                    }}
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Check size={12} /> Duyệt
+                                  </button>
+                                  <button 
+                                    className="btn outline sm text-danger" 
+                                    onClick={async () => {
+                                      const reason = window.prompt('Nhập lý do từ chối phiếu hợp tác:');
+                                      if (reason === null) return;
+                                      try {
+                                        await api.post(`/cooperation-slips/${coopSlip.id}/reject`, { reason });
+                                        addToast('Đã từ chối phiếu hợp tác thành công!', 'success');
+                                        await fetchCoopSlip();
+                                      } catch (err: any) {
+                                        addToast(err.response?.data?.message || 'Lỗi khi từ chối phiếu', 'error');
+                                      }
+                                    }}
+                                    style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-danger)' }}
+                                  >
+                                    <X size={12} /> Từ chối
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)' }}>Phiên bản: {coopSlip.version}</span>
                           </div>
