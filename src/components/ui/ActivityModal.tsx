@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, AlignLeft, Phone, Mail, Users, CheckSquare, Zap } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
@@ -13,6 +13,7 @@ interface ActivityModalProps {
   entityId?: number;
   onSuccess?: () => void;
   userId?: number;
+  activity?: any; // If passed, we are in edit mode
 }
 
 const TYPES = [
@@ -23,7 +24,7 @@ const TYPES = [
   { id: 'note', label: 'Ghi chú', icon: <AlignLeft size={16} />, color: '#f59e0b' }
 ];
 
-export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess, userId }) => {
+export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess, userId, activity }) => {
   const { addToast } = useUIStore();
   const [formData, setFormData] = useState({
     type: 'task',
@@ -36,6 +37,20 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
   });
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        type: activity?.type || 'task',
+        subject: activity?.subject || '',
+        body: activity?.body || '',
+        due_date: activity?.due_date ? new Date(activity.due_date).toISOString().slice(0, 10) : '',
+        priority: activity?.priority || 'medium',
+        status: activity?.status || 'planned',
+        auto_trigger: false
+      });
+    }
+  }, [isOpen, activity]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,22 +59,27 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
     setLoading(true);
     
     try {
-      await api.post('/activities', {
-        ...formData,
-        related_type: entityType,
-        related_id: entityId,
-        user_id: userId
-      });
-      
-      if (formData.auto_trigger) {
-        addToast('Đã kích hoạt tự động hóa Workflow', 'success');
+      if (activity?.id) {
+        await api.put(`/activities/${activity.id}`, {
+          ...formData
+        });
+        addToast('Đã cập nhật hoạt động thành công', 'success');
+      } else {
+        await api.post('/activities', {
+          ...formData,
+          related_type: entityType,
+          related_id: entityId,
+          user_id: userId
+        });
+        if (formData.auto_trigger) {
+          addToast('Đã kích hoạt tự động hóa Workflow', 'success');
+        }
+        addToast('Đã thêm hoạt động mới', 'success');
       }
-      
-      addToast('Đã thêm hoạt động mới', 'success');
       if (onSuccess) onSuccess();
       onClose();
     } catch {
-      addToast('Lỗi khi thêm hoạt động', 'error');
+      addToast(activity?.id ? 'Lỗi khi cập nhật hoạt động' : 'Lỗi khi thêm hoạt động', 'error');
     } finally {
       setLoading(false);
     }

@@ -145,6 +145,10 @@ class ActivityController {
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'activity', $actId, json_encode(['subject' => $b['subject'], 'type' => $b['type']]));
 
+        if (!empty($b['auto_trigger'])) {
+            $this->triggerAutomationWorkflow($auth, $b);
+        }
+
         $this->show($auth,$actId);
     }
 
@@ -229,7 +233,7 @@ class ActivityController {
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
 
         // Check permission first
-        $check = $this->db->prepare("SELECT id, user_id, related_type, related_id FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
         $check->execute([$id, $auth['tenant_id']]);
         $activity = $check->fetch();
         if (!$activity) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
@@ -248,6 +252,25 @@ class ActivityController {
             }
             if (!$allowed) respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
         }
+
+        // Calculate edit history (cap at 3)
+        $history = json_decode($activity['edit_history'] ?? '[]', true);
+        if (!is_array($history)) {
+            $history = [];
+        }
+
+        $editRecord = [
+            'edited_by' => $auth['user_id'],
+            'edited_by_name' => $auth['username'] ?? ($auth['full_name'] ?? 'User'),
+            'edited_at' => date('Y-m-d H:i:s'),
+            'old_subject' => $activity['subject'],
+            'old_body' => $activity['body']
+        ];
+        array_unshift($history, $editRecord);
+        $history = array_slice($history, 0, 3);
+
+        $sets[] = "edit_history=?";
+        $params[] = json_encode($history);
 
         $params[]=$id;$params[]=$auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE activities SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
@@ -420,5 +443,55 @@ class ActivityController {
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE_COMMENT', 'activity_comment', $commentId);
         respond(200, null, 'Đã xóa bình luận thành công');
+    }
+
+
+
+    private function triggerAutomationWorkflow(array $auth, array $b): void {
+        $relType = $b['related_type'] ?? '';
+        $relId = (int)($b['related_id'] ?? 0);
+        if (!$relType || !$relId) return;
+
+        $contactId = null;
+        if ($relType === 'contact') {
+            $contactId = $relId;
+        } elseif ($relType === 'deal') {
+            $stmt = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+            $stmt->execute([$relId, $auth['tenant_id']]);
+            $contactId = $stmt->fetchColumn() ?: null;
+        }
+
+        if ($contactId) {
+            $stmtC = $this->db->prepare("SELECT email, first_name, last_name, lead_score, stage_id FROM contacts WHERE id = ? AND tenant_id = ?");
+            $stmtC->execute([$contactId, $auth['tenant_id']]);
+            $contact = $stmtC->fetch(PDO::FETCH_ASSOC);
+
+            if ($contact) {
+                if (!empty($contact['email'])) {
+                    try {
+                        require_once __DIR__ . '/../mailer.php';
+                        $emailSubj = "[AUTOMATION] Cập nhật hoạt động: " . $b['subject'];
+                        $emailBody = "<h3>Chào " . htmlspecialchars($contact['first_name'] . ' ' . ($contact['last_name'] ?? '')) . ",</h3>"
+                                   . "<p>Hệ thống ghi nhận hoạt động mới: <strong>" . htmlspecialchars($b['subject']) . "</strong></p>"
+                                   . "<p>Chúng tôi sẽ liên hệ với bạn trong thời gian sớm nhất.</p>";
+                        sendEmailNotification($contact['email'], $emailSubj, 'Hệ thống tự động', $emailBody);
+                    } catch (Throwable $e) {
+                        error_log("Automation Email Error: " . $e->getMessage());
+                    }
+                }
+
+                $newScore = (int)$contact['lead_score'] + 15;
+                $this->db->prepare("UPDATE contacts SET lead_score = ? WHERE id = ?")
+                     ->execute([$newScore, $contactId]);
+
+                if ((int)$contact['stage_id'] === 1 || empty($contact['stage_id'])) {
+                    $this->db->prepare("UPDATE contacts SET stage_id = 2, pipeline_status = 'quan_tam' WHERE id = ?")
+                         ->execute([$contactId]);
+                    
+                    logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', 'Tự động chuyển giai đoạn qua Automation Workflow', 'contact', $contactId);
+                    logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'contact', $contactId, json_encode(['stage_id' => 2, 'pipeline_status' => 'quan_tam', 'note' => 'Automation Workflow']));
+                }
+            }
+        }
     }
 }

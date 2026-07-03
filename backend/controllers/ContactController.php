@@ -8,7 +8,7 @@ class ContactController {
     public function index(array $auth): void {
         $tid    = $auth['tenant_id'];
         $page   = max(1, (int)($_GET['page']   ?? 1));
-        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $limit  = min(2000, max(10, (int)($_GET['limit']  ?? 20)));
         $offset = ($page - 1) * $limit;
         $search  = $_GET['search'] ?? '';
         $status  = $_GET['status'] ?? '';
@@ -438,6 +438,13 @@ class ContactController {
             }
         }
         
+        $newTtl1 = isset($b['ttl1_completed']) ? (int)$b['ttl1_completed'] : null;
+        if ($newTtl1 !== null && $newTtl1 !== $currTtl1) {
+            $ttl1Msg = $newTtl1 === 1 ? "Khách hàng đã được xác minh đạt đủ điều kiện gặp (TTL1)." : "Khách hàng bị hủy xác minh điều kiện gặp (TTL1).";
+            logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xác minh TTL1', $ttl1Msg, 'contact', $id);
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_TTL1', 'contact', $id, json_encode(['ttl1_completed' => $newTtl1]));
+        }
+
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
         }
@@ -501,6 +508,7 @@ class ContactController {
 
         $note = $b['note'] ?? "Khách hàng đã được chuyển trạng thái.";
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'contact', $id, json_encode(['stage_id' => $stageId, 'pipeline_status' => $newStatus, 'note' => $note]));
         respond(200, null, 'Đã cập nhật stage thành công');
     }
 

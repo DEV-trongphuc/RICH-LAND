@@ -76,7 +76,7 @@ export const ReportsPage: React.FC = () => {
         return {
           month: label,
           revenue: Math.round(BASE * factor),
-          target: Math.round(BASE * (0.7 + (i / 7) * 0.6)),
+          cost: Math.round(BASE * (0.3 + (i / 7) * 0.2)),
         };
       });
 
@@ -303,7 +303,7 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+      <div className="segmented-tab-container" style={{ marginBottom: '1.5rem' }}>
         {[
           ['sales', 'Doanh thu'], 
           ['pipeline', 'Pipeline'], 
@@ -312,8 +312,11 @@ export const ReportsPage: React.FC = () => {
           ['expenses', 'Chi phí'], 
           ['activities', 'Hoạt động']
         ].map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k as any)}
-            style={{ padding: '0.625rem 1.25rem', fontWeight: 600, fontSize: '0.9rem', color: tab === k ? 'var(--color-primary)' : 'var(--color-text-light)', borderBottom: tab === k ? '2px solid var(--color-primary)' : '2px solid transparent', marginBottom: '-2px', cursor: 'pointer', transition: 'color 0.2s', background: 'transparent', border: 'none' }}>
+          <button 
+            key={k} 
+            onClick={() => setTab(k as any)}
+            className={`segmented-tab-btn ${tab === k ? 'active' : ''}`}
+          >
             {l}
           </button>
         ))}
@@ -362,8 +365,8 @@ export const ReportsPage: React.FC = () => {
 
           {/* Revenue chart */}
           <div className="card" style={{ padding: '1rem' }}>
-            <h3 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Doanh thu vs Mục tiêu</h3>
-            <p className="text-xs text-light mb-4">So sánh doanh thu thực tế với chỉ tiêu — 9 tháng gần nhất</p>
+            <h3 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Doanh thu vs Chi phí</h3>
+            <p className="text-xs text-light mb-4">So sánh doanh thu thực tế với chi phí vận hành</p>
             {loading ? (
               <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: '1.25rem', padding: '1rem' }}>
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={`${((i * 13) % 40) + 40}%`} width="100%" />)}
@@ -374,11 +377,11 @@ export const ReportsPage: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
                   <YAxis tickFormatter={FMT} tick={{ fontSize: 9, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={36} />
-                  <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Mục tiêu']}
+                  <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']}
                     contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
                   <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', marginTop: '6px' }} />
                   <Bar dataKey="revenue" name="Doanh thu" fill="#a31422" radius={[4, 4, 0, 0]} maxBarSize={12} />
-                  <Bar dataKey="target" name="Mục tiêu" fill="var(--color-border-light)" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                  <Bar dataKey="cost" name="Chi phí" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             )}

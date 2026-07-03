@@ -60,6 +60,7 @@ class CloudFileController {
     }
 
     public function store(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
         if (empty($_FILES['file'])) respond(422, null, 'Vui lòng chọn tệp tin để tải lên', false);
         
         $file = $_FILES['file'];
@@ -145,6 +146,7 @@ class CloudFileController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
         $tid = $auth['tenant_id'];
         
         // 1. Get file details first

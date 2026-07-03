@@ -2186,7 +2186,7 @@ switch ($action) {
         // 6. Query active consultants list if user is admin
         $consultantsList = [];
         if (!$isSale) {
-            $resC = $conn->query("SELECT id, name, email, avatar, user_id FROM consultants WHERE status = 'active' ORDER BY name ASC");
+            $resC = $conn->query("SELECT c.id, c.name, c.email, c.avatar, u.id AS user_id FROM consultants c LEFT JOIN users u ON c.email = u.email WHERE c.status = 'active' ORDER BY c.name ASC");
             if ($resC) {
                 while ($row = $resC->fetch_assoc()) {
                     $consultantsList[] = $row;

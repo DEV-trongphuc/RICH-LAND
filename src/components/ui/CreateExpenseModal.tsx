@@ -9,6 +9,7 @@ import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 import { Avatar } from './Avatar';
 import { numberToVietnameseText } from '../../utils/numberToText';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Props {
   isOpen: boolean;
@@ -30,6 +31,8 @@ const CATEGORIES = [
 
 export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEntity, onSuccess }) => {
   const { addToast } = useUIStore();
+  const { user: currentUser } = useAuth();
+  const isViewer = currentUser?.role === 'viewer';
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
@@ -192,6 +195,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
 
           {/* Body */}
           <div className="modal-body" style={{ gap: '1.25rem' }}>
+            <fieldset disabled={isViewer} style={{ border: 'none', padding: 0, margin: 0, width: '100%', display: 'contents' }}>
 
             {/* Title */}
             <div className="form-group">
@@ -486,7 +490,8 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                 value={formData.notes}
                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
               />
-            </div>
+             </div>
+            </fieldset>
           </div>
 
           {/* Footer */}
@@ -495,10 +500,10 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
             <button
               className="btn primary"
               onClick={handleSubmit}
-              disabled={loading}
-              style={{ minWidth: '160px' }}
+              disabled={loading || isViewer}
+              style={{ minWidth: '160px', background: isViewer ? 'var(--color-border)' : 'var(--color-primary)', color: isViewer ? 'var(--color-text-muted)' : 'white' }}
             >
-              {loading ? 'Đang lưu...' : '✓ Gửi phê duyệt'}
+              {loading ? 'Đang lưu...' : (isViewer ? 'Bạn không có quyền gửi chi phí' : '✓ Gửi phê duyệt')}
             </button>
           </div>
         </motion.div>

@@ -1571,6 +1571,11 @@ try {
         $conn->query("ALTER TABLE activities ADD COLUMN approval_status VARCHAR(50) NULL DEFAULT NULL AFTER approver_id");
         $logMsg("Đã thêm cột approval_status cho activities", "success");
     }
+    $chkActLink = $conn->query("SHOW COLUMNS FROM activities LIKE 'link'");
+    if ($chkActLink && $chkActLink->num_rows === 0) {
+        $conn->query("ALTER TABLE activities ADD COLUMN link VARCHAR(255) NULL DEFAULT NULL AFTER approval_status");
+        $logMsg("Đã thêm cột link cho activities", "success");
+    }
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");
@@ -1779,7 +1784,45 @@ try {
 
 
 
-    $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '154') ON DUPLICATE KEY UPDATE setting_value = '154'");
+        $safeAddIndex = function($conn, $table, $indexName, $columnsSql) use ($logMsg) {
+            $check = $conn->query("SHOW INDEX FROM `$table` WHERE Key_name = '$indexName'");
+            if ($check && $check->num_rows === 0) {
+                $conn->query("ALTER TABLE `$table` ADD INDEX `$indexName` ($columnsSql)");
+                $logMsg("Đã tạo INDEX $indexName trên bảng $table", "success");
+            }
+        };
+
+        $safeAddIndex($conn, 'contacts', 'idx_contacts_phone', 'phone');
+        $safeAddIndex($conn, 'contacts', 'idx_contacts_mobile', 'mobile');
+        $safeAddIndex($conn, 'contacts', 'idx_contacts_email', 'email');
+        $safeAddIndex($conn, 'contacts', 'idx_contacts_deleted_at', 'deleted_at');
+        $safeAddIndex($conn, 'persons', 'idx_persons_is_public', 'is_public');
+        $safeAddIndex($conn, 'persons', 'idx_persons_released_to_kho', 'released_to_kho_at');
+        $safeAddIndex($conn, 'distribution_logs', 'idx_dist_logs_lead_id', 'lead_id');
+        $safeAddIndex($conn, 'distribution_logs', 'idx_dist_logs_assigned_to', 'assigned_to');
+        $safeAddIndex($conn, 'distribution_logs', 'idx_dist_logs_status', 'status');
+        $safeAddIndex($conn, 'data_reports', 'idx_data_reports_lead_id', 'lead_id');
+        $safeAddIndex($conn, 'data_reports', 'idx_data_reports_status', 'status');
+        $safeAddIndex($conn, 'leads', 'idx_leads_email', 'email');
+        $safeAddIndex($conn, 'leads', 'idx_leads_created_at', 'created_at');
+
+        // Self-healing check: ensure edit_history exists in notes
+        $chkNoteEditHistory = $conn->query("SHOW COLUMNS FROM notes LIKE 'edit_history'");
+        if ($chkNoteEditHistory && $chkNoteEditHistory->num_rows === 0) {
+            $conn->query("ALTER TABLE notes ADD COLUMN edit_history LONGTEXT NULL DEFAULT NULL");
+            $logMsg("Đã thêm cột edit_history cho notes", "success");
+        }
+
+        // Self-healing check: ensure edit_history exists in activities
+        $chkActEditHistory = $conn->query("SHOW COLUMNS FROM activities LIKE 'edit_history'");
+        if ($chkActEditHistory && $chkActEditHistory->num_rows === 0) {
+            $conn->query("ALTER TABLE activities ADD COLUMN edit_history LONGTEXT NULL DEFAULT NULL");
+            $logMsg("Đã thêm cột edit_history cho activities", "success");
+        }
+
+        $logMsg("Hoàn thành tự tạo các INDEX hiệu năng.", "success");
+
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '154') ON DUPLICATE KEY UPDATE setting_value = '154'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 

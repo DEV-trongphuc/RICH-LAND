@@ -8,6 +8,7 @@ import {
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 import { numberToText } from '../../utils/numberToText';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Product {
   id: number;
@@ -48,6 +49,8 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
   isOpen, onClose, quote, onSuccess, initialContact 
 }) => {
   const { addToast } = useUIStore();
+  const { user: currentUser } = useAuth();
+  const isViewer = currentUser?.role === 'viewer';
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -249,6 +252,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
           </div>
 
           <div className="modal-body" style={{ background: 'var(--color-bg)', padding: '1.5rem 2rem 4rem', flex: 1, overflowY: 'auto' }}>
+            <fieldset disabled={isViewer} style={{ border: 'none', padding: 0, margin: 0, width: '100%', display: 'contents' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
               
               {/* Left Column */}
@@ -767,17 +771,18 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                 </div>
               </div>
             </div>
+            </fieldset>
           </div>
 
           <div className="modal-footer">
              <button className="btn ghost font-bold text-muted" onClick={onClose}>Hủy bỏ</button>
              <button 
                className="btn primary" 
-               style={{ minWidth: '220px', boxShadow: '0 10px 20px -5px rgba(163, 20, 34, 0.4)' }}
+               style={{ minWidth: '220px', boxShadow: isViewer ? 'none' : '0 10px 20px -5px rgba(163, 20, 34, 0.4)', background: isViewer ? 'var(--color-border)' : 'var(--color-primary)', color: isViewer ? 'var(--color-text-muted)' : 'white' }}
                onClick={handleSave}
-               disabled={loading}
+               disabled={loading || isViewer}
              >
-               {loading ? <Loader2 className="animate-spin" /> : (quote ? 'Cập nhật thay đổi' : 'Xác nhận & Lưu báo giá')}
+               {loading ? <Loader2 className="animate-spin" /> : (isViewer ? 'Bạn không có quyền chỉnh sửa' : (quote ? 'Cập nhật thay đổi' : 'Xác nhận & Lưu báo giá'))}
              </button>
           </div>
         </motion.div>

@@ -140,8 +140,32 @@ class NoteController {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật ghi chú', false);
         $b = getBody();
         if (empty($b['body'])) respond(422, null, 'Nội dung là bắt buộc', false);
-        $this->db->prepare("UPDATE notes SET body=?, is_pinned=?, updated_at=NOW() WHERE id=? AND user_id=? AND tenant_id=?")
-            ->execute([$b['body'], $b['is_pinned'] ?? 0, $id, $auth['user_id'], $auth['tenant_id']]);
+
+        $stmt = $this->db->prepare("SELECT * FROM notes WHERE id = ? AND tenant_id = ? FOR UPDATE");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $oldNote = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$oldNote) respond(404, null, 'Không tìm thấy ghi chú', false);
+
+        if (!in_array($auth['role'], ['admin', 'manager', 'superadmin', 'super_admin'], true) && (int)$oldNote['user_id'] !== (int)$auth['user_id']) {
+            respond(403, null, 'Bạn không có quyền cập nhật ghi chú này', false);
+        }
+
+        $history = json_decode($oldNote['edit_history'] ?? '[]', true);
+        if (!is_array($history)) {
+            $history = [];
+        }
+
+        $editRecord = [
+            'edited_by' => $auth['user_id'],
+            'edited_by_name' => $auth['username'] ?? ($auth['full_name'] ?? 'User'),
+            'edited_at' => date('Y-m-d H:i:s'),
+            'old_body' => $oldNote['body']
+        ];
+        array_unshift($history, $editRecord);
+        $history = array_slice($history, 0, 3);
+
+        $this->db->prepare("UPDATE notes SET body=?, is_pinned=?, edit_history=?, updated_at=NOW() WHERE id=? AND tenant_id=?")
+            ->execute([$b['body'], $b['is_pinned'] ?? 0, json_encode($history), $id, $auth['tenant_id']]);
         respond(200, null, 'Đã cập nhật ghi chú');
     }
 

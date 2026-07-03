@@ -55,6 +55,7 @@ class DepositController {
     }
 
     public function store(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
         $b = getBody();
         $contactId = (int)($b['contact_id'] ?? 0);
         $projectId = (int)($b['project_id'] ?? 0);
@@ -126,6 +127,7 @@ class DepositController {
     }
 
     public function uploadUnc(array $auth, int $id, int $milestoneId): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
         if (empty($_FILES['file'])) {
             respond(400, null, 'Không tìm thấy file ủy nhiệm chi (UNC) tải lên', false);
         }

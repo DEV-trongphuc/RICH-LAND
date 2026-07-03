@@ -8,7 +8,7 @@ class CompanyController {
     public function index(array $auth): void {
         $tid    = $auth['tenant_id'];
         $page   = max(1,(int)($_GET['page'] ?? 1));
-        $limit  = min(100, max(10,(int)($_GET['limit'] ?? 20)));
+        $limit  = min(2000, max(10,(int)($_GET['limit'] ?? 20)));
         $offset = ($page - 1) * $limit;
         $search = $_GET['search'] ?? '';
         $status = $_GET['status'] ?? '';
@@ -203,6 +203,7 @@ class CompanyController {
         
         $note = $b['note'] ?? "Công ty đã được chuyển trạng thái.";
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'company', $id);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'company', $id, json_encode(['stage_id' => $b['stage_id'], 'note' => $note]));
         respond(200, null, 'Đã cập nhật stage thành công');
     }
 

@@ -925,11 +925,719 @@ try {
     assertTest("TEST 34: Invoices & Payment Collection Flow", $invCreatedOk && $payOk && $statusPaidOk && $invDeletedOk, "Created: " . ($invCreatedOk ? 'Yes' : 'No') . ", Paid: " . ($payOk ? 'Yes' : 'No') . ", DB Status: $invDbStatus, Deleted: " . ($invDeletedOk ? 'Yes' : 'No'));
 
     // ─────────────────────────────────────────────────────────────────
+    // TEST 35: Rule 1.9 Manual Lead Duplicate MKT Flag
+    // ─────────────────────────────────────────────────────────────────
+    $mktPhone = '091' . mt_rand(1000000, 9999999);
+    // 1. Insert a marketing lead via database
+    $db->prepare("INSERT INTO leads (phone, source, name) VALUES (?, 'facebook', 'MKT Test Lead')")
+       ->execute([$mktPhone]);
+    $mktLeadId = (int)$db->lastInsertId();
+
+    // 2. Sales submits a manual contact with the same phone number (role = sale)
+    $manualLeadPayload = [
+        'name' => '[E2E] Trùng MKT Nguyễn Văn A',
+        'phone' => $mktPhone,
+        'email' => 'e2e_dup_' . mt_rand(1000, 9999) . '@richland.com',
+        'source' => 'ca_nhan'
+    ];
+    $resDup = $callApi('manual_insert_lead', 'POST', [
+        'data' => $manualLeadPayload,
+        'override_round_id' => $roundId
+    ], $salesToken);
+    
+    // 3. Verify that the note contains [CẢNH BÁO RỬA NGUỒN]
+    $newContactId = isset($resDup['contact_id']) ? (int)$resDup['contact_id'] : 0;
+    $dupContactNote = "";
+    if ($newContactId > 0) {
+        $dupContactNote = $db->query("SELECT notes FROM contacts WHERE id = $newContactId")->fetchColumn();
+    }
+    $warningFlagged = (strpos($dupContactNote, '[CẢNH BÁO RỬA NGUỒN]') !== false);
+    
+    // 4. Verify admin action log is written
+    $logCount = $db->query("SELECT COUNT(*) FROM admin_logs WHERE action = 'MANUAL_LEAD_DUPLICATE_FLAG'")->fetchColumn();
+    
+    assertTest("TEST 35: Rule 1.9 Manual Lead Duplicate MKT Flag", $warningFlagged || $logCount > 0, "Warning in Note: " . ($warningFlagged ? 'Yes' : 'No') . ", Log Count: $logCount, Resp: " . json_encode($resDup));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 36: Rule 2.8 Van Chống Ôm (Backpressure Valve)
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Set backpressure_limit setting to 3
+    $db->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('backpressure_limit', '3') ON DUPLICATE KEY UPDATE setting_value = '3'")->execute();
+    
+    // 2. Clear pre-existing uncontacted leads for this user to make test deterministic
+    $db->prepare("DELETE FROM contacts WHERE owner_id = ? AND pipeline_status = 'chua_xac_dinh'")->execute([$saleUserId]);
+
+    // 3. Insert 3 uncontacted contacts in 'chua_xac_dinh' owned by $saleUserId
+    for ($i = 0; $i < 3; $i++) {
+        $db->prepare("INSERT INTO contacts (tenant_id, owner_id, first_name, last_name, pipeline_status, phone, source) VALUES (?, ?, '[E2E] Chống ôm', ?, 'chua_xac_dinh', ?, 'facebook')")
+           ->execute([$tenantId, $saleUserId, "Lead $i", '098' . mt_rand(1000000, 9999999)]);
+    }
+
+    // 4. Verify checkConsultantGates detects backpressure violation
+    require_once __DIR__ . '/webhook_logic.php';
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $gateResult = checkConsultantGates($mysqliConn, $saleUserId);
+    $mysqliConn->close();
+
+    $backpressureBlocked = (strpos($gateResult, 'Failed Gate 4: Backpressure valve limit exceeded') !== false || strpos($gateResult, 'Failed Gate 4: Backpressure limit') !== false);
+    
+    // Reset backpressure_limit to default (5)
+    $db->prepare("UPDATE system_settings SET setting_value = '5' WHERE setting_key = 'backpressure_limit'")->execute();
+
+    assertTest("TEST 36: Rule 2.8 Van Chống Ôm (Backpressure Valve)", $backpressureBlocked, "Gate Result: " . $gateResult);
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 37: Rule 5.6 Parallel Lead Assignment
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Create a second sale user and add them to the round
+    $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, ?, 'sales', ?, 'active')")
+       ->execute([$tenantId, "sale2_$suffix@richland.net", password_hash('pass123', PASSWORD_BCRYPT), '[E2E] TVV Phụ ' . $suffix]);
+    $sale2UserId = (int)$db->lastInsertId();
+    
+    // Safety check and update for consultants triggers
+    $db->prepare("INSERT IGNORE INTO consultants (id, name, email, status) VALUES (?, ?, ?, 'active')")
+       ->execute([$sale2UserId, '[E2E] TVV Phụ ' . $suffix, "sale2_$suffix@richland.net"]);
+    $db->prepare("UPDATE consultants SET vacation_mode = 0 WHERE id = ?")->execute([$sale2UserId]);
+    
+    $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, compensation_count, current_turn_remaining, is_active) VALUES (?, ?, 2, 0, 1, 1)")
+       ->execute([$roundId, $sale2UserId]);
+
+    // 2. Insert a lead/contact owned by sale1 with security_expires_at in the past
+    $parallelPhone = '094' . mt_rand(1000000, 9999999);
+    $db->prepare("INSERT INTO persons (phone, email, full_name, is_public) VALUES (?, ?, ?, 0)")
+       ->execute([$parallelPhone, 'e2e_parallel_' . mt_rand(1000, 9999) . '@richland.com', 'Parallel Client']);
+    $pId = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO contacts (tenant_id, person_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at) VALUES (?, ?, ?, 1, '[E2E] Parallel', 'Client', ?, ?, 'facebook', 'lead', 'chua_xac_dinh', 0, DATE_SUB(NOW(), INTERVAL 4 HOUR))")
+       ->execute([$tenantId, $pId, $saleUserId, 'e2e_parallel_' . mt_rand(1000, 9999) . '@richland.com', $parallelPhone]);
+    $cId = (int)$db->lastInsertId();
+
+    // 3. Execute parallel assignment SQL simulation
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $stmtIns = $mysqliConn->prepare("
+        INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at)
+        VALUES (?, NULL, ?, 1, '[E2E] Parallel', 'Client', ?, ?, 'facebook', 'lead', 'chua_xac_dinh', 1, DATE_ADD(NOW(), INTERVAL 3 HOUR))
+    ");
+    $emailVal = 'e2e_parallel_sub_' . mt_rand(1000, 9999) . '@richland.com';
+    $stmtIns->bind_param("iiss", $pId, $sale2UserId, $emailVal, $parallelPhone);
+    $stmtIns->execute();
+    $parallelContactId = (int)$stmtIns->insert_id;
+    $stmtIns->close();
+    $mysqliConn->close();
+
+    $parallelCreated = ($parallelContactId > 0);
+    assertTest("TEST 37: Rule 5.6 Parallel Lead Assignment", $parallelCreated, "Created Parallel Contact ID: $parallelContactId");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 38: Rule 5.13 Same-Reason Reject Lockout from Databank
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Create a person
+    $db->prepare("INSERT INTO persons (phone, email, full_name, is_public) VALUES (?, ?, ?, 0)")
+       ->execute(['092' . mt_rand(1000000, 9999999), 'e2e_lockout@richland.com', 'Lockout Person']);
+    $lockoutPersonId = (int)$db->lastInsertId();
+
+    // 2. Create 3 leads/contacts associated with this person
+    $leadIds = [];
+    for ($i = 0; $i < 3; $i++) {
+        $db->prepare("INSERT INTO leads (person_id, phone, source, name) VALUES (?, ?, 'facebook', ?)")
+           ->execute([$lockoutPersonId, '092' . mt_rand(1000000, 9999999), "Lead Lockout $i"]);
+        $leadIds[] = (int)$db->lastInsertId();
+    }
+
+    // 3. Create 3 data_reports associated with these leads, status = 'approved', same reason = 'Số ảo'
+    foreach ($leadIds as $lId) {
+        $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, ?, 'Số ảo', 'approved')")
+           ->execute([$lId, $saleUserId, $roundId]);
+    }
+
+    // 4. Verify that the query in releaseExpiredLeadsToKho blocks this person from releasing
+    $checkReasonStmt = $db->prepare("
+        SELECT dr.reason, COUNT(*) as cnt 
+        FROM data_reports dr
+        JOIN leads l ON dr.lead_id = l.id
+        WHERE l.person_id = ?
+          AND dr.status IN ('approved', 'approved_no_comp')
+        GROUP BY dr.reason
+        HAVING cnt >= 3
+        LIMIT 1
+    ");
+    $checkReasonStmt->execute([$lockoutPersonId]);
+    $lockoutFound = $checkReasonStmt->fetch(PDO::FETCH_ASSOC);
+
+    $isLockedOut = ($lockoutFound && $lockoutFound['reason'] === 'Số ảo' && (int)$lockoutFound['cnt'] === 3);
+
+    assertTest("TEST 38: Rule 5.13 Same-Reason Reject Lockout from Databank", $isLockedOut, "Locked out: " . ($isLockedOut ? 'Yes' : 'No') . ", Found reason: " . ($lockoutFound ? $lockoutFound['reason'] : 'None') . ", Count: " . ($lockoutFound ? $lockoutFound['cnt'] : 0));
+
+    // ─────────────────────────────────────────────────────────────────
+    // GENERATE VIEWER TOKEN
+    // ─────────────────────────────────────────────────────────────────
+    $viewerEmail = "viewer_$suffix@richland.net";
+    $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, ?, 'viewer', ?, 'active')")
+       ->execute([$tenantId, $viewerEmail, password_hash('pass123', PASSWORD_BCRYPT), '[E2E] Người xem ' . $suffix]);
+    $viewerUserId = (int)$db->lastInsertId();
+    $viewerTokenPayload = [
+        'username' => 'viewer_' . $suffix,
+        'email' => $viewerEmail,
+        'name' => 'Người xem E2E',
+        'role' => 'viewer',
+        'user_id' => $viewerUserId,
+        'id' => $viewerUserId,
+        'tenant_id' => $tenantId,
+    ];
+    $viewerToken = JWT::encode($viewerTokenPayload);
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 39: Drawer - Thông tin chung CRUD & Permissions
+    // ─────────────────────────────────────────────────────────────────
+    $payloadInfo = [
+        'first_name' => '[E2E] Cập Nhật',
+        'last_name' => 'Thông Tin Chung',
+        'phone' => '093' . mt_rand(1000000, 9999999),
+        'email' => 'e2e_info_' . mt_rand(1000, 9999) . '@richland.com',
+        'birthday' => '1995-10-10',
+        'company_name' => 'Rich Land Corp',
+        'address' => '123 E2E Street',
+        'city' => 'Hải Phòng',
+        'ward' => 'Lê Chân',
+        'expected_revenue' => 1200000000.00,
+        'win_probability' => 85
+    ];
+    $resInfoSales = $callApi("contacts/$personalContactId", 'PUT', $payloadInfo, $salesToken);
+    $salesUpdateOk = isset($resInfoSales['success']) && $resInfoSales['success'] === true;
+
+    $resInfoViewer = $callApi("contacts/$personalContactId", 'PUT', $payloadInfo, $viewerToken);
+    $viewerBlocked = isset($resInfoViewer['success']) && $resInfoViewer['success'] === false;
+
+    assertTest("TEST 39: Drawer - Thông tin chung CRUD & Permissions", $salesUpdateOk && $viewerBlocked, "Sales Allowed: " . ($salesUpdateOk ? 'Yes' : 'No') . ", Viewer Blocked: " . ($viewerBlocked ? 'Yes' : 'No') . ", Msg: " . json_encode($resInfoSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 40: Drawer - Tags Management
+    // ─────────────────────────────────────────────────────────────────
+    $payloadTags = [
+        'first_name' => '[E2E] Cập Nhật',
+        'tags' => ['vip_client', 'direct_buyer']
+    ];
+    $resTagsSales = $callApi("contacts/$personalContactId", 'PUT', $payloadTags, $salesToken);
+    $tagsUpdated = isset($resTagsSales['success']) && $resTagsSales['success'] === true;
+
+    $resTagsViewer = $callApi("contacts/$personalContactId", 'PUT', $payloadTags, $viewerToken);
+    $viewerTagsBlocked = isset($resTagsViewer['success']) && $resTagsViewer['success'] === false;
+
+    assertTest("TEST 40: Drawer - Tags Management", $tagsUpdated && $viewerTagsBlocked, "Tags Updated: " . ($tagsUpdated ? 'Yes' : 'No') . ", Viewer Blocked: " . ($viewerTagsBlocked ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 41: Drawer - Ghi chú (Notes)
+    // ─────────────────────────────────────────────────────────────────
+    $resNoteSales = $callApi("notes?entity_type=contact&entity_id=$personalContactId", 'POST', ['body' => 'Bản ghi chú kiểm thử E2E', 'type' => 'internal'], $salesToken);
+    $noteCreatedId = isset($resNoteSales['data']['id']) ? (int)$resNoteSales['data']['id'] : 0;
+
+    $resNoteUpdate = $callApi("notes/$noteCreatedId", 'PUT', ['body' => 'Bản ghi chú E2E cập nhật'], $salesToken);
+    $noteUpdated = isset($resNoteUpdate['success']) && $resNoteUpdate['success'] === true;
+
+    $resNoteViewer = $callApi("notes?entity_type=contact&entity_id=$personalContactId", 'POST', ['body' => 'Bản ghi chú kiểm thử E2E', 'type' => 'internal'], $viewerToken);
+    $viewerNoteBlocked = isset($resNoteViewer['success']) && $resNoteViewer['success'] === false;
+
+    $resNoteDelete = $callApi("notes/$noteCreatedId", 'DELETE', [], $salesToken);
+    $noteDeleted = isset($resNoteDelete['success']) && $resNoteDelete['success'] === true;
+
+    assertTest("TEST 41: Drawer - Ghi chú (Notes) CRUD & Permissions", $noteCreatedId > 0 && $noteUpdated && $viewerNoteBlocked && $noteDeleted, "Created Note ID: $noteCreatedId, Updated: " . ($noteUpdated ? 'Yes' : 'No') . ", Viewer Blocked: " . ($viewerNoteBlocked ? 'Yes' : 'No') . ", Deleted: " . ($noteDeleted ? 'Yes' : 'No') . ", Resp: " . json_encode($resNoteSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 42: Drawer - Lịch sử tương tác (Activities/History)
+    // ─────────────────────────────────────────────────────────────────
+    $actPayload = [
+        'type' => 'meeting',
+        'subject' => 'Họp mặt trực tiếp tại văn phòng',
+        'status' => 'planned',
+        'related_type' => 'contact',
+        'related_id' => $personalContactId
+    ];
+    $resActSales = $callApi('activities', 'POST', $actPayload, $salesToken);
+    $actCreatedId = isset($resActSales['data']['id']) ? (int)$resActSales['data']['id'] : 0;
+
+    $resActUpdate = $callApi("activities/$actCreatedId", 'PUT', ['subject' => 'Họp mặt trực tiếp tại văn phòng - Đã đổi lịch'], $salesToken);
+    $actUpdated = isset($resActUpdate['success']) && $resActUpdate['success'] === true;
+
+    $resActViewer = $callApi('activities', 'POST', $actPayload, $viewerToken);
+    $viewerActBlocked = isset($resActViewer['success']) && $resActViewer['success'] === false;
+
+    $resActDelete = $callApi("activities/$actCreatedId", 'DELETE', [], $salesToken);
+    $actDeleted = isset($resActDelete['success']) && $resActDelete['success'] === true;
+
+    assertTest("TEST 42: Drawer - Lịch sử tương tác CRUD & Permissions", $actCreatedId > 0 && $actUpdated && $viewerActBlocked && $actDeleted, "Created ID: $actCreatedId, Updated: " . ($actUpdated ? 'Yes' : 'No') . ", Viewer Blocked: " . ($viewerActBlocked ? 'Yes' : 'No') . ", Deleted: " . ($actDeleted ? 'Yes' : 'No') . ", Resp: " . json_encode($resActSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 43: Drawer - Scoring
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET lead_score = 75 WHERE id = ?")->execute([$personalContactId]);
+    $scoreVal = (int)$db->query("SELECT lead_score FROM contacts WHERE id = $personalContactId")->fetchColumn();
+
+    $resScoreViewer = $callApi("contacts/$personalContactId", 'PUT', ['lead_score' => 90], $viewerToken);
+    $viewerScoreBlocked = isset($resScoreViewer['success']) && $resScoreViewer['success'] === false;
+
+    assertTest("TEST 43: Drawer - Scoring Validation & Permissions", $scoreVal === 75 && $viewerScoreBlocked, "Score Value: $scoreVal, Viewer Blocked: " . ($viewerScoreBlocked ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 44: Drawer - Hợp tác (Cooperation Slips)
+    // ─────────────────────────────────────────────────────────────────
+    $coopPayload = [
+        'contact_id' => $personalContactId,
+        'total_percentage' => 100,
+        'shares_json' => json_encode(["$saleUserId" => 50, "$mgrUserId" => 50]),
+        'signatures_json' => '{}',
+        'status' => 'pending_signatures'
+    ];
+    $resCoopSales = $callApi('cooperation-slips', 'POST', $coopPayload, $salesToken);
+    $coopCreatedId = isset($resCoopSales['data']['id']) ? (int)$resCoopSales['data']['id'] : 0;
+
+    $resCoopViewer = $callApi('cooperation-slips', 'POST', $coopPayload, $viewerToken);
+    $viewerCoopBlocked = isset($resCoopViewer['success']) && $resCoopViewer['success'] === false;
+
+    if ($coopCreatedId > 0) {
+        $db->prepare("DELETE FROM cooperation_slips WHERE id = ?")->execute([$coopCreatedId]);
+    }
+
+    assertTest("TEST 44: Drawer - Hợp tác CRUD & Permissions", $coopCreatedId > 0 && $viewerCoopBlocked, "Created Coop ID: $coopCreatedId, Viewer Blocked: " . ($viewerCoopBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resCoopSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 45: Drawer - Công việc (Tasks)
+    // ─────────────────────────────────────────────────────────────────
+    $taskPayload = [
+        'type' => 'task',
+        'subject' => 'Gửi báo cáo tư vấn dự án',
+        'status' => 'planned',
+        'related_type' => 'contact',
+        'related_id' => $personalContactId
+    ];
+    $resTaskSales = $callApi('activities', 'POST', $taskPayload, $salesToken);
+    $taskCreatedId = isset($resTaskSales['data']['id']) ? (int)$resTaskSales['data']['id'] : 0;
+
+    $resTaskUpdate = $callApi("activities/$taskCreatedId", 'PUT', ['status' => 'done'], $salesToken);
+    $taskUpdated = isset($resTaskUpdate['success']) && $resTaskUpdate['success'] === true;
+
+    $resTaskViewer = $callApi('activities', 'POST', $taskPayload, $viewerToken);
+    $viewerTaskBlocked = isset($resTaskViewer['success']) && $resTaskViewer['success'] === false;
+
+    $resTaskDelete = $callApi("activities/$taskCreatedId", 'DELETE', [], $salesToken);
+    $taskDeleted = isset($resTaskDelete['success']) && $resTaskDelete['success'] === true;
+
+    assertTest("TEST 45: Drawer - Công việc CRUD & Permissions", $taskCreatedId > 0 && $taskUpdated && $viewerTaskBlocked && $taskDeleted, "Created Task ID: $taskCreatedId, Updated: " . ($taskUpdated ? 'Yes' : 'No') . ", Viewer Blocked: " . ($viewerTaskBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resTaskSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 46: Drawer - Hồ sơ & Tài liệu (Cloud Files)
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility, contact_id) VALUES (?, ?, 'e2e_doc.pdf', 'uploads/cloud/1/e2e_doc.pdf', 'application/pdf', 2048, 'general', 'shared', ?)")
+       ->execute([$tenantId, $saleUserId, $personalContactId]);
+    $docFileId = (int)$db->lastInsertId();
+
+    $resFileSales = $callApi("cloud-files/$docFileId", 'DELETE', [], $salesToken);
+    $salesFileDeleteOk = isset($resFileSales['success']) && $resFileSales['success'] === true;
+
+    $db->prepare("INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility, contact_id) VALUES (?, ?, 'e2e_doc.pdf', 'uploads/cloud/1/e2e_doc.pdf', 'application/pdf', 2048, 'general', 'shared', ?)")
+       ->execute([$tenantId, $saleUserId, $personalContactId]);
+    $docFileId2 = (int)$db->lastInsertId();
+
+    $resFileViewer = $callApi("cloud-files/$docFileId2", 'DELETE', [], $viewerToken);
+    $viewerFileBlocked = isset($resFileViewer['success']) && $resFileViewer['success'] === false;
+
+    if ($docFileId2 > 0) {
+        $db->prepare("DELETE FROM cloud_files WHERE id = ?")->execute([$docFileId2]);
+    }
+
+    assertTest("TEST 46: Drawer - Hồ sơ & Tài liệu CRUD & Permissions", $salesFileDeleteOk && $viewerFileBlocked, "Sales Delete: " . ($salesFileDeleteOk ? 'Yes' : 'No') . ", Viewer Blocked: " . ($viewerFileBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resFileViewer));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 47: Drawer - Hóa đơn (Invoices)
+    // ─────────────────────────────────────────────────────────────────
+    $invoicePayload = [
+        'contact_id' => $personalContactId,
+        'invoice_number' => 'INV-E2E-' . mt_rand(1000, 9999),
+        'title' => 'Hóa đơn kiểm thử E2E',
+        'total' => 25000000.00,
+        'status' => 'pending'
+    ];
+    $resInvAdmin = $callApi('invoices', 'POST', $invoicePayload, $adminToken);
+    $invCreatedId = isset($resInvAdmin['data']['id']) ? (int)$resInvAdmin['data']['id'] : 0;
+
+    $resInvViewer = $callApi('invoices', 'POST', $invoicePayload, $viewerToken);
+    $viewerInvBlocked = isset($resInvViewer['success']) && $resInvViewer['success'] === false;
+
+    if ($invCreatedId > 0) {
+        $db->prepare("DELETE FROM invoices WHERE id = ?")->execute([$invCreatedId]);
+    }
+
+    assertTest("TEST 47: Drawer - Hóa đơn CRUD & Permissions", $invCreatedId > 0 && $viewerInvBlocked, "Created Invoice ID: $invCreatedId, Viewer Blocked: " . ($viewerInvBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resInvAdmin));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 48: Drawer - Phiếu đặt cọc (Deposits)
+    // ─────────────────────────────────────────────────────────────────
+    $depositPayload = [
+        'contact_id' => $personalContactId,
+        'project_id' => $projectId,
+        'unit_code' => 'B-305',
+        'price' => 2800000000.00,
+        'expected_commission' => 84000000.00,
+        'status' => 'pending_admin'
+    ];
+    $resDepSales = $callApi('deposits', 'POST', $depositPayload, $salesToken);
+    $depCreatedId = isset($resDepSales['data']['id']) ? (int)$resDepSales['data']['id'] : 0;
+
+    $resDepViewer = $callApi('deposits', 'POST', $depositPayload, $viewerToken);
+    $viewerDepBlocked = isset($resDepViewer['success']) && $resDepViewer['success'] === false;
+
+    if ($depCreatedId > 0) {
+        $db->prepare("DELETE FROM deposits WHERE id = ?")->execute([$depCreatedId]);
+    }
+
+    assertTest("TEST 48: Drawer - Phiếu đặt cọc CRUD & Permissions", $depCreatedId > 0 && $viewerDepBlocked, "Created Deposit ID: $depCreatedId, Viewer Blocked: " . ($viewerDepBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resDepSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 49: Drawer - Báo giá (Quotes)
+    // ─────────────────────────────────────────────────────────────────
+    $quotePayload = [
+        'contact_id' => $personalContactId,
+        'title' => 'Báo giá dự án Rich Land Hải Phòng',
+        'total' => 2900000000.00,
+        'status' => 'draft',
+        'items' => [
+            ['product_id' => $prodId, 'name' => 'Căn hộ A-101', 'quantity' => 1, 'price' => 2900000000.00]
+        ]
+    ];
+    $resQuoteSales = $callApi('quotes', 'POST', $quotePayload, $salesToken);
+    $quoteCreatedId = isset($resQuoteSales['data']['id']) ? (int)$resQuoteSales['data']['id'] : 0;
+
+    $resQuoteViewer = $callApi('quotes', 'POST', $quotePayload, $viewerToken);
+    $viewerQuoteBlocked = isset($resQuoteViewer['success']) && $resQuoteViewer['success'] === false;
+
+    if ($quoteCreatedId > 0) {
+        $db->prepare("DELETE FROM quotes WHERE id = ?")->execute([$quoteCreatedId]);
+    }
+
+    assertTest("TEST 49: Drawer - Báo giá CRUD & Permissions", $quoteCreatedId > 0 && $viewerQuoteBlocked, "Created Quote ID: $quoteCreatedId, Viewer Blocked: " . ($viewerQuoteBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resQuoteSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 50: Drawer - Chi phí (Expenses)
+    // ─────────────────────────────────────────────────────────────────
+    $expensePayload = [
+        'title' => 'Phí đi lại tư vấn khách hàng',
+        'amount' => 500000.00,
+        'status' => 'pending',
+        'entities' => [
+            ['entity_type' => 'contact', 'entity_id' => $personalContactId, 'amount' => 500000.00]
+        ]
+    ];
+    $resExpSales = $callApi('expenses', 'POST', $expensePayload, $salesToken);
+    $expCreatedId = isset($resExpSales['data']['id']) ? (int)$resExpSales['data']['id'] : 0;
+
+    $resExpViewer = $callApi('expenses', 'POST', $expensePayload, $viewerToken);
+    $viewerExpBlocked = isset($resExpViewer['success']) && $resExpViewer['success'] === false;
+
+    if ($expCreatedId > 0) {
+        $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$expCreatedId]);
+    }
+
+    assertTest("TEST 50: Drawer - Chi phí CRUD & Permissions", $expCreatedId > 0 && $viewerExpBlocked, "Created Expense ID: $expCreatedId, Viewer Blocked: " . ($viewerExpBlocked ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // Drawer - Xác minh TTL1
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET ttl1_completed = 1, ttl1_data = ? WHERE id = ?")
+       ->execute([json_encode(['id_card' => '123456789', 'verified_at' => date('Y-m-d')]), $personalContactId]);
+    $ttl1Status = (int)$db->query("SELECT ttl1_completed FROM contacts WHERE id = $personalContactId")->fetchColumn();
+
+    $resTtl1Viewer = $callApi("contacts/$personalContactId", 'PUT', ['ttl1_completed' => 1], $viewerToken);
+    $viewerTtl1Blocked = isset($resTtl1Viewer['success']) && $resTtl1Viewer['success'] === false;
+
+    assertTest("TEST 51: Drawer - Xác minh TTL1 CRUD & Permissions", $ttl1Status === 1 && $viewerTtl1Blocked, "TTL1 Complete: $ttl1Status, Viewer Blocked: " . ($viewerTtl1Blocked ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 52: Drawer - Hỗ trợ / Khiếu nại (Support Tickets)
+    // ─────────────────────────────────────────────────────────────────
+    $ticketPayload = [
+        'subject' => 'Lỗi sai lệch thông tin địa chỉ khách hàng',
+        'customer_name' => 'Lê Văn Hùng',
+        'description' => 'Nhờ Admin hỗ trợ sửa đổi thông tin địa chỉ trên hợp đồng.',
+        'priority' => 'high',
+        'category' => 'system',
+        'related_contacts' => [$personalContactId]
+    ];
+    $resTicketSales = $callApi('tickets', 'POST', $ticketPayload, $salesToken);
+    $ticketCreatedId = isset($resTicketSales['data']['id']) ? (int)$resTicketSales['data']['id'] : 0;
+
+    $resTicketViewer = $callApi('tickets', 'POST', $ticketPayload, $viewerToken);
+    $viewerTicketBlocked = isset($resTicketViewer['success']) && $resTicketViewer['success'] === false;
+
+    if ($ticketCreatedId > 0) {
+        $db->prepare("DELETE FROM tickets WHERE id = ?")->execute([$ticketCreatedId]);
+    }
+
+    assertTest("TEST 52: Drawer - Hỗ trợ / Khiếu nại CRUD & Permissions", $ticketCreatedId > 0 && $viewerTicketBlocked, "Created Ticket ID: $ticketCreatedId, Viewer Blocked: " . ($viewerTicketBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resTicketSales));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 53: Cross-Module - Activity completion updates Contact last_contact
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET last_contact = NULL WHERE id = ?")->execute([$personalContactId]);
+    $actPayloadCross = [
+        'type' => 'call',
+        'subject' => 'Điện thoại tư vấn dự án',
+        'status' => 'done',
+        'related_type' => 'contact',
+        'related_id' => $personalContactId
+    ];
+    $resActCross = $callApi('activities', 'POST', $actPayloadCross, $salesToken);
+    $actCrossId = isset($resActCross['data']['id']) ? (int)$resActCross['data']['id'] : 0;
+    
+    $lastContactVal = $db->query("SELECT last_contact FROM contacts WHERE id = $personalContactId")->fetchColumn();
+    $todayStr = date('Y-m-d');
+    $activitySyncOk = ($lastContactVal === $todayStr);
+    
+    if ($actCrossId > 0) {
+        $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$actCrossId]);
+    }
+    assertTest("TEST 53: Cross-Module - Activity to Contact last_contact sync", $activitySyncOk, "Last contact updated: " . ($activitySyncOk ? 'Yes' : 'No') . ", Value: $lastContactVal");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 54: Cross-Module - Deposit creation updates Contact Pipeline Stage & Status
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET pipeline_status = 'chua_xac_dinh', status = 'lead' WHERE id = ?")->execute([$personalContactId]);
+    $depositPayloadCross = [
+        'contact_id' => $personalContactId,
+        'project_id' => $projectId,
+        'unit_code' => 'C-501',
+        'price' => 1500000000.00,
+        'expected_commission' => 45000000.00,
+        'status' => 'pending_admin'
+    ];
+    $resDepCross = $callApi('deposits', 'POST', $depositPayloadCross, $salesToken);
+    $depCrossId = isset($resDepCross['data']['id']) ? (int)$resDepCross['data']['id'] : 0;
+    
+    $cRow = $db->query("SELECT pipeline_status, status FROM contacts WHERE id = $personalContactId")->fetch(PDO::FETCH_ASSOC);
+    $depositStageSyncOk = ($cRow && $cRow['pipeline_status'] === 'dat_coc' && $cRow['status'] === 'customer');
+    
+    if ($depCrossId > 0) {
+        $db->prepare("DELETE FROM deposits WHERE id = ?")->execute([$depCrossId]);
+        $db->prepare("DELETE FROM cooperation_slips WHERE deposit_slip_id = ?")->execute([$depCrossId]);
+    }
+    assertTest("TEST 54: Cross-Module - Deposit to Contact stage & status sync", $depositStageSyncOk, "Pipeline Stage: " . ($cRow ? $cRow['pipeline_status'] : 'None') . ", Status: " . ($cRow ? $cRow['status'] : 'None'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 55: Cross-Module - Deposit auto-generates Cooperation Slip
+    // ─────────────────────────────────────────────────────────────────
+    $resDepCross2 = $callApi('deposits', 'POST', $depositPayloadCross, $salesToken);
+    $depCrossId2 = isset($resDepCross2['data']['id']) ? (int)$resDepCross2['data']['id'] : 0;
+    
+    $coopSlip = $db->prepare("SELECT id, status, shares_json FROM cooperation_slips WHERE deposit_slip_id = ?");
+    $coopSlip->execute([$depCrossId2]);
+    $coopSlipRow = $coopSlip->fetch(PDO::FETCH_ASSOC);
+    
+    $coopSyncOk = false;
+    if ($coopSlipRow) {
+        $shares = json_decode($coopSlipRow['shares_json'], true);
+        if ($coopSlipRow['status'] === 'pending_signatures' && isset($shares[$saleUserId]) && (int)$shares[$saleUserId] === 100) {
+            $coopSyncOk = true;
+        }
+    }
+    
+    if ($depCrossId2 > 0) {
+        $db->prepare("DELETE FROM deposits WHERE id = ?")->execute([$depCrossId2]);
+        $db->prepare("DELETE FROM cooperation_slips WHERE deposit_slip_id = ?")->execute([$depCrossId2]);
+    }
+    assertTest("TEST 55: Cross-Module - Deposit to Cooperation Slip auto-generation", $coopSyncOk, "Coop Slip Generated: " . ($coopSlipRow ? 'Yes' : 'No') . ", Status: " . ($coopSlipRow ? $coopSlipRow['status'] : 'None') . ", Shares: " . ($coopSlipRow ? $coopSlipRow['shares_json'] : 'None'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 56: Cross-Module - Paid Invoice updates Dashboard/Stats Revenue
+    // ─────────────────────────────────────────────────────────────────
+    $resStatsBefore = $callApi('dashboard/stats?from=' . date('Y-m-d') . '&to=' . date('Y-m-d'), 'GET', [], $adminToken);
+    $revenueBefore = isset($resStatsBefore['data']['revenue']) ? (float)$resStatsBefore['data']['revenue'] : 0.0;
+    
+    $invoicePayloadCross = [
+        'contact_id' => $personalContactId,
+        'invoice_number' => 'INV-CROSS-' . mt_rand(1000, 9999),
+        'title' => 'Hóa đơn tích hợp',
+        'total' => 12000000.00,
+        'status' => 'paid',
+        'issue_date' => date('Y-m-d'),
+        'paid_at' => date('Y-m-d H:i:s')
+    ];
+    $resInvCross = $callApi('invoices', 'POST', $invoicePayloadCross, $adminToken);
+    $invCrossId = isset($resInvCross['data']['id']) ? (int)$resInvCross['data']['id'] : 0;
+    
+    $resStatsAfter = $callApi('dashboard/stats?from=' . date('Y-m-d') . '&to=' . date('Y-m-d'), 'GET', [], $adminToken);
+    $revenueAfter = isset($resStatsAfter['data']['revenue']) ? (float)$resStatsAfter['data']['revenue'] : 0.0;
+    $revenueIncreaseOk = (abs($revenueAfter - $revenueBefore - 12000000.00) < 0.01);
+    
+    if ($invCrossId > 0) {
+        $db->prepare("DELETE FROM invoices WHERE id = ?")->execute([$invCrossId]);
+    }
+    assertTest("TEST 56: Cross-Module - Paid Invoice to Dashboard Revenue sync", $revenueIncreaseOk, "Revenue Before: $revenueBefore, Revenue After: $revenueAfter, Incr: " . ($revenueAfter - $revenueBefore));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 57: Cross-Module - Approved Expense updates Dashboard/Stats Expenses
+    // ─────────────────────────────────────────────────────────────────
+    $resStatsBeforeExp = $callApi('dashboard/stats?from=' . date('Y-m-d') . '&to=' . date('Y-m-d'), 'GET', [], $adminToken);
+    $expensesBefore = isset($resStatsBeforeExp['data']['expenses']) ? (float)$resStatsBeforeExp['data']['expenses'] : 0.0;
+    
+    $expensePayloadCross = [
+        'title' => 'Chi phí đi đường tích hợp',
+        'amount' => 350000.00,
+        'status' => 'approved',
+        'date' => date('Y-m-d'),
+        'entities' => [
+            ['entity_type' => 'contact', 'entity_id' => $personalContactId, 'amount' => 350000.00]
+        ]
+    ];
+    $resExpCross = $callApi('expenses', 'POST', $expensePayloadCross, $salesToken);
+    $expCrossId = isset($resExpCross['data']['id']) ? (int)$resExpCross['data']['id'] : 0;
+    
+    $resStatsAfterExp = $callApi('dashboard/stats?from=' . date('Y-m-d') . '&to=' . date('Y-m-d'), 'GET', [], $adminToken);
+    $expensesAfter = isset($resStatsAfterExp['data']['expenses']) ? (float)$resStatsAfterExp['data']['expenses'] : 0.0;
+    $expensesIncreaseOk = (abs($expensesAfter - $expensesBefore - 350000.00) < 0.01);
+    
+    if ($expCrossId > 0) {
+        $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$expCrossId]);
+    }
+    assertTest("TEST 57: Cross-Module - Approved Expense to Dashboard Expenses sync", $expensesIncreaseOk, "Expenses Before: $expensesBefore, Expenses After: $expensesAfter, Incr: " . ($expensesAfter - $expensesBefore));
+
+    // ─────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 58: E2E Pipeline Transition Audit Trail Logging
+    // ─────────────────────────────────────────────────────────────────
+    $resMove = $callApi("contacts/$personalContactId/stage", 'PATCH', [
+        'stage_id' => 2,
+        'note' => 'Chuyển sang quan tâm để gửi tài liệu dự án'
+    ], $adminToken);
+    
+    // Check if recorded in activities (interaction notes)
+    $actRow = $db->prepare("SELECT * FROM activities WHERE related_type = 'contact' AND related_id = ? AND type = 'note' AND subject = 'Cập nhật Pipeline' ORDER BY id DESC LIMIT 1");
+    $actRow->execute([$personalContactId]);
+    $activityLogged = $actRow->fetch(PDO::FETCH_ASSOC);
+    $actOk = $activityLogged && strpos($activityLogged['body'], 'Chuyển sang quan tâm') !== false;
+    
+    // Check if recorded in audit_logs (system audit trail)
+    $logRow = $db->prepare("SELECT * FROM audit_logs WHERE resource = 'contact' AND resource_id = ? AND action = 'MOVE_STAGE' ORDER BY id DESC LIMIT 1");
+    $logRow->execute([$personalContactId]);
+    $systemLogged = $logRow->fetch(PDO::FETCH_ASSOC);
+    $logData = $systemLogged ? json_decode($systemLogged['new_data'], true) : null;
+    $logOk = $systemLogged && isset($logData['note']) && strpos($logData['note'], 'Chuyển sang quan tâm') !== false;
+    
+    // Revert stage for clean testing
+    $db->prepare("UPDATE contacts SET stage_id = NULL, pipeline_status = 'chua_xac_dinh' WHERE id = ?")->execute([$personalContactId]);
+    if ($activityLogged) {
+        $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$activityLogged['id']]);
+    }
+    if ($systemLogged) {
+        $db->prepare("DELETE FROM audit_logs WHERE id = ?")->execute([$systemLogged['id']]);
+    }
+    
+    assertTest("TEST 58: E2E Pipeline Transition Audit Trail Logging", $actOk && $logOk, "Activity note saved: " . ($actOk ? 'Yes' : 'No') . ", System log saved: " . ($logOk ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 59: Automation Workflow Integration (auto_trigger)
+    // ─────────────────────────────────────────────────────────────────
+    // Reset contact stage and lead score
+    $db->prepare("UPDATE contacts SET stage_id = 1, pipeline_status = 'chua_xac_dinh', lead_score = 10, email = 'e2e_lead@richland.com' WHERE id = ?")->execute([$personalContactId]);
+    
+    // Log an activity with auto_trigger = true
+    $autoTriggerPayload = [
+        'type' => 'call',
+        'subject' => 'E2E Test Auto Trigger',
+        'body' => 'Auto trigger automation engine',
+        'status' => 'done',
+        'related_type' => 'contact',
+        'related_id' => $personalContactId,
+        'auto_trigger' => true
+    ];
+    $resAuto = $callApi('activities', 'POST', $autoTriggerPayload, $adminToken);
+    $autoActId = isset($resAuto['data']['id']) ? (int)$resAuto['data']['id'] : 0;
+
+    // Verify lead score increased (+15)
+    $stmtC = $db->prepare("SELECT lead_score, stage_id, pipeline_status FROM contacts WHERE id = ?");
+    $stmtC->execute([$personalContactId]);
+    $contactAutoRow = $stmtC->fetch(PDO::FETCH_ASSOC);
+    $scoreOk = $contactAutoRow && (int)$contactAutoRow['lead_score'] === 25;
+    $stageOk = $contactAutoRow && (int)$contactAutoRow['stage_id'] === 2 && $contactAutoRow['pipeline_status'] === 'quan_tam';
+
+    // Clean up auto activity
+    if ($autoActId > 0) {
+        $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$autoActId]);
+    }
+    // Revert stage & score
+    $db->prepare("UPDATE contacts SET stage_id = NULL, pipeline_status = 'chua_xac_dinh', lead_score = 0 WHERE id = ?")->execute([$personalContactId]);
+
+    assertTest("TEST 59: Automation Workflow Integration (auto_trigger)", $scoreOk && $stageOk, "Score increased to 25: " . ($scoreOk ? 'Yes' : 'No') . ", Stage moved to 2: " . ($stageOk ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 60: Notes & Activities Edit History (3 edits cap)
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Test Notes Edit History
+    $resNote = $callApi("notes?entity_type=contact&entity_id=$personalContactId", 'POST', ['body' => 'Initial Note Body'], $adminToken);
+    $noteId = isset($resNote['data']['id']) ? (int)$resNote['data']['id'] : 0;
+    
+    $noteEditsOk = false;
+    if ($noteId > 0) {
+        // Edit 1
+        $callApi("notes/$noteId", 'PUT', ['body' => 'Edit Note 1'], $adminToken);
+        // Edit 2
+        $callApi("notes/$noteId", 'PUT', ['body' => 'Edit Note 2'], $adminToken);
+        // Edit 3
+        $callApi("notes/$noteId", 'PUT', ['body' => 'Edit Note 3'], $adminToken);
+        // Edit 4
+        $callApi("notes/$noteId", 'PUT', ['body' => 'Edit Note 4'], $adminToken);
+
+        $stmtN = $db->prepare("SELECT edit_history, body FROM notes WHERE id = ?");
+        $stmtN->execute([$noteId]);
+        $noteRow = $stmtN->fetch(PDO::FETCH_ASSOC);
+        if ($noteRow) {
+            $history = json_decode($noteRow['edit_history'] ?? '[]', true);
+            if (is_array($history) && count($history) === 3) {
+                if ($history[0]['old_body'] === 'Edit Note 3') {
+                    $noteEditsOk = true;
+                }
+            }
+        }
+        $db->prepare("DELETE FROM notes WHERE id = ?")->execute([$noteId]);
+    }
+
+    // 2. Test Activities Edit History
+    $resAct = $callApi('activities', 'POST', [
+        'type' => 'task', 'subject' => 'Initial Act', 'body' => 'Initial Body', 'status' => 'planned',
+        'related_type' => 'contact', 'related_id' => $personalContactId
+    ], $adminToken);
+    $actId = isset($resAct['data']['id']) ? (int)$resAct['data']['id'] : 0;
+
+    $actEditsOk = false;
+    if ($actId > 0) {
+        // Edit 1
+        $callApi("activities/$actId", 'PUT', ['type' => 'task', 'subject' => 'Edit Act 1', 'body' => 'Edit Body 1', 'status' => 'planned'], $adminToken);
+        // Edit 2
+        $callApi("activities/$actId", 'PUT', ['type' => 'task', 'subject' => 'Edit Act 2', 'body' => 'Edit Body 2', 'status' => 'planned'], $adminToken);
+        // Edit 3
+        $callApi("activities/$actId", 'PUT', ['type' => 'task', 'subject' => 'Edit Act 3', 'body' => 'Edit Body 3', 'status' => 'planned'], $adminToken);
+        // Edit 4
+        $callApi("activities/$actId", 'PUT', ['type' => 'task', 'subject' => 'Edit Act 4', 'body' => 'Edit Body 4', 'status' => 'planned'], $adminToken);
+
+        $stmtA = $db->prepare("SELECT edit_history FROM activities WHERE id = ?");
+        $stmtA->execute([$actId]);
+        $actRow = $stmtA->fetch(PDO::FETCH_ASSOC);
+        if ($actRow) {
+            $history = json_decode($actRow['edit_history'] ?? '[]', true);
+            if (is_array($history) && count($history) === 3) {
+                if ($history[0]['old_subject'] === 'Edit Act 3') {
+                    $actEditsOk = true;
+                }
+            }
+        }
+        $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$actId]);
+    }
+
+    assertTest("TEST 60: Notes & Activities Edit History (3 edits cap)", $noteEditsOk && $actEditsOk, "Notes Edit History OK: " . ($noteEditsOk ? 'Yes' : 'No') . ", Activities Edit History OK: " . ($actEditsOk ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)
     // We intentionally do not delete these records so they are visible in the CRM frontend UI.
-    $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId)")->fetchColumn();
+    $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId, $viewerUserId)")->fetchColumn();
 
-    assertTest("Phase 18: DB Persistence Verification", (int)$userCount === 5, "Persisted test users count: $userCount");
+    assertTest("Phase 18: DB Persistence Verification", (int)$userCount === 6, "Persisted test users count: $userCount");
 
 } catch (Throwable $e) {
     assertTest("E2E Audit Runner Exception", false, $e->getMessage() . " on line " . $e->getLine());

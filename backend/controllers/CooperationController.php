@@ -37,15 +37,33 @@ class CooperationController {
         $slips = $stmt->fetchAll();
 
         // Add detailed shareholder info (names) for readability
+        $allUids = [];
+        foreach ($slips as $s) {
+            $shares = json_decode($s['shares_json'] ?? '[]', true) ?: [];
+            foreach (array_keys($shares) as $uid) {
+                $allUids[] = (int)$uid;
+            }
+        }
+        $allUids = array_unique($allUids);
+
+        $userMap = [];
+        if (!empty($allUids)) {
+            $inClause = implode(',', array_fill(0, count($allUids), '?'));
+            $stmtU = $this->db->prepare("SELECT id, full_name, email, avatar_url FROM users WHERE id IN ($inClause)");
+            $stmtU->execute(array_values($allUids));
+            $users = $stmtU->fetchAll();
+            foreach ($users as $u) {
+                $userMap[(int)$u['id']] = $u;
+            }
+        }
+
         foreach ($slips as &$s) {
             $shares = json_decode($s['shares_json'] ?? '[]', true) ?: [];
             $signatures = json_decode($s['signatures_json'] ?? '[]', true) ?: [];
             
             $shareholdersDetails = [];
             foreach ($shares as $uid => $percent) {
-                $stmtU = $this->db->prepare("SELECT full_name, email, avatar_url FROM users WHERE id = ?");
-                $stmtU->execute([(int)$uid]);
-                $u = $stmtU->fetch();
+                $u = $userMap[(int)$uid] ?? null;
                 if ($u) {
                     $shareholdersDetails[] = [
                         'user_id' => (int)$uid,
@@ -78,7 +96,7 @@ class CooperationController {
         $stmtAct = $this->db->prepare("
             SELECT DISTINCT user_id 
             FROM activities 
-            WHERE contact_id = ? AND user_id IS NOT NULL AND user_id != ?
+            WHERE related_type = 'contact' AND related_id = ? AND user_id IS NOT NULL AND user_id != ?
         ");
         $stmtAct->execute([$contactId, $ownerId]);
         $supporters = $stmtAct->fetchAll(PDO::FETCH_COLUMN) ?: [];
@@ -339,6 +357,7 @@ class CooperationController {
     }
 
     public function createSlip(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
         $b = getBody();
         $contactId = (int)($b['contact_id'] ?? 0);
         if ($contactId <= 0) {

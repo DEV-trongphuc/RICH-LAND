@@ -67,7 +67,7 @@ class DealController {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem deal', false);
         $tid    = $auth['tenant_id'];
         $page   = max(1,(int)($_GET['page']??1));
-        $limit  = min(100,max(10,(int)($_GET['limit']??50)));
+        $limit  = min(2000,max(10,(int)($_GET['limit']??50)));
         $offset = ($page-1)*$limit;
         $stage  = $_GET['stage_id'] ?? '';
         $owner  = $_GET['owner_id'] ?? '';
@@ -230,7 +230,9 @@ class DealController {
                 $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,?,?,?)")
                     ->execute([$id, $old, $b['stage_id'], $auth['user_id']]);
                 
-                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Chuyển giai đoạn Deal', "Deal đã được chuyển sang giai đoạn mới.", 'deal', $id);
+                $note = $b['note'] ?? '';
+                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Chuyển giai đoạn Deal', "Deal đã được chuyển sang giai đoạn mới." . ($note ? " Ghi chú: " . $note : ""), 'deal', $id);
+                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'deal', $id, json_encode(['from_stage' => $old, 'to_stage' => $b['stage_id'], 'note' => $note]));
             }
             
             $this->db->commit();

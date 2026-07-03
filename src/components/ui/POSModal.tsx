@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Search, Trash2, CheckCircle2, Package, Plus, X, User, DollarSign, Loader2, Truck, FileText } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, CheckCircle2, Package, Plus, X, User, DollarSign, Loader2, Truck, FileText, Ban } from 'lucide-react';
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 import { Tooltip } from './Tooltip';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Product {
   id: number;
@@ -30,6 +31,8 @@ interface CartItem extends Product {
 
 export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact | null }> = ({ onClose, defaultContact }) => {
   const { addToast } = useUIStore();
+  const { user: currentUser } = useAuth();
+  const isViewer = currentUser?.role === 'viewer';
   const [products, setProducts] = useState<Product[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [searchProduct, setSearchProduct] = useState('');
@@ -152,6 +155,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
         style={{ maxWidth: '1200px', width: '95vw', height: '85vh', maxHeight: '850px', background: 'var(--color-surface)', display: 'flex', overflow: 'hidden', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-2xl)' }} 
         onClick={e => e.stopPropagation()}
       >
+        <fieldset disabled={isViewer} style={{ border: 'none', padding: 0, margin: 0, width: '100%', height: '100%', display: 'flex', overflow: 'hidden' }}>
           {/* Left: Product Selection */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--color-surface)' }}>
             <div style={{ padding: '2rem', borderBottom: '1px solid var(--color-border)' }}>
@@ -170,34 +174,35 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                 </div>
                 <button className="btn ghost sm" onClick={onClose} style={{ borderRadius: '50%', width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
               </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', borderRadius: '16px', padding: '12px 18px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                <Search size={20} style={{ color: 'var(--color-primary)', marginRight: '12px' }} />
-                <input autoFocus style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)' }} placeholder="Tìm kiếm sản phẩm dự án, căn hộ, dịch vụ..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} />
-              </div>
+              <div style={{ position: 'relative' }}>
+                <div style={{ display: 'flex', alignItems: 'center', borderRadius: '16px', padding: '12px 18px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                  <Search size={20} style={{ color: 'var(--color-primary)', marginRight: '12px' }} />
+                  <input autoFocus style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)' }} placeholder="Tìm kiếm sản phẩm dự án, căn hộ, dịch vụ..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} />
+                </div>
 
-              <AnimatePresence>
-                {searchProduct && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="card mt-2 shadow-2xl" style={{ position: 'absolute', width: 'calc(100% - 64px)', zIndex: 100, borderRadius: '20px', left: 32, padding: '0.5rem' }}>
-                    {filteredProducts.length > 0 ? filteredProducts.map(p => (
-                      <div key={p.id} className="hover-bg cursor-pointer transition-all" style={{ padding: '0.75rem 1rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => addToCart(p)}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ width: 40, height: 40, background: 'var(--color-bg)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={18} className="text-light" /></div>
-                          <div>
-                            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{p.name}</p>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>
-                             Mã: {p.sku || p.id} {p.track_inventory ? `• Kho: ${p.stock_quantity || 0}` : ''}
-                            </p>
+                <AnimatePresence>
+                  {searchProduct && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="card mt-2 shadow-2xl" style={{ position: 'absolute', width: '100%', zIndex: 100, borderRadius: '20px', left: 0, padding: '0.5rem' }}>
+                      {filteredProducts.length > 0 ? filteredProducts.map(p => (
+                        <div key={p.id} className="hover-bg cursor-pointer transition-all" style={{ padding: '0.75rem 1rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => addToCart(p)}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: 40, height: 40, background: 'var(--color-bg)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={18} className="text-light" /></div>
+                            <div>
+                              <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{p.name}</p>
+                              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>
+                               Mã: {p.sku || p.id} {p.track_inventory ? `• Kho: ${p.stock_quantity || 0}` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontWeight: 900, color: 'var(--color-primary)', fontSize: '1rem' }}>{FMT_PRICE(p.price)}</p>
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <p style={{ fontWeight: 900, color: 'var(--color-primary)', fontSize: '1rem' }}>{FMT_PRICE(p.price)}</p>
-                        </div>
-                      </div>
-                    )) : <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-light)' }}>Không tìm thấy sản phẩm</div>}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                      )) : <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-light)' }}>Không tìm thấy sản phẩm</div>}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             <div style={{ padding: '2rem', flex: 1, overflow: 'auto', background: 'var(--color-bg)' }}>
@@ -390,15 +395,16 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
               </div>
               <button 
                 className="btn primary lg" 
-                disabled={loading || cart.length === 0 || !selectedContact}
+                disabled={loading || cart.length === 0 || !selectedContact || isViewer}
                 onClick={handleCheckout}
-                style={{ width: '100%', padding: '1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)', fontSize: '0.95rem', fontWeight: 800, border: 'none', height: '52px', boxShadow: 'var(--shadow-lg)' }}
+                style={{ width: '100%', padding: '1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', background: isViewer ? 'var(--color-border)' : 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)', color: isViewer ? 'var(--color-text-muted)' : 'white', fontSize: '0.95rem', fontWeight: 800, border: 'none', height: '52px', boxShadow: isViewer ? 'none' : 'var(--shadow-lg)' }}
               >
-                {loading ? <Loader2 size={20} className="spin" /> : <CheckCircle2 size={18} />}
-                XÁC NHẬN & XUẤT HÓA ĐƠN
+                {loading ? <Loader2 size={20} className="spin" /> : (isViewer ? <Ban size={18} /> : <CheckCircle2 size={18} />)}
+                {isViewer ? 'BẠN KHÔNG CÓ QUYỀN XUẤT HÓA ĐƠN' : 'XÁC NHẬN & XUẤT HÓA ĐƠN'}
               </button>
             </div>
           </div>
+        </fieldset>
       </motion.div>
     </div>
   );

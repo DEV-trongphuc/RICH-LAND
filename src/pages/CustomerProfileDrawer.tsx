@@ -29,6 +29,46 @@ import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
+const EditHistoryIndicator = ({ history }: { history: any }) => {
+  const [showPopup, setShowPopup] = useState(false);
+  let parsed = [];
+  try {
+    parsed = typeof history === 'string' ? JSON.parse(history) : (history || []);
+  } catch (e) {}
+
+  if (!parsed || parsed.length === 0) return null;
+
+  const lastEdit = parsed[0];
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <span 
+        style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', cursor: 'pointer', textDecoration: 'underline dotted', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+        onClick={() => setShowPopup(!showPopup)}
+        onMouseEnter={() => setShowPopup(true)}
+        onMouseLeave={() => setShowPopup(false)}
+      >
+        <Clock size={10} /> Đã chỉnh sửa (lần cuối bởi {lastEdit.edited_by_name} lúc {new Date(lastEdit.edited_at).toLocaleDateString('vi-VN')} {new Date(lastEdit.edited_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })})
+      </span>
+      {showPopup && (
+        <div style={{ position: 'absolute', bottom: '100%', left: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '8px 12px', boxShadow: 'var(--shadow-lg)', zIndex: 1000, width: '260px', marginBottom: '4px' }}>
+          <p style={{ fontWeight: 700, fontSize: '0.75rem', marginBottom: '6px', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '4px', textAlign: 'left', color: 'var(--color-text)' }}>Lịch sử chỉnh sửa (Tối đa 3 lần)</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'left' }}>
+            {parsed.map((item: any, idx: number) => (
+              <div key={idx} style={{ fontSize: '0.7rem', lineHeight: 1.3, color: 'var(--color-text)' }}>
+                <strong>{item.edited_by_name}</strong> · <span style={{ color: 'var(--color-text-muted)' }}>{new Date(item.edited_at).toLocaleDateString('vi-VN')}</span>
+                <p style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  Nội dung cũ: {item.old_body || item.old_subject}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ─── Types ─────────────────────────────────────────────────── */
 interface Props {
   isOpen: boolean;
@@ -687,6 +727,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [hasChanges, onClose, showConfirm, handleSave]);
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [editingNote, setEditingNote] = useState<any>(null);
+  const [editingActivity, setEditingActivity] = useState<any>(null);
   const [showDealModal, setShowDealModal] = useState(false);
   const [editingDealId, setEditingDealId] = useState<number | null>(null);
   const [depositProjectId, setDepositProjectId] = useState('');
@@ -783,7 +826,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [noteDuration, setNoteDuration] = useState<string>('');
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
   const [noteObstacle, setNoteObstacle] = useState<string>('');
-  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; attachment_url?: string | null }[]>([]);
+  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; attachment_url?: string | null; edit_history?: any }[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
   const [users, setUsers] = useState<any[]>([]);
@@ -811,6 +854,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return isOwner || isAdmin;
   }, [currentUser, formData.owner_id, contact?.owner_id]);
   const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+  const isViewer = currentUser?.role === 'viewer';
   const [decayDays, setDecayDays] = useState<number>(5);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
@@ -1263,7 +1307,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         text: n.body,
         time: n.created_at,
         user: n.user_name || 'Hệ thống',
-        user_id: n.user_id
+        user_id: n.user_id,
+        attachment_url: n.attachment_url,
+        edit_history: n.edit_history
       })));
 
       // Fetch Tasks (Activities)
@@ -2041,7 +2087,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             <motion.div
               className={styles.drawer}
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
             >
               <AnimatePresence>
                 {showAvatarModal && (
@@ -2447,8 +2493,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       if (allowedTabs.length === 0) return null;
 
                       return (
-                        <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
-                          <div style={{ 
+                        <div key={groupIdx} className={styles.tabGroup} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
+                          <div className={styles.tabGroupTitle} style={{ 
                             padding: '0.375rem 0.5rem', 
                             fontSize: '0.65rem', 
                             fontWeight: 800, 
@@ -2935,9 +2981,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '320px', margin: '0 auto 1.5rem' }}>
                             Khách hàng này chưa có cấu hình phiếu phân chia hoa hồng. Bắt đầu thiết lập để phân chia tỷ lệ doanh thu.
                           </p>
-                          <button className="btn primary" onClick={handleCreateCoopSlip}>
-                            <Plus size={16} /> Thiết lập hợp tác hoa hồng
-                          </button>
+                          {!isViewer && (
+                            <button className="btn primary" onClick={handleCreateCoopSlip}>
+                              <Plus size={16} /> Thiết lập hợp tác hoa hồng
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -3301,7 +3349,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
                             ) : (
-                              (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && (
+                              (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && !isViewer && (
                                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                   <button 
                                     type="button"
@@ -3317,7 +3365,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* Signature section */}
-                          {coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && (
+                          {coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && !isViewer && (
                             <div className="card-panel" style={{ padding: '1.5rem', background: 'rgba(189, 29, 45, 0.1)', border: '1px solid #BD1D2D' }}>
                               <h4 style={{ fontWeight: 700, color: '#BD1D2D', marginBottom: '0.5rem' }}>Bạn có yêu cầu ký xác nhận</h4>
                               <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--color-text)' }}>
@@ -3367,12 +3415,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* TIMELINE TAB */}
                   {activeTab === 'timeline' && (
                     <div className="animate-fade">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                      <div className="flex-col-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', gap: '12px' }}>
                         <div>
                           <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Nhật ký tương tác</h3>
                           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Lưu vết toàn bộ quá trình chăm sóc khách hàng</p>
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: '100%', width: '100%', paddingBottom: '2px', flexShrink: 0 }}>
                           <button className="btn outline sm" onClick={() => setShowCallLogger(true)} style={{ color: '#3b82f6', borderColor: '#3b82f630', background: '#3b82f608', fontWeight: 600 }}><Phone size={14} /> Log Call</button>
                           <button className="btn outline sm" onClick={() => setShowActivityModal(true)} style={{ color: '#BD1D2D', borderColor: '#BD1D2D30', background: '#BD1D2D08', fontWeight: 600 }}><Mail size={14} /> Email</button>
                           <button className="btn outline sm" onClick={() => {
@@ -3424,8 +3472,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 </div>
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{new Date(ev.time).toLocaleDateString('vi-VN')}</span>
+                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', marginRight: '4px' }}>{new Date(ev.time).toLocaleDateString('vi-VN')}</span>
+                                    <button
+                                      className="btn ghost sm"
+                                      style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-text-muted)', opacity: 0.5 }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
+                                        if (rawAct) {
+                                          setEditingActivity(rawAct);
+                                          setShowActivityModal(true);
+                                        }
+                                      }}
+                                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                      onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                                    >
+                                      <Pencil size={12} />
+                                    </button>
                                     <button
                                       className="btn ghost sm"
                                       style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.5 }}
@@ -3495,6 +3559,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           <Avatar key={pi} name={p} size={20} style={{ border: '2px solid white' }} />
                                         ))}
                                       </div>
+                                    </div>
+                                  )}
+                                  {ev.edit_history && (
+                                    <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                                      <EditHistoryIndicator history={ev.edit_history} />
                                     </div>
                                   )}
                                   </div>
@@ -3568,10 +3637,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '1.5rem' }}>
                           
                           {/* Group 1 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
+                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group1}
                               onChange={(e) => setTtl1Data(p => ({ ...p, group1: e.target.checked }))}
+                              disabled={isViewer}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 1: Nhân khẩu học (Demographics)</p>
@@ -3580,10 +3650,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </label>
 
                           {/* Group 2 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
+                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group2}
                               onChange={(e) => setTtl1Data(p => ({ ...p, group2: e.target.checked }))}
+                              disabled={isViewer}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 2: Khả năng tài chính (Financial Readiness)</p>
@@ -3592,10 +3663,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </label>
 
                           {/* Group 3 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
+                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group3}
                               onChange={(e) => setTtl1Data(p => ({ ...p, group3: e.target.checked }))}
+                              disabled={isViewer}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 3: Mức độ cấp thiết (Urgency)</p>
@@ -3604,10 +3676,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </label>
 
                           {/* Group 4 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
+                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group4}
                               onChange={(e) => setTtl1Data(p => ({ ...p, group4: e.target.checked }))}
+                              disabled={isViewer}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 4: Mức độ phù hợp với dự án (Project Fit)</p>
@@ -3616,10 +3689,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </label>
 
                           {/* Group 5 */}
-                          <label style={{ display: 'flex', gap: '12px', cursor: 'pointer', alignItems: 'flex-start' }}>
+                          <label style={{ display: 'flex', gap: '12px', cursor: isViewer ? 'not-allowed' : 'pointer', alignItems: 'flex-start' }}>
                             <CustomCheckbox
                               checked={ttl1Data.group5}
                               onChange={(e) => setTtl1Data(p => ({ ...p, group5: e.target.checked }))}
+                              disabled={isViewer}
                             />
                             <div>
                               <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>Nhóm 5: Vai trò quyết định (Decision Role)</p>
@@ -3648,9 +3722,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <button
                             className="btn primary sm"
                             onClick={() => handleSaveTTL1(ttl1Data)}
-                            disabled={isSavingTTL1}
+                            disabled={isSavingTTL1 || isViewer}
                           >
-                            {isSavingTTL1 ? 'Đang lưu...' : 'Lưu Form TTL1'}
+                            {isSavingTTL1 ? 'Đang lưu...' : (isViewer ? 'Bạn không có quyền chỉnh sửa' : 'Lưu Form TTL1')}
                           </button>
                         </div>
 
@@ -3663,14 +3737,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Phiếu đặt cọc - {deals.length}</h3>
-                        <button className="btn primary sm" onClick={() => {
-                          setDepositProjectId('');
-                          setDepositUnitCode('');
-                          setDepositPrice('');
-                          setDepositExpectedCommission('');
-                          setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
-                          setShowDealModal(true);
-                        }}><Plus size={14} /> Tạo phiếu đặt cọc</button>
+                        {!isViewer && (
+                          <button className="btn primary sm" onClick={() => {
+                            setDepositProjectId('');
+                            setDepositUnitCode('');
+                            setDepositPrice('');
+                            setDepositExpectedCommission('');
+                            setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
+                            setShowDealModal(true);
+                          }}><Plus size={14} /> Tạo phiếu đặt cọc</button>
+                        )}
                       </div>
                       {deals.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
@@ -3750,18 +3826,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Công việc cần làm</h3>
-                        <button className="btn primary sm" onClick={() => {
-                          const today = new Date().toISOString().slice(0, 10);
-                          setTaskForm({
-                            title: '',
-                            priority: 'medium',
-                            due_date: today,
-                            description: '',
-                            link: '',
-                            user_id: String(contact?.owner_id || currentUser?.id || '')
-                          });
-                          setShowTaskModal(true);
-                        }}><Plus size={14} /> Thêm công việc</button>
+                        {!isViewer && (
+                          <button className="btn primary sm" onClick={() => {
+                            const today = new Date().toISOString().slice(0, 10);
+                            setTaskForm({
+                              title: '',
+                              priority: 'medium',
+                              due_date: today,
+                              description: '',
+                              link: '',
+                              user_id: String(contact?.owner_id || currentUser?.id || '')
+                            });
+                            setShowTaskModal(true);
+                          }}><Plus size={14} /> Thêm công việc</button>
+                        )}
                       </div>
 
                       {tasks.length === 0 ? (
@@ -3784,6 +3862,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <div
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  if (isViewer) {
+                                    addToast('Bạn không có quyền thay đổi trạng thái công việc', 'error');
+                                    return;
+                                  }
                                   toggleTaskDone(t.id, t.done);
                                 }}
                                 style={{ width: 24, height: 24, borderRadius: '6px', border: `2px solid ${t.done ? 'var(--color-success)' : 'var(--color-border)'}`, background: t.done ? 'var(--color-success)' : 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s', cursor: 'pointer' }}
@@ -3854,360 +3936,95 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* NOTES TAB */}
                   {activeTab === 'notes' && (
                     <div className="animate-fade">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Ghi chú nội bộ</h3>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div>
+                          <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Ghi chú nội bộ</h3>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Các ghi chú dạng giấy Note đính kèm thông tin</p>
+                        </div>
+                        <button className="btn primary sm" onClick={() => {
+                          setEditingNote(null);
+                          setNewNote('');
+                          setShowNoteModal(true);
+                        }} style={{ fontWeight: 600 }}><Plus size={14} /> Thêm ghi chú</button>
                       </div>
-                      <div className="card-panel animate-fade" style={{ marginBottom: '1.5rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', padding: '1.25rem', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
-                        {/* 1. Channel & Type Row */}
-                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                          {/* Channel Select */}
-                          <div style={{ flex: '1 0 200px' }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Kênh tương tác (Nối)</label>
-                            <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
-                              <button
-                                type="button"
-                                onClick={() => setNoteChannel('text')}
-                                style={{
-                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                  background: noteChannel === 'text' ? 'var(--color-surface)' : 'transparent',
-                                  color: noteChannel === 'text' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                  boxShadow: noteChannel === 'text' ? 'var(--shadow-sm)' : 'none',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                📝 Nối Đất
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setNoteChannel('call')}
-                                style={{
-                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                  background: noteChannel === 'call' ? 'var(--color-surface)' : 'transparent',
-                                  color: noteChannel === 'call' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                  boxShadow: noteChannel === 'call' ? 'var(--shadow-sm)' : 'none',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                📞 Nối Đồng
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setNoteChannel('meet')}
-                                style={{
-                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                  background: noteChannel === 'meet' ? 'var(--color-surface)' : 'transparent',
-                                  color: noteChannel === 'meet' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                  boxShadow: noteChannel === 'meet' ? 'var(--shadow-sm)' : 'none',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                🤝 Nối Áp Suất
-                              </button>
-                            </div>
-                          </div>
 
-                          {/* Interaction Type Select */}
-                          <div style={{ flex: '1 0 150px' }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Loại tương tác</label>
-                            <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
-                              <button
-                                type="button"
-                                onClick={() => setNoteType('normal')}
-                                style={{
-                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                  background: noteType === 'normal' ? 'var(--color-surface)' : 'transparent',
-                                  color: noteType === 'normal' ? 'var(--color-text)' : 'var(--color-text-muted)',
-                                  boxShadow: noteType === 'normal' ? 'var(--shadow-sm)' : 'none',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                Thường
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setNoteType('quality')}
-                                style={{
-                                  flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                  background: noteType === 'quality' ? 'var(--color-surface)' : 'transparent',
-                                  color: noteType === 'quality' ? 'var(--color-success)' : 'var(--color-text-muted)',
-                                  boxShadow: noteType === 'quality' ? 'var(--shadow-sm)' : 'none',
-                                  transition: 'all 0.2s'
-                                }}
-                              >
-                                Chất lượng
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 2. Optional Fields (Call Duration, Documents Sent) */}
-                        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                          {noteChannel === 'call' && (
-                            <div style={{ flex: '1 0 150px' }}>
-                              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Thời lượng cuộc gọi (giây)</label>
-                              <input
-                                type="number"
-                                className="form-input"
-                                placeholder="Ví dụ: 45"
-                                value={noteDuration}
-                                onChange={e => setNoteDuration(e.target.value)}
-                                style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                              />
-                            </div>
-                          )}
-
-                          <div style={{ flex: '1 0 100%', display: 'flex', flexDirection: 'column' }}>
-                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Tài liệu đã gửi (Chọn tài liệu)</label>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                              {[
-                                'Bảng giá',
-                                'Sơ đồ mặt bằng',
-                                'Pháp lý dự án',
-                                'Chính sách bán hàng',
-                                'Brochure dự án',
-                                'Thiết kế chi tiết',
-                                'Khác'
-                              ].map(doc => {
-                                const selectedDocs = noteDocsSent ? noteDocsSent.split(', ').map(d => d.trim()) : [];
-                                const isSelected = selectedDocs.includes(doc);
-                                return (
-                                  <button
-                                    key={doc}
-                                    type="button"
-                                    onClick={() => {
-                                      let nextDocs;
-                                      if (isSelected) {
-                                        nextDocs = selectedDocs.filter(d => d !== doc);
-                                      } else {
-                                        nextDocs = [...selectedDocs, doc];
-                                      }
-                                      setNoteDocsSent(nextDocs.join(', '));
-                                    }}
-                                    style={{
-                                      padding: '6px 14px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
-                                      background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-bg)',
-                                      color: isSelected ? '#3b82f6' : 'var(--color-text-muted)',
-                                      border: `1px solid ${isSelected ? '#3b82f6' : 'var(--color-border-light)'}`,
-                                      boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
-                                    }}
-                                  >
-                                    📁 {doc}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            {noteDocsSent.split(', ').map(d => d.trim()).includes('Khác') && (
-                              <div style={{ marginTop: '8px' }}>
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  placeholder="Nhập tên tài liệu khác khác (ngăn cách bằng dấu phẩy)..."
-                                  value={customDocs}
-                                  onChange={e => setCustomDocs(e.target.value)}
-                                  style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* 3. Obstacle Tags Row ("Khách đang vướng ở đâu?") */}
-                        <div style={{ marginBottom: '1.25rem' }}>
-                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Khách đang vướng ở đâu?</label>
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                            {[
-                              { id: 'trust', label: '🧑 Chưa tin mình', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
-                              { id: 'project', label: '🏙️ Chưa ưng dự án', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
-                              { id: 'unit', label: '🏠 Chưa chọn căn', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-                              { id: 'smooth', label: '✓ Đang xuôi', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
-                              { id: 'other', label: '➕ Khác', color: 'rgba(139, 92, 246, 0.1)', border: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' }
-                            ].map(item => {
-                              const isSelected = noteObstacle === item.id;
-                              return (
-                                <button
-                                  key={item.id}
-                                  type="button"
-                                  onClick={() => setNoteObstacle(noteObstacle === item.id ? '' : item.id)}
-                                  style={{
-                                    padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
-                                    background: isSelected ? item.color : 'var(--color-bg)',
-                                    color: isSelected ? item.text : 'var(--color-text-muted)',
-                                    border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
-                                    boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
-                                  }}
-                                >
-                                  {item.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          {noteObstacle === 'other' && (
-                            <div style={{ marginTop: '8px' }}>
-                              <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Nhập vướng mắc khác của khách..."
-                                value={customObstacle}
-                                onChange={e => setCustomObstacle(e.target.value)}
-                                style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Gợi ý hành động dựa trên vướng mắc */}
-                        {noteObstacle && (
-                          <div style={{
-                            background: '#fef08a1c',
-                            borderLeft: '4px solid #eab308',
-                            borderRadius: '8px',
-                            padding: '10px 12px',
-                            marginBottom: '1rem',
-                            fontSize: '0.75rem',
-                            color: 'var(--color-text-muted)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                            boxShadow: 'var(--shadow-sm)'
-                          }}>
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <Lightbulb size={12} style={{ color: '#eab308' }} />
-                              {'Toa gợi ý hành động (Sổ tay Richland):'}
-                            </span>
-                            <span style={{ lineHeight: 1.4 }}>
-                              {noteObstacle === 'trust' && 'Áp dụng nguyên liệu [Phòng Bếp] (Xây dựng uy tín cá nhân, chia sẻ kiến thức chuyên sâu và hỗ trợ tận tâm để khách hàng tin tưởng hơn).'}
-                              {noteObstacle === 'project' && 'Áp dụng nguyên liệu [Nước Sôi] + [Than so sánh] (Gửi bảng so sánh trực quan với đối thủ, nhấn mạnh lợi thế độc bản của dự án).'}
-                              {noteObstacle === 'unit' && 'Áp dụng nguyên liệu [Than chốt cá nhân hóa] + [Oxy] (Gửi phân tích dòng tiền căn tiềm năng nhất, tạo độ khan hiếm cho giỏ hàng độc quyền).'}
-                              {noteObstacle === 'smooth' && 'Khách hàng đang thuận lợi. Hãy duy trì tương tác đều đặn để chuẩn bị dẫn khách đi xem dự án thực tế hoặc đặt booking giữ chỗ.'}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* 4. Text Input Area */}
-                        <div style={{ marginBottom: '1rem' }}>
-                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Nội dung chi tiết tương tác</label>
-                          <MentionInput
-                            value={newNote || ''}
-                            onChange={e => setNewNote(e.target.value)}
-                            placeholder="Nhập ghi chú phản hồi khách hàng (Sử dụng @ để nhắc tên)..."
-                            style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 100, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)' }}
-                          />
-                        </div>
-
-                        {/* Note Attachment */}
-                        <div style={{ marginBottom: '1.25rem' }}>
-                          {noteAttachmentPreview && noteAttachmentFile ? (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {noteAttachmentFile.type.startsWith('image/') ? (
-                                  <Camera size={18} style={{ color: '#10b981' }} />
-                                ) : (
-                                  <FileText size={18} style={{ color: 'var(--color-primary)' }} />
-                                )}
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{noteAttachmentFile.name}</span>
-                              </div>
-                              <button 
-                                className="btn ghost text-danger sm" 
-                                onClick={() => {
-                                  if (noteAttachmentPreview) {
-                                    URL.revokeObjectURL(noteAttachmentPreview);
-                                  }
-                                  setNoteAttachmentFile(null);
-                                  setNoteAttachmentPreview(null);
-                                }} 
-                                style={{ padding: '6px' }}
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <input
-                                type="file"
-                                id="note-file-upload"
-                                style={{ display: 'none' }}
-                                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,image/*"
-                                onChange={handleNoteAttachmentUpload}
-                                disabled={isSubmitting}
-                              />
-                              <label htmlFor="note-file-upload" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
-                                <Paperclip size={14} />
-                                Đính kèm tài liệu
-                              </label>
-                            </div>
-                          )}
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <button className="btn primary" onClick={addNote} disabled={isSubmitting || !newNote.trim()}>
-                            {isSubmitting ? <Loader2 size={14} className="spin" /> : <Send size={14} />} 
-                            {isSubmitting ? 'Đang lưu...' : 'Lưu ghi chú'}
-                          </button>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
                         {notes.map(n => {
                           const cardBg = '#fefce8'; // pale yellow like note paper
                           const leftBorder = '4px solid #eab308'; // golden yellow accent border
 
                           return (
-                            <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid #fef08a', borderLeft: leftBorder, borderRadius: '12px', boxShadow: '0 2px 8px rgba(234, 179, 8, 0.05)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ flex: 1 }}>
-                                  <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
-                                  {n.attachment_url && (
-                                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
-                                        <Camera size={14} style={{ color: '#10b981' }} />
-                                      ) : (
-                                        <FileText size={14} style={{ color: 'var(--color-primary)' }} />
-                                      )}
-                                      <a
-                                        href={resolveAttachmentUrl(n.attachment_url)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                                      >
-                                        {n.attachment_url.split('/').pop()}
-                                      </a>
-                                    </div>
-                                  )}
-                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem' }}>
-                                    Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
-                                  </p>
+                            <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid #fef08a', borderLeft: leftBorder, borderRadius: '12px', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.05)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '160px' }}>
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                  <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{formatNote(n.text)}</p>
+                                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                    {canDeleteNote(n.user_id) && (
+                                      <>
+                                        <button
+                                          className="btn ghost sm"
+                                          style={{ padding: '4px', height: '24px', width: '24px', color: 'var(--color-text-muted)', border: 'none', background: 'transparent' }}
+                                          onClick={() => {
+                                            setEditingNote(n);
+                                            setNewNote(n.text);
+                                            setShowNoteModal(true);
+                                          }}
+                                        >
+                                          <Pencil size={12} />
+                                        </button>
+                                        <button
+                                          className="btn ghost sm text-danger"
+                                          style={{ padding: '4px', height: '24px', width: '24px', border: 'none', background: 'transparent' }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            showConfirm(
+                                              'Xóa ghi chú?',
+                                              'Bạn có chắc chắn muốn xóa ghi chú này không?',
+                                              async () => {
+                                                try {
+                                                  await api.delete(`/notes/${n.id}`);
+                                                  setNotes(prev => prev.filter(x => x.id !== n.id));
+                                                  addToast('Đã xóa ghi chú', 'success');
+                                                } catch (e: any) {
+                                                  addToast('Lỗi khi xóa ghi chú', 'error');
+                                                }
+                                              }
+                                            );
+                                          }}
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-
-                              {canDeleteNote(n.user_id) && (
-                                <button
-                                  className="btn-icon sm text-danger"
-                                  style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    showConfirm(
-                                      'Xóa ghi chú?',
-                                      'Bạn có chắc chắn muốn xóa ghi chú này không?',
-                                      async () => {
-                                        try {
-                                          await api.delete(`/notes/${n.id}`);
-                                          setNotes(prev => prev.filter(x => x.id !== n.id));
-                                          addToast('Đã xóa ghi chú', 'success');
-                                        } catch (e: any) {
-                                          addToast('Lỗi khi xóa ghi chú', 'error');
-                                        }
-                                      }
-                                    );
-                                  }}
-                                  onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                  onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              )}
+                                {n.attachment_url && (
+                                  <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
+                                      <Camera size={12} style={{ color: '#10b981' }} />
+                                    ) : (
+                                      <FileText size={12} style={{ color: 'var(--color-primary)' }} />
+                                    )}
+                                    <a
+                                      href={resolveAttachmentUrl(n.attachment_url)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                    >
+                                      {n.attachment_url.split('/').pop()}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                                <EditHistoryIndicator history={n.edit_history} />
+                                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                                  Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -4351,7 +4168,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Invoices</h3>
-                        <button className="btn outline sm" onClick={() => { useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
+                        {!isViewer && (
+                          <button className="btn outline sm" onClick={() => { useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
+                        )}
                       </div>
                       {drawerInvoices.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
@@ -4442,16 +4261,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <h3 style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--color-text)' }}>Danh sách Báo giá</h3>
                           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>Theo dõi các đề xuất giá gửi cho khách hàng này</p>
                         </div>
-                        <button
-                          className="btn primary sm"
-                          style={{ boxShadow: '0 4px 12px rgba(189, 29, 45, 0.2)' }}
-                          onClick={() => {
-                            setSelectedQuote(null);
-                            setShowQuoteEditor(true);
-                          }}
-                        >
-                          <Plus size={14} /> Tạo Báo giá
-                        </button>
+                        {!isViewer && (
+                          <button
+                            className="btn primary sm"
+                            style={{ boxShadow: '0 4px 12px rgba(189, 29, 45, 0.2)' }}
+                            onClick={() => {
+                              setSelectedQuote(null);
+                              setShowQuoteEditor(true);
+                            }}
+                          >
+                            <Plus size={14} /> Tạo Báo giá
+                          </button>
+                        )}
                       </div>
 
                       {drawerQuotes.length === 0 ? (
@@ -4508,7 +4329,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Chi phí liên quan</h3>
-                        <button className="btn outline sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#BD1D2D', borderColor: '#BD1D2D' }} onClick={() => setShowExpenseModal(true)}><Plus size={14} /> Nhập chi phí</button>
+                        {!isViewer && (
+                          <button className="btn outline sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#BD1D2D', borderColor: '#BD1D2D' }} onClick={() => setShowExpenseModal(true)}><Plus size={14} /> Nhập chi phí</button>
+                        )}
                       </div>
                       {drawerExpenses.length > 0 ? (
                         <div style={{ display: 'grid', gap: '1rem' }}>
@@ -4552,9 +4375,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hỗ trợ / Khiếu nại (Tickets)</h3>
-                        <button className="btn outline sm" onClick={() => setShowTicketModal(true)}>
-                          <Plus size={14} /> Tạo Ticket
-                        </button>
+                        {!isViewer && (
+                          <button className="btn outline sm" onClick={() => setShowTicketModal(true)}>
+                            <Plus size={14} /> Tạo Ticket
+                          </button>
+                        )}
                       </div>
                       {drawerTickets.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
@@ -4650,12 +4475,310 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       />
       <ActivityModal
         isOpen={showActivityModal}
-        onClose={() => setShowActivityModal(false)}
+        onClose={() => { setShowActivityModal(false); setEditingActivity(null); }}
         entityType="contact"
         entityId={contact?.id}
         onSuccess={fetchData}
         userId={contact?.owner_id || currentUser?.id}
+        activity={editingActivity}
       />
+
+      {/* ADD/EDIT NOTE MODAL */}
+      <AnimatePresence>
+        {showNoteModal && (
+          <div className="overlay-backdrop" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setShowNoteModal(false); setEditingNote(null); }}>
+            <motion.div 
+              className="modal-sheet" 
+              style={{ width: '100%', maxWidth: 640, padding: 0 }}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }} 
+              animate={{ opacity: 1, y: 0, scale: 1 }} 
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3>{editingNote ? 'Chỉnh sửa ghi chú' : 'Thêm ghi chú mới'}</h3>
+                <button className="btn-icon-bare" onClick={() => { setShowNoteModal(false); setEditingNote(null); }}><X size={20}/></button>
+              </div>
+              
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', maxHeight: '70vh', overflowY: 'auto' }}>
+                {!editingNote && (
+                  <>
+                    {/* Channel & Type Row */}
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 0 200px' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Kênh tương tác (Nối)</label>
+                        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                          {['text', 'call', 'meet'].map((ch: any) => (
+                            <button
+                              key={ch}
+                              type="button"
+                              onClick={() => setNoteChannel(ch)}
+                              style={{
+                                flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                background: noteChannel === ch ? 'var(--color-surface)' : 'transparent',
+                                color: noteChannel === ch ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                boxShadow: noteChannel === ch ? 'var(--shadow-sm)' : 'none',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {ch === 'text' ? '📝 Nối Đất' : ch === 'call' ? '📞 Nối Đồng' : '🤝 Nối Áp Suất'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ flex: '1 0 150px' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Loại tương tác</label>
+                        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                          {['normal', 'quality'].map((t: any) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setNoteType(t)}
+                              style={{
+                                flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                background: noteType === t ? 'var(--color-surface)' : 'transparent',
+                                color: noteType === t ? (t === 'quality' ? 'var(--color-success)' : 'var(--color-text)') : 'var(--color-text-muted)',
+                                boxShadow: noteType === t ? 'var(--shadow-sm)' : 'none',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              {t === 'normal' ? 'Thường' : 'Chất lượng'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Optional Fields (Call Duration, Documents Sent) */}
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                      {noteChannel === 'call' && (
+                        <div style={{ flex: '1 0 150px' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Thời lượng cuộc gọi (giây)</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            placeholder="Ví dụ: 45"
+                            value={noteDuration}
+                            onChange={e => setNoteDuration(e.target.value)}
+                            style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', width: '100%', padding: '0 12px' }}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ flex: '1 0 100%', display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Tài liệu đã gửi (Chọn tài liệu)</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {[
+                            'Bảng giá',
+                            'Sơ đồ mặt bằng',
+                            'Pháp lý dự án',
+                            'Chính sách bán hàng',
+                            'Brochure dự án',
+                            'Thiết kế chi tiết',
+                            'Khác'
+                          ].map(doc => {
+                            const selectedDocs = noteDocsSent ? noteDocsSent.split(', ').map(d => d.trim()) : [];
+                            const isSelected = selectedDocs.includes(doc);
+                            return (
+                              <button
+                                key={doc}
+                                type="button"
+                                onClick={() => {
+                                  let nextDocs;
+                                  if (isSelected) {
+                                    nextDocs = selectedDocs.filter(d => d !== doc);
+                                  } else {
+                                    nextDocs = [...selectedDocs, doc];
+                                  }
+                                  setNoteDocsSent(nextDocs.join(', '));
+                                }}
+                                style={{
+                                  padding: '6px 14px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                  background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-bg)',
+                                  color: isSelected ? '#3b82f6' : 'var(--color-text-muted)',
+                                  border: `1px solid ${isSelected ? '#3b82f6' : 'var(--color-border-light)'}`,
+                                  boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                                }}
+                              >
+                                📁 {doc}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {noteDocsSent.split(', ').map(d => d.trim()).includes('Khác') && (
+                          <div style={{ marginTop: '8px' }}>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Nhập tên tài liệu khác khác (ngăn cách bằng dấu phẩy)..."
+                              value={customDocs}
+                              onChange={e => setCustomDocs(e.target.value)}
+                              style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Obstacle Tags Row */}
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Khách đang vướng ở đâu?</label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {[
+                          { id: 'trust', label: '🧑 Chưa tin mình', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
+                          { id: 'project', label: '🏙️ Chưa ưng dự án', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
+                          { id: 'unit', label: '🏠 Chưa chọn căn', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
+                          { id: 'smooth', label: '✓ Đang xuôi', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
+                          { id: 'other', label: '➕ Khác', color: 'rgba(139, 92, 246, 0.1)', border: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' }
+                        ].map(item => {
+                          const isSelected = noteObstacle === item.id;
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setNoteObstacle(noteObstacle === item.id ? '' : item.id)}
+                              style={{
+                                padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                background: isSelected ? item.color : 'var(--color-bg)',
+                                color: isSelected ? item.text : 'var(--color-text-muted)',
+                                border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
+                                boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                              }}
+                            >
+                              {item.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {noteObstacle === 'other' && (
+                        <div style={{ marginTop: '8px' }}>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="Nhập vướng mắc khác của khách..."
+                            value={customObstacle}
+                            onChange={e => setCustomObstacle(e.target.value)}
+                            style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Suggestion Alert */}
+                    {noteObstacle && (
+                      <div style={{
+                        background: '#fef08a1c',
+                        borderLeft: '4px solid #eab308',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                        fontSize: '0.75rem',
+                        color: 'var(--color-text-muted)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        boxShadow: 'var(--shadow-sm)'
+                      }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Lightbulb size={12} style={{ color: '#eab308' }} />
+                          {'Toa gợi ý hành động (Sổ tay Richland):'}
+                        </span>
+                        <span style={{ lineHeight: 1.4 }}>
+                          {noteObstacle === 'trust' && 'Áp dụng nguyên liệu [Phòng Bếp] (Xây dựng uy tín cá nhân, chia sẻ kiến thức chuyên sâu và hỗ trợ tận tâm để khách hàng tin tưởng hơn).'}
+                          {noteObstacle === 'project' && 'Áp dụng nguyên liệu [Nước Sôi] + [Than so sánh] (Gửi bảng so sánh trực quan với đối thủ, nhấn mạnh lợi thế độc bản của dự án).'}
+                          {noteObstacle === 'unit' && 'Áp dụng nguyên liệu [Than chốt cá nhân hóa] + [Oxy] (Gửi phân tích dòng tiền căn tiềm năng nhất, tạo độ khan hiếm cho giỏ hàng độc quyền).'}
+                          {noteObstacle === 'smooth' && 'Khách hàng đang thuận lợi. Hãy duy trì tương tác đều đặn để chuẩn bị dẫn khách đi xem dự án thực tế hoặc đặt booking giữ chỗ.'}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Note Body Text Input */}
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Nội dung chi tiết tương tác</label>
+                  <MentionInput
+                    value={newNote || ''}
+                    onChange={e => setNewNote(e.target.value)}
+                    placeholder="Nhập ghi chú phản hồi khách hàng (Sử dụng @ để nhắc tên)..."
+                    style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 100, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)' }}
+                  />
+                </div>
+
+                {!editingNote && (
+                  /* Note Attachment */
+                  <div>
+                    {noteAttachmentPreview && noteAttachmentFile ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {noteAttachmentFile.type.startsWith('image/') ? (
+                            <Camera size={18} style={{ color: '#10b981' }} />
+                          ) : (
+                            <FileText size={18} style={{ color: 'var(--color-primary)' }} />
+                          )}
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{noteAttachmentFile.name}</span>
+                        </div>
+                        <button 
+                          className="btn ghost text-danger sm" 
+                          onClick={() => {
+                            if (noteAttachmentPreview) { URL.revokeObjectURL(noteAttachmentPreview); }
+                            setNoteAttachmentFile(null);
+                            setNoteAttachmentPreview(null);
+                          }} 
+                          style={{ padding: '6px' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="file"
+                          id="note-file-upload-modal"
+                          style={{ display: 'none' }}
+                          accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,image/*"
+                          onChange={handleNoteAttachmentUpload}
+                          disabled={isSubmitting}
+                        />
+                        <label htmlFor="note-file-upload-modal" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
+                          <Paperclip size={14} />
+                          Đính kèm tài liệu
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn outline lg" onClick={() => { setShowNoteModal(false); setEditingNote(null); }} disabled={isSubmitting}>Hủy bỏ</button>
+                <button type="button" className="btn primary lg" onClick={async () => {
+                  if (editingNote) {
+                    setIsSubmitting(true);
+                    try {
+                      await api.put(`/notes/${editingNote.id}`, { body: newNote });
+                      addToast('Cập nhật ghi chú thành công!', 'success');
+                      setShowNoteModal(false);
+                      setEditingNote(null);
+                      setNewNote('');
+                      fetchData();
+                    } catch (e: any) {
+                      addToast('Lỗi khi cập nhật ghi chú', 'error');
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  } else {
+                    await addNote();
+                    setShowNoteModal(false);
+                  }
+                }} disabled={isSubmitting || !newNote.trim()}>
+                  {isSubmitting ? 'Đang lưu...' : 'Lưu ghi chú'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {pipelineModal.isOpen && (
