@@ -554,7 +554,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
-  const [dealForm, setDealForm] = useState({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
+  const [dealForm, setDealForm] = useState({
+    title: '',
+    value: '',
+    stage: 'lead',
+    probability: 50,
+    expected_close: '',
+    description: '',
+    priority: 'medium'
+  });
   const [taskForm, setTaskForm] = useState(() => {
     const today = new Date().toISOString().slice(0, 10);
     return {
@@ -571,6 +579,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [docs, setDocs] = useState<any[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [deals, setDeals] = useState<any[]>([]);
+  const [stages, setStages] = useState<any[]>([]);
   const [drawerInvoices, setDrawerInvoices] = useState<any[]>([]);
   const [drawerQuotes, setDrawerQuotes] = useState<any[]>([]);
   const [drawerExpenses, setDrawerExpenses] = useState<any[]>([]);
@@ -666,6 +675,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setDrawerExpenses(state.expenses.filter((e: any) => e.contact_id === contact.id)); 
       setDrawerTickets(state.tickets.filter((t: any) => t.customer_name === `${contact.first_name} ${contact.last_name}`.trim()));
       setDocs(state.files.filter((f: any) => f.contact_id === contact.id));
+      setStages(DEFAULT_PIPELINE_STAGES);
       setLoadingRelated(false);
       return;
     }
@@ -693,15 +703,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—'
       })));
 
+      // Fetch Pipeline Stages
+      try {
+        const stagesRes = await api.get('/pipeline-stages');
+        setStages(stagesRes.data.data?.items || stagesRes.data.data || []);
+      } catch (err) {}
+
       // Fetch Deals
       const dealsRes = await api.get(`/deals?contact_id=${contact.id}`);
       setDeals((dealsRes.data.data?.items || []).map((d: any) => ({
         id: d.id,
         title: d.title,
         value: d.value,
-        stage: d.stage_name,
+        stage: d.stage_name || 'Chưa xác định',
         prob: d.probability,
-        close: d.expected_close_date,
+        close: d.expected_close_date || d.expected_close,
         stage_color: d.stage_color || '#3b82f6'
       })));
 
@@ -1069,15 +1085,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (!dealForm.title.trim() || isSubmitting) return;
     setIsSubmitting(true);
     try {
+      const selectedStageId = (dealForm.stage === 'lead' || !dealForm.stage) ? null : Number(dealForm.stage);
       await api.post('/deals', {
         contact_id: contact.id,
         title: dealForm.title,
         value: Number(dealForm.value) || 0,
-        stage_id: dealForm.stage === 'lead' ? null : dealForm.stage,
-        probability: dealForm.probability
+        stage_id: selectedStageId,
+        probability: dealForm.probability,
+        expected_close_date: dealForm.expected_close || null,
+        description: dealForm.description || null,
+        priority: dealForm.priority || 'medium'
       });
       setShowDealModal(false);
-      setDealForm({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
+      setDealForm({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '', description: '', priority: 'medium' });
       fetchData();
       addToast('Đã tạo cơ hội mới thành công', 'success');
     } catch (e: any) {
@@ -2431,7 +2451,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Cơ hội (Deals) - {deals.length}</h3>
-                        <button className="btn primary sm" onClick={() => setShowDealModal(true)}><Plus size={14} /> Tạo deal mới</button>
+                        <button className="btn primary sm" onClick={() => {
+                          const initialStage = stages[0]?.id?.toString() || 'lead';
+                          setDealForm({ title: '', value: '', stage: initialStage, probability: 50, expected_close: '', description: '', priority: 'medium' });
+                          setShowDealModal(true);
+                        }}><Plus size={14} /> Tạo deal mới</button>
                       </div>
                       {deals.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
@@ -2473,7 +2497,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
                                   <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Ngày dự kiến</span>
-                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{new Date(d.close).toLocaleDateString('vi-VN')}</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.close && d.close !== '0000-00-00' ? new Date(d.close).toLocaleDateString('vi-VN') : 'Chưa thiết lập'}</span>
                                 </div>
                               </div>
                             </div>
@@ -3431,11 +3455,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <div className="form-group">
                     <label className="form-label">Giai đoạn</label>
                     <CustomSelect
-                      options={[
-                        { value: 'lead', label: 'Mới (Lead)' },
-                        { value: 'negotiation', label: 'Đàm phán' },
-                        { value: 'proposal', label: 'Đã báo giá' }
-                      ]}
+                      options={(stages.length > 0 ? stages : DEFAULT_PIPELINE_STAGES).map(s => ({
+                        value: s.id.toString(),
+                        label: s.name
+                      }))}
                       value={dealForm.stage}
                       onChange={val => setDealForm({ ...dealForm, stage: val.toString() })}
                     />
@@ -3444,6 +3467,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <label className="form-label">Xác suất (%)</label>
                     <input className="form-input" type="number" value={dealForm.probability} onChange={e => setDealForm({ ...dealForm, probability: Number(e.target.value) })} />
                   </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Ngày dự kiến chốt</label>
+                    <input 
+                      className="form-input" 
+                      type="date" 
+                      value={dealForm.expected_close} 
+                      onChange={e => setDealForm({ ...dealForm, expected_close: e.target.value })} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Mức độ ưu tiên</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'low', label: 'Thấp' },
+                        { value: 'medium', label: 'Trung bình' },
+                        { value: 'high', label: 'Cao' }
+                      ]}
+                      value={dealForm.priority}
+                      onChange={val => setDealForm({ ...dealForm, priority: val.toString() })}
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Mô tả chi tiết</label>
+                  <textarea 
+                    className="form-input" 
+                    rows={3} 
+                    placeholder="Nhập thông tin chi tiết về cơ hội/giao dịch..." 
+                    value={dealForm.description} 
+                    onChange={e => setDealForm({ ...dealForm, description: e.target.value })} 
+                  />
                 </div>
               </div>
               <div className="modal-footer">
