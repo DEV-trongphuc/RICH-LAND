@@ -618,8 +618,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const handleSaveCoopShares = async () => {
     if (!coopSlip) return;
     const sum = coopShares.reduce((acc, curr) => acc + (Number(curr.percentage) || 0), 0);
-    if (sum !== 100) {
-      addToast('Tổng tỷ lệ chia sẻ hoa hồng phải bằng 100% (Hiện tại là ' + sum + '%)', 'error');
+    if (sum > 100) {
+      addToast('Tổng tỷ lệ chia sẻ hoa hồng không được vượt quá 100% (Hiện tại là ' + sum + '%)', 'error');
       return;
     }
     setCoopLoading(true);

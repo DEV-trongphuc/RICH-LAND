@@ -6,6 +6,7 @@ import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertC
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { useUIStore } from '../store/uiStore';
 
 interface CooperationSlip {
   id: number;
@@ -48,6 +49,7 @@ interface SalesAccount {
 }
 
 export default function CooperationSlipsPage() {
+  const { addToast } = useUIStore();
   const { user } = useAuth();
   const [slips, setSlips] = useState<CooperationSlip[]>([]);
   const [salesAccounts, setSalesAccounts] = useState<SalesAccount[]>([]);
@@ -302,11 +304,11 @@ export default function CooperationSlipsPage() {
     let sum = 0;
     for (const item of sharesInput) {
       if (!item.user_id || !item.percentage) {
-        setError('Vui lòng chọn nhân viên và nhập đầy đủ tỷ lệ');
+        addToast('Vui lòng chọn nhân viên và nhập đầy đủ tỷ lệ', 'error');
         return;
       }
       if (sharesMap[item.user_id]) {
-        setError('Nhân viên không được bị trùng lặp trong phiếu chia');
+        addToast('Nhân viên không được bị trùng lặp trong phiếu chia', 'error');
         return;
       }
       const val = parseInt(item.percentage) || 0;
@@ -314,8 +316,8 @@ export default function CooperationSlipsPage() {
       sum += val;
     }
 
-    if (sum !== 100) {
-      setError(`Tổng tỷ lệ hoa hồng phải bằng đúng 100% (Hiện tại là ${sum}%)`);
+    if (sum > 100) {
+      addToast(`Tổng tỷ lệ hoa hồng không được vượt quá 100% (Hiện tại là ${sum}%)`, 'error');
       return;
     }
 
@@ -326,15 +328,15 @@ export default function CooperationSlipsPage() {
       });
 
       if (res.success) {
-        setSuccess('Đã cập nhật tỷ lệ chia sẻ và gửi yêu cầu phê duyệt thành công!');
+        addToast('Đã gửi yêu cầu thay đổi tỷ lệ thành công!', 'success');
         setIsUpdateOpen(false);
         setChangeReason('');
         loadData();
       } else {
-        setError(res.message || 'Lỗi cập nhật tỷ lệ');
+        addToast(res.message || 'Lỗi cập nhật tỷ lệ', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     }
   };
 
