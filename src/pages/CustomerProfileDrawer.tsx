@@ -140,19 +140,27 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
     const file = e.target.files?.[0];
     if (!file) return;
     
+    if (file.size > 5 * 1024 * 1024) {
+      addToast('Dung lượng tệp đính kèm không được vượt quá 5MB', 'error');
+      return;
+    }
+    
     // Clear the input value so the same file can be selected again if needed
     e.target.value = '';
 
     setUploading(true);
     try {
-      const compressed = await compressToWebP(file);
+      let fileToUpload = file;
+      if (file.type.startsWith('image/')) {
+        fileToUpload = await compressToWebP(file);
+      }
       const fd = new FormData();
-      fd.append('file', compressed);
+      fd.append('file', fileToUpload);
       const res = await api.post('/upload', fd);
       setAttachment(res.data.data?.url ?? '');
-      addToast('Tải ảnh lên thành công', 'success');
+      addToast('Tải tệp đính kèm lên thành công', 'success');
     } catch (e: any) {
-      addToast(e.response?.data?.message || 'Lỗi khi tải ảnh lên', 'error');
+      addToast(e.response?.data?.message || 'Lỗi khi tải tệp lên', 'error');
     } finally {
       setUploading(false);
     }
@@ -213,13 +221,27 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
                   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
                 </div>
                 {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>}
-                {c.attachments && c.attachments.map((att: string, i: number) => (
-                  <div key={i} style={{ marginTop: '0.5rem' }}>
-                    <a href={att} target="_blank" rel="noreferrer">
-                      <img src={att} alt="attachment" style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--color-border)' }} />
-                    </a>
-                  </div>
-                ))}
+                {c.attachments && c.attachments.map((att: string, i: number) => {
+                  const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(att);
+                  const apiURL = api.defaults.baseURL || '';
+                  const fullUrl = att.startsWith('http') ? att : (att.startsWith('/') ? `${apiURL}${att}` : `${apiURL}/${att}`);
+                  return (
+                    <div key={i} style={{ marginTop: '0.5rem' }}>
+                      {isImg ? (
+                        <a href={fullUrl} target="_blank" rel="noreferrer">
+                          <img src={fullUrl} alt="attachment" style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--color-border)' }} />
+                        </a>
+                      ) : (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', width: 'fit-content' }}>
+                          <FileText size={18} style={{ color: 'var(--color-primary)' }} />
+                          <a href={fullUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
+                            {att.split('/').pop()}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -238,23 +260,35 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
                 />
                 <label style={{ position: 'absolute', right: '8px', bottom: '8px', cursor: submitting ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)' }}>
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading || submitting} />
-                  {uploading || submitting ? <Loader2 size={18} className="spin" /> : <Camera size={18} />}
+                  <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,image/*" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading || submitting} />
+                  {uploading || submitting ? <Loader2 size={18} className="spin" /> : <Paperclip size={18} />}
                 </label>
               </div>
               
-              {attachment && (
-                <div style={{ position: 'relative', display: 'inline-block', width: 'fit-content' }}>
-                  <img src={attachment} alt="preview" style={{ height: '60px', borderRadius: '8px', border: '1px solid var(--color-primary)' }} />
-                  <button 
-                    className="btn-icon sm" 
-                    style={{ position: 'absolute', top: -6, right: -6, background: 'var(--color-danger)', color: 'white', padding: 2, height: 18, width: 18 }}
-                    onClick={() => setAttachment(null)}
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-              )}
+              {attachment && (() => {
+                const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment);
+                const apiURL = api.defaults.baseURL || '';
+                const fullUrl = attachment.startsWith('http') ? attachment : (attachment.startsWith('/') ? `${apiURL}${attachment}` : `${apiURL}/${attachment}`);
+                return (
+                  <div style={{ position: 'relative', display: 'inline-block', width: 'fit-content' }}>
+                    {isImg ? (
+                      <img src={fullUrl} alt="preview" style={{ height: '60px', borderRadius: '8px', border: '1px solid var(--color-primary)' }} />
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                        <FileText size={16} style={{ color: 'var(--color-primary)' }} />
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{attachment.split('/').pop()}</span>
+                      </div>
+                    )}
+                    <button 
+                      className="btn-icon sm" 
+                      style={{ position: 'absolute', top: -6, right: -6, background: 'var(--color-danger)', color: 'white', padding: 2, height: 18, width: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => setAttachment(null)}
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                );
+              })()}
               
               <div style={{ textAlign: 'right' }}>
                 <button 
