@@ -1627,6 +1627,12 @@ try {
         $conn->query("ALTER TABLE leads ADD COLUMN ai_total_tokens INT DEFAULT 0 COMMENT 'Tổng số token AI sử dụng'");
     }
 
+    // Self-healing check: ensure attachment_url exists in cooperation_slips
+    $chkColCoopAttach = $conn->query("SHOW COLUMNS FROM cooperation_slips LIKE 'attachment_url'");
+    if ($chkColCoopAttach && $chkColCoopAttach->num_rows === 0) {
+        $conn->query("ALTER TABLE cooperation_slips ADD COLUMN attachment_url VARCHAR(500) DEFAULT NULL");
+    }
+
 
 
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");

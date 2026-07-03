@@ -70,7 +70,7 @@ class CloudFileController {
 
         // Security: Whitelist extensions
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed = ['jpg','jpeg','png','gif','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','zip','rar','csv'];
+        $allowed = ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','zip','rar','csv'];
         if (!in_array($ext, $allowed)) respond(422, null, "Định dạng tệp .$ext không được hỗ trợ", false);
 
         $tid = $auth['tenant_id'];

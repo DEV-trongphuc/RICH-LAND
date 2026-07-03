@@ -413,6 +413,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
     return isOwner || isAdmin;
   }, [currentUser, formData.owner_id, contact?.owner_id]);
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
   const [decayDays, setDecayDays] = useState<number>(5);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
@@ -532,6 +533,52 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     } catch (e: any) {
       addToast(e.message, 'error');
+    }
+    setCoopLoading(false);
+  };
+
+  const handleCoopAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !coopSlip) return;
+    const file = e.target.files[0];
+    e.target.value = '';
+    setCoopLoading(true);
+    try {
+      let fileToUpload = file;
+      if (file.type.startsWith('image/')) {
+        fileToUpload = await compressToWebP(file);
+      }
+      const fd = new FormData();
+      fd.append('file', fileToUpload);
+      const res = await api.post(`/cooperation-slips/${coopSlip.id}/upload-attachment`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        addToast('Tải lên tài liệu đính kèm thành công!', 'success');
+        await fetchCoopSlip();
+      } else {
+        addToast(res.data.message || 'Lỗi tải lên tài liệu', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.message || 'Lỗi tải lên tài liệu', 'error');
+    }
+    setCoopLoading(false);
+  };
+
+  const handleRemoveCoopAttachment = async () => {
+    if (!coopSlip) return;
+    setCoopLoading(true);
+    try {
+      const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/delete-attachment`, {
+        method: 'POST'
+      });
+      if (res.success) {
+        addToast('Đã xóa tài liệu đính kèm', 'success');
+        await fetchCoopSlip();
+      } else {
+        addToast(res.message || 'Lỗi xóa tài liệu', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.message || 'Lỗi xóa tài liệu', 'error');
     }
     setCoopLoading(false);
   };
@@ -2138,6 +2185,59 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <strong>Lý do từ chối:</strong> {coopSlip.dispute_details}
                             </div>
                           )}
+
+                          {/* Cooperation Slip Attachment */}
+                          <div className="card-panel" style={{ padding: '1.5rem' }}>
+                            <h4 style={{ fontWeight: 700, marginBottom: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <Paperclip size={18} /> Tài liệu hợp tác đính kèm
+                            </h4>
+                            {coopSlip.attachment_url ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  {coopSlip.attachment_url.toLowerCase().endsWith('.pdf') ? (
+                                    <FileText size={24} style={{ color: '#ef4444' }} />
+                                  ) : (coopSlip.attachment_url.toLowerCase().endsWith('.doc') || coopSlip.attachment_url.toLowerCase().endsWith('.docx')) ? (
+                                    <FileText size={24} style={{ color: '#3b82f6' }} />
+                                  ) : (
+                                    <Camera size={24} style={{ color: '#10b981' }} />
+                                  )}
+                                  <div>
+                                    <a href={`${api.defaults.baseURL || ''}/${coopSlip.attachment_url}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
+                                      Xem tài liệu hợp tác
+                                    </a>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                      {coopSlip.attachment_url.split('/').pop()}
+                                    </p>
+                                  </div>
+                                </div>
+                                {isAdmin && (
+                                  <button className="btn ghost text-danger sm" onClick={handleRemoveCoopAttachment} style={{ padding: '8px' }}>
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div>
+                                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
+                                  Chưa có tài liệu/hợp đồng đính kèm cho phiếu này.
+                                </p>
+                                {isAdmin && (
+                                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                    <input
+                                      type="file"
+                                      id="coop-attachment-upload"
+                                      style={{ display: 'none' }}
+                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
+                                      onChange={handleCoopAttachmentUpload}
+                                    />
+                                    <label htmlFor="coop-attachment-upload" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                      <Upload size={14} /> Tải tài liệu đính kèm
+                                    </label>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
 
                           {/* Shareholder Management */}
                           <div className="card-panel" style={{ padding: '1.5rem' }}>

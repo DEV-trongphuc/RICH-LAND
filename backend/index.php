@@ -823,6 +823,8 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'sign' && $method === 'POST') $ctrl->signSlip($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'approve' && $method === 'POST') $ctrl->approveSlip($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'reject' && $method === 'POST') $ctrl->rejectSlip($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'upload-attachment' && $method === 'POST') $ctrl->uploadAttachment($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'delete-attachment' && $method === 'POST') $ctrl->deleteAttachment($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->createSlip($auth);
         else respond(404, null, 'Route không tồn tại', false);

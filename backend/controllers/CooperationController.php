@@ -304,4 +304,72 @@ class CooperationController {
 
         respond(201, ['id' => (int)$slipId], 'Khởi tạo phiếu hợp tác thành công');
     }
+
+    public function uploadAttachment(array $auth, int $id): void {
+        if ($auth['role'] !== 'admin' && $auth['role'] !== 'superadmin' && $auth['role'] !== 'super_admin' && $auth['role'] !== 'manager') {
+            respond(403, null, 'Bạn không có quyền tải lên tài liệu cho phiếu hợp tác', false);
+        }
+
+        if (empty($_FILES['file'])) {
+            respond(422, null, 'Vui lòng chọn tệp tin để tải lên', false);
+        }
+
+        $file = $_FILES['file'];
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            respond(500, null, 'Lỗi trong quá trình tải tệp lên server', false);
+        }
+
+        if ($file['size'] > 10 * 1024 * 1024) {
+            respond(422, null, 'Dung lượng tệp tối đa cho phép là 10MB', false);
+        }
+
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowed = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp', 'gif'];
+        if (!in_array($ext, $allowed)) {
+            respond(422, null, "Định dạng tệp .$ext không được hỗ trợ", false);
+        }
+
+        $tid = $auth['tenant_id'];
+        $targetDir = UPLOAD_DIR . "/cooperation/$tid";
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+        }
+
+        $safeName = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
+        $fileName = time() . '_' . $safeName . '.' . $ext;
+        $targetPath = $targetDir . '/' . $fileName;
+        $dbPath = "uploads/cooperation/$tid/$fileName";
+
+        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+            respond(500, null, 'Không thể di chuyển tệp đã tải lên vào thư mục đích', false);
+        }
+
+        $stmt = $this->db->prepare("
+            UPDATE cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            SET cs.attachment_url = ?
+            WHERE cs.id = ? AND c.tenant_id = ?
+        ");
+        $stmt->execute([$dbPath, $id, $tid]);
+
+        respond(200, ['file_url' => $dbPath], 'Tải lên tài liệu đính kèm thành công');
+    }
+
+    public function deleteAttachment(array $auth, int $id): void {
+        if ($auth['role'] !== 'admin' && $auth['role'] !== 'superadmin' && $auth['role'] !== 'super_admin' && $auth['role'] !== 'manager') {
+            respond(403, null, 'Bạn không có quyền xóa tài liệu đính kèm', false);
+        }
+
+        $tid = $auth['tenant_id'];
+
+        $stmt = $this->db->prepare("
+            UPDATE cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            SET cs.attachment_url = NULL
+            WHERE cs.id = ? AND c.tenant_id = ?
+        ");
+        $stmt->execute([$id, $tid]);
+
+        respond(200, null, 'Xóa tài liệu đính kèm thành công');
+    }
 }
