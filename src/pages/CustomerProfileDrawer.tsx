@@ -2002,7 +2002,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   {tasks.filter(t => !t.done).length}
                                 </span>
                               )}
-                              {tab.id === 'cooperation' && coopSlip && (coopSlip.status === 'pending_signatures' || coopSlip.status === 'pending_manager_approval') && (
+                              {tab.id === 'cooperation' && coopSlip && (coopSlip.status === 'pending_manager_approval' || coopSlip.shareholders?.some((sh: any) => !sh.signed)) && (
                                 <span style={{
                                   background: 'var(--color-danger)',
                                   color: 'white',
@@ -2015,7 +2015,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   justifyContent: 'center',
                                   lineHeight: 1
                                 }}>
-                                  {coopSlip.status === 'pending_signatures' ? 'Chờ ký' : 'Chờ duyệt'}
+                                  {coopSlip.status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký'}
                                 </span>
                               )}
                             </button>
