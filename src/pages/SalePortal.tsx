@@ -364,7 +364,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     avatar: impersonatedSale.avatar || null,
     email: impersonatedSale.email || '',
     role: 'sale',
-    consultant_id: impersonatedSale.id
+    consultant_id: impersonatedSale.id,
+    id: impersonatedSale.user_id ? Number(impersonatedSale.user_id) : user?.id
   } : user;
 
   const effectiveRole = displayUser?.role;
@@ -521,7 +522,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (res.success) {
         const slips = res.data || [];
         const filtered = slips.filter((s: any) => {
-          const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(user?.id));
+          const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(displayUser?.id));
           return s.status !== 'rejected' && sh && !sh.signed;
         });
         setPendingCoopSlips(filtered);
@@ -2018,7 +2019,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
               {pendingCoopSlips.map((slip: any) => {
-                const myShare = slip.shareholders?.find((x: any) => String(x.user_id) === String(user?.id));
+                const myShare = slip.shareholders?.find((x: any) => String(x.user_id) === String(displayUser?.id));
                 const percentage = myShare ? myShare.percentage : 0;
                 
                 return (

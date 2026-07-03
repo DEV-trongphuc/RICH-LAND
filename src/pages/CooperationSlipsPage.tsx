@@ -746,7 +746,7 @@ export default function CooperationSlipsPage() {
                     {/* Sign / Update buttons */}
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {/* Configuration: only allowed in pending_signatures */}
-                      {slip.status === 'pending_signatures' && (slip.created_by === user?.consultant_id || isManager) && (
+                      {slip.status === 'pending_signatures' && (String(slip.created_by) === String(user?.id) || isManager) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleOpenUpdateShares(slip); }}
                           className="btn sm outline"
@@ -781,7 +781,7 @@ export default function CooperationSlipsPage() {
 
                     {/* Request change if already approved or pending manager approval */}
                     {(slip.status === 'approved' || slip.status === 'pending_manager_approval') && 
-                     (isManager || isShareholder || slip.created_by === user?.consultant_id) && (
+                     (isManager || isShareholder || String(slip.created_by) === String(user?.id)) && (
                       <div style={{ display: 'flex', gap: '6px' }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleOpenUpdateShares(slip); }}
@@ -814,7 +814,7 @@ export default function CooperationSlipsPage() {
                     )}
 
                     {/* Delete button */}
-                    {(isManager || (slip.created_by === user?.consultant_id && slip.status === 'pending_signatures')) && (
+                    {(isManager || (String(slip.created_by) === String(user?.id) && slip.status === 'pending_signatures')) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDeleteSlip(slip.id); }}
                         className="btn sm outline text-danger"
@@ -1248,7 +1248,7 @@ export default function CooperationSlipsPage() {
                           ...salesAccounts
                             .filter(s => {
                               if (idx === 0) return true;
-                              return String(s.id) !== String(user?.consultant_id);
+                              return String(s.id) !== String(user?.id);
                             })
                             .filter(s => {
                               if (String(s.id) === String(item.user_id)) return true;
