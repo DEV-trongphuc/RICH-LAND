@@ -24,7 +24,15 @@ let _isRedirectingToLogin = false;
 const pendingRequests = new Map<string, Promise<any>>();
 
 export async function fetchAPI(action: string, options: RequestInit = {}, retries = 2) {
-  const isGet = !options.method || options.method.toUpperCase() === 'GET';
+  const originalMethod = options.method ? options.method.toUpperCase() : 'GET';
+  const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
+  const isProd = !isDevMode;
+
+  if (isProd && ['PUT', 'PATCH', 'DELETE'].includes(originalMethod)) {
+    options.method = 'POST';
+  }
+
+  const isGet = originalMethod === 'GET';
   let requestKey = '';
   if (isGet) {
     try {
@@ -54,6 +62,9 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
     let url = `${BASE_URL}?action=${action}`;
     if (token) {
       url += `&token=${token}`;
+    }
+    if (isProd && ['PUT', 'PATCH', 'DELETE'].includes(originalMethod)) {
+      url += `&_method=${originalMethod}`;
     }
 
     let lastError: any;
@@ -138,12 +149,23 @@ export async function fetchAPI(action: string, options: RequestInit = {}, retrie
  * KHÔNG gửi token, KHÔNG redirect về /login khi lỗi
  */
 export async function fetchPublicAPI(action: string, options: RequestInit = {}) {
+  const originalMethod = options.method ? options.method.toUpperCase() : 'GET';
+  const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
+  const isProd = !isDevMode;
+
+  if (isProd && ['PUT', 'PATCH', 'DELETE'].includes(originalMethod)) {
+    options.method = 'POST';
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
 
-  const url = `${BASE_URL}?action=${action}`;
+  let url = `${BASE_URL}?action=${action}`;
+  if (isProd && ['PUT', 'PATCH', 'DELETE'].includes(originalMethod)) {
+    url += `&_method=${originalMethod}`;
+  }
 
   const response = await fetch(url, {
     ...options,
