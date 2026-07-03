@@ -1228,17 +1228,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                      {/* Lead Score inline card */}
                      <div 
                        onClick={() => setActiveTab('scoring')}
-                       style={{ 
-                         display: 'flex', 
-                         alignItems: 'center', 
-                         justifyContent: 'center', 
-                         background: 'var(--color-surface)', 
-                         padding: '4px', 
-                         borderRadius: '50%', 
-                         border: '1px solid var(--color-border-light)', 
-                         boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                         cursor: 'pointer'
-                       }}
+                       style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                        title="Xem chi tiết Scoring"
                      >
                        <LeadScoreRing score={score} size={36} showLabel={true} />

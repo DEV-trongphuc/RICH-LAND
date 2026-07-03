@@ -26,18 +26,6 @@ export const LeadScoreRing: React.FC<LeadScoreRingProps> = ({ score, size = 52, 
 
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }} title={`Lead Score: ${score}/100 — ${label}`}>
-      {/* Dynamic Glow Effect */}
-      <div 
-        style={{
-          position: 'absolute',
-          inset: '4px',
-          borderRadius: '50%',
-          boxShadow: `0 0 15px 2px ${color}40`,
-          animation: score >= 60 ? 'pulse 2s infinite' : 'none',
-          zIndex: 0
-        }} 
-      />
-      
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', position: 'relative', zIndex: 1 }}>
         {/* Background ring */}
         <circle

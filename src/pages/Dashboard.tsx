@@ -1026,7 +1026,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                             {/* 24 Cells */}
                             {Array.from({ length: 24 }, (_, h) => {
                               const val = heatmapGrid[dIdx][h];
-                              const opacity = val === 0 ? 0.08 : 0.2 + (val / maxVal) * 0.8;
+                              const opacity = val === 0 ? 1 : 0.2 + (val / maxVal) * 0.8;
                               const isHovered = hoveredCell && hoveredCell.wday === dIdx && hoveredCell.hour === h;
 
                               return (
@@ -1049,7 +1049,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   onMouseLeave={() => setHoveredCell(null)}
                                   style={{
                                     aspectRatio: '1',
-                                    background: val === 0 ? 'var(--color-border-light)' : 'var(--color-primary)',
+                                    background: val === 0 ? (theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f1f5f9') : 'var(--color-primary)',
                                     opacity: isHovered ? 1 : opacity,
                                     transform: isHovered ? 'scale(1.2)' : 'scale(1)',
                                     boxShadow: isHovered ? 'var(--shadow-primary)' : 'none',
