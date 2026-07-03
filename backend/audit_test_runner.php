@@ -790,6 +790,141 @@ try {
     assertTest("TEST 29: Reporting & Activity Match Validation", $reportsMatch && $reportTotal > 0, "Report Total: $reportTotal, DB Actual: $actualDbCount, Matches: " . ($reportsMatch ? 'Yes' : 'No') . ", Report Resp: " . json_encode($reportRes));
 
     // ─────────────────────────────────────────────────────────────────
+    // TEST 30: Team Management Flow
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Admin creates a new team via POST /teams
+    $teamName = "Test Team E2E " . mt_rand(1000, 9999);
+    $resCreateTeam = $callApi("teams", 'POST', ['name' => $teamName, 'branch' => 'Hải Phòng', 'leader_id' => $saleUserId], $adminToken);
+    $newTeamId = isset($resCreateTeam['data']['id']) ? (int)$resCreateTeam['data']['id'] : 0;
+    $teamCreatedOk = ($newTeamId > 0 && isset($resCreateTeam['success']) && $resCreateTeam['success'] === true);
+
+    // 2. Fetch team list via GET /teams and check if team is present
+    $resGetTeams = $callApi("teams", 'GET', [], $adminToken);
+    $teamInList = false;
+    if (isset($resGetTeams['data']) && is_array($resGetTeams['data'])) {
+        foreach ($resGetTeams['data'] as $t) {
+            if (isset($t['id']) && (int)$t['id'] === $newTeamId) {
+                $teamInList = true;
+                break;
+            }
+        }
+    }
+
+    // 3. Assign Nguyễn Văn Nam to this team in consultants table
+    $cascadeResetOk = false;
+    $memberCount = 0;
+    $teamDeletedOk = false;
+    if ($newTeamId > 0) {
+        $db->prepare("UPDATE consultants SET team_id = ? WHERE id = ?")->execute([$newTeamId, $saleUserId]);
+
+        // 4. Fetch team details via GET /teams/<id>
+        $resShowTeam = $callApi("teams/$newTeamId", 'GET', [], $adminToken);
+        $memberCount = isset($resShowTeam['data']['members']) && is_array($resShowTeam['data']['members']) ? count($resShowTeam['data']['members']) : 0;
+
+        // 5. Delete team via DELETE /teams/<id>
+        $resDeleteTeam = $callApi("teams/$newTeamId", 'DELETE', [], $adminToken);
+        $teamDeletedOk = (isset($resDeleteTeam['success']) && $resDeleteTeam['success'] === true);
+
+        // 6. Verify that consultant's team_id is reset to NULL
+        $saleConsultantTeamId = $db->query("SELECT team_id FROM consultants WHERE id = $saleUserId")->fetchColumn();
+        $cascadeResetOk = ($saleConsultantTeamId === null);
+    }
+
+    assertTest("TEST 30: Team Management Flow", $teamCreatedOk && $teamInList && $memberCount === 1 && $teamDeletedOk && $cascadeResetOk, "Created: " . ($teamCreatedOk ? 'Yes' : 'No') . ", In List: " . ($teamInList ? 'Yes' : 'No') . ", Member Count: $memberCount, Deleted: " . ($teamDeletedOk ? 'Yes' : 'No') . ", Cascade Reset: " . ($cascadeResetOk ? 'Yes' : 'No') . ", Create Team Resp: " . json_encode($resCreateTeam));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 31: Threaded Activity Comments & Mentions
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Create a mock activity for the contact
+    $db->prepare("INSERT INTO activities (tenant_id, user_id, related_type, related_id, type, subject, body, status) VALUES (?, ?, 'contact', ?, 'meeting', 'Trao đổi căn hộ/dự án', 'Chi tiết nội dung', 'planned')")
+       ->execute([$tenantId, $saleUserId, $contactId]);
+    $actId = (int)$db->lastInsertId();
+
+    // 2. Post a comment on this activity via POST /activities/<id>/comments as Sales
+    $resAddActComment = $callApi("activities/$actId/comments", 'POST', ['content' => 'Lưu ý kiểm tra thông tin tag @[E2E] Phạm Minh Quân.'], $salesToken);
+    
+    // 3. Fetch comments via GET /activities/<id>/comments
+    $resGetActComments = $callApi("activities/$actId/comments", 'GET', [], $salesToken);
+    $commentFound = false;
+    if (isset($resGetActComments['data']) && is_array($resGetActComments['data'])) {
+        foreach ($resGetActComments['data'] as $c) {
+            if (isset($c['content']) && strpos($c['content'], 'Phạm Minh Quân') !== false) {
+                $commentFound = true;
+                break;
+            }
+        }
+    }
+
+    assertTest("TEST 31: Threaded Activity Comments & Mentions", $actId > 0 && $commentFound, "Activity ID: $actId, Comment Found: " . ($commentFound ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 32: Support Ticket Comments Thread
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Post a comment on the ticket via POST /tickets/<id>/comments as Sales
+    $resAddTicketComment = $callApi("tickets/$ticketId/comments", 'POST', ['body' => 'Bổ sung tài liệu đính kèm sổ đỏ.'], $salesToken);
+    
+    // 2. Fetch comments via GET /tickets/<id>/comments
+    $resGetTicketComments = $callApi("tickets/$ticketId/comments", 'GET', [], $salesToken);
+    $tCommentFound = false;
+    if (isset($resGetTicketComments['data']) && is_array($resGetTicketComments['data'])) {
+        foreach ($resGetTicketComments['data'] as $tc) {
+            if (isset($tc['body']) && strpos($tc['body'], 'sổ đỏ') !== false) {
+                $tCommentFound = true;
+                break;
+            }
+        }
+    }
+
+    assertTest("TEST 32: Support Ticket Comments Thread", $tCommentFound, "Ticket Comment Found: " . ($tCommentFound ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 33: Dashboard & Quarterly Stats Aggregation
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Query dashboard statistics for current quarter
+    $qStart = date('Y-07-01'); // Q3
+    $qEnd = date('Y-09-30');
+    $resDashboardStats = $callApi("dashboard/stats?from=$qStart&to=$qEnd", 'GET', [], $salesToken);
+    $dashboardOk = isset($resDashboardStats['success']) && $resDashboardStats['success'] === true && isset($resDashboardStats['data']['revenue']);
+
+    assertTest("TEST 33: Dashboard & Quarterly Stats Aggregation", $dashboardOk, "Dashboard Stats Response: " . ($dashboardOk ? 'OK' : 'Fail') . ", Resp: " . json_encode($resDashboardStats));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 34: Invoices & Payment Collection Flow
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Admin creates a pending invoice via POST /invoices
+    $invPayload = [
+        'title' => 'Hóa đơn dịch vụ tư vấn E2E',
+        'total' => 1000000.00,
+        'contact_id' => $contactId,
+        'status' => 'pending',
+        'items' => [
+            [
+                'name' => 'Dịch vụ tư vấn gói A',
+                'quantity' => 1,
+                'unit_price' => 1000000.00,
+                'subtotal' => 1000000.00
+            ]
+        ]
+    ];
+    $resCreateInv = $callApi("invoices", 'POST', $invPayload, $adminToken);
+    $newInvId = isset($resCreateInv['data']['id']) ? (int)$resCreateInv['data']['id'] : 0;
+    $invCreatedOk = ($newInvId > 0 && isset($resCreateInv['success']) && $resCreateInv['success'] === true);
+
+    // 2. Admin pays the invoice via POST /invoices/<id>/pay
+    $resPayInv = $callApi("invoices/$newInvId/pay", 'POST', [], $adminToken);
+    $payOk = (isset($resPayInv['success']) && $resPayInv['success'] === true);
+
+    // 3. Verify status changed to paid in DB
+    $invDbStatus = $db->query("SELECT status FROM invoices WHERE id = $newInvId")->fetchColumn();
+    $statusPaidOk = ($invDbStatus === 'paid');
+
+    // 4. Soft-delete invoice via DELETE /invoices/<id>
+    $resDeleteInv = $callApi("invoices/$newInvId", 'DELETE', [], $adminToken);
+    $invDeletedOk = (isset($resDeleteInv['success']) && $resDeleteInv['success'] === true);
+
+    assertTest("TEST 34: Invoices & Payment Collection Flow", $invCreatedOk && $payOk && $statusPaidOk && $invDeletedOk, "Created: " . ($invCreatedOk ? 'Yes' : 'No') . ", Paid: " . ($payOk ? 'Yes' : 'No') . ", DB Status: $invDbStatus, Deleted: " . ($invDeletedOk ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)
     // We intentionally do not delete these records so they are visible in the CRM frontend UI.
     $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId)")->fetchColumn();
