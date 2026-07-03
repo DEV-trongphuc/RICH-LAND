@@ -2112,7 +2112,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button className="btn outline sm" onClick={() => setShowCallLogger(true)} style={{ color: '#3b82f6', borderColor: '#3b82f630', background: '#3b82f608', fontWeight: 600 }}><Phone size={14} /> Log Call</button>
                           <button className="btn outline sm" onClick={() => setShowActivityModal(true)} style={{ color: '#BD1D2D', borderColor: '#BD1D2D30', background: '#BD1D2D08', fontWeight: 600 }}><Mail size={14} /> Email</button>
-                          <button className="btn outline sm" onClick={() => setShowTaskModal(true)} style={{ color: '#f59e0b', borderColor: '#f59e0b30', background: '#f59e0b08', fontWeight: 600 }}><CheckSquare size={14} /> Task</button>
+                          <button className="btn outline sm" onClick={() => {
+                            const today = new Date().toISOString().slice(0, 10);
+                            setTaskForm({
+                              title: '',
+                              priority: 'medium',
+                              due_date: today,
+                              description: '',
+                              link: '',
+                              user_id: String(contact?.owner_id || currentUser?.id || '')
+                            });
+                            setShowTaskModal(true);
+                          }} style={{ color: '#f59e0b', borderColor: '#f59e0b30', background: '#f59e0b08', fontWeight: 600 }}><CheckSquare size={14} /> Task</button>
                           <button className="btn primary sm" onClick={() => setShowActivityModal(true)} style={{ fontWeight: 600 }}><Plus size={14} /> Tương tác</button>
                         </div>
                       </div>
@@ -3163,6 +3174,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         entityType="contact"
         entityId={contact?.id}
         onSuccess={fetchData}
+        userId={contact?.owner_id || currentUser?.id}
       />
 
       <AnimatePresence>

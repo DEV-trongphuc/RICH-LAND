@@ -15,6 +15,7 @@ import { ActivityModal } from '../components/ui/ActivityModal';
 import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 import { numberToText } from '../utils/numberToText';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CompanyDrawerProps {
   isOpen: boolean;
@@ -33,6 +34,7 @@ const TABS = [
 ];
 
 export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
+  const { user: currentUser } = useAuth();
   const { addToast, showConfirm } = useUIStore();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
@@ -826,6 +828,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             entityType="company"
             entityId={entity?.id}
             onSuccess={fetchActivities}
+            userId={entity?.owner_id || currentUser?.id}
           />
         </>
       )}

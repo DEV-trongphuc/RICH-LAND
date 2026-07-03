@@ -12,6 +12,7 @@ interface ActivityModalProps {
   entityType?: 'contact' | 'company' | 'deal';
   entityId?: number;
   onSuccess?: () => void;
+  userId?: number;
 }
 
 const TYPES = [
@@ -22,7 +23,7 @@ const TYPES = [
   { id: 'note', label: 'Ghi chú', icon: <AlignLeft size={16} />, color: '#f59e0b' }
 ];
 
-export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess }) => {
+export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, entityType, entityId, onSuccess, userId }) => {
   const { addToast } = useUIStore();
   const [formData, setFormData] = useState({
     type: 'task',
@@ -46,7 +47,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
       await api.post('/activities', {
         ...formData,
         related_type: entityType,
-        related_id: entityId
+        related_id: entityId,
+        user_id: userId
       });
       
       if (formData.auto_trigger) {
