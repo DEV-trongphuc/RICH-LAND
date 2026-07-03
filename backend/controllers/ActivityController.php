@@ -107,12 +107,13 @@ class ActivityController {
         }
 
         $this->db->prepare("
-            INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,done_at,related_type,related_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,done_at,related_type,related_id,tags,participant_ids)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $targetUserId, $b['type'],
             $b['subject'], $b['body']??null, $status, $b['priority']??'medium',
             $due_date, $done_at, $b['related_type']??null, $b['related_id']??null,
+            $b['tags']??null, $b['participant_ids']??null
         ]);
         $actId = (int)$this->db->lastInsertId();
 
@@ -189,7 +190,7 @@ class ActivityController {
             }
         }
 
-        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id'];
+        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','tags','participant_ids'];
         $sets=[];$params=[];
         foreach($fields as $f){
             if(array_key_exists($f,$b)){

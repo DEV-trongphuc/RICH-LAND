@@ -540,8 +540,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setLoadingTasks(true);
     try {
       const res = await api.get('/activities?type=task&status=planned&limit=100');
-      if (res.data && res.data.items) {
-        setPortalTasks(res.data.items);
+      if (res.data && res.data.data) {
+        setPortalTasks(res.data.data.items || res.data.data || []);
       }
     } catch (e) {
       console.error(e);

@@ -1541,6 +1541,16 @@ try {
         $conn->query("ALTER TABLE check_ins ADD COLUMN sla_notified_at DATETIME DEFAULT NULL");
         $logMsg("Đã thêm cột sla_notified_at cho check_ins", "success");
     }
+    $chkActTags = $conn->query("SHOW COLUMNS FROM activities LIKE 'tags'");
+    if ($chkActTags && $chkActTags->num_rows === 0) {
+        $conn->query("ALTER TABLE activities ADD COLUMN tags VARCHAR(255) NULL DEFAULT NULL AFTER related_id");
+        $logMsg("Đã thêm cột tags cho activities", "success");
+    }
+    $chkActParticipants = $conn->query("SHOW COLUMNS FROM activities LIKE 'participant_ids'");
+    if ($chkActParticipants && $chkActParticipants->num_rows === 0) {
+        $conn->query("ALTER TABLE activities ADD COLUMN participant_ids VARCHAR(255) NULL DEFAULT NULL AFTER tags");
+        $logMsg("Đã thêm cột participant_ids cho activities", "success");
+    }
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");
