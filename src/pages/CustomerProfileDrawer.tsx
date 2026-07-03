@@ -585,6 +585,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [changeReason, setChangeReason] = useState('');
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
+  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
+  const [uploadedSignatureImg, setUploadedSignatureImg] = useState<string | null>(null);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const isDrawing = React.useRef(false);
 
@@ -826,19 +828,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleSubmitSignature = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const blank = document.createElement('canvas');
-    blank.width = canvas.width;
-    blank.height = canvas.height;
-    if (canvas.toDataURL() === blank.toDataURL()) {
-      addToast('Vui lòng vẽ chữ ký của bạn trước khi xác nhận', 'error');
-      return;
+    if (signatureMethod === 'upload') {
+      if (!uploadedSignatureImg) {
+        addToast('Vui lòng tải file ảnh chữ ký của bạn lên trước khi xác nhận', 'error');
+        return;
+      }
+      handleSignCoopSlip(uploadedSignatureImg);
+    } else {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      
+      const blank = document.createElement('canvas');
+      blank.width = canvas.width;
+      blank.height = canvas.height;
+      if (canvas.toDataURL() === blank.toDataURL()) {
+        addToast('Vui lòng vẽ chữ ký của bạn trước khi xác nhận', 'error');
+        return;
+      }
+      
+      const signatureImg = canvas.toDataURL('image/png');
+      handleSignCoopSlip(signatureImg);
     }
-    
-    const signatureImg = canvas.toDataURL('image/png');
-    handleSignCoopSlip(signatureImg);
   };
 
   const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
@@ -4602,7 +4612,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* Signature Modal */}
       {isSignModalOpen && coopSlip && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card animate-fade" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="card animate-fade" style={{ maxWidth: '800px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Đọc tài liệu &amp; Ký xác nhận điện tử</h2>
               <button onClick={() => { setIsSignModalOpen(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
@@ -4662,39 +4672,86 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
             </div>
 
-            {/* Signature Area */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
-                <button 
-                  onClick={clearCanvas} 
-                  style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+            {/* Signature Area Selector & Component */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className={`btn sm ${signatureMethod === 'draw' ? 'primary' : 'outline'}`}
+                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => setSignatureMethod('draw')}
                 >
-                  Xóa vẽ lại
+                  <PenTool size={14} /> Vẽ chữ ký tay
+                </button>
+                <button
+                  type="button"
+                  className={`btn sm ${signatureMethod === 'upload' ? 'primary' : 'outline'}`}
+                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => setSignatureMethod('upload')}
+                >
+                  <Paperclip size={14} /> Tải file ảnh chữ ký
                 </button>
               </div>
-              <canvas
-                ref={canvasRef}
-                width={550}
-                height={200}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                style={{
-                  border: '2px dashed var(--color-border)',
-                  borderRadius: '8px',
-                  background: 'var(--color-bg-light)',
-                  cursor: 'crosshair',
-                  display: 'block',
-                  touchAction: 'none',
-                  width: '100%',
-                  height: '200px'
-                }}
-              />
+
+              {signatureMethod === 'draw' ? (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
+                    <button 
+                      onClick={clearCanvas} 
+                      style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      Xóa vẽ lại
+                    </button>
+                  </div>
+                  <canvas
+                    ref={canvasRef}
+                    width={750}
+                    height={220}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                    style={{
+                      border: '2px dashed var(--color-border)',
+                      borderRadius: '8px',
+                      background: 'var(--color-bg-light)',
+                      cursor: 'crosshair',
+                      display: 'block',
+                      touchAction: 'none',
+                      width: '100%',
+                      height: '220px'
+                    }}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>2. Chọn file ảnh chữ ký từ máy tính của bạn:</h3>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setUploadedSignatureImg(event.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: 'block', width: '100%', padding: '10px', border: '1px solid var(--color-border)', borderRadius: '6px', background: 'var(--color-bg-light)', fontSize: '0.8125rem', cursor: 'pointer' }}
+                  />
+                  {uploadedSignatureImg && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <img src={uploadedSignatureImg} alt="Preview Chữ ký" style={{ maxHeight: '150px', objectFit: 'contain' }} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>

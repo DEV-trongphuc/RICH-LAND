@@ -218,7 +218,8 @@ class CooperationController {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
         }
 
-        if ($slip['status'] !== 'pending_signatures') {
+        $allowedSignStatuses = ['pending_signatures', 'approved', 'pending_manager_approval'];
+        if (!in_array($slip['status'], $allowedSignStatuses)) {
             respond(400, null, 'Phiếu không trong trạng thái chờ ký', false);
         }
 

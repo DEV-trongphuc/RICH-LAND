@@ -107,6 +107,8 @@ export default function CooperationSlipsPage() {
   // Signature Modal state
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [signingSlip, setSigningSlip] = useState<CooperationSlip | null>(null);
+  const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
+  const [uploadedSignatureImg, setUploadedSignatureImg] = useState<string | null>(null);
 
   // Custom Confirm/Prompt Modal state
   const [customConfirm, setCustomConfirm] = useState<{
@@ -1024,7 +1026,7 @@ export default function CooperationSlipsPage() {
       {/* Signature Modal */}
       {isSignModalOpen && signingSlip && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card animate-fade" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div className="card animate-fade" style={{ maxWidth: '800px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Đọc tài liệu &amp; Ký xác nhận điện tử</h2>
               <button onClick={() => { setIsSignModalOpen(false); setSigningSlip(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
@@ -1084,57 +1086,113 @@ export default function CooperationSlipsPage() {
               </div>
             </div>
 
-            {/* Signature Area */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
-                <button 
-                  onClick={clearCanvas} 
-                  style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+            {/* Signature Area Selector & Component */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className={`btn sm ${signatureMethod === 'draw' ? 'primary' : 'outline'}`}
+                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => setSignatureMethod('draw')}
                 >
-                  Xóa vẽ lại
+                  <PenTool size={14} /> Vẽ chữ ký tay
+                </button>
+                <button
+                  type="button"
+                  className={`btn sm ${signatureMethod === 'upload' ? 'primary' : 'outline'}`}
+                  style={{ flex: 1, height: '36px', fontSize: '0.8125rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  onClick={() => setSignatureMethod('upload')}
+                >
+                  <Paperclip size={14} /> Tải file ảnh chữ ký
                 </button>
               </div>
-              <canvas
-                ref={canvasRef}
-                width={560}
-                height={160}
-                onMouseDown={startDrawing}
-                onMouseMove={draw}
-                onMouseUp={stopDrawing}
-                onMouseLeave={stopDrawing}
-                onTouchStart={startDrawing}
-                onTouchMove={draw}
-                onTouchEnd={stopDrawing}
-                style={{
-                  width: '100%',
-                  height: '160px',
-                  background: '#ffffff',
-                  border: '2px dashed var(--color-border)',
-                  borderRadius: '8px',
-                  cursor: 'crosshair',
-                  touchAction: 'none'
-                }}
-              />
+
+              {signatureMethod === 'draw' ? (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <h3 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>2. Vẽ chữ ký của bạn lên khung dưới đây:</h3>
+                    <button 
+                      onClick={clearCanvas} 
+                      style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}
+                    >
+                      Xóa vẽ lại
+                    </button>
+                  </div>
+                  <canvas
+                    ref={canvasRef}
+                    width={750}
+                    height={220}
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                    style={{
+                      border: '2px dashed var(--color-border)',
+                      borderRadius: '8px',
+                      background: 'var(--color-bg-light)',
+                      cursor: 'crosshair',
+                      display: 'block',
+                      touchAction: 'none',
+                      width: '100%',
+                      height: '220px'
+                    }}
+                  />
+                </div>
+              ) : (
+                <div>
+                  <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>2. Chọn file ảnh chữ ký từ máy tính của bạn:</h3>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          setUploadedSignatureImg(event.target?.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    style={{ display: 'block', width: '100%', padding: '10px', border: '1px solid var(--color-border)', borderRadius: '6px', background: 'var(--color-bg-light)', fontSize: '0.8125rem', cursor: 'pointer' }}
+                  />
+                  {uploadedSignatureImg && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: 'white', display: 'flex', justifyContent: 'center', alignItems: 'center', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                      <img src={uploadedSignatureImg} alt="Preview Chữ ký" style={{ maxHeight: '150px', objectFit: 'contain' }} />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <button
               onClick={() => {
-                const canvas = canvasRef.current;
-                if (!canvas) return;
-                
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return;
-                
-                const buffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
-                const isBlank = !buffer.some(color => color !== 0);
-                if (isBlank) {
-                  alert('Vui lòng vẽ chữ ký của bạn trước khi bấm xác nhận.');
-                  return;
-                }
+                if (signatureMethod === 'upload') {
+                  if (!uploadedSignatureImg) {
+                    alert('Vui lòng tải file ảnh chữ ký của bạn lên trước khi bấm xác nhận.');
+                    return;
+                  }
+                  handleSignSlip(signingSlip.id, uploadedSignatureImg);
+                } else {
+                  const canvas = canvasRef.current;
+                  if (!canvas) return;
+                  
+                  const ctx = canvas.getContext('2d');
+                  if (!ctx) return;
+                  
+                  const buffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                  const isBlank = !buffer.some(color => color !== 0);
+                  if (isBlank) {
+                    alert('Vui lòng vẽ chữ ký của bạn trước khi bấm xác nhận.');
+                    return;
+                  }
 
-                const signatureImg = canvas.toDataURL('image/png');
-                handleSignSlip(signingSlip.id, signatureImg);
+                  const signatureImg = canvas.toDataURL('image/png');
+                  handleSignSlip(signingSlip.id, signatureImg);
+                }
               }}
               className="btn primary w-full"
               style={{ height: '42px', fontWeight: 700 }}
