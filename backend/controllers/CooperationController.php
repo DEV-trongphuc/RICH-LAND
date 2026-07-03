@@ -458,4 +458,32 @@ class CooperationController {
             respond(200, ['file_url' => $dbPath], 'Đổi tên tài liệu thành công');
         }
     }
+
+    public function destroy(array $auth, int $id): void {
+        $tid = $auth['tenant_id'];
+        
+        $stmt = $this->db->prepare("
+            SELECT cs.id, cs.status, cs.created_by, c.owner_id 
+            FROM cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            WHERE cs.id = ? AND c.tenant_id = ?
+        ");
+        $stmt->execute([$id, $tid]);
+        $row = $stmt->fetch();
+        if (!$row) {
+            respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
+        }
+        
+        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
+                     ((int)$row['created_by'] === (int)$auth['user_id']);
+                     
+        if (!$isAllowed) {
+            respond(403, null, 'Bạn không có quyền xóa phiếu hợp tác này', false);
+        }
+        
+        $stmtDel = $this->db->prepare("DELETE FROM cooperation_slips WHERE id = ?");
+        $stmtDel->execute([$id]);
+        
+        respond(200, null, 'Xóa phiếu hợp tác thành công');
+    }
 }

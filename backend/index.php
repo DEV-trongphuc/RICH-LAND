@@ -827,6 +827,7 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'upload-attachment' && $method === 'POST') $ctrl->uploadAttachment($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'delete-attachment' && $method === 'POST') $ctrl->deleteAttachment($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'rename-attachment' && $method === 'POST') $ctrl->renameAttachment($auth, (int)$resourceId);
+        elseif ($resourceId && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->createSlip($auth);
         else respond(404, null, 'Route không tồn tại', false);

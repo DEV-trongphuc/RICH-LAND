@@ -4138,7 +4138,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {
                   title: 'TÀI CHÍNH',
                   items: [
-                    { name: 'Hóa đơn', key: 'invoices', icon: Receipt }
+                    { name: 'Hóa đơn', key: 'invoices', icon: Receipt },
+                    { name: 'Phiếu hợp tác', key: 'cooperation-slips', icon: Scale, route: '/cooperation-slips' }
                   ]
                 },
                 {
