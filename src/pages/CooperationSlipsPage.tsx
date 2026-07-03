@@ -306,6 +306,68 @@ export default function CooperationSlipsPage() {
     }
   };
 
+  const handleCoopAttachmentUpload = async (slipId: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const fd = new FormData();
+    fd.append('file', file);
+    
+    try {
+      const res = await fetchAPI(`cooperation-slips/${slipId}/upload-attachment`, {
+        method: 'POST',
+        body: fd
+      });
+      if (res.success) {
+        addToast('Đã tải lên tài liệu hợp tác thành công!', 'success');
+        loadData();
+      } else {
+        addToast(res.message || 'Lỗi khi tải lên tài liệu', 'error');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Lỗi khi tải lên tài liệu', 'error');
+    }
+  };
+
+  const handleRemoveCoopAttachment = async (slipId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa tài liệu đính kèm này không?')) return;
+    try {
+      const res = await fetchAPI(`cooperation-slips/${slipId}/delete-attachment`, {
+        method: 'POST'
+      });
+      if (res.success) {
+        addToast('Đã xóa tài liệu hợp tác thành công!', 'success');
+        loadData();
+      } else {
+        addToast(res.message || 'Lỗi khi xóa tài liệu', 'error');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Lỗi khi xóa tài liệu', 'error');
+    }
+  };
+
+  const handleRenameCoopAttachment = async (slipId: number, currentUrl: string) => {
+    const filename = currentUrl.split('/').pop() || '';
+    const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
+    const newName = prompt('Nhập tên mới cho tài liệu hợp tác:', cleanName);
+    if (!newName || !newName.trim()) return;
+    
+    try {
+      const res = await fetchAPI(`cooperation-slips/${slipId}/rename-attachment`, {
+        method: 'POST',
+        body: JSON.stringify({ name: newName.trim() })
+      });
+      if (res.success) {
+        addToast('Đã đổi tên tài liệu hợp tác thành công!', 'success');
+        loadData();
+      } else {
+        addToast(res.message || 'Lỗi khi đổi tên tài liệu', 'error');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Lỗi khi đổi tên tài liệu', 'error');
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
@@ -634,14 +696,14 @@ export default function CooperationSlipsPage() {
                   <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Hoa hồng dự kiến</span>
-                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-success)' }}>
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)' }}>
                         {totalComm.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>VND</span>
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                       <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Thực thu</span>
-                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-primary)' }}>
+                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)' }}>
                         {totalActual.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>VND</span>
                       </span>
                     </div>
@@ -724,7 +786,7 @@ export default function CooperationSlipsPage() {
                           className="btn sm outline"
                           style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', color: 'var(--color-primary)', borderColor: 'var(--color-primary)', borderRadius: '6px', fontWeight: 600 }}
                         >
-                          Yêu cầu thay đổi tỷ lệ
+                          {isManager ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
                         </button>
                       </div>
                     )}
@@ -854,39 +916,70 @@ export default function CooperationSlipsPage() {
                     </div>
 
                     {/* Attachment preview inside expanded card panel */}
-                    {slip.attachment_url && (
-                      <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }} onClick={e => e.stopPropagation()}>
-                        <h4 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Paperclip size={14} /> Tài liệu đính kèm:
-                        </h4>
-                        {(slip.attachment_url.toLowerCase().endsWith('.png') ||
-                          slip.attachment_url.toLowerCase().endsWith('.jpg') ||
-                          slip.attachment_url.toLowerCase().endsWith('.jpeg') ||
-                          slip.attachment_url.toLowerCase().endsWith('.webp')) ? (
-                          <div style={{ display: 'inline-block', position: 'relative', cursor: 'zoom-in' }} onClick={(e) => { e.stopPropagation(); window.open(`https://open.domation.net/richland/${slip.attachment_url}`, '_blank'); }}>
-                            <img 
-                              src={`https://open.domation.net/richland/${slip.attachment_url}`} 
-                              style={{ maxHeight: '120px', borderRadius: '8px', border: '1px solid var(--color-border)', objectFit: 'contain' }} 
-                              alt="Tài liệu hợp tác đính kèm"
-                            />
-                            <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Click để xem kích thước lớn</div>
+                    <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }} onClick={e => e.stopPropagation()}>
+                      <h4 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Paperclip size={14} /> Tài liệu đính kèm:
+                      </h4>
+                      {slip.attachment_url ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', maxWidth: '500px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <FileText size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                              <a 
+                                href={`https://open.domation.net/richland/${slip.attachment_url}`} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                              >
+                                {slip.attachment_url.split('/').pop() || 'Xem tài liệu hợp tác đính kèm'}
+                              </a>
+                            </div>
                           </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '8px', border: '1px solid var(--color-border)', width: 'fit-content' }}>
-                            <FileText size={16} color="var(--color-primary)" />
-                            <a 
-                              href={`https://open.domation.net/richland/${slip.attachment_url}`} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline' }}
-                              onClick={e => e.stopPropagation()}
-                            >
-                              Xem tài liệu hợp tác đính kèm
-                            </a>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          {isManager && (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
+                              <button 
+                                className="btn sm outline"
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px' }}
+                                onClick={() => handleRenameCoopAttachment(slip.id, slip.attachment_url)}
+                              >
+                                Đổi tên
+                              </button>
+                              <button 
+                                className="btn sm outline text-danger"
+                                style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
+                                onClick={() => handleRemoveCoopAttachment(slip.id)}
+                              >
+                                Xóa
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
+                            Chưa có tài liệu đính kèm cho phiếu hợp tác này.
+                          </p>
+                          {isManager && (
+                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                              <input
+                                type="file"
+                                id={`coop-attachment-upload-${slip.id}`}
+                                style={{ display: 'none' }}
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
+                                onChange={e => handleCoopAttachmentUpload(slip.id, e)}
+                              />
+                              <label 
+                                htmlFor={`coop-attachment-upload-${slip.id}`}
+                                className="btn sm outline"
+                                style={{ padding: '6px 12px', fontSize: '0.725rem', height: '30px', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
+                              >
+                                Tải lên tài liệu mới
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Dispute Reason */}
                     {slip.status === 'rejected' && slip.dispute_details && (

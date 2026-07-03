@@ -155,18 +155,23 @@ class CooperationController {
         $sharesJson = json_encode($shares);
         $reason = trim($b['reason'] ?? '');
 
-        // If the slip was approved or pending manager approval, update status to pending_manager_approval (request change)
-        $newStatus = 'pending_signatures';
-        if ($slip['status'] === 'approved' || $slip['status'] === 'pending_manager_approval') {
-            $newStatus = 'pending_manager_approval';
+        // If updated by admin/manager, keep current status and signatures. Otherwise, reset signatures and request change/approval.
+        $newStatus = $slip['status'];
+        $signaturesVal = $slip['signatures_json'];
+        if (!$isManagerOrAdmin) {
+            $signaturesVal = '{}';
+            $newStatus = 'pending_signatures';
+            if ($slip['status'] === 'approved' || $slip['status'] === 'pending_manager_approval') {
+                $newStatus = 'pending_manager_approval';
+            }
         }
 
         $stmt = $this->db->prepare("
             UPDATE cooperation_slips 
-            SET shares_json = ?, total_percentage = ?, signatures_json = '{}', version = version + 1, status = ?, dispute_details = ?
+            SET shares_json = ?, total_percentage = ?, signatures_json = ?, version = version + 1, status = ?, dispute_details = ?
             WHERE id = ?
         ");
-        $stmt->execute([$sharesJson, $sum, $newStatus, $reason ?: null, $id]);
+        $stmt->execute([$sharesJson, $sum, $signaturesVal, $newStatus, $reason ?: null, $id]);
 
         if ($newStatus === 'pending_manager_approval') {
             $stmtUser = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
