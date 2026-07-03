@@ -5,7 +5,7 @@ import { useUIStore } from '../../store/uiStore';
 
 export const GlobalConfirmModal: React.FC = () => {
   const { confirmModal, closeConfirm } = useUIStore();
-  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', isDanger, impactInfo, requireWordMatch, onConfirm, onCancel } = confirmModal;
+  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', extraText, isDanger, impactInfo, requireWordMatch, onConfirm, onCancel, onExtra } = confirmModal;
   const [matchInput, setMatchInput] = React.useState('');
 
   React.useEffect(() => {
@@ -124,6 +124,18 @@ export const GlobalConfirmModal: React.FC = () => {
             >
               {cancelText}
             </button>
+            {extraText && (
+              <button 
+                className="btn outline sm"
+                onClick={() => {
+                  if (onExtra) onExtra();
+                  closeConfirm();
+                }}
+                style={{ fontWeight: 600, padding: '6px 14px', borderRadius: '8px', fontSize: '0.8125rem', borderColor: 'var(--color-border)' }}
+              >
+                {extraText}
+              </button>
+            )}
             <button 
               className={`btn ${isDanger ? 'danger' : 'primary'} sm`}
               onClick={handleConfirm}

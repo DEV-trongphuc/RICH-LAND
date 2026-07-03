@@ -40,32 +40,76 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
 
+  const [baseData, setBaseData] = useState<any>(entity || {});
+  const [baseTags, setBaseTags] = useState<string[]>(entity?.tags || []);
+
   const hasChanges = useMemo(() => {
     if (!entity) return false;
-    const baseTags = entity.tags || [];
     if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
-    for (const key of Object.keys(formData)) {
-      if (formData[key] !== entity[key]) return true;
+    
+    const fieldsToCompare = [
+      'name', 'email', 'phone', 'website', 'tax_code', 'address', 'city', 'ward', 'status', 'description'
+    ];
+    
+    for (const key of fieldsToCompare) {
+      const val1 = formData[key] === undefined || formData[key] === null ? '' : String(formData[key]);
+      const val2 = baseData[key] === undefined || baseData[key] === null ? '' : String(baseData[key]);
+      if (val1 !== val2) return true;
     }
+    
+    // Custom fields comparison
+    if (formData.custom_fields && baseData.custom_fields) {
+      if (JSON.stringify(formData.custom_fields) !== JSON.stringify(baseData.custom_fields)) return true;
+    }
+    
     return false;
-  }, [formData, entity, tags]);
+  }, [formData, baseData, tags, baseTags, entity]);
+
+  const handleSave = useCallback(async () => {
+    try {
+      const payload = { ...formData, tags };
+      if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
+        for (const f of formData.custom_fields) {
+          const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
+          if (f.is_required && isEmpty) {
+            addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
+            return;
+          }
+        }
+        payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
+      }
+      const res = await api.put(`/companies/${entity.id}`, payload);
+      const updated = res.data.data;
+      setFormData(updated);
+      setBaseData(updated);
+      setBaseTags(updated.tags || []);
+      addToast('Đã cập nhật thông tin công ty thành công', 'success');
+      onSave(updated);
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi lưu thông tin công ty', 'error');
+    }
+  }, [formData, tags, entity, onSave, addToast]);
 
   const handleClose = useCallback(() => {
     if (hasChanges) {
       showConfirm({
         title: 'Bỏ qua thay đổi?',
-        message: 'Bạn có các thay đổi chưa lưu. Bạn có chắc chắn muốn đóng và bỏ qua các thay đổi này không?',
-        isDanger: true,
-        confirmText: 'Bỏ qua',
+        message: 'Bạn có các thay đổi chưa lưu. Bạn có muốn lưu thay đổi trước khi đóng không?',
+        confirmText: 'Lưu & Đóng',
+        extraText: 'Bỏ qua thay đổi',
         cancelText: 'Hủy',
-        onConfirm: () => {
+        onConfirm: async () => {
+          await handleSave();
+          onClose();
+        },
+        onExtra: () => {
           onClose();
         }
       });
     } else {
       onClose();
     }
-  }, [hasChanges, onClose, showConfirm]);
+  }, [hasChanges, onClose, showConfirm, handleSave]);
   const [helpModal, setHelpModal] = useState<{title: string, content: string} | null>(null);
   
   // B2B Sub-contacts State — loaded from API
@@ -134,6 +178,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     if (entity) {
       setFormData(entity);
       setTags(entity.tags || []);
+      setBaseData(entity);
+      setBaseTags(entity.tags || []);
       if (entity.id) {
         if (DEV_MODE) {
           const { contacts, deals } = useMockStore.getState();
@@ -723,29 +769,11 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             <div className={styles.footer}>
               <button className="btn ghost" onClick={handleClose}>Hủy bỏ</button>
               <button 
-                className="btn primary" 
-                onClick={async () => {
-                  try {
-                    const payload = { ...formData, tags };
-                    if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
-                      for (const f of formData.custom_fields) {
-                        const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
-                        if (f.is_required && isEmpty) {
-                          addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
-                          return;
-                        }
-                      }
-                      payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
-                    }
-                    const res = await api.put(`/companies/${entity.id}`, payload);
-                    addToast('Đã cập nhật thông tin công ty thành công', 'success');
-                    onSave(res.data.data);
-                  } catch (e: any) {
-                    addToast(e.response?.data?.message || 'Lỗi khi lưu thông tin công ty', 'error');
-                  }
-                }}
+                className={`btn ${hasChanges ? 'primary' : 'outline'}`} 
+                disabled={!hasChanges}
+                onClick={handleSave}
               >
-                Lưu thông tin Công ty
+                {hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ'}
               </button>
             </div>
           </motion.div>

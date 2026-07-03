@@ -282,33 +282,90 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [tags, setTags] = useState<string[]>([]);
+  const [baseData, setBaseData] = useState<any>(contact || {});
+  const [baseTags, setBaseTags] = useState<string[]>(contact?.tags || []);
 
   const hasChanges = useMemo(() => {
     if (!contact) return false;
-    const baseTags = contact.tags || [];
     if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
-    for (const key of Object.keys(formData)) {
-      if (formData[key] !== contact[key]) return true;
+    
+    const fieldsToCompare = [
+      'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
+      'mobile', 'job_title', 'department', 'source', 'status', 'notes',
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability'
+    ];
+    
+    for (const key of fieldsToCompare) {
+      const val1 = formData[key] === undefined || formData[key] === null ? '' : String(formData[key]);
+      const val2 = baseData[key] === undefined || baseData[key] === null ? '' : String(baseData[key]);
+      if (val1 !== val2) return true;
     }
+    
+    // Custom fields comparison
+    if (formData.custom_fields && baseData.custom_fields) {
+      if (JSON.stringify(formData.custom_fields) !== JSON.stringify(baseData.custom_fields)) return true;
+    }
+    
     return false;
-  }, [formData, contact, tags]);
+  }, [formData, baseData, tags, baseTags, contact]);
+
+  const handleSave = useCallback(async () => {
+    // Only send fields that ContactController accepts
+    const allowedFields = [
+      'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
+      'mobile', 'job_title', 'department', 'source', 'status', 'notes',
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at'
+    ];
+    const payload: Record<string, any> = {};
+    allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
+    payload.tags = tags;
+    if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
+      for (const f of formData.custom_fields) {
+        const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
+        if (f.is_required && isEmpty) {
+          addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
+          return;
+        }
+      }
+      payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
+    }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await api.put(`/contacts/${contact.id}`, payload);
+      const updated = res.data?.data || { ...formData, tags };
+      setFormData(updated);
+      setBaseData(updated);
+      setBaseTags(updated.tags || []);
+      onUpdate?.(updated);
+      addToast('Đã lưu thông tin khách hàng', 'success');
+    } catch (e: any) {
+      addToast(e?.response?.data?.message || 'Lỗi khi lưu thông tin', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [formData, tags, isSubmitting, contact, onUpdate, addToast]);
 
   const handleClose = useCallback(() => {
     if (hasChanges) {
       showConfirm({
         title: 'Bỏ qua thay đổi?',
-        message: 'Bạn có các thay đổi chưa lưu. Bạn có chắc chắn muốn đóng và bỏ qua các thay đổi này không?',
-        isDanger: true,
-        confirmText: 'Bỏ qua',
+        message: 'Bạn có các thay đổi chưa lưu. Bạn có muốn lưu thay đổi trước khi đóng không?',
+        confirmText: 'Lưu & Đóng',
+        extraText: 'Bỏ qua thay đổi',
         cancelText: 'Hủy',
-        onConfirm: () => {
+        onConfirm: async () => {
+          await handleSave();
+          onClose();
+        },
+        onExtra: () => {
           onClose();
         }
       });
     } else {
       onClose();
     }
-  }, [hasChanges, onClose, showConfirm]);
+  }, [hasChanges, onClose, showConfirm, handleSave]);
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showDealModal, setShowDealModal] = useState(false);
@@ -678,6 +735,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (contact) {
       setFormData(contact);
       setTags(contact.tags || []);
+      setBaseData(contact);
+      setBaseTags(contact.tags || []);
       setNotes([]);
       setTasks([]);
       setDeals([]);
@@ -852,40 +911,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     addToast('Đã thêm trường tùy chỉnh mới', 'success');
   };
 
-  const handleSave = async () => {
-    // Only send fields that ContactController accepts
-    const allowedFields = [
-      'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
-      'mobile', 'job_title', 'department', 'source', 'status', 'notes',
-      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at'
-    ];
-    const payload: Record<string, any> = {};
-    allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
-    payload.tags = tags;
-    if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
-      for (const f of formData.custom_fields) {
-        const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
-        if (f.is_required && isEmpty) {
-          addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
-          return;
-        }
-      }
-      payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
-    }
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    try {
-      const res = await api.put(`/contacts/${contact.id}`, payload);
-      const updated = res.data?.data || { ...formData, tags };
-      setFormData(updated);
-      onUpdate?.(updated);
-      addToast('Đã lưu thông tin khách hàng', 'success');
-    } catch (e: any) {
-      addToast(e?.response?.data?.message || 'Lỗi khi lưu thông tin', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+
 
   const canDeleteNote = (noteCreatorId?: number) => {
     const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';

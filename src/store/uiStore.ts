@@ -18,11 +18,13 @@ export interface ConfirmModalState {
   message: string;
   confirmText?: string;
   cancelText?: string;
+  extraText?: string;
   isDanger?: boolean;
   impactInfo?: string; // e.g. "Ảnh hưởng đến 45 khách hàng"
   requireWordMatch?: string; // e.g. "DELETE"
   onConfirm: () => void;
   onCancel?: () => void;
+  onExtra?: () => void;
 }
 
 interface UIStore {
