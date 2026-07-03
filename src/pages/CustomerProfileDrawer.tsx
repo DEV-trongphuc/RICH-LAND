@@ -767,8 +767,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       type: a.type,
       user: a.user_name || 'Hệ thống',
       time: a.created_at,
-      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : '#10b981',
-      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
+      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : '#10b981',
+      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : <Mail size={16} />,
       note: a.body || a.note || ''
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   }, [drawerActivities, mockStore.activities, contact?.id]);
