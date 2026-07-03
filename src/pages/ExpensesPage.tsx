@@ -775,7 +775,7 @@ export const ExpensesPage: React.FC = () => {
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>SỐ TIỀN CHI</span>
                   <h1 style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--color-danger)', margin: 0, letterSpacing: '-0.02em' }}>{FMT(viewItem.amount)}</h1>
                   <p style={{ fontSize: '0.775rem', fontWeight: 700, fontStyle: 'italic', color: 'var(--color-primary)', marginTop: '0.5rem', marginBottom: 0 }}>
-                    Bằng chữ: {numberToVietnameseText(Number(viewItem.amount))} đồng
+                    Bằng chữ: {numberToVietnameseText(Number(viewItem.amount))}
                   </p>
                 </div>
 
@@ -799,16 +799,32 @@ export const ExpensesPage: React.FC = () => {
                         : 'Không áp dụng'}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem', alignItems: 'center' }}>
                     <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người tạo</span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%', overflow: 'hidden',
+                        background: viewItem.creator_avatar ? `url(${viewItem.creator_avatar}) center/cover` : 'var(--color-primary-light)',
+                        color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.65rem', fontWeight: 800
+                      }}>
+                        {!viewItem.creator_avatar && (viewItem.creator_name?.[0] || '?').toUpperCase()}
+                      </div>
                       {viewItem.creator_name} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(lúc {viewItem.created_at ? new Date(viewItem.created_at).toLocaleString('vi-VN') : '—'})</span>
                     </span>
                   </div>
                   {viewItem.status === 'approved' && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center' }}>
                       <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người duyệt</span>
-                      <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{
+                          width: 20, height: 20, borderRadius: '50%', overflow: 'hidden',
+                          background: viewItem.approver_avatar ? `url(${viewItem.approver_avatar}) center/cover` : 'var(--color-success-light)',
+                          color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.65rem', fontWeight: 800
+                        }}>
+                          {!viewItem.approver_avatar && (viewItem.approver_name?.[0] || 'A').toUpperCase()}
+                        </div>
                         {viewItem.approver_name || 'Admin'} <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>(lúc {viewItem.approved_at ? new Date(viewItem.approved_at).toLocaleString('vi-VN') : '—'})</span>
                       </span>
                     </div>

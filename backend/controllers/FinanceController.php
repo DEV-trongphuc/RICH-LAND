@@ -480,7 +480,8 @@ class FinanceController
         $total = (int) $cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            SELECT e.*, u.full_name as creator_name, u2.full_name as approver_name
+            SELECT e.*, u.full_name as creator_name, u.avatar_url as creator_avatar, 
+                   u2.full_name as approver_name, u2.avatar_url as approver_avatar
             FROM expenses e 
             LEFT JOIN users u ON e.created_by = u.id
             LEFT JOIN users u2 ON e.approver_id = u2.id
@@ -518,7 +519,7 @@ class FinanceController
 
     public function showExpense(array $auth, int $id): void
     {
-        $sql = "SELECT e.*, u.full_name as creator_name, u2.full_name as approver_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id LEFT JOIN users u2 ON e.approver_id=u2.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
+        $sql = "SELECT e.*, u.full_name as creator_name, u.avatar_url as creator_avatar, u2.full_name as approver_name, u2.avatar_url as approver_avatar FROM expenses e LEFT JOIN users u ON e.created_by=u.id LEFT JOIN users u2 ON e.approver_id=u2.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales') {
             $sql .= " AND e.created_by=?";
