@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -39,6 +39,33 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
+
+  const hasChanges = useMemo(() => {
+    if (!entity) return false;
+    const baseTags = entity.tags || [];
+    if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
+    for (const key of Object.keys(formData)) {
+      if (formData[key] !== entity[key]) return true;
+    }
+    return false;
+  }, [formData, entity, tags]);
+
+  const handleClose = useCallback(() => {
+    if (hasChanges) {
+      showConfirm({
+        title: 'Bỏ qua thay đổi?',
+        message: 'Bạn có các thay đổi chưa lưu. Bạn có chắc chắn muốn đóng và bỏ qua các thay đổi này không?',
+        isDanger: true,
+        confirmText: 'Bỏ qua',
+        cancelText: 'Hủy',
+        onConfirm: () => {
+          onClose();
+        }
+      });
+    } else {
+      onClose();
+    }
+  }, [hasChanges, onClose, showConfirm]);
   const [helpModal, setHelpModal] = useState<{title: string, content: string} | null>(null);
   
   // B2B Sub-contacts State — loaded from API
@@ -147,12 +174,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
   if (typeof document === 'undefined') return null;
@@ -164,7 +191,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
           <motion.div 
             className="overlay-backdrop" 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-            onClick={onClose} 
+            onClick={handleClose} 
             style={{ zIndex: 1000 }}
           />
           <motion.div 
@@ -200,7 +227,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`}>
                   {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
                 </span>
-                <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+                <button className={styles.closeBtn} onClick={handleClose}><X size={20} /></button>
               </div>
             </div>
 
@@ -694,7 +721,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
 
             {/* Footer */}
             <div className={styles.footer}>
-              <button className="btn ghost" onClick={onClose}>Hủy bỏ</button>
+              <button className="btn ghost" onClick={handleClose}>Hủy bỏ</button>
               <button 
                 className="btn primary" 
                 onClick={async () => {

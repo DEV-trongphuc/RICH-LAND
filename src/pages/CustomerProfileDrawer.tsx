@@ -282,6 +282,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [tags, setTags] = useState<string[]>([]);
+
+  const hasChanges = useMemo(() => {
+    if (!contact) return false;
+    const baseTags = contact.tags || [];
+    if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
+    for (const key of Object.keys(formData)) {
+      if (formData[key] !== contact[key]) return true;
+    }
+    return false;
+  }, [formData, contact, tags]);
+
+  const handleClose = useCallback(() => {
+    if (hasChanges) {
+      showConfirm({
+        title: 'Bỏ qua thay đổi?',
+        message: 'Bạn có các thay đổi chưa lưu. Bạn có chắc chắn muốn đóng và bỏ qua các thay đổi này không?',
+        isDanger: true,
+        confirmText: 'Bỏ qua',
+        cancelText: 'Hủy',
+        onConfirm: () => {
+          onClose();
+        }
+      });
+    } else {
+      onClose();
+    }
+  }, [hasChanges, onClose, showConfirm]);
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showDealModal, setShowDealModal] = useState(false);
@@ -708,22 +735,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
-  const hasChanges = useMemo(() => {
-    if (!contact) return false;
-    const baseTags = contact.tags || [];
-    if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
-    for (const key of Object.keys(formData)) {
-      if (formData[key] !== contact[key]) return true;
-    }
-    return false;
-  }, [formData, tags, contact]);
+
 
   const { score, rules } = useMemo(() => {
     let s = 0;
@@ -1063,7 +1082,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             <motion.div
               className="overlay-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={onClose}
+              onClick={handleClose}
               style={{ zIndex: 1000 }}
             />
             <motion.div
@@ -1250,7 +1269,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               {/* ── Header ── */}
               <div className={styles.profileHeader}>
                 {/* Absolute Close Button */}
-                <button className={styles.closeBtnAbsolute} onClick={onClose} aria-label="Close drawer">
+                <button className={styles.closeBtnAbsolute} onClick={handleClose} aria-label="Close drawer">
                   <X size={20} />
                 </button>
 
