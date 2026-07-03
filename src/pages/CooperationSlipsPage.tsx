@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip } from 'lucide-react';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 interface CooperationSlip {
   id: number;
@@ -466,26 +467,18 @@ export default function CooperationSlipsPage() {
 
         {/* Filter Sale (Only show if Manager/Admin) */}
         {isManager && (
-          <div style={{ width: '180px' }}>
-            <select
+          <div style={{ width: '220px' }}>
+            <CustomSelect
               value={filterSale}
-              onChange={e => setFilterSale(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-bg-light)',
-                color: 'var(--color-text)',
-                fontSize: '0.875rem',
-                cursor: 'pointer'
-              }}
-            >
-              <option value="all">Tất cả nhân viên</option>
-              {salesAccounts.map(u => (
-                <option key={u.id} value={String(u.id)}>{u.full_name}</option>
-              ))}
-            </select>
+              onChange={val => setFilterSale(val)}
+              options={[
+                { value: 'all', label: 'Tất cả nhân viên' },
+                ...salesAccounts.map(u => ({ value: String(u.id), label: u.full_name, avatar: (u as any).avatar }))
+              ]}
+              size="sm"
+              showAvatars
+              searchable
+            />
           </div>
         )}
       </div>
@@ -1016,22 +1009,23 @@ export default function CooperationSlipsPage() {
               <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '4px' }}>
                 {sharesInput.map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <select
-                      required
-                      value={item.user_id}
-                      onChange={e =>
-                        setSharesInput(prev =>
-                          prev.map((val, i) => (i === idx ? { ...val, user_id: e.target.value } : val))
-                        )
-                      }
-                      className="form-input"
-                      style={{ fontSize: '0.75rem', padding: '6px 10px', flex: 1 }}
-                    >
-                      <option value="">-- Chọn nhân viên --</option>
-                      {salesAccounts.map(s => (
-                        <option key={s.id} value={s.id}>{s.full_name}</option>
-                      ))}
-                    </select>
+                    <div style={{ flex: 1 }}>
+                      <CustomSelect
+                        value={item.user_id}
+                        onChange={val =>
+                          setSharesInput(prev =>
+                            prev.map((valObj, i) => (i === idx ? { ...valObj, user_id: val } : valObj))
+                          )
+                        }
+                        options={[
+                          { value: '', label: '-- Chọn nhân viên --' },
+                          ...salesAccounts.map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
+                        ]}
+                        size="sm"
+                        showAvatars
+                        searchable
+                      />
+                    </div>
                     <input
                       type="number"
                       required
