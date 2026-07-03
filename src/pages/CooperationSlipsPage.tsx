@@ -594,8 +594,8 @@ export default function CooperationSlipsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {filteredSlips.map(slip => {
-            const hasSigned = slip.shareholders.find(s => s.user_id === user?.consultant_id)?.signed;
-            const isShareholder = slip.shareholders.some(s => s.user_id === user?.consultant_id);
+            const hasSigned = slip.shareholders.find(s => String(s.user_id) === String(user?.id))?.signed;
+            const isShareholder = slip.shareholders.some(s => String(s.user_id) === String(user?.id));
             const allSigned = slip.shareholders.every(s => s.signed);
             const isPendingSignatures = !allSigned || slip.status === 'pending_signatures';
             const isExpanded = !!expandedSlips[slip.id];
