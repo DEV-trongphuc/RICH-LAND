@@ -14,13 +14,6 @@ interface MentionInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaEle
   users?: User[];
 }
 
-const FALLBACK_USERS = [
-  { id: 9901, full_name: "Phúc Trọng (Admin)", role: "admin" },
-  { id: 9902, full_name: "Thế Anh (Sale 1)", role: "sale" },
-  { id: 9903, full_name: "Bảo Trâm (Sale 2)", role: "sale" },
-  { id: 9904, full_name: "Minh Khôi (Manager)", role: "manager" }
-];
-
 export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, users: propUsers, ...props }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -30,21 +23,25 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
 
   useEffect(() => {
     if (propUsers && propUsers.length > 0) {
+      console.log("MentionInput using propUsers:", propUsers);
       setUsers(propUsers);
       return;
     }
     // Fetch users for mentions
+    console.log("MentionInput fetching users from API...");
     api.get('/users').then(res => {
       const d = res.data.data;
       const list = Array.isArray(d) ? d : (d?.items || []);
+      console.log("MentionInput API response list:", list);
       if (list.length === 0) {
-        setUsers(FALLBACK_USERS);
+        console.log("MentionInput list is empty");
+        setUsers([]);
       } else {
         setUsers(list);
       }
     }).catch(err => {
       console.error("MentionInput failed to load users:", err);
-      setUsers(FALLBACK_USERS);
+      setUsers([]);
     });
   }, [propUsers]);
 

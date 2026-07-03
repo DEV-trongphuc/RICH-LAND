@@ -158,7 +158,94 @@ const TABS = [
   { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
 
-const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> = ({ activityId, initialCount = 0 }) => {
+const renderFormattedText = (text: string, users: any[]) => {
+  if (!text) return '';
+  // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))
+  const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
+  const parts = text.split(regex);
+  return parts.map((part, index) => {
+    if (part.startsWith('http://') || part.startsWith('https://')) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
+        >
+          {part}
+        </a>
+      );
+    } else if (part.startsWith('@')) {
+      const cleanMention = part.substring(1).toLowerCase();
+      // Look up user to find avatar
+      const taggedUser = users.find((u: any) => {
+        const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase();
+        return normalizedUser === cleanMention;
+      });
+
+      const displayName = taggedUser?.full_name || part.substring(1).replace(/_/g, ' ');
+      const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
+      const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
+
+      return (
+        <span
+          key={index}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: '#dc2626', // Red text
+            background: 'rgba(239, 68, 68, 0.08)', // Light red background tint
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            padding: '2px 8px',
+            borderRadius: '9999px',
+            margin: '0 2px',
+            fontWeight: 600,
+            fontSize: '0.85em',
+            verticalAlign: 'middle'
+          }}
+        >
+          {avatarUrl ? (
+            <img 
+              src={avatarUrl} 
+              alt={displayName} 
+              style={{
+                width: '16px',
+                height: '16px',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                display: 'block'
+              }}
+            />
+          ) : (
+            <span 
+              style={{
+                width: '16px',
+                height: '16px',
+                borderRadius: '50%',
+                background: '#ef4444',
+                color: '#fff',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '9px',
+                fontWeight: 'bold',
+                lineHeight: 1
+              }}
+            >
+              {initial}
+            </span>
+          )}
+          @{displayName}
+        </span>
+      );
+    }
+    return part;
+  });
+};
+
+const ActivityComments: React.FC<{ activityId: number, initialCount?: number, users?: any[] }> = ({ activityId, initialCount = 0, users = [] }) => {
   const { addToast } = useUIStore();
   const { user: currentUser } = useAuth();
   const [comments, setComments] = useState<any[]>([]);
@@ -321,7 +408,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
                     )}
                   </div>
                 </div>
-                {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>}
+                {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{renderFormattedText(c.content, users)}</p>}
                 {c.attachments && c.attachments.map((att: string, i: number) => {
                   const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(att);
                   const fullUrl = resolveAttachmentUrl(att);
@@ -351,6 +438,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ position: 'relative' }}>
                 <MentionInput 
+                  users={users}
                   className="form-input" 
                   style={{ minHeight: '60px', padding: '8px 12px', fontSize: '0.875rem', paddingRight: '40px', opacity: submitting ? 0.7 : 1, width: '100%' }} 
                   placeholder="Viết bình luận..."
@@ -3410,7 +3498,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 );
                               })()}
-                              <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} />
+                              <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} />
                             </div>
                           </motion.div>
                         ))}
@@ -5153,8 +5241,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   )}
                                 </div>
                               </div>
-                              <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', marginTop: 4, margin: 0, whiteSpace: 'pre-wrap' }}>
-                                {c.content}
+                              <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', marginTop: 4, margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                                {renderFormattedText(c.content)}
                               </p>
                             </div>
                           </div>
