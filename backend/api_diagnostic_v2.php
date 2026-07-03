@@ -21,7 +21,6 @@ if ($token !== DIAG_TOKEN) {
 }
 
 // 2. Load Database configuration
-require_once __DIR__ . '/env.php';
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/config/Database.php';
 

@@ -98,7 +98,7 @@ class NoteController {
         // 1. Extract mentions from body text (@Full_Name_With_Underscores)
         $mentions = $b['mentions'] ?? [];
         if (empty($mentions)) {
-            preg_match_all('/@([a-zA-Z0-9_\u00C0-\u1EF9]+)/u', $b['body'], $matches);
+            preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}]+)/u', $b['body'], $matches);
             if (!empty($matches[1])) {
                 foreach ($matches[1] as $nameWithUnderscores) {
                     $fullName = str_replace('_', ' ', $nameWithUnderscores);
@@ -110,6 +110,10 @@ class NoteController {
             }
         }
         $mentions = array_unique($mentions);
+        // Exclude self-mention
+        $mentions = array_filter($mentions, function($uid) use ($auth) {
+            return (int)$uid !== (int)$auth['user_id'];
+        });
 
         // 2. Process mentions
         if (!empty($mentions)) {
@@ -120,16 +124,13 @@ class NoteController {
                 $uid = (int)$uid;
                 $ins->execute([$id, $uid]);
                 
-                // Don't notify self
-                if ($uid !== (int)$auth['user_id']) {
-                    $notif->execute([
-                        $uid, $auth['tenant_id'], 
-                        'Bạn được nhắc tên', 
-                        $auth['full_name'] . ' đã nhắc tên bạn trong một ghi chú.',
-                        'mention', 
-                        "/notes/{$id}"
-                    ]);
-                }
+                $notif->execute([
+                    $uid, $auth['tenant_id'], 
+                    'Bạn được nhắc tên', 
+                    $auth['full_name'] . ' đã nhắc tên bạn trong một ghi chú.',
+                    'mention', 
+                    "/notes/{$id}"
+                ]);
             }
         }
         respond(201, ['id' => $id], 'Đã thêm ghi chú');

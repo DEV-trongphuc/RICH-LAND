@@ -370,7 +370,7 @@ if (!in_array($action, $publicActions)) {
     }
 
     $currentSaleConsultantId = 0;
-    if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
+    if (isset($decodedUser['role']) && ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales')) {
         $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
         $stmtC->bind_param("s", $decodedUser['email']);
         $stmtC->execute();
@@ -381,7 +381,7 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
-    if ($decodedUser['role'] === 'sale' && !in_array($action, ['get_settings', 'get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 'expenses', 'tickets', 'activities', 'users', 'notes', 'cooperation-slips', 'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave'])) {
+    if (($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') && !in_array($action, ['get_settings', 'get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 'expenses', 'tickets', 'activities', 'users', 'notes', 'cooperation-slips', 'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -3079,11 +3079,11 @@ switch ($action) {
         
         $targetConsultantId = null;
         if ($isSale) {
-            $targetConsultantId = $currentSaleConsultantId;
+            $targetConsultantId = (int)$decodedUser['id'];
         } else if ($isAdmin && isset($input['consultant_id'])) {
             $targetConsultantId = (int)$input['consultant_id'];
         } else {
-            $targetConsultantId = $currentSaleConsultantId;
+            $targetConsultantId = (int)$decodedUser['id'];
         }
 
         if (!$targetConsultantId) {
@@ -11861,7 +11861,7 @@ switch ($action) {
                         WHERE assigned_to = ? 
                           AND received_at BETWEEN ? AND ? 
                           $roundCondition
-                          AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours')
+                          AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours', 'reminder', 'databank_claim')
                         GROUP BY adjusted_status";
 
         $totalAssigned = 0;
@@ -11871,7 +11871,9 @@ switch ($action) {
             'compensation' => 0,
             'rule_6_month' => 0,
             'pending_work_hours' => 0,
-            'error' => 0
+            'error' => 0,
+            'reminder' => 0,
+            'databank_claim' => 0
         ];
 
         $stmtA = $conn->prepare($assignedSql);
@@ -11885,7 +11887,7 @@ switch ($action) {
             $stmtA->close();
         }
 
-        $totalAssigned = $statusCounts['assigned'] + $statusCounts['compensation'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + max(0, $statusCounts['error'] - $statusCounts['compensation']);
+        $totalAssigned = $statusCounts['assigned'] + $statusCounts['compensation'] + $statusCounts['rule_6_month'] + $statusCounts['pending_work_hours'] + $statusCounts['reminder'] + $statusCounts['databank_claim'] + max(0, $statusCounts['error'] - $statusCounts['compensation']);
         $totalCompensationReceived = $statusCounts['compensation'];
 
         // 3. Query Ticket Approved Compensations (Approved reports resolved in range)
@@ -13990,7 +13992,7 @@ switch ($action) {
         }
 
         $saleUserId = (int) $decodedUser['id'];
-        $saleConsultantId = !empty($currentSaleConsultantId) ? $currentSaleConsultantId : $saleUserId;
+        $saleConsultantId = $saleUserId;
 
         $conn->begin_transaction();
         try {
@@ -14182,7 +14184,7 @@ switch ($action) {
         $quota = null;
         if (!$isStaffAdmin) {
             $saleUserId = (int) $decodedUser['id'];
-            $saleConsultantId = !empty($currentSaleConsultantId) ? $currentSaleConsultantId : $saleUserId;
+            $saleConsultantId = $saleUserId;
             $limitDay = (int) get_system_setting($conn, 'databank_limit_per_day');
             $limitHour = (int) get_system_setting($conn, 'databank_limit_per_hour');
             $limitMonth = (int) get_system_setting($conn, 'databank_limit_per_month');
@@ -14228,7 +14230,9 @@ switch ($action) {
         if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin', 'manager', 'assistant'])) {
             respond(403, null, 'Unauthorized: Quyền truy cập bị từ chối', false);
         }
+        require_once __DIR__ . '/webhook_logic.php';
 
+        $input = json_decode(file_get_contents('php://input'), true);
         $leadId = isset($input['lead_id']) ? (int)$input['lead_id'] : 0;
         if ($leadId <= 0) {
             echo json_encode(['success' => false, 'message' => 'ID khách hàng không hợp lệ.']);
@@ -14260,6 +14264,14 @@ switch ($action) {
                 throw new Exception("Không tìm thấy thông tin định danh Person tương ứng.");
             }
 
+            // Find real lead_id for this person to avoid foreign key failures
+            $stmtReal = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            $stmtReal->bind_param("i", $personId);
+            $stmtReal->execute();
+            $realL = $stmtReal->get_result()->fetch_assoc();
+            $stmtReal->close();
+            $realLeadId = $realL ? (int)$realL['id'] : null;
+
             // Update person is_public = 1
             $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
             $stmtU->bind_param("i", $personId);
@@ -14273,7 +14285,7 @@ switch ($action) {
             $stmtDel->close();
             
             // Log
-            logDistribution($conn, $leadId, null, null, 'released_to_kho', 'Admin chủ động nhả về Kho chung (Databank)', false);
+            logDistribution($conn, $realLeadId, null, null, 'released_to_kho', 'Admin chủ động nhả về Kho chung (Databank)', false);
 
             $conn->commit();
             echo json_encode(['success' => true, 'message' => 'Đã nhả khách hàng về Kho chung (Databank) thành công!']);
