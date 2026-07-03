@@ -136,26 +136,40 @@ class CooperationController {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
         }
 
-        if ($slip['status'] !== 'pending_signatures') {
-            respond(400, null, 'Không thể cập nhật tỷ lệ sau khi phiếu đã được ký hoặc duyệt', false);
+        $allowedStatuses = ['pending_signatures', 'approved', 'pending_manager_approval'];
+        if (!in_array($slip['status'], $allowedStatuses)) {
+            respond(400, null, 'Không thể cập nhật tỷ lệ trong trạng thái hiện tại', false);
         }
 
-        if (($auth['role'] === 'sales' || $auth['role'] === 'sale') && $slip['owner_id'] != $auth['user_id'] && $slip['created_by'] != $auth['user_id']) {
-            respond(403, null, 'Chỉ chủ sở hữu khách hàng hoặc người tạo phiếu mới được cập nhật tỷ lệ', false);
+        $userId = $auth['user_id'];
+        $oldShares = json_decode($slip['shares_json'] ?? '[]', true) ?: [];
+        $isShareholder = isset($oldShares[$userId]) || isset($shares[$userId]);
+        $isCreator = $slip['created_by'] == $userId;
+        $isOwner = $slip['owner_id'] == $userId;
+        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager']);
+
+        if (!$isShareholder && !$isCreator && !$isOwner && !$isManagerOrAdmin) {
+            respond(403, null, 'Chỉ chủ sở hữu, thành viên tham gia hoặc quản trị viên mới được cập nhật tỷ lệ', false);
         }
 
         $sharesJson = json_encode($shares);
+        $reason = trim($b['reason'] ?? '');
 
-        // Reset signatures upon updating shares
+        // If the slip was approved or pending manager approval, update status to pending_manager_approval (request change)
+        $newStatus = 'pending_signatures';
+        if ($slip['status'] === 'approved' || $slip['status'] === 'pending_manager_approval') {
+            $newStatus = 'pending_manager_approval';
+        }
+
         $stmt = $this->db->prepare("
             UPDATE cooperation_slips 
-            SET shares_json = ?, signatures_json = '{}', version = version + 1 
+            SET shares_json = ?, signatures_json = '{}', version = version + 1, status = ?, dispute_details = ?
             WHERE id = ?
         ");
-        $stmt->execute([$sharesJson, $id]);
+        $stmt->execute([$sharesJson, $newStatus, $reason ?: null, $id]);
 
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_COOPERATION_SHARES', 'cooperation_slip', $id, "Cập nhật tỷ lệ chia hoa hồng phiên bản " . ($slip['version'] + 1));
-        respond(200, null, 'Cập nhật tỷ lệ chia sẻ thành công. Vui lòng ký lại xác nhận.');
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_COOPERATION_SHARES', 'cooperation_slip', $id, "Cập nhật/Yêu cầu thay đổi tỷ lệ hoa hồng phiên bản " . ($slip['version'] + 1) . ". Lý do: $reason");
+        respond(200, null, 'Cập nhật tỷ lệ chia sẻ thành công. Đã gửi yêu cầu phê duyệt.');
     }
 
     public function signSlip(array $auth, int $id): void {

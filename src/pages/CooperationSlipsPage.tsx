@@ -64,6 +64,7 @@ export default function CooperationSlipsPage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => getDateRange('30d'));
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSale, setFilterSale] = useState('all');
+  const [changeReason, setChangeReason] = useState('');
 
   // Signature Modal state
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
@@ -319,12 +320,13 @@ export default function CooperationSlipsPage() {
     try {
       const res = await fetchAPI(`cooperation-slips/${selectedSlipId}/shares`, {
         method: 'PUT',
-        body: JSON.stringify({ shares: sharesMap })
+        body: JSON.stringify({ shares: sharesMap, reason: changeReason })
       });
 
       if (res.success) {
-        setSuccess('Đã cập nhật tỷ lệ chia sẻ và reset chữ ký thành công!');
+        setSuccess('Đã cập nhật tỷ lệ chia sẻ và gửi yêu cầu phê duyệt thành công!');
         setIsUpdateOpen(false);
+        setChangeReason('');
         loadData();
       } else {
         setError(res.message || 'Lỗi cập nhật tỷ lệ');
@@ -608,6 +610,20 @@ export default function CooperationSlipsPage() {
                             </button>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Request change if already approved or pending manager approval */}
+                    {(slip.status === 'approved' || slip.status === 'pending_manager_approval') && 
+                     (isManager || isShareholder || slip.created_by === user?.consultant_id) && (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleOpenUpdateShares(slip); }}
+                          className="btn sm outline"
+                          style={{ height: '28px', padding: '0 10px', fontSize: '0.75rem', color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
+                        >
+                          Yêu cầu thay đổi tỷ lệ
+                        </button>
                       </div>
                     )}
 
@@ -1050,6 +1066,18 @@ export default function CooperationSlipsPage() {
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
                   Tổng: {sharesInput.reduce((acc, s) => acc + (parseInt(s.percentage) || 0), 0)}% / 100%
                 </span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '0.5rem' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lý do thay đổi / Yêu cầu điều chỉnh</label>
+                <textarea
+                  placeholder="VD: Điều chỉnh thêm sale hỗ trợ ký hợp đồng hoặc chỉnh sửa tỷ lệ..."
+                  value={changeReason}
+                  onChange={e => setChangeReason(e.target.value)}
+                  className="form-input"
+                  style={{ fontSize: '0.75rem', padding: '8px 10px', height: '60px', resize: 'vertical' }}
+                  required
+                />
               </div>
 
               <button
