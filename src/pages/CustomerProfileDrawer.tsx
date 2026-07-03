@@ -644,14 +644,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (!e.target.files || e.target.files.length === 0 || !coopSlip) return;
     const file = e.target.files[0];
     e.target.value = '';
+    
+    const originalName = file.name;
+    const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+    const customName = window.prompt("Nhập tên tài liệu:", defaultName);
+    if (customName === null) {
+      return; // User cancelled
+    }
+    const ext = originalName.substring(originalName.lastIndexOf('.'));
+    const finalName = (customName.trim() || defaultName) + ext;
+
     setCoopLoading(true);
     try {
       let fileToUpload = file;
       if (file.type.startsWith('image/')) {
         fileToUpload = await compressToWebP(file);
       }
+      const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
       const fd = new FormData();
-      fd.append('file', fileToUpload);
+      fd.append('file', renamedFile);
       const res = await api.post(`/cooperation-slips/${coopSlip.id}/upload-attachment`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -3406,9 +3417,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <input type="file" style={{ display: 'none' }} onChange={async (e) => {
                               if (e.target.files?.[0]) {
                                 const file = e.target.files[0];
+                                const originalName = file.name;
+                                const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                                const customName = window.prompt("Nhập tên tài liệu:", defaultName);
+                                if (customName === null) {
+                                  return; // User cancelled
+                                }
+                                const ext = originalName.substring(originalName.lastIndexOf('.'));
+                                const finalName = (customName.trim() || defaultName) + ext;
+                                
                                 const compressed = await compressToWebP(file);
+                                const renamedFile = new File([compressed], finalName, { type: compressed.type });
                                 const fData = new FormData();
-                                fData.append('file', compressed);
+                                fData.append('file', renamedFile);
+                                fData.append('name', finalName);
                                 fData.append('contact_id', String(contact.id));
                                 fData.append('category', 'general');
                                 fData.append('visibility', 'shared');
