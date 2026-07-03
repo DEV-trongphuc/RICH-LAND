@@ -248,7 +248,7 @@ export default function CooperationSlipsPage() {
                         Phiếu hợp tác #{slip.id} | Căn: {slip.unit_code} ({slip.project_name})
                       </h3>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
-                        Khách hàng: <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.last_name} {slip.first_name}</span> • Hoa hồng dự kiến: <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{slip.expected_commission.toLocaleString()} VND</span>
+                        Khách hàng: <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{slip.last_name} {slip.first_name}</span> • Hoa hồng dự kiến: <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>{(Number(slip.expected_commission) || 0).toLocaleString()} VND</span>
                       </p>
                     </div>
                   </div>
@@ -364,7 +364,7 @@ export default function CooperationSlipsPage() {
                           {sh.signed && (
                             <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', textAlign: 'right' }}>
                               IP: {sh.signature_ip}<br />
-                              Lúc: {new Date(sh.signature_time!).toLocaleString()}
+                              Lúc: {sh.signature_time ? new Date(sh.signature_time).toLocaleString() : '—'}
                             </span>
                           )}
                         </div>

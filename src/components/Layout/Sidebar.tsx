@@ -39,8 +39,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
-      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },
-      { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, adminOnly: true }
+      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' }
     ]
   },
   {
@@ -57,7 +56,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2, adminOnly: true },
       { name: 'Team', href: '/consultants?tab=teams', icon: Users, adminOnly: true },
       { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, adminOnly: true },
-      { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, adminOnly: true }
+      { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, adminOnly: true },
+      { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, adminOnly: true, badgeKey: 'coopSlips' }
     ]
   },
   {
@@ -102,6 +102,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const location = useLocation();
   const [pendingTickets, setPendingTickets] = useState(0);
   const [heldLeadsCount, setHeldLeadsCount] = useState(0);
+  const [pendingCoopCount, setPendingCoopCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
@@ -126,16 +127,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
   // Poll pending ticket count every 60s
   useEffect(() => {
-    if (user?.role !== 'admin' && user?.role !== 'superadmin') return;
+    if (user?.role !== 'admin' && user?.role !== 'superadmin' && (user?.role as string) !== 'manager') return;
     const fetchPending = async () => {
       try {
-        const [resReports, resHeld] = await Promise.all([
+        const [resReports, resHeld, resCoop] = await Promise.all([
           fetchAPI('get_reports&status=pending'),
-          fetchAPI('get_held_leads&pageSize=1&date=all')
+          fetchAPI('get_held_leads&pageSize=1&date=all'),
+          fetchAPI('cooperation-slips')
         ]);
 
         let countReports = 0;
         let countHeld = 0;
+        let countCoop = 0;
 
         if (resReports.success) {
           countReports = resReports.stats?.pending ?? (resReports.data ? resReports.data.filter((r: any) => r.status === 'pending').length : 0);
@@ -145,8 +148,13 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           countHeld = resHeld.total_count ?? 0;
         }
 
+        if (resCoop.success) {
+          countCoop = (resCoop.data || []).filter((s: any) => s.status === 'pending_manager_approval').length;
+        }
+
         setPendingTickets(countReports);
         setHeldLeadsCount(countHeld);
+        setPendingCoopCount(countCoop);
       } catch { /* silent */ }
     };
     fetchPending();
@@ -357,7 +365,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   </span>
                 )}
                 {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
-                  const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : 0;
+                  const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : 0;
                   const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href && location.search === '');
                   const displayName = href === '/' && user?.role === 'sale' ? t('Bàn làm việc') : t(name);
 
