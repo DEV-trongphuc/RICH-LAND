@@ -2672,7 +2672,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* Signature section */}
-                          {coopSlip.status === 'pending_signatures' && coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && (
+                          {coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && (
                             <div className="card-panel" style={{ padding: '1.5rem', background: 'rgba(189, 29, 45, 0.1)', border: '1px solid #BD1D2D' }}>
                               <h4 style={{ fontWeight: 700, color: '#BD1D2D', marginBottom: '0.5rem' }}>Bạn có yêu cầu ký xác nhận</h4>
                               <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--color-text)' }}>

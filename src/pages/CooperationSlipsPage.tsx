@@ -500,8 +500,11 @@ export default function CooperationSlipsPage() {
             const hasSigned = slip.shareholders.find(s => s.user_id === user?.consultant_id)?.signed;
             const isShareholder = slip.shareholders.some(s => s.user_id === user?.consultant_id);
             const isExpanded = !!expandedSlips[slip.id];
-            const totalComm = Number(slip.expected_commission) || Number(slip.expected_revenue) || 0;
-            const totalActual = Number(slip.actual_revenue) || 0;
+            const baseComm = Number(slip.expected_commission) || Number(slip.expected_revenue) || 0;
+            const baseActual = Number(slip.actual_revenue) || 0;
+            const totalPercentage = slip.total_percentage !== undefined && slip.total_percentage !== null ? Number(slip.total_percentage) : 100;
+            const totalComm = (baseComm * totalPercentage) / 100;
+            const totalActual = (baseActual * totalPercentage) / 100;
 
             return (
               <div
@@ -644,26 +647,29 @@ export default function CooperationSlipsPage() {
                     </span>
                     
                     {/* Sign / Update buttons */}
-                    {slip.status === 'pending_signatures' && (
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {(slip.created_by === user?.consultant_id || isManager) && (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {/* Configuration: only allowed in pending_signatures */}
+                      {slip.status === 'pending_signatures' && (slip.created_by === user?.consultant_id || isManager) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleOpenUpdateShares(slip); }}
+                          className="btn sm outline"
+                          style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', borderRadius: '6px', fontWeight: 600 }}
+                        >
+                          Cấu hình chia %
+                        </button>
+                      )}
+
+                      {/* Sign: allowed if shareholder and hasn't signed yet, regardless of status */}
+                      {isShareholder && !hasSigned && (
+                        <div style={{ display: 'flex', gap: '6px' }}>
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleOpenUpdateShares(slip); }}
-                            className="btn sm outline"
-                            style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', borderRadius: '6px', fontWeight: 600 }}
+                            onClick={(e) => { e.stopPropagation(); handleOpenSignModal(slip); }}
+                            className="btn sm primary"
+                            style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '6px', fontWeight: 600 }}
                           >
-                            Cấu hình chia %
+                            <PenTool size={12} /> Ký
                           </button>
-                        )}
-                        {isShareholder && !hasSigned && (
-                          <div style={{ display: 'flex', gap: '6px' }}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleOpenSignModal(slip); }}
-                              className="btn sm primary"
-                              style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '6px', fontWeight: 600 }}
-                            >
-                              <PenTool size={12} /> Ký
-                            </button>
+                          {slip.status === 'pending_signatures' && (
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRejectSlip(slip.id); }}
                               className="btn sm outline"
@@ -671,10 +677,10 @@ export default function CooperationSlipsPage() {
                             >
                               Từ chối
                             </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Request change if already approved or pending manager approval */}
                     {(slip.status === 'approved' || slip.status === 'pending_manager_approval') && 
@@ -779,10 +785,10 @@ export default function CooperationSlipsPage() {
                                   {sh.percentage}%
                                 </span>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 700, marginTop: '2px' }}>
-                                  Dự kiến: {((totalComm * sh.percentage) / 100).toLocaleString()} VND
+                                  Dự kiến: {((baseComm * sh.percentage) / 100).toLocaleString()} VND
                                 </div>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '1px' }}>
-                                  Thực tế: {((totalActual * sh.percentage) / 100).toLocaleString()} VND
+                                  Thực tế: {((baseActual * sh.percentage) / 100).toLocaleString()} VND
                                 </div>
                               </div>
                             </div>
