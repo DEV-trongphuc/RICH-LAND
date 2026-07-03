@@ -170,9 +170,6 @@ api.interceptors.request.use((config) => {
   // Translate PUT, PATCH, DELETE to POST with method override header/param for production to bypass server restrictions
   if (!DEV_MODE && config.method && ['put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
     const originalMethod = config.method.toUpperCase();
-    if (config.headers) {
-      (config.headers as any)['X-HTTP-Method-Override'] = originalMethod;
-    }
     config.params = config.params || {};
     config.params._method = originalMethod;
     config.method = 'post';

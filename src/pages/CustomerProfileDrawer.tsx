@@ -1248,8 +1248,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </AnimatePresence>
 
               {/* ── Header ── */}
-              <div style={{ padding: '1.25rem 2rem', background: 'linear-gradient(135deg, var(--color-bg) 0%, var(--color-surface) 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
-                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <div className={styles.profileHeader}>
+                {/* Absolute Close Button */}
+                <button className={styles.closeBtnAbsolute} onClick={onClose} aria-label="Close drawer">
+                  <X size={20} />
+                </button>
+
+                <div className={styles.profileHeaderContent}>
                   {/* Avatar Section */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div
@@ -1292,9 +1297,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
 
                   {/* Info Section */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className={styles.profileInfoSection}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fullName}</h2>
+                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word' }}>{fullName}</h2>
                       <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 8px', fontSize: '0.6875rem', borderRadius: '6px' }}>
                         {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
                       </span>
@@ -1336,7 +1341,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
 
                   {/* Actions Section */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                  <div className={styles.profileActionsSection}>
                      {/* Lead Score inline card */}
                      <div 
                        onClick={() => setActiveTab('scoring')}
@@ -1354,8 +1359,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     >
                       <CheckSquare size={14} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
                     </button>
-
-                    <button className={styles.closeBtn} onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.2s', padding: 0 }}><X size={20} /></button>
                   </div>
                 </div>
               </div>

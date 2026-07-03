@@ -1,6 +1,6 @@
 <?php
 header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Auth-Token");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-Auth-Token, X-HTTP-Method-Override");
 header("Content-Type: application/json; charset=utf-8");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
@@ -2643,7 +2643,7 @@ switch ($action) {
         $distRes = $conn->query("
             SELECT 
                 DATE(dl.received_at) as date_str,
-                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours') THEN 1 ELSE 0 END) as distributed,
+                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success') THEN 1 ELSE 0 END) as distributed,
                 SUM(CASE WHEN dl.status = 'blacklisted' THEN 1 ELSE 0 END) as blacklist,
                 SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder,
                 SUM(CASE WHEN dl.status IN ('error', 'no_consultant') THEN 1 ELSE 0 END) as error,
