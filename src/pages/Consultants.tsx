@@ -907,10 +907,10 @@ const ConsultantsInner = () => {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', width: '100%' }}>
           {(() => {
             const branchMap: Record<string, any[]> = {};
-            teams.forEach(t => {
-              const bName = t.branch || t('Không thuộc chi nhánh nào');
+            teams.forEach(team => {
+              const bName = team.branch || t('Không thuộc chi nhánh nào');
               if (!branchMap[bName]) branchMap[bName] = [];
-              branchMap[bName].push(t);
+              branchMap[bName].push(team);
             });
             const branchList = Object.entries(branchMap);
             if (branchList.length === 0) {

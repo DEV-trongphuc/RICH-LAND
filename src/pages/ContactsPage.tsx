@@ -50,7 +50,17 @@ const SOURCE_OPTIONS = [
   { value: 'other', label: 'Khác' }
 ];
 
-const FMT_VND = (n: number) => n ? new Intl.NumberFormat('vi-VN',{style:'currency',currency:'VND',maximumFractionDigits:0}).format(n) : '—';
+const FMT_VND = (n: any) => {
+  const num = Math.round(Number(n || 0));
+  if (!num) return '—';
+  if (num >= 1e9) {
+    return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(num / 1e9) + ' Tỷ đ';
+  }
+  if (num >= 1e6) {
+    return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(num / 1e6) + ' Tr đ';
+  }
+  return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
+};
 const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime())/86400000) : 999;
 
 export const ContactsPage: React.FC = () => {
@@ -1006,7 +1016,7 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '1rem', width: '100%' }}>
             <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
           </div>
         </div>

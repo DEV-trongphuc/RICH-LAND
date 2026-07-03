@@ -930,7 +930,7 @@ export const DealsPage: React.FC = () => {
           )}
           
           {/* Pagination Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', borderTop: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '1rem', borderTop: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)', width: '100%' }}>
             <Pagination total={total} page={page} pageSize={limit} onChange={setPage} />
           </div>
         </div>

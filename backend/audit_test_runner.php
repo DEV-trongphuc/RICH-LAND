@@ -544,10 +544,14 @@ try {
     // TEST 21: REST API Frontend Mock Calls (Create, Update, Delete)
     // ─────────────────────────────────────────────────────────────────
     $callApi = function(string $resource, string $method, array $body = [], string $token = '') {
+        $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $subDir = (strpos($uri, '/richland/') !== false) ? '/richland' : '';
+        
         $urls = [
-            "https://open.domation.net/richland/api.php?action=" . urlencode($resource),
-            "http://localhost/richland/api.php?action=" . urlencode($resource),
-            "http://127.0.0.1/richland/api.php?action=" . urlencode($resource)
+            "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($resource),
+            "http://localhost" . $subDir . "/api.php?action=" . urlencode($resource),
+            "https://open.domation.net/richland/api.php?action=" . urlencode($resource)
         ];
         
         $lastErr = '';
@@ -555,6 +559,7 @@ try {
             $ch = curl_init($url);
             $headers = [
                 'Content-Type: application/json',
+                'Host: ' . $host,
                 'Authorization: Bearer ' . ($token ?: 'demo_token_12345')
             ];
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);

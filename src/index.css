@@ -432,6 +432,13 @@
   /* Stand behind mobile sidebar drawer (1000) but in front of sticky page elements */
 }
 
+.responsive-main {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 /* ================================================
    MINTH CRM - Design System
    ================================================ */

@@ -67,40 +67,54 @@ class ReportController
         }
 
         // Performance by Owner: Split between Won Revenue and Pipeline Value
+        $fromTs = $from . ' 00:00:00';
+        $toTs = $to . ' 23:59:59';
+
+        $pOwnerList = [$fromTs, $toTs, $tid];
+        if ($auth['role'] === 'sales') {
+            $pOwnerList[] = $auth['user_id'];
+        }
+
+        $pDeals = [$tid, $fromTs, $toTs];
+        if ($auth['role'] === 'sales') {
+            $pDeals[] = $auth['user_id'];
+        }
+
+        // Performance by Owner: Split between Won Revenue and Pipeline Value (Filtered by selected range)
         $stmt2 = $this->db->prepare("
             SELECT u.id, u.full_name as name, 
                    COUNT(d.id) as deals, 
                    COALESCE(SUM(CASE WHEN ps.is_won = 1 THEN d.value ELSE 0 END), 0) as revenue,
                    COALESCE(SUM(CASE WHEN ps.is_won = 0 AND ps.is_lost = 0 THEN d.value ELSE 0 END), 0) as pipeline_value
             FROM users u
-            LEFT JOIN deals d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL
+            LEFT JOIN deals d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL AND d.created_at BETWEEN ? AND ?
             LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
             WHERE u.tenant_id = ? ".($auth['role'] === 'sales' ? " AND u.id=?" : "")."
             GROUP BY u.id
             ORDER BY revenue DESC
         ");
-        $stmt2->execute($pOwner);
+        $stmt2->execute($pOwnerList);
 
         $sDeals = $this->db->prepare("
             SELECT COUNT(*) as total_deals,
                    COALESCE(SUM(value),0) as total_revenue
             FROM deals
-            WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sales' ? " AND owner_id=?" : "")."
+            WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? ".($auth['role'] === 'sales' ? " AND owner_id=?" : "")."
         ");
-        $sDeals->execute($pOwner);
+        $sDeals->execute($pDeals);
         $dealStats = $sDeals->fetch(PDO::FETCH_ASSOC);
 
         $sWon = $this->db->prepare("
             SELECT COUNT(*) 
             FROM deals d 
             JOIN pipeline_stages ps ON d.stage_id=ps.id 
-            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 ".($auth['role'] === 'sales' ? " AND d.owner_id=?" : "")."
+            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 AND COALESCE(d.actual_close_date, d.created_at) BETWEEN ? AND ? ".($auth['role'] === 'sales' ? " AND d.owner_id=?" : "")."
         ");
-        $sWon->execute($pOwner);
+        $sWon->execute($pDeals);
         $wonCount = (int)$sWon->fetchColumn();
 
-        $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
-        $sContacts->execute($pOwner);
+        $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? ".($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
+        $sContacts->execute($pDeals);
 
         // 1. Calculate Inventory Loss Value (EXPORT_INTERNAL)
         $stmtLoss = $this->db->prepare("

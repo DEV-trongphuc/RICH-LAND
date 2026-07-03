@@ -29,7 +29,13 @@ const FMT = (n: any) => {
   return num >= 1e9 ? (num / 1e9).toFixed(1) + 'T' : num >= 1e6 ? (num / 1e6).toFixed(0) + 'M' : num >= 1e3 ? (num / 1e3).toFixed(0) + 'K' : String(num);
 };
 const FMT_VND = (n: any) => {
-  const num = Number(n || 0);
+  const num = Math.round(Number(n || 0));
+  if (num >= 1e9) {
+    return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(num / 1e9) + ' Tỷ đ';
+  }
+  if (num >= 1e6) {
+    return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 1 }).format(num / 1e6) + ' Tr đ';
+  }
   return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
 };
 

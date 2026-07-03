@@ -54,8 +54,8 @@ class DashboardController {
             // 5. Won Deals
             $qWon = "SELECT COUNT(*) as cnt, COALESCE(SUM(d.value),0) as val 
                      FROM deals d JOIN pipeline_stages ps ON d.stage_id=ps.id 
-                     WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 AND d.actual_close_date BETWEEN ? AND ?";
-            $pWon = [$tid, $f, $t];
+                     WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 AND COALESCE(d.actual_close_date, d.created_at) BETWEEN ? AND ?";
+            $pWon = [$tid, $fTs, $tTs];
             if ($isSale) { $qWon .= " AND d.owner_id=?"; $pWon[] = $uid; }
             $wonRow = $this->queryRow($qWon, $pWon);
 

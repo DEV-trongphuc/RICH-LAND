@@ -324,7 +324,7 @@ export const TicketsPage: React.FC = () => {
       )}
 
       {total > 20 && (
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
           <Pagination total={total} page={page} pageSize={20} onChange={setPage} />
         </div>
       )}
