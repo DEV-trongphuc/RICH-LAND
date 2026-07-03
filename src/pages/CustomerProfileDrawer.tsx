@@ -2752,6 +2752,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     </div>
                                     {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
                                       <button 
+                                        type="button"
                                         className="btn ghost text-danger sm" 
                                         onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
                                         style={{ padding: '8px' }}
@@ -2788,16 +2789,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             )}
 
                             {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <button 
-                                  className="btn outline sm"
-                                  onClick={() => setCoopShares(prev => [...prev, { user_id: '', percentage: '0' }])}
-                                >
-                                  <Plus size={14} /> Thêm nhân sự
-                                </button>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <button 
+                                    type="button"
+                                    className="btn outline sm"
+                                    onClick={() => setCoopShares(prev => [...prev, { user_id: '', percentage: '0' }])}
+                                  >
+                                    <Plus size={14} /> Thêm nhân sự
+                                  </button>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                                    Tổng: {coopShares.reduce((acc, curr) => acc + (Number(curr.percentage) || 0), 0)}% / 100%
+                                  </span>
+                                </div>
                                 <div style={{ display: 'flex', gap: '6px' }}>
                                   {isRequestingChange && (
                                     <button 
+                                      type="button"
                                       className="btn outline sm"
                                       onClick={() => {
                                         setIsRequestingChange(false);
@@ -2808,6 +2816,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     </button>
                                   )}
                                   <button 
+                                    type="button"
                                     className="btn primary sm"
                                     onClick={handleSaveCoopShares}
                                   >
@@ -2819,6 +2828,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && (
                                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                   <button 
+                                    type="button"
                                     className="btn outline sm"
                                     onClick={() => setIsRequestingChange(true)}
                                     style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
