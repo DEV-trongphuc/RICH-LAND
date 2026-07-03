@@ -415,6 +415,92 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { t } = useLanguage();
+  const renderFormattedText = (text: string) => {
+    if (!text) return '';
+    // Regex matches URLs or @mentions (supporting unicode characters and parentheses like @Minh_Khôi_(Manager))
+    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.startsWith('http://') || part.startsWith('https://')) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
+          >
+            {part}
+          </a>
+        );
+      } else if (part.startsWith('@')) {
+        const cleanMention = part.substring(1).toLowerCase();
+        // Look up user to find avatar
+        const taggedUser = users.find((u: any) => {
+          const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase();
+          return normalizedUser === cleanMention;
+        });
+
+        const displayName = taggedUser?.full_name || part.substring(1).replace(/_/g, ' ');
+        const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
+
+        return (
+          <span
+            key={index}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#dc2626', // Red text
+              background: 'rgba(239, 68, 68, 0.08)', // Light red background tint
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              margin: '0 2px',
+              fontWeight: 600,
+              fontSize: '0.85em',
+              verticalAlign: 'middle'
+            }}
+          >
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt={displayName} 
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+              />
+            ) : (
+              <span 
+                style={{
+                  width: '16px',
+                  height: '16px',
+                  borderRadius: '50%',
+                  background: '#ef4444',
+                  color: '#fff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '9px',
+                  fontWeight: 'bold',
+                  lineHeight: 1
+                }}
+              >
+                {initial}
+              </span>
+            )}
+            @{displayName}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
   const [activeTab, setActiveTab] = useState<string>('info');
 
   useEffect(() => {
