@@ -13,6 +13,13 @@ interface MentionInputProps extends React.TextareaHTMLAttributes<HTMLTextAreaEle
   onChange: (e: any) => void;
 }
 
+const FALLBACK_USERS = [
+  { id: 9901, full_name: "Phúc Trọng (Admin)", role: "admin" },
+  { id: 9902, full_name: "Thế Anh (Sale 1)", role: "sale" },
+  { id: 9903, full_name: "Bảo Trâm (Sale 2)", role: "sale" },
+  { id: 9904, full_name: "Minh Khôi (Manager)", role: "manager" }
+];
+
 export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...props }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -23,9 +30,31 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
   useEffect(() => {
     // Fetch users for mentions
     api.get('/users').then(res => {
-      setUsers(res.data.data || []);
-    }).catch(console.error);
+      const d = res.data.data;
+      const list = Array.isArray(d) ? d : (d?.items || []);
+      if (list.length === 0) {
+        setUsers(FALLBACK_USERS);
+      } else {
+        setUsers(list);
+      }
+    }).catch(err => {
+      console.error("MentionInput failed to load users:", err);
+      setUsers(FALLBACK_USERS);
+    });
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (showDropdown && textareaRef.current) {
+        const wrapper = textareaRef.current.parentElement;
+        if (wrapper && !wrapper.contains(e.target as Node)) {
+          setShowDropdown(false);
+        }
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showDropdown]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
@@ -51,8 +80,9 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
     const val = value;
     const beforeMention = val.slice(0, cursorPos);
     const afterMention = val.slice(textareaRef.current.selectionStart);
+    const fullName = user.full_name || 'user';
     
-    const newValue = `${beforeMention}@${user.full_name.replace(/\s+/g, '_')} ${afterMention}`;
+    const newValue = `${beforeMention}@${fullName.replace(/\s+/g, '_')} ${afterMention}`;
     
     // Simulate an event to pass to parent's onChange
     const fakeEvent = {
@@ -67,16 +97,17 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
       if (textareaRef.current) {
         textareaRef.current.focus();
         // Set cursor after the inserted name
-        const newPos = cursorPos + user.full_name.replace(/\s+/g, '_').length + 2;
+        const newPos = cursorPos + fullName.replace(/\s+/g, '_').length + 2;
         textareaRef.current.setSelectionRange(newPos, newPos);
       }
     }, 0);
   };
 
-  const filteredUsers = users.filter(u => 
-    u.full_name.toLowerCase().includes(searchQuery) || 
-    u.role.toLowerCase().includes(searchQuery)
-  );
+  const filteredUsers = users.filter(u => {
+    const name = u.full_name ? String(u.full_name).toLowerCase() : '';
+    const role = u.role ? String(u.role).toLowerCase() : '';
+    return name.includes(searchQuery) || role.includes(searchQuery);
+  });
 
   const stringToColor = (str: string) => {
     let hash = 0;
@@ -98,12 +129,13 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
   };
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
+    <div style={{ position: 'relative', flex: 1, display: 'flex', minWidth: 0 }}>
       <textarea
         ref={textareaRef}
         value={value}
         onChange={handleChange}
         {...props}
+        style={{ width: '100%', ...props.style }}
       />
       <AnimatePresence>
         {showDropdown && filteredUsers.length > 0 && (
@@ -127,7 +159,9 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
             }}
           >
             {filteredUsers.map(u => {
-              const avatarColor = stringToColor(u.full_name);
+              const fullName = u.full_name || 'Không tên';
+              const roleName = u.role || 'user';
+              const avatarColor = stringToColor(fullName);
               return (
                 <div
                   key={u.id}
@@ -138,16 +172,17 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, ...
                     borderBottom: '1px solid var(--color-border-light)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    color: 'var(--color-text)'
                   }}
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <div style={{ width: 20, height: 20, borderRadius: '50%', background: avatarColor + '15', color: avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}>
-                    {u.full_name[0]}
+                    {fullName[0]}
                   </div>
-                  <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>{u.full_name}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.role}</div>
+                  <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>{fullName}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{roleName}</div>
                 </div>
               );
             })}

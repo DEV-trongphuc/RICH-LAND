@@ -59,7 +59,9 @@ class ActivityController {
 
         $stmt=$this->db->prepare("
             SELECT a.*, u.full_name as user_name, u.avatar_url,
-                   CONCAT(ct.first_name,' ',ct.last_name) as contact_name,
+                   COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
+                   COALESCE(ct.id, deal_ct.id) as contact_id,
+                   COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
                    d.title as deal_name,
                    c.name as company_name,
                    (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count,
@@ -68,6 +70,7 @@ class ActivityController {
             LEFT JOIN users u ON a.user_id=u.id
             LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
+            LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL
             LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
             WHERE $w ORDER BY a.$sortBy $order
             LIMIT $limit OFFSET $offset
@@ -144,7 +147,21 @@ class ActivityController {
     }
 
     public function show(array $auth,int $id): void {
-        $stmt=$this->db->prepare("SELECT a.*,u.full_name as user_name FROM activities a LEFT JOIN users u ON a.user_id=u.id WHERE a.id=? AND a.tenant_id=? AND a.deleted_at IS NULL");
+        $stmt=$this->db->prepare("
+            SELECT a.*, u.full_name as user_name,
+                   COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
+                   COALESCE(ct.id, deal_ct.id) as contact_id,
+                   COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
+                   d.title as deal_name,
+                   c.name as company_name
+            FROM activities a 
+            LEFT JOIN users u ON a.user_id=u.id
+            LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
+            LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
+            LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL
+            LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
+            WHERE a.id=? AND a.tenant_id=? AND a.deleted_at IS NULL
+        ");
         $stmt->execute([$id, $auth['tenant_id']]);
         $row=$stmt->fetch(); if(!$row) respond(404,null,'Không tìm thấy',false);
 

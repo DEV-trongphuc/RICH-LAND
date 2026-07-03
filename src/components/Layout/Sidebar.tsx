@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock, Home, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Users, GitBranch, Settings, ChevronLeft, Webhook, Link2, Database, ShieldCheck, Ticket, Plus, Scale, Filter, Cpu, Building2, TrendingUp, FileText, Calendar, Package, Receipt, CreditCard, BarChart2, Truck, File, Boxes, Layers, Clock, Home, CheckSquare, LifeBuoy } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useEffect, useState, useRef, Fragment } from 'react';
@@ -39,7 +39,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
-      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' }
+      { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },
+      { name: 'Ticket hỗ trợ', href: '/support-tickets', icon: LifeBuoy }
     ]
   },
   {

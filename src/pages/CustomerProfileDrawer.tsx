@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -27,6 +27,7 @@ import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import styles from './EntityDrawer.module.css';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 /* ─── Types ─────────────────────────────────────────────────── */
 interface Props {
@@ -413,6 +414,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<string>('info');
 
   useEffect(() => {
@@ -513,11 +515,79 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [showDealModal, setShowDealModal] = useState(false);
   const [editingDealId, setEditingDealId] = useState<number | null>(null);
+  const [depositProjectId, setDepositProjectId] = useState('');
+  const [depositUnitCode, setDepositUnitCode] = useState('');
+  const [depositPrice, setDepositPrice] = useState('');
+  const [depositExpectedCommission, setDepositExpectedCommission] = useState('');
+  const [depositMilestones, setDepositMilestones] = useState<{ name: string; amount: string }[]>([
+    { name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }
+  ]);
+  const [projectsList, setProjectsList] = useState<any[]>([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<any>(null);
   const [taskComments, setTaskComments] = useState<any[]>([]);
+  const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([]);
+
+  const parseDescriptionAndChecklist = (descText: string) => {
+    const lines = descText ? descText.split('\n') : [];
+    const descLines: string[] = [];
+    const checklistItems: Array<{ text: string; checked: boolean }> = [];
+    
+    lines.forEach(line => {
+      const match = line.match(/^\s*-\s*\[([ xX])\]\s*(.*)$/);
+      if (match) {
+        checklistItems.push({
+          checked: match[1].toLowerCase() === 'x',
+          text: match[2].trim()
+        });
+      } else {
+        descLines.push(line);
+      }
+    });
+    
+    return {
+      pureDescription: descLines.join('\n').trim(),
+      checklist: checklistItems
+    };
+  };
+
+  const serializeDescriptionAndChecklist = (pureDesc: string, items: Array<{ text: string; checked: boolean }>) => {
+    let result = pureDesc.trim();
+    if (items.length > 0) {
+      const checklistStr = items.map(item => `- [${item.checked ? 'x' : ' '}] ${item.text}`).join('\n');
+      result += (result ? '\n\n' : '') + checklistStr;
+    }
+    return result;
+  };
+
+  const addChecklistItem = async () => {
+    const newChecklist = [...checklist, { text: '', checked: false }];
+    setChecklist(newChecklist);
+    await handleUpdateTaskDetail({ checklist: newChecklist });
+  };
+
+  const toggleChecklistItem = async (idx: number) => {
+    const newChecklist = checklist.map((c, i) => i === idx ? { ...c, checked: !c.checked } : c);
+    setChecklist(newChecklist);
+    await handleUpdateTaskDetail({ checklist: newChecklist });
+  };
+
+  const updateChecklistItemText = (idx: number, val: string) => {
+    setChecklist(prev => prev.map((c, i) => i === idx ? { ...c, text: val } : c));
+  };
+
+  const handleChecklistItemBlur = async () => {
+    await handleUpdateTaskDetail({ checklist });
+  };
+
+  const removeChecklistItem = async (idx: number) => {
+    const newChecklist = checklist.filter((_, i) => i !== idx);
+    setChecklist(newChecklist);
+    await handleUpdateTaskDetail({ checklist: newChecklist });
+  };
+
   const [loadingTaskComments, setLoadingTaskComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [isUpdatingTask, setIsUpdatingTask] = useState(false);
@@ -1055,6 +1125,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setStages(stagesRes.data.data?.items || stagesRes.data.data || []);
       } catch (err) {}
 
+      // Fetch Projects
+      try {
+        const projectsRes = await api.get('/projects');
+        setProjectsList(projectsRes.data.data || projectsRes.data || []);
+      } catch (err) {}
+
       // Fetch Deposits instead of Deals
       const depositsRes = await api.get('/deposits');
       const depositsList = (depositsRes.data.data || []).filter((d: any) => Number(d.contact_id) === Number(contact.id)).map((d: any) => ({
@@ -1492,12 +1568,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     try {
       const payload: any = {};
       if ('title' in updatedFields) payload.subject = updatedFields.title;
-      if ('description' in updatedFields) {
-        payload.body = updatedFields.description + (selectedTaskForDetails.link ? `\n\nTài liệu/Link đính kèm: ${selectedTaskForDetails.link}` : '');
-      }
-      if ('link' in updatedFields) {
-        const desc = selectedTaskForDetails.description || '';
-        payload.body = desc + (updatedFields.link ? `\n\nTài liệu/Link đính kèm: ${updatedFields.link}` : '');
+      if ('description' in updatedFields || 'checklist' in updatedFields) {
+        const descText = 'description' in updatedFields ? updatedFields.description : (selectedTaskForDetails.description || '');
+        const listItems = 'checklist' in updatedFields ? updatedFields.checklist : checklist;
+        const finalDescription = serializeDescriptionAndChecklist(descText, listItems);
+        payload.body = finalDescription + (selectedTaskForDetails.link ? `\n\nTài liệu/Link đính kèm: ${selectedTaskForDetails.link}` : '');
+      } else if ('link' in updatedFields) {
+        const descText = selectedTaskForDetails.description || '';
+        const finalDescription = serializeDescriptionAndChecklist(descText, checklist);
+        payload.body = finalDescription + (updatedFields.link ? `\n\nTài liệu/Link đính kèm: ${updatedFields.link}` : '');
       }
       
       const directFields = ['user_id', 'status', 'priority', 'due_date', 'tags', 'participant_ids', 'progress', 'require_approval', 'approver_id', 'approval_status'];
@@ -1602,8 +1681,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   useEffect(() => {
     if (selectedTaskForDetails) {
       fetchTaskComments(selectedTaskForDetails.id);
+      
+      const parsed = parseDescriptionAndChecklist(selectedTaskForDetails.description || '');
+      setChecklist(parsed.checklist);
+      selectedTaskForDetails.description = parsed.pureDescription;
     }
-  }, [selectedTaskForDetails]);
+  }, [selectedTaskForDetails?.id]);
 
   const handleAddTask = async () => {
     if (!taskForm.title.trim() || isSubmitting) return;
@@ -1675,58 +1758,71 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const deleteDeal = async (id: number) => {
-    showConfirm({
-      title: 'Xóa cơ hội bán hàng',
-      message: 'Bạn có chắc chắn muốn xóa cơ hội này?',
-      isDanger: true,
-      confirmText: 'Xóa',
-      onConfirm: async () => {
-        try {
-          await api.delete(`/deals/${id}`);
-          fetchData();
-          addToast('Đã xóa cơ hội thành công', 'success');
-        } catch (e: any) {
-          addToast('Lỗi khi xóa cơ hội', 'error');
-        }
-      }
-    });
-  };
+  const handleSaveDeposit = async () => {
+    if (!depositProjectId || !depositUnitCode || !depositPrice) {
+      addToast('Vui lòng nhập đầy đủ Dự án, Mã căn hộ và Giá bán', 'error');
+      return;
+    }
+    
+    // Verify milestones total sum
+    const totalM = depositMilestones.reduce((acc, m) => acc + (parseFloat(m.amount) || 0), 0);
+    if (Math.abs(totalM - parseFloat(depositPrice)) > 1) {
+      addToast(`Tổng tiền các đợt (${totalM.toLocaleString()} VND) phải bằng đúng Giá bán (${parseFloat(depositPrice).toLocaleString()} VND)`, 'error');
+      return;
+    }
 
-  const handleSaveDeal = async () => {
-    if (!dealForm.title.trim() || isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const selectedStageId = (dealForm.stage === 'lead' || !dealForm.stage) ? null : Number(dealForm.stage);
-      const payload = {
-        title: dealForm.title,
-        value: Number(dealForm.value) || 0,
-        stage_id: selectedStageId,
-        probability: dealForm.probability,
-        expected_close_date: dealForm.expected_close || null,
-        description: dealForm.description || null,
-        priority: dealForm.priority || 'medium'
-      };
-
-      if (editingDealId) {
-        await api.put(`/deals/${editingDealId}`, payload);
-        addToast('Đã cập nhật cơ hội thành công', 'success');
-      } else {
-        await api.post('/deals', {
-          ...payload,
-          contact_id: contact.id
-        });
-        addToast('Đã tạo cơ hội mới thành công', 'success');
+      const res = await api.post('/deposits', {
+        contact_id: contact.id,
+        project_id: Number(depositProjectId),
+        unit_code: depositUnitCode,
+        price: parseFloat(depositPrice),
+        expected_commission: parseFloat(depositExpectedCommission) || 0,
+        milestones: depositMilestones
+      });
+      if (res.data.success || res.data) {
+        addToast('Tạo phiếu cọc thành công!', 'success');
+        setShowDealModal(false);
+        // Reset form
+        setDepositProjectId('');
+        setDepositUnitCode('');
+        setDepositPrice('');
+        setDepositExpectedCommission('');
+        setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
+        fetchData();
       }
-      setShowDealModal(false);
-      setDealForm({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '', description: '', priority: 'medium' });
-      setEditingDealId(null);
-      fetchData();
     } catch (e: any) {
-      addToast(e?.response?.data?.message || 'Lỗi khi lưu cơ hội', 'error');
+      addToast(e?.response?.data?.message || 'Lỗi khi tạo phiếu cọc', 'error');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleCancelDeposit = async (depositId: number) => {
+    const reason = window.prompt("Nhập lý do hủy đặt cọc / bể cọc:");
+    if (reason === null) return; // User cancelled
+    if (!reason.trim()) {
+      addToast("Vui lòng nhập lý do hủy", "error");
+      return;
+    }
+    try {
+      const res = await api.post(`/deposits/${depositId}/cancel`, { reason });
+      if (res.data.success || res.data) {
+        addToast("Đã hủy đặt cọc thành công", "success");
+        fetchData();
+      }
+    } catch (e: any) {
+      addToast(e?.response?.data?.message || "Không thể hủy đặt cọc", "error");
+    }
+  };
+
+  const handleAddMilestoneInput = () => {
+    setDepositMilestones(prev => [...prev, { name: `Đợt ${prev.length + 1}`, amount: '' }]);
+  };
+
+  const handleRemoveMilestoneInput = (index: number) => {
+    setDepositMilestones(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateTicket = async () => {
@@ -3390,30 +3486,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {activeTab === 'deals' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Cơ hội (Deals) - {deals.length}</h3>
+                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Phiếu đặt cọc - {deals.length}</h3>
                         <button className="btn primary sm" onClick={() => {
-                          const initialStage = stages[0]?.id?.toString() || 'lead';
-                          setDealForm({ title: '', value: '', stage: initialStage, probability: 50, expected_close: '', description: '', priority: 'medium' });
-                          setEditingDealId(null);
+                          setDepositProjectId('');
+                          setDepositUnitCode('');
+                          setDepositPrice('');
+                          setDepositExpectedCommission('');
+                          setDepositMilestones([{ name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }]);
                           setShowDealModal(true);
-                        }}><Plus size={14} /> Tạo deal mới</button>
+                        }}><Plus size={14} /> Tạo phiếu đặt cọc</button>
                       </div>
                       {deals.length === 0 ? (
                         <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
-                          <Activity size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
-                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có cơ hội</h4>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Đang không có cơ hội kinh doanh nào đang mở cho khách hàng này.</p>
+                          <CreditCard size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có phiếu đặt cọc</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Đang không có phiếu đặt cọc nào cho khách hàng này.</p>
                         </div>
                       ) : (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                           {deals.map((d: any) => {
-                            const wonStage = stages.find((s: any) => s.is_won === 1 || s.is_won === true);
-                            const lostStage = stages.find((s: any) => s.is_lost === 1 || s.is_lost === true);
-                            const isWon = wonStage && Number(d.stage_id) === Number(wonStage.id);
-                            const isLost = lostStage && Number(d.stage_id) === Number(lostStage.id);
-                            
                             return (
-                              <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', borderRadius: '16px' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                              <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', borderRadius: '16px' }}>
                                 <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
                                   <div>
                                     <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
@@ -3421,102 +3514,53 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
-                                      <button 
-                                        className="btn-icon sm" 
-                                        title="Chỉnh sửa" 
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setDealForm({
-                                            title: d.title,
-                                            value: String(d.value || ''),
-                                            stage: d.stage_id ? d.stage_id.toString() : 'lead',
-                                            probability: d.prob || 50,
-                                            expected_close: d.close || '',
-                                            description: d.description || '',
-                                            priority: d.priority || 'medium'
-                                          });
-                                          setEditingDealId(d.id);
-                                          setShowDealModal(true);
-                                        }}
-                                      >
-                                        <Pencil size={14} />
-                                      </button>
-                                      <button
-                                        className="btn-icon sm text-danger"
-                                        style={{ opacity: 0.4, transition: 'opacity 0.2s', padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                                        onClick={(e) => { e.stopPropagation(); deleteDeal(d.id); }}
-                                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                        onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
+                                      <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>
+                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}
+                                      </span>
                                     </div>
-                                    {(!isWon && !isLost) && (
-                                      <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }} onClick={e => e.stopPropagation()}>
-                                        <button
-                                          type="button"
-                                          style={{
-                                            fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px',
-                                            background: '#e6f4ea', color: '#137333',
-                                            border: '1px solid #137333', fontWeight: 700, cursor: 'pointer'
-                                          }}
-                                          onClick={async () => {
-                                            if (!wonStage) {
-                                              addToast('Không tìm thấy giai đoạn Đóng deal', 'error');
-                                              return;
-                                            }
-                                            try {
-                                              await api.patch(`/deals/${d.id}/stage`, { stage_id: wonStage.id });
-                                              addToast('Đã chốt cơ hội thành công!', 'success');
-                                              fetchData();
-                                            } catch (err: any) {
-                                              addToast(err.response?.data?.message || 'Lỗi khi chốt cơ hội', 'error');
-                                            }
-                                          }}
-                                        >
-                                          Chốt
-                                        </button>
-                                        <button
-                                          type="button"
-                                          style={{
-                                            fontSize: '0.7rem', padding: '2px 8px', borderRadius: '6px',
-                                            background: '#fce8e6', color: '#c5221f',
-                                            border: '1px solid #c5221f', fontWeight: 700, cursor: 'pointer'
-                                          }}
-                                          onClick={async () => {
-                                            if (!lostStage) {
-                                              addToast('Không tìm thấy giai đoạn Thất bại/Từ chối', 'error');
-                                              return;
-                                            }
-                                            try {
-                                              await api.patch(`/deals/${d.id}/stage`, { stage_id: lostStage.id });
-                                              addToast('Đã từ chối cơ hội', 'warning');
-                                              fetchData();
-                                            } catch (err: any) {
-                                              addToast(err.response?.data?.message || 'Lỗi khi từ chối cơ hội', 'error');
-                                            }
-                                          }}
-                                        >
-                                          Từ chối
-                                        </button>
-                                      </div>
-                                    )}
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                                      {t('Hoa hồng dự kiến')}: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.expected_commission || 0)}</strong>
+                                    </div>
                                   </div>
                                 </div>
-                                <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderTop: '1px solid var(--color-border-light)' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
-                                    <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14} /> Xác suất chốt</span>
-                                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.prob}%</span>
+
+                                {d.milestones && d.milestones.length > 0 && (
+                                  <div style={{ padding: '1rem 1.5rem', background: 'var(--color-bg-light)', borderTop: '1px solid var(--color-border-light)' }}>
+                                    <h5 style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>Lịch trình thanh toán:</h5>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                      {d.milestones.map((m: any) => (
+                                        <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                                          <span>{m.milestone_name}</span>
+                                          <span style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                            <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(m.expected_amount || 0)}</strong>
+                                            <span style={{
+                                              padding: '2px 8px',
+                                              borderRadius: '6px',
+                                              fontSize: '0.7rem',
+                                              fontWeight: 700,
+                                              background: m.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : m.status === 'paid' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                              color: m.status === 'approved' ? '#10b981' : m.status === 'paid' ? '#f59e0b' : '#ef4444'
+                                            }}>
+                                              {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : 'Chưa đóng'}
+                                            </span>
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
-                                  <div style={{ height: 8, background: 'var(--color-border-light)', borderRadius: 4, overflow: 'hidden', marginBottom: '1.25rem' }}>
-                                    <div style={{ width: `${d.prob}%`, height: '100%', background: `linear-gradient(90deg, ${d.stage_color}88 0%, ${d.stage_color} 100%)`, borderRadius: 4 }} />
+                                )}
+
+                                {isAdmin && d.stage_id !== 'cancelled' && (
+                                  <div style={{ padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border-light)' }}>
+                                    <button 
+                                      className="btn outline danger sm"
+                                      onClick={(e) => { e.stopPropagation(); handleCancelDeposit(d.id); }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '28px', fontSize: '0.75rem', padding: '0 10px' }}
+                                    >
+                                      <Ban size={12} /> Hủy đặt cọc (Bể cọc)
+                                    </button>
                                   </div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                                    <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Ngày dự kiến</span>
-                                    <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.close && d.close !== '0000-00-00' ? new Date(d.close).toLocaleDateString('vi-VN') : 'Chưa thiết lập'}</span>
-                                  </div>
-                                </div>
+                                )}
                               </div>
                             );
                           })}
@@ -4533,13 +4577,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         )}
       </AnimatePresence>
 
-      {/* CREATE DEAL MODAL */}
+      {/* CREATE DEPOSIT MODAL */}
       <AnimatePresence>
         {showDealModal && (
           <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowDealModal(false)}>
             <motion.div
               className="modal-sheet"
-              style={{ width: '100%', maxWidth: 520 }}
+              style={{ width: '100%', maxWidth: 540 }}
               initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
@@ -4547,84 +4591,125 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               <div className="modal-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <DollarSign size={20} />
+                    <CreditCard size={20} />
                   </div>
                   <div>
-                    <h3 style={{ fontWeight: 800 }}>{editingDealId ? 'Chỉnh sửa cơ hội (Deal)' : 'Tạo cơ hội (Deal) mới'}</h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Liên kết với: <strong>{fullName}</strong></p>
+                    <h3 style={{ fontWeight: 800 }}>Tạo phiếu đặt cọc mới</h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Khách hàng: <strong>{fullName}</strong></p>
                   </div>
                 </div>
                 <button className="btn-icon sm" onClick={() => setShowDealModal(false)}><X size={18} /></button>
               </div>
-              <div className="modal-body">
+              <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                 <div className="form-group">
-                  <label className="form-label">Tên Deal *</label>
-                  <input className="form-input" placeholder={`VD: Triển khai ERP cho ${fullName}`} value={dealForm.title} onChange={e => setDealForm({ ...dealForm, title: e.target.value })} autoFocus />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Giá trị dự kiến (VNĐ)</label>
-                  <input className="form-input" type="number" placeholder="0" value={dealForm.value} onChange={e => setDealForm({ ...dealForm, value: e.target.value })} />
-                  {dealForm.value && Number(dealForm.value) > 0 && (
-                    <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
-                      Bằng chữ: {numberToText(Number(dealForm.value))}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Giai đoạn</label>
-                    <CustomSelect
-                      options={(stages.length > 0 ? stages : DEFAULT_PIPELINE_STAGES).map(s => ({
-                        value: s.id.toString(),
-                        label: s.name
-                      }))}
-                      value={dealForm.stage}
-                      onChange={val => setDealForm({ ...dealForm, stage: val.toString() })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Xác suất (%)</label>
-                    <input className="form-input" type="number" value={dealForm.probability} onChange={e => setDealForm({ ...dealForm, probability: Number(e.target.value) })} />
-                  </div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Ngày dự kiến chốt</label>
-                    <input 
-                      className="form-input" 
-                      type="date" 
-                      value={dealForm.expected_close} 
-                      onChange={e => setDealForm({ ...dealForm, expected_close: e.target.value })} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Mức độ ưu tiên</label>
-                    <CustomSelect
-                      options={[
-                        { value: 'low', label: 'Thấp' },
-                        { value: 'medium', label: 'Trung bình' },
-                        { value: 'high', label: 'Cao' }
-                      ]}
-                      value={dealForm.priority}
-                      onChange={val => setDealForm({ ...dealForm, priority: val.toString() })}
-                    />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Mô tả chi tiết</label>
-                  <textarea 
-                    className="form-input" 
-                    rows={3} 
-                    placeholder="Nhập thông tin chi tiết về cơ hội/giao dịch..." 
-                    value={dealForm.description} 
-                    onChange={e => setDealForm({ ...dealForm, description: e.target.value })} 
+                  <label className="form-label">Dự án *</label>
+                  <CustomSelect
+                    options={projectsList.map(p => ({
+                      value: String(p.id),
+                      label: p.name
+                    }))}
+                    value={depositProjectId}
+                    onChange={val => setDepositProjectId(val.toString())}
+                    placeholder="-- Chọn dự án --"
                   />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Mã căn hộ *</label>
+                    <input
+                      type="text"
+                      placeholder="VD: A-12.05"
+                      value={depositUnitCode}
+                      onChange={e => setDepositUnitCode(e.target.value.toUpperCase())}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Giá bán (VND) *</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={depositPrice}
+                      onChange={e => setDepositPrice(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Hoa hồng (VND)</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={depositExpectedCommission}
+                      onChange={e => setDepositExpectedCommission(e.target.value)}
+                      className="form-input"
+                    />
+                  </div>
+                </div>
+
+                {depositPrice && Number(depositPrice) > 0 && (
+                  <div style={{ marginBottom: '1rem', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                    Bằng chữ: {numberToText(Number(depositPrice))}
+                  </div>
+                )}
+
+                {/* Milestones config */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700 }}>Lịch trình thanh toán</h4>
+                    <button
+                      type="button"
+                      onClick={handleAddMilestoneInput}
+                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                    >
+                      <Plus size={14} /> Thêm đợt tiền
+                    </button>
+                  </div>
+
+                  {depositMilestones.map((m, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        required
+                        placeholder={`Tên đợt ${idx + 1}`}
+                        value={m.name}
+                        onChange={e =>
+                          setDepositMilestones(prev =>
+                            prev.map((item, i) => (i === idx ? { ...item, name: e.target.value } : item))
+                          )
+                        }
+                        className="form-input"
+                        style={{ flex: 1 }}
+                      />
+                      <input
+                        type="number"
+                        required
+                        placeholder="Số tiền (VND)"
+                        value={m.amount}
+                        onChange={e =>
+                          setDepositMilestones(prev =>
+                            prev.map((item, i) => (i === idx ? { ...item, amount: e.target.value } : item))
+                          )
+                        }
+                        className="form-input"
+                        style={{ width: '140px' }}
+                      />
+                      {depositMilestones.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMilestoneInput(idx)}
+                          style={{ padding: '6px', background: 'none', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', display: 'flex' }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
               <div className="modal-footer">
                 <button className="btn outline" onClick={() => setShowDealModal(false)} disabled={isSubmitting}>Hủy</button>
-                <button className="btn primary" onClick={handleSaveDeal} disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang lưu...' : (editingDealId ? 'Lưu thay đổi' : 'Tạo Deal')}
+                <button className="btn primary" onClick={handleSaveDeposit} disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang tạo...' : 'Tạo phiếu cọc'}
                 </button>
               </div>
             </motion.div>
@@ -4782,7 +4867,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 }}><X size={18} /></button>
               </div>
 
-              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '13fr 11fr', gap: '1.5rem', padding: '1.25rem 1.5rem', maxHeight: 'calc(85vh - 120px)', overflowY: 'auto' }}>
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '13fr 11fr', gap: '1.5rem', padding: '1.25rem 1.5rem', maxHeight: 'calc(85vh - 120px)', overflowY: 'auto', alignItems: 'start' }}>
                 
                 {/* Approval Banner if Progress is 100% and Approval is Required */}
                 {selectedTaskForDetails.require_approval === 1 && selectedTaskForDetails.progress === 100 && (
@@ -4829,7 +4914,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 )}
 
                 {/* Left Column: Details & Uploads & Comments */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', minWidth: 0, position: 'sticky', top: 0 }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Tên công việc</label>
                     <input
@@ -4846,13 +4931,67 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Mô tả chi tiết</label>
                     <textarea
                       className="form-input"
-                      rows={4}
+                      rows={8}
                       value={selectedTaskForDetails.description || ''}
                       onChange={e => setSelectedTaskForDetails({ ...selectedTaskForDetails, description: e.target.value })}
                       onBlur={() => handleUpdateTaskDetail({ description: selectedTaskForDetails.description })}
                       placeholder="Chưa có mô tả..."
-                      style={{ fontSize: '0.85rem', minHeight: 80 }}
+                      style={{ fontSize: '0.85rem', minHeight: 160 }}
                     />
+                  </div>
+
+                  {/* Checklist con */}
+                  <div style={{ marginTop: '0.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>Checklist công việc con</label>
+                      <button
+                        type="button"
+                        className="btn outline sm"
+                        onClick={addChecklistItem}
+                        style={{ padding: '3px 10px', fontSize: '0.72rem' }}
+                      >
+                        + Thêm mục
+                      </button>
+                    </div>
+                    {checklist.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+                        <div style={{ flex: 1, height: 6, background: 'var(--color-border-light)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ width: `${(checklist.filter(c => c.checked).length / checklist.length) * 100}%`, height: '100%', background: 'var(--color-success)', transition: 'width 0.2s' }} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                          {checklist.filter(c => c.checked).length}/{checklist.length}
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {checklist.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="checkbox"
+                            checked={item.checked}
+                            onChange={() => toggleChecklistItem(idx)}
+                            style={{ width: 15, height: 15, cursor: 'pointer' }}
+                          />
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={item.text}
+                            onChange={e => updateChecklistItemText(idx, e.target.value)}
+                            onBlur={handleChecklistItemBlur}
+                            placeholder="Nhập nội dung công việc con..."
+                            style={{ flex: 1, fontSize: '0.8rem', padding: '4px 8px', height: '28px', border: 'none', borderBottom: '1px solid transparent', background: 'transparent', color: 'var(--color-text)' }}
+                            onFocus={e => e.target.style.borderBottom = '1px solid var(--color-primary)'}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeChecklistItem(idx)}
+                            style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px' }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="form-group" style={{ background: 'var(--color-bg)', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', margin: 0 }}>
@@ -4956,7 +5095,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </div>
 
                 {/* Right Column: Metadata */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.5rem', position: 'sticky', top: 0 }}>
                   
                   {/* Progress Slider (Thanh progress kéo tiến độ công việc) */}
                   <div className="form-group" style={{ margin: 0 }}>

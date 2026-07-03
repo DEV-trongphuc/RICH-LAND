@@ -6,6 +6,7 @@ import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
+import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { DEV_MODE } from '../config/env';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -57,6 +58,18 @@ export const ActivitiesPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [profileContact, setProfileContact] = useState<any>(null);
+
+  const openContactDrawer = async (contactId: number) => {
+    try {
+      const res = await api.get(`/contacts/${contactId}`);
+      if (res.data.success || res.data) {
+        setProfileContact(res.data.data || res.data);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải thông tin khách hàng:", err);
+    }
+  };
 
   // Related entities for dropdown
   const [contacts, setContacts] = useState<any[]>([]);
@@ -197,8 +210,12 @@ export const ActivitiesPage: React.FC = () => {
   const navigateToRelated = (item: any, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!item.related_type || !item.related_id) return;
-    const paths: Record<string, string> = { contact: '/contacts', company: '/companies', deal: '/deals' };
-    if (paths[item.related_type]) navigate(paths[item.related_type]);
+    if (item.related_type === 'contact') {
+      openContactDrawer(Number(item.related_id));
+    } else {
+      const paths: Record<string, string> = { company: '/companies', deal: '/deals' };
+      if (paths[item.related_type]) navigate(paths[item.related_type]);
+    }
   };
 
   const doneCount = items.filter(a => a.status === 'done').length;
@@ -532,6 +549,13 @@ export const ActivitiesPage: React.FC = () => {
           </button>
         </div>
       </CustomModal>
+
+      <CustomerProfileDrawer
+        isOpen={!!profileContact}
+        onClose={() => setProfileContact(null)}
+        contact={profileContact}
+        onUpdate={() => {}}
+      />
 
     </div>
   );

@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -25,6 +25,7 @@ import { useUIStore } from '../store/uiStore';
 
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
+import { MentionInput } from '../components/ui/MentionInput';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -282,6 +283,55 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsStartDate, setWsStartDate] = useState('');
   const [wsEndDate, setWsEndDate] = useState('');
   const [wsTasks, setWsTasks] = useState<any[]>([]);
+  const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([]);
+
+  const parseDescriptionAndChecklist = (descText: string) => {
+    const lines = descText ? descText.split('\n') : [];
+    const descLines: string[] = [];
+    const checklistItems: Array<{ text: string; checked: boolean }> = [];
+    
+    lines.forEach(line => {
+      const match = line.match(/^\s*-\s*\[([ xX])\]\s*(.*)$/);
+      if (match) {
+        checklistItems.push({
+          checked: match[1].toLowerCase() === 'x',
+          text: match[2].trim()
+        });
+      } else {
+        descLines.push(line);
+      }
+    });
+    
+    return {
+      pureDescription: descLines.join('\n').trim(),
+      checklist: checklistItems
+    };
+  };
+
+  const serializeDescriptionAndChecklist = (pureDesc: string, items: Array<{ text: string; checked: boolean }>) => {
+    let result = pureDesc.trim();
+    if (items.length > 0) {
+      const checklistStr = items.map(item => `- [${item.checked ? 'x' : ' '}] ${item.text}`).join('\n');
+      result += (result ? '\n\n' : '') + checklistStr;
+    }
+    return result;
+  };
+
+  const addChecklistItem = () => {
+    setChecklist(prev => [...prev, { text: '', checked: false }]);
+  };
+
+  const toggleChecklistItem = (idx: number) => {
+    setChecklist(prev => prev.map((c, i) => i === idx ? { ...c, checked: !c.checked } : c));
+  };
+
+  const updateChecklistItemText = (idx: number, val: string) => {
+    setChecklist(prev => prev.map((c, i) => i === idx ? { ...c, text: val } : c));
+  };
+
+  const removeChecklistItem = (idx: number) => {
+    setChecklist(prev => prev.filter((_, i) => i !== idx));
+  };
   const filteredWsTasks = useMemo(() => {
     if (!wsSearch) return wsTasks;
     const searchVal = wsSearch.toLowerCase();
@@ -309,6 +359,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [taskComments, setTaskComments] = useState<any[]>([]);
   const [loadingTaskComments, setLoadingTaskComments] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<{ name: string; url: string; type: 'image' | 'file' }[]>([]);
+  const [uploadingCommentFile, setUploadingCommentFile] = useState(false);
   const [isUpdatingTask, setIsUpdatingTask] = useState(false);
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false);
@@ -657,13 +709,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           setWsContacts(items);
         }
       }).catch(() => {});
+    }
+  }, [activeTab]);
 
+  useEffect(() => {
+    if (token) {
       api.get('/users').then(r => {
         const d = r.data.data;
         setUsers(Array.isArray(d) ? d : (d?.items || []));
       }).catch(() => {});
     }
-  }, [activeTab]);
+  }, [token]);
 
   const loadTaskComments = async (taskId: number) => {
     setLoadingTaskComments(true);
@@ -687,15 +743,90 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   }, [selectedTaskForDetails?.id]);
 
+  const renderFormattedText = (text: string) => {
+    if (!text) return '';
+    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9]+)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.startsWith('http://') || part.startsWith('https://')) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
+          >
+            {part}
+          </a>
+        );
+      } else if (part.startsWith('@')) {
+        const cleanName = part.substring(1).replace(/_/g, ' ');
+        return (
+          <span
+            key={index}
+            style={{
+              color: 'var(--color-primary)',
+              fontWeight: 700,
+              background: 'rgba(167, 139, 250, 0.12)',
+              padding: '1px 5px',
+              borderRadius: '4px',
+              margin: '0 2px',
+              display: 'inline-block'
+            }}
+          >
+            @{cleanName}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
+  const handleCommentFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(t('Dung lượng tệp tối đa cho phép là 10MB'));
+      return;
+    }
+    setUploadingCommentFile(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', file.name);
+    formData.append('category', 'comment');
+    formData.append('visibility', 'shared');
+    
+    try {
+      const uploadRes = await api.post('/cloud-files', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (uploadRes.data.success && uploadRes.data.data) {
+        const fileUrl = uploadRes.data.data.path;
+        const type = file.type.startsWith('image/') ? 'image' : 'file';
+        setPendingAttachments(prev => [...prev, { name: file.name, url: fileUrl, type }]);
+        toast.success(t('Đính kèm tệp thành công'));
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(t('Lỗi khi đính kèm tệp'));
+    } finally {
+      setUploadingCommentFile(false);
+      e.target.value = '';
+    }
+  };
+
   const handlePostTaskComment = async () => {
-    if (!newCommentText.trim() || !selectedTaskForDetails) return;
+    if ((!newCommentText.trim() && pendingAttachments.length === 0) || !selectedTaskForDetails) return;
     try {
       const res = await api.post('/activities/comments', {
         activity_id: selectedTaskForDetails.id,
-        content: newCommentText.trim()
+        content: newCommentText.trim(),
+        attachments: pendingAttachments
       });
       if (res.data.success) {
         setNewCommentText('');
+        setPendingAttachments([]);
         loadTaskComments(selectedTaskForDetails.id);
       }
     } catch (e) {
@@ -741,19 +872,85 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       formData.append('contact_id', selectedTaskForDetails.related_id.toString());
     }
     try {
-      const uploadRes = await api.post('/cloud-files/upload', formData, {
+      const uploadRes = await api.post('/cloud-files', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (uploadRes.data.success && uploadRes.data.data) {
-        const fileUrl = uploadRes.data.data.file_url;
-        await handleUpdateTaskDetail({ link: fileUrl });
-        toast.success(t('Tải tệp lên thành công'));
+        const fileUrl = uploadRes.data.data.path;
+        setSelectedTaskForDetails(prev => prev ? { ...prev, link: fileUrl } : null);
+        toast.success(t('Đính kèm tệp thành công'));
       }
     } catch (err: any) {
       console.error(err);
       toast.error(t('Lỗi khi tải tệp lên'));
     } finally {
       setUploadingFile(false);
+    }
+  };
+
+  const closeTaskDetailsModal = () => {
+    setSelectedTaskForDetails(null);
+    setShowAssigneeDropdown(false);
+    setShowParticipantDropdown(false);
+    setShowApproverDropdown(false);
+  };
+
+  const handleSaveAllTaskDetails = async () => {
+    if (!selectedTaskForDetails) return;
+    setIsUpdatingTask(true);
+    try {
+      const payload: any = {
+        subject: selectedTaskForDetails.title,
+        body: serializeDescriptionAndChecklist(selectedTaskForDetails.description || '', checklist) + (selectedTaskForDetails.link ? `\n\nTài liệu/Link đính kèm: ${selectedTaskForDetails.link}` : ''),
+        user_id: selectedTaskForDetails.user_id,
+        status: selectedTaskForDetails.status,
+        priority: selectedTaskForDetails.priority,
+        due_date: selectedTaskForDetails.due_date,
+        tags: selectedTaskForDetails.tags,
+        participant_ids: selectedTaskForDetails.participant_ids,
+        progress: selectedTaskForDetails.progress,
+        require_approval: selectedTaskForDetails.require_approval,
+        approver_id: selectedTaskForDetails.approver_id,
+        approval_status: selectedTaskForDetails.approval_status
+      };
+
+      const nextProgress = selectedTaskForDetails.progress || 0;
+      const nextReqApproval = selectedTaskForDetails.require_approval || 0;
+      const nextApprovalStatus = selectedTaskForDetails.approval_status;
+
+      if (nextProgress === 100) {
+        if (nextReqApproval === 1) {
+          if (nextApprovalStatus === 'approved') {
+            payload.status = 'done';
+            payload.approval_status = 'approved';
+          } else if (nextApprovalStatus === 'rejected') {
+            payload.status = 'planned';
+            payload.approval_status = 'rejected';
+            payload.progress = 90;
+          } else {
+            payload.status = 'planned';
+            payload.approval_status = 'pending';
+          }
+        } else {
+          payload.status = 'done';
+          payload.approval_status = null;
+        }
+      } else {
+        payload.status = 'planned';
+        payload.approval_status = null;
+      }
+
+      const res = await api.put(`/activities/${selectedTaskForDetails.id}`, payload);
+      if (res.status === 200) {
+        toast.success(t('Đã lưu công việc thành công'));
+        setSelectedTaskForDetails(null);
+        fetchWorkspaceTasks();
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t('Lỗi khi lưu công việc'));
+    } finally {
+      setIsUpdatingTask(false);
     }
   };
 
@@ -767,8 +964,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const currentDesc = 'description' in updatedFields ? updatedFields.description : (selectedTaskForDetails.description || '');
       const currentLink = 'link' in updatedFields ? updatedFields.link : (selectedTaskForDetails.link || '');
       
-      if ('description' in updatedFields || 'link' in updatedFields) {
-        payload.body = currentDesc + (currentLink ? `\n\nTài liệu/Link đính kèm: ${currentLink}` : '');
+      if ('description' in updatedFields || 'link' in updatedFields || 'checklist' in updatedFields) {
+        const listItems = 'checklist' in updatedFields ? updatedFields.checklist : checklist;
+        const finalDescription = serializeDescriptionAndChecklist(currentDesc, listItems);
+        payload.body = finalDescription + (currentLink ? `\n\nTài liệu/Link đính kèm: ${currentLink}` : '');
       }
 
       const directFields = ['user_id', 'status', 'priority', 'due_date', 'tags', 'participant_ids', 'progress', 'require_approval', 'approver_id', 'approval_status'];
@@ -2174,6 +2373,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }}
                   className="hover-lift"
                   onClick={() => {
+                    const parsed = parseDescriptionAndChecklist(description);
                     const parsedTask = {
                       id: task.id,
                       title: task.subject,
@@ -2181,7 +2381,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       priority: task.priority,
                       due_date: task.due_date ? task.due_date.slice(0, 10) : '',
                       link,
-                      description,
+                      description: parsed.pureDescription,
                       user_id: task.user_id,
                       user_name: task.user_name || 'Hệ thống',
                       tags: task.tags || '',
@@ -2189,8 +2389,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       progress: task.progress || 0,
                       require_approval: task.require_approval || 0,
                       approver_id: task.approver_id,
-                      approval_status: task.approval_status
+                      approval_status: task.approval_status,
+                      contact_id: task.contact_id,
+                      contact_name: task.contact_name,
+                      contact_avatar: task.contact_avatar,
+                      related_type: task.related_type,
+                      related_id: task.related_id
                     };
+                    setChecklist(parsed.checklist);
                     setSelectedTaskForDetails(parsedTask);
                   }}
                 >
@@ -4820,7 +5026,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
                     { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
                     { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
-                    { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending }
+                    { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending },
+                    { name: 'Ticket Hỗ Trợ', key: 'support-tickets', icon: LifeBuoy, route: '/support-tickets' }
                   ]
                 },
                 {
@@ -6471,21 +6678,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       {typeof document !== 'undefined' && createPortal(
         <AnimatePresence>
           {selectedTaskForDetails && (
-            <div className="overlay-backdrop" style={{ zIndex: 11000, padding: 0 }} onClick={() => {
-            setSelectedTaskForDetails(null);
-            setShowAssigneeDropdown(false);
-            setShowParticipantDropdown(false);
-            setShowApproverDropdown(false);
-          }}>
-            <motion.div
-              className="modal-sheet modal-lg"
-              style={{ width: '100vw', maxWidth: '100vw', height: '100vh', margin: 0, borderRadius: 0, display: 'flex', flexDirection: 'column' }}
-              initial={{ opacity: 0, y: '100%' }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: '100%' }}
-              transition={{ type: 'tween', duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-              onClick={e => e.stopPropagation()}
-            >
+            <div className="overlay-backdrop" style={{ zIndex: 11000 }} onClick={closeTaskDetailsModal}>
+              <motion.div
+                className="modal-sheet modal-lg"
+                style={{ width: '90vw', maxWidth: 960, maxHeight: '90vh', margin: 'auto', borderRadius: '16px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15)' }}
+                initial={{ opacity: 0, scale: 0.96, y: 16 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.96, y: 16 }}
+                transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
+                onClick={e => e.stopPropagation()}
+              >
               <div className="modal-header" style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                   <div style={{ width: 38, height: 38, borderRadius: '10px', background: 'rgba(245,158,11,0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -6493,20 +6695,56 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </div>
                   <div>
                     <h3 style={{ fontWeight: 800, fontSize: '1.15rem', margin: 0 }}>Chi tiết công việc cần làm</h3>
-                    <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0, marginTop: 2 }}>
-                      Người tạo: <strong>{selectedTaskForDetails.user_name}</strong>
+                    <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0, marginTop: 2, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <span>Người tạo: <strong>{selectedTaskForDetails.user_name}</strong></span>
+                      {selectedTaskForDetails.contact_name && (
+                        <>
+                          <span style={{ color: 'var(--color-border)' }}>•</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            Liên quan đến khách hàng: 
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const cid = Number(selectedTaskForDetails.contact_id || (selectedTaskForDetails.related_type === 'contact' ? selectedTaskForDetails.related_id : null));
+                                if (cid) {
+                                  closeTaskDetailsModal();
+                                  handleOpenContactProfile(cid);
+                                }
+                              }}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--color-primary)',
+                                fontWeight: 700,
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                                padding: 0,
+                                fontSize: '0.72rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              className="hover:text-primary-dark"
+                            >
+                              <Avatar
+                                src={selectedTaskForDetails.contact_avatar}
+                                name={selectedTaskForDetails.contact_name}
+                                size={18}
+                                style={{ flexShrink: 0 }}
+                              />
+                              {selectedTaskForDetails.contact_name}
+                              <ArrowUpRight size={12} />
+                            </button>
+                          </span>
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
-                <button className="btn-icon" onClick={() => {
-                  setSelectedTaskForDetails(null);
-                  setShowAssigneeDropdown(false);
-                  setShowParticipantDropdown(false);
-                  setShowApproverDropdown(false);
-                }}><X size={18} /></button>
+                <button className="btn-icon" onClick={closeTaskDetailsModal}><X size={18} /></button>
               </div>
 
-              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '13fr 11fr', gap: '1.5rem', padding: '1.5rem 2rem', flex: 1, overflowY: 'auto' }}>
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '13fr 11fr', gap: '1.5rem', padding: '1.5rem 2rem 8rem 2rem', flex: 1, overflowY: 'auto', alignItems: 'start' }}>
                 
                 {/* Approval Banner */}
                 {selectedTaskForDetails.require_approval === 1 && selectedTaskForDetails.progress === 100 && (
@@ -6553,7 +6791,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 )}
 
                 {/* Left Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', minWidth: 0, position: 'sticky', top: 0 }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Tên công việc</label>
                     <input
@@ -6561,7 +6799,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       className="form-input"
                       value={selectedTaskForDetails.title}
                       onChange={e => setSelectedTaskForDetails({ ...selectedTaskForDetails, title: e.target.value })}
-                      onBlur={() => handleUpdateTaskDetail({ title: selectedTaskForDetails.title })}
                       style={{ fontWeight: 600, fontSize: '0.95rem' }}
                     />
                   </div>
@@ -6570,13 +6807,66 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Mô tả chi tiết</label>
                     <textarea
                       className="form-input"
-                      rows={4}
+                      rows={8}
                       value={selectedTaskForDetails.description || ''}
                       onChange={e => setSelectedTaskForDetails({ ...selectedTaskForDetails, description: e.target.value })}
-                      onBlur={() => handleUpdateTaskDetail({ description: selectedTaskForDetails.description })}
                       placeholder="Chưa có mô tả..."
-                      style={{ fontSize: '0.85rem', minHeight: 80 }}
+                      style={{ fontSize: '0.85rem', minHeight: 160 }}
                     />
+                  </div>
+
+                  {/* Checklist con */}
+                  <div style={{ marginTop: '0.5rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>Checklist công việc con</label>
+                      <button
+                        type="button"
+                        className="btn outline sm"
+                        onClick={addChecklistItem}
+                        style={{ padding: '3px 10px', fontSize: '0.72rem' }}
+                      >
+                        + Thêm mục
+                      </button>
+                    </div>
+                    {checklist.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+                        <div style={{ flex: 1, height: 6, background: 'var(--color-border-light)', borderRadius: 3, overflow: 'hidden' }}>
+                          <div style={{ width: `${(checklist.filter(c => c.checked).length / checklist.length) * 100}%`, height: '100%', background: 'var(--color-success)', transition: 'width 0.2s' }} />
+                        </div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                          {checklist.filter(c => c.checked).length}/{checklist.length}
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {checklist.map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="checkbox"
+                            checked={item.checked}
+                            onChange={() => toggleChecklistItem(idx)}
+                            style={{ width: 15, height: 15, cursor: 'pointer' }}
+                          />
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={item.text}
+                            onChange={e => updateChecklistItemText(idx, e.target.value)}
+                            placeholder="Nhập nội dung công việc con..."
+                            style={{ flex: 1, fontSize: '0.8rem', padding: '4px 8px', height: '28px', border: 'none', borderBottom: '1px solid transparent', background: 'transparent', color: 'var(--color-text)' }}
+                            onFocus={e => e.target.style.borderBottom = '1px solid var(--color-primary)'}
+                            onBlur={e => e.target.style.borderBottom = '1px solid transparent'}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeChecklistItem(idx)}
+                            style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px' }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="form-group" style={{ background: 'var(--color-bg)', padding: '0.85rem', borderRadius: '10px', border: '1px solid var(--color-border-light)', margin: 0 }}>
@@ -6605,7 +6895,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           type="button"
                           className="btn-icon sm text-danger"
                           style={{ padding: 2 }}
-                          onClick={() => handleUpdateTaskDetail({ link: '' })}
+                          onClick={() => setSelectedTaskForDetails({ ...selectedTaskForDetails, link: '' })}
                         >
                           <Trash2 size={12} />
                         </button>
@@ -6652,26 +6942,148 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   )}
                                 </div>
                               </div>
-                              <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', marginTop: 4, margin: 0, whiteSpace: 'pre-wrap' }}>
-                                {c.content}
+                              <p style={{ fontSize: '0.8rem', color: 'var(--color-text)', marginTop: 4, margin: 0, whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                                {renderFormattedText(c.content)}
                               </p>
+                              {/* Attachment preview in comment list */}
+                              {c.attachments && c.attachments.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                                  {c.attachments.map((file: any, idx: number) => {
+                                    const isImg = file.type === 'image';
+                                    return (
+                                      <div
+                                        key={idx}
+                                        style={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          padding: '4px 8px',
+                                          background: 'var(--color-bg-dark, rgba(0,0,0,0.03))',
+                                          border: '1px solid var(--color-border-light)',
+                                          borderRadius: '6px',
+                                          fontSize: '0.75rem'
+                                        }}
+                                      >
+                                        {isImg ? (
+                                          <a href={resolveAttachmentUrl(file.url)} target="_blank" rel="noopener noreferrer">
+                                            <img
+                                              src={resolveAttachmentUrl(file.url)}
+                                              alt={file.name}
+                                              style={{
+                                                maxWidth: '120px',
+                                                maxHeight: '80px',
+                                                borderRadius: '4px',
+                                                objectFit: 'cover',
+                                                cursor: 'pointer'
+                                              }}
+                                            />
+                                          </a>
+                                        ) : (
+                                          <a
+                                            href={resolveAttachmentUrl(file.url)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '4px',
+                                              color: 'var(--color-primary)',
+                                              textDecoration: 'underline'
+                                            }}
+                                          >
+                                            <Paperclip size={12} />
+                                            <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                              {file.name}
+                                            </span>
+                                          </a>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           </div>
                         ))
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <input
-                        type="text"
+                    {/* Pending Attachments List */}
+                    {pendingAttachments.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '4px 8px', background: 'var(--color-bg)', borderRadius: '8px', marginBottom: '4px' }}>
+                        {pendingAttachments.map((file, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '4px 8px',
+                              background: 'var(--color-surface)',
+                              border: '1px solid var(--color-border-light)',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem'
+                            }}
+                          >
+                            {file.type === 'image' ? (
+                              <img
+                                src={resolveAttachmentUrl(file.url)}
+                                alt={file.name}
+                                style={{ width: 20, height: 20, borderRadius: '4px', objectFit: 'cover' }}
+                              />
+                            ) : (
+                              <Paperclip size={12} style={{ color: 'var(--color-text-muted)' }} />
+                            )}
+                            <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--color-text)' }}>
+                              {file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setPendingAttachments(prev => prev.filter((_, i) => i !== idx))}
+                              style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', color: 'var(--color-danger)', display: 'flex', alignItems: 'center' }}
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+                      <MentionInput
                         className="form-input"
-                        placeholder="Viết bình luận..."
+                        placeholder="Viết bình luận... (Nhập @ để nhắc tên)"
                         value={newCommentText}
                         onChange={e => setNewCommentText(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handlePostTaskComment(); }}
-                        style={{ fontSize: '0.8rem', flex: 1, height: '34px', padding: '4px 12px' }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handlePostTaskComment();
+                          }
+                        }}
+                        style={{
+                          fontSize: '0.8rem',
+                          flex: 1,
+                          height: '34px',
+                          padding: '6px 12px',
+                          resize: 'none',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-border)'
+                        }}
                       />
-                      <button type="button" className="btn primary icon-only" onClick={handlePostTaskComment} style={{ width: 34, height: 34, padding: 0 }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: 34, borderRadius: '8px', border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-surface)' } as any}>
+                        <input
+                          type="file"
+                          onChange={handleCommentFileUpload}
+                          style={{ display: 'none' }}
+                        />
+                        {uploadingCommentFile ? (
+                          <div style={{ width: 14, height: 14, border: '2px solid var(--color-primary)', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                        ) : (
+                          <Paperclip size={14} style={{ color: 'var(--color-text-light)' }} />
+                        )}
+                      </label>
+                      <button type="button" className="btn primary icon-only" onClick={handlePostTaskComment} style={{ width: 34, height: 34, padding: 0, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Send size={12} />
                       </button>
                     </div>
@@ -6679,7 +7091,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
 
                 {/* Right Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '1.5rem', position: 'sticky', top: 0 }}>
                   
                   {/* Progress Slider */}
                   <div className="form-group" style={{ margin: 0 }}>
@@ -6696,14 +7108,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       onChange={e => {
                         const val = Number(e.target.value);
                         setSelectedTaskForDetails({ ...selectedTaskForDetails, progress: val });
-                      }}
-                      onMouseUp={e => {
-                        const val = Number((e.target as HTMLInputElement).value);
-                        handleUpdateTaskDetail({ progress: val });
-                      }}
-                      onTouchEnd={e => {
-                        const val = Number((e.target as HTMLInputElement).value);
-                        handleUpdateTaskDetail({ progress: val });
                       }}
                       style={{
                         width: '100%',
@@ -6737,7 +7141,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           }}
                           onClick={() => {
                             const next = selectedTaskForDetails.require_approval === 1 ? 0 : 1;
-                            handleUpdateTaskDetail({ require_approval: next });
+                            setSelectedTaskForDetails({ ...selectedTaskForDetails, require_approval: next });
                           }}
                         >
                           <div 
@@ -6787,7 +7191,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
                                     className="hover:bg-bg"
                                     onClick={() => {
-                                      handleUpdateTaskDetail({ approver_id: Number(u.id) });
+                                      setSelectedTaskForDetails({ ...selectedTaskForDetails, approver_id: Number(u.id) });
                                       setShowApproverDropdown(false);
                                     }}
                                   >
@@ -6831,7 +7235,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
                                   className="hover:bg-bg"
                                   onClick={() => {
-                                    handleUpdateTaskDetail({ user_id: Number(u.id) });
+                                    const newAssigneeId = String(u.id);
+                                    const currentParticipants = (selectedTaskForDetails.participant_ids || '').split(',').filter(Boolean);
+                                    const nextParticipants = currentParticipants.filter(id => id !== newAssigneeId);
+                                    setSelectedTaskForDetails({
+                                      ...selectedTaskForDetails,
+                                      user_id: Number(u.id),
+                                      participant_ids: nextParticipants.join(',')
+                                    });
                                     setShowAssigneeDropdown(false);
                                   }}
                                 >
@@ -6869,7 +7280,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', padding: 0 }}
                                   onClick={() => {
                                     const next = currentParticipantIds.filter(id => id !== String(u.id));
-                                    handleUpdateTaskDetail({ participant_ids: next.join(',') });
+                                    setSelectedTaskForDetails({ ...selectedTaskForDetails, participant_ids: next.join(',') });
                                   }}
                                 >
                                   <X size={12} />
@@ -6905,7 +7316,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                       className="hover:bg-bg"
                                       onClick={() => {
                                         const current = [...currentParticipantIds, String(u.id)];
-                                        handleUpdateTaskDetail({ participant_ids: current.join(',') });
+                                        setSelectedTaskForDetails({ ...selectedTaskForDetails, participant_ids: current.join(',') });
                                         setShowParticipantDropdown(false);
                                       }}
                                     >
@@ -6927,13 +7338,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <div className="form-group" style={{ margin: 0 }}>
                       <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem', marginBottom: 4 }}>Độ ưu tiên</label>
                       <CustomSelect
+                        direction="up"
                         options={[
                           { value: 'low', label: 'Thấp' },
                           { value: 'medium', label: 'Trung bình' },
                           { value: 'high', label: 'Cao' }
                         ]}
                         value={selectedTaskForDetails.priority}
-                        onChange={val => handleUpdateTaskDetail({ priority: val.toString() })}
+                        onChange={val => setSelectedTaskForDetails({ ...selectedTaskForDetails, priority: val.toString() })}
                       />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
@@ -6942,7 +7354,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         className="form-input"
                         type="date"
                         value={selectedTaskForDetails.due_date || ''}
-                        onChange={e => handleUpdateTaskDetail({ due_date: e.target.value })}
+                        onChange={e => setSelectedTaskForDetails({ ...selectedTaskForDetails, due_date: e.target.value })}
                         style={{ fontSize: '0.85rem', height: '38px', padding: '8px 12px' }}
                       />
                     </div>
@@ -6961,7 +7373,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             onClick={() => {
                               const current = (selectedTaskForDetails.tags || '').split(',').filter(Boolean);
                               const next = current.filter(x => x !== t);
-                              handleUpdateTaskDetail({ tags: next.join(',') });
+                              setSelectedTaskForDetails({ ...selectedTaskForDetails, tags: next.join(',') });
                             }}
                           />
                         </span>
@@ -6980,7 +7392,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             const current = (selectedTaskForDetails.tags || '').split(',').filter(Boolean);
                             if (!current.includes(val)) {
                               current.push(val);
-                              handleUpdateTaskDetail({ tags: current.join(',') });
+                              setSelectedTaskForDetails({ ...selectedTaskForDetails, tags: current.join(',') });
                             }
                             input.value = '';
                           }
@@ -6991,13 +7403,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ padding: '0.75rem 1.5rem' }}>
-                <button className="btn outline" onClick={() => {
-                  setSelectedTaskForDetails(null);
-                  setShowAssigneeDropdown(false);
-                  setShowParticipantDropdown(false);
-                  setShowApproverDropdown(false);
-                }} style={{ minWidth: 100 }}>Đóng</button>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', padding: '0.75rem 1.5rem', borderTop: '1px solid var(--color-border-light)' }}>
+                <button className="btn outline" onClick={closeTaskDetailsModal} style={{ minWidth: 100 }} disabled={isUpdatingTask}>Hủy</button>
+                <button className="btn primary" onClick={handleSaveAllTaskDetails} style={{ minWidth: 100 }} disabled={isUpdatingTask}>
+                  {isUpdatingTask ? t('Đang lưu...') : t('Lưu')}
+                </button>
               </div>
             </motion.div>
           </div>

@@ -562,7 +562,7 @@ switch ($resource) {
     case 'users':
         $auth = requireAuth();
         $ctrl = new UserController($db);
-        if     (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin']); $ctrl->index($auth); }
+        if     (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale']); $ctrl->index($auth); }
         elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin', 'super_admin']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);

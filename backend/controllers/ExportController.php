@@ -44,11 +44,70 @@ class ExportController {
         if ($type === 'contact') {
             $baseColumns = ['id' => 'ID', 'first_name' => 'Tên', 'last_name' => 'Họ', 'email' => 'Email', 'phone' => 'Số điện thoại', 'mobile' => 'Di động', 'job_title' => 'Chức danh', 'department' => 'Phòng ban', 'source' => 'Nguồn', 'status' => 'Trạng thái', 'company_name' => 'Công ty', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];
             
+            $search  = $_GET['search'] ?? '';
+            $status  = $_GET['status'] ?? '';
+            $source  = $_GET['source'] ?? '';
+            $owner   = $_GET['owner_id'] ?? '';
+            $stage   = $_GET['stage_id'] ?? '';
+            $companyId = $_GET['company_id'] ?? '';
+            $projectId = $_GET['project_id'] ?? '';
+            $tag     = $_GET['tag'] ?? '';
+            $from    = $_GET['from'] ?? '';
+            $to      = $_GET['to'] ?? '';
+            $dateField = $_GET['date_field'] ?? 'created_at';
+            $segment = $_GET['segment'] ?? 'all';
+
+            $where  = ['t.tenant_id = ?', 't.deleted_at IS NULL'];
+            $params = [$auth['tenant_id']];
+
+            // Role-based visibility: Sale can only see their own contacts
+            if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                $where[] = 't.owner_id = ?';
+                $params[] = $auth['user_id'];
+            }
+
+            if ($search) {
+                $where[]  = '(MATCH(t.first_name, t.last_name, t.email) AGAINST(? IN BOOLEAN MODE) OR t.phone LIKE ? OR t.mobile LIKE ? OR t.email LIKE ?)';
+                $params[] = "$search*";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+            }
+            if ($status) { $where[] = 't.status = ?'; $params[] = $status; }
+            if ($source) { $where[] = 't.source = ?'; $params[] = $source; }
+            if ($owner)  { $where[] = 't.owner_id = ?'; $params[] = (int)$owner; }
+            if ($stage)  { $where[] = 't.stage_id = ?'; $params[] = (int)$stage; }
+            if ($companyId) { $where[] = 't.company_id = ?'; $params[] = (int)$companyId; }
+            if ($projectId !== '') { $where[] = 't.project_id = ?'; $params[] = (int)$projectId; }
+            if ($tag !== '') { $where[] = 't.tags LIKE ?'; $params[] = '%"' . $tag . '"%'; }
+            
+            if ($from !== '') {
+                $whereField = in_array($dateField, ['created_at', 'updated_at', 'last_contact']) ? $dateField : 'created_at';
+                $where[] = "t.{$whereField} >= ?";
+                $params[] = $from . ' 00:00:00';
+            }
+            if ($to !== '') {
+                $whereField = in_array($dateField, ['created_at', 'updated_at', 'last_contact']) ? $dateField : 'created_at';
+                $where[] = "t.{$whereField} <= ?";
+                $params[] = $to . ' 23:59:59';
+            }
+
+            switch ($segment) {
+                case 'hot':        $where[] = 't.lead_score >= 80'; break;
+                case 'customer':   $where[] = "t.status = 'customer'"; break;
+                case 'has_deal':   $where[] = "EXISTS (SELECT 1 FROM deals d WHERE d.contact_id = t.id AND d.deleted_at IS NULL)"; break;
+                case 'no_contact': $where[] = "t.last_contact < DATE_SUB(NOW(), INTERVAL 30 DAY)"; break;
+                case 'not_contacted': $where[] = 't.last_contact IS NULL'; break;
+                case 'new_week':   $where[] = "t.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; break;
+            }
+
+            $whereStr = implode(' AND ', $where);
+
             $sql = "SELECT t.*, co.name as company_name, u.full_name as owner_name 
                     FROM contacts t 
                     LEFT JOIN companies co ON t.company_id = co.id 
                     LEFT JOIN users u ON t.owner_id = u.id 
-                    WHERE t.tenant_id = ? AND t.deleted_at IS NULL $saleFilter ORDER BY t.created_at DESC";
+                    WHERE $whereStr ORDER BY t.created_at DESC";
         } elseif ($type === 'company') {
             $baseColumns = ['id' => 'ID', 'name' => 'Tên công ty', 'tax_id' => 'Mã số thuế', 'industry' => 'Ngành nghề', 'email' => 'Email', 'phone' => 'Số điện thoại', 'website' => 'Website', 'address' => 'Địa chỉ', 'city' => 'Tỉnh/Thành phố', 'size' => 'Quy mô', 'status' => 'Trạng thái', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];
             

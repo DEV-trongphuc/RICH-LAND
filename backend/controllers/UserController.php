@@ -24,7 +24,7 @@ class UserController {
     }
 
     public function index(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE tenant_id=? ORDER BY full_name");
         $stmt->execute([$auth['tenant_id']]);
         respond(200,$stmt->fetchAll());

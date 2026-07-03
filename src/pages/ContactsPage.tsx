@@ -354,7 +354,28 @@ export const ContactsPage: React.FC = () => {
   };
 
   const bulkExport = () => {
-    window.open(`${api.defaults.baseURL}/export?type=contact&token=${localStorage.getItem('token')}`, '_blank');
+    const params = new URLSearchParams();
+    params.set('type', 'contact');
+    params.set('token', localStorage.getItem('token') || '');
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (activeFilters.status) params.set('status', activeFilters.status);
+    if (activeFilters.source) params.set('source', activeFilters.source);
+    if (activeFilters.ownerId) params.set('owner_id', activeFilters.ownerId);
+    if (activeFilters.projectId) params.set('project_id', activeFilters.projectId);
+    if (activeFilters.tag) params.set('tag', activeFilters.tag);
+    if (activeFilters.dateActive) {
+      params.set('date_field', activeFilters.dateField);
+      params.set('date_type', activeFilters.dateType);
+      if (activeFilters.dateType === 'range') {
+        if (activeFilters.fromDate) params.set('from', activeFilters.fromDate);
+        if (activeFilters.toDate) params.set('to', activeFilters.toDate);
+      } else if (activeFilters.dateType === 'before') {
+        if (activeFilters.beforeDate) params.set('to', activeFilters.beforeDate);
+      } else if (activeFilters.dateType === 'after') {
+        if (activeFilters.afterDate) params.set('from', activeFilters.afterDate);
+      }
+    }
+    window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
     addToast('Đang tải xuống dữ liệu Export...', 'info');
   };
   const bulkTag    = () => addToast('Mở gán tag hàng loạt...', 'info');
@@ -511,128 +532,140 @@ export const ContactsPage: React.FC = () => {
             style={{ overflow: 'hidden', marginBottom: '0.75rem' }}
           >
             <div className="card" style={{ padding: '1.25rem', border: '1px solid var(--color-primary-light)', background: 'var(--color-surface)', borderRadius: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
-                
-                {/* Trạng thái */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Trạng thái</label>
-                  <CustomSelect
-                    value={filterStatus}
-                    onChange={v => setFilterStatus(v)}
-                    options={[
-                      { value: '', label: 'Tất cả trạng thái' },
-                      { value: 'lead', label: 'Lead mới' },
-                      { value: 'qualified', label: 'Đủ điều kiện' },
-                      { value: 'customer', label: 'Khách hàng VIP' },
-                      { value: 'churned', label: 'Đã rời' }
-                    ]}
-                  />
+              {/* Nhóm 1: Thông tin khách hàng */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Thông tin khách hàng
                 </div>
-
-                {/* Dự án */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Dự án giao dịch</label>
-                  <CustomSelect
-                    value={filterProjectId}
-                    onChange={v => setFilterProjectId(v)}
-                    options={[
-                      { value: '', label: 'Tất cả dự án' },
-                      ...projects.map(p => ({ value: String(p.id), label: p.name }))
-                    ]}
-                  />
-                </div>
-
-                {/* Nguồn */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Nguồn khách hàng</label>
-                  <CustomSelect
-                    value={filterSource}
-                    onChange={v => setFilterSource(v)}
-                    options={SOURCE_OPTIONS}
-                  />
-                </div>
-
-                {/* Sale phụ trách */}
-                {!isSale && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  {/* Trạng thái */}
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Sale phụ trách</label>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Trạng thái</label>
                     <CustomSelect
-                      value={filterOwnerId}
-                      onChange={v => setFilterOwnerId(v)}
+                      value={filterStatus}
+                      onChange={v => setFilterStatus(v)}
                       options={[
-                        { value: '', label: 'Tất cả sales' },
-                        ...users.map(u => ({ value: String(u.id), label: u.full_name }))
+                        { value: '', label: 'Tất cả trạng thái' },
+                        { value: 'lead', label: 'Lead mới' },
+                        { value: 'qualified', label: 'Đủ điều kiện' },
+                        { value: 'customer', label: 'Khách hàng VIP' },
+                        { value: 'churned', label: 'Đã rời' }
                       ]}
                     />
                   </div>
-                )}
 
-                {/* Nhãn / Tags */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Phân loại (Tag)</label>
-                  <input
-                    className="form-input"
-                    placeholder="Nhập tên tag cần lọc..."
-                    value={filterTag}
-                    onChange={e => setFilterTag(e.target.value)}
-                    style={{ height: '38px', borderRadius: '10px' }}
-                  />
-                </div>
-
-                {/* Kiểu lọc thời gian */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Lọc theo ngày nào</label>
-                  <CustomSelect
-                    value={filterDateField}
-                    onChange={v => setFilterDateField(v as any)}
-                    options={[
-                      { value: 'created_at', label: 'Ngày tạo' },
-                      { value: 'updated_at', label: 'Ngày cập nhật' },
-                      { value: 'last_contact', label: 'Ngày tương tác cuối' }
-                    ]}
-                  />
-                </div>
-
-                {/* Kiểu lọc ngày */}
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Kiểu lọc thời gian</label>
-                  <CustomSelect
-                    value={dateFilterType}
-                    onChange={v => setDateFilterType(v as any)}
-                    options={[
-                      { value: 'range', label: 'Trong khoảng' },
-                      { value: 'before', label: 'Trước ngày' },
-                      { value: 'after', label: 'Sau ngày' }
-                    ]}
-                  />
-                </div>
-
-                {/* inputs ngày tương ứng */}
-                {dateFilterType === 'range' && (
-                  <>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Từ ngày</label>
-                      <input type="date" className="form-input" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Đến ngày</label>
-                      <input type="date" className="form-input" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
-                    </div>
-                  </>
-                )}
-                {dateFilterType === 'before' && (
+                  {/* Dự án */}
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Trước ngày</label>
-                    <input type="date" className="form-input" value={filterBeforeDate} onChange={e => setFilterBeforeDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Dự án giao dịch</label>
+                    <CustomSelect
+                      value={filterProjectId}
+                      onChange={v => setFilterProjectId(v)}
+                      options={[
+                        { value: '', label: 'Tất cả dự án' },
+                        ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                      ]}
+                    />
                   </div>
-                )}
-                {dateFilterType === 'after' && (
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Sau ngày</label>
-                    <input type="date" className="form-input" value={filterAfterDate} onChange={e => setFilterAfterDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
-                  </div>
-                )}
 
+                  {/* Nguồn */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Nguồn khách hàng</label>
+                    <CustomSelect
+                      value={filterSource}
+                      onChange={v => setFilterSource(v)}
+                      options={SOURCE_OPTIONS}
+                    />
+                  </div>
+
+                  {/* Sale phụ trách */}
+                  {!isSale && (
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Sale phụ trách</label>
+                      <CustomSelect
+                        value={filterOwnerId}
+                        onChange={v => setFilterOwnerId(v)}
+                        options={[
+                          { value: '', label: 'Tất cả sales' },
+                          ...users.map(u => ({ value: String(u.id), label: u.full_name }))
+                        ]}
+                      />
+                    </div>
+                  )}
+
+                  {/* Nhãn / Tags */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Phân loại (Tag)</label>
+                    <input
+                      className="form-input"
+                      placeholder="Nhập tên tag cần lọc..."
+                      value={filterTag}
+                      onChange={e => setFilterTag(e.target.value)}
+                      style={{ height: '38px', borderRadius: '10px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Nhóm 2: Lọc theo thời gian */}
+              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Bộ lọc thời gian
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  {/* Kiểu lọc thời gian */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Lọc theo ngày nào</label>
+                    <CustomSelect
+                      value={filterDateField}
+                      onChange={v => setFilterDateField(v as any)}
+                      options={[
+                        { value: 'created_at', label: 'Ngày tạo' },
+                        { value: 'updated_at', label: 'Ngày cập nhật' },
+                        { value: 'last_contact', label: 'Ngày tương tác cuối' }
+                      ]}
+                    />
+                  </div>
+
+                  {/* Kiểu lọc ngày */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Kiểu lọc thời gian</label>
+                    <CustomSelect
+                      value={dateFilterType}
+                      onChange={v => setDateFilterType(v as any)}
+                      options={[
+                        { value: 'range', label: 'Trong khoảng' },
+                        { value: 'before', label: 'Trước ngày' },
+                        { value: 'after', label: 'Sau ngày' }
+                      ]}
+                    />
+                  </div>
+
+                  {/* inputs ngày tương ứng */}
+                  {dateFilterType === 'range' && (
+                    <>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Từ ngày</label>
+                        <input type="date" className="form-input" value={filterFromDate} onChange={e => setFilterFromDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Đến ngày</label>
+                        <input type="date" className="form-input" value={filterToDate} onChange={e => setFilterToDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                      </div>
+                    </>
+                  )}
+                  {dateFilterType === 'before' && (
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Trước ngày</label>
+                      <input type="date" className="form-input" value={filterBeforeDate} onChange={e => setFilterBeforeDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                    </div>
+                  )}
+                  {dateFilterType === 'after' && (
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Sau ngày</label>
+                      <input type="date" className="form-input" value={filterAfterDate} onChange={e => setFilterAfterDate(e.target.value)} style={{ height: '38px', borderRadius: '10px' }} />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Action Buttons */}
@@ -992,7 +1025,7 @@ export const ContactsPage: React.FC = () => {
         onClose={() => setShowImportExport(false)} 
         entityName="Liên hệ" 
         onExport={(format) => {
-          window.open(`${api.defaults.baseURL}/export?type=contact&token=${localStorage.getItem('token')}`, '_blank');
+          bulkExport();
         }}
       />
 

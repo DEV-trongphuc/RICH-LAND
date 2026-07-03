@@ -22,7 +22,7 @@ class TicketController {
             $params[] = json_encode((int)$contactId);
         }
         
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $where[] = '(t.created_by = ? OR t.assignee_id = ?)';
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];

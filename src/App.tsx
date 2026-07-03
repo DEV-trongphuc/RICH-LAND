@@ -46,6 +46,7 @@ const CooperationSlipsPage = lazy(() => import('./pages/CooperationSlipsPage'));
 const DepositsPage = lazy(() => import('./pages/DepositsPage'));
 const CapiPage = lazy(() => import('./pages/CapiPage'));
 const AttendancePage = lazy(() => import('./pages/AttendancePage').then(module => ({ default: module.AttendancePage })));
+const TicketsPage = lazy(() => import('./pages/TicketsPage').then(module => ({ default: module.TicketsPage })));
 
 // Loading spinner fallback
 const PageLoader = () => (
@@ -86,7 +87,7 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi', '/attendance'];
-  const userPaths = ['/', '/workspace', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share'];
+  const userPaths = ['/', '/workspace', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share', '/support-tickets'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -250,6 +251,14 @@ const AppTabs = () => {
         {visitedPaths.includes('/tickets') && (
           <Suspense fallback={<PageLoader />}>
             {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="tickets" /> : <Tickets />}
+          </Suspense>
+        )}
+      </div>
+
+      <div style={{ display: currentPath === '/support-tickets' ? 'block' : 'none' }} className={currentPath === '/support-tickets' ? 'page-enter-active' : ''}>
+        {visitedPaths.includes('/support-tickets') && (
+          <Suspense fallback={<PageLoader />}>
+            <TicketsPage />
           </Suspense>
         )}
       </div>
