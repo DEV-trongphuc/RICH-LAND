@@ -93,8 +93,9 @@
 }
 
 .sidebarTabActive {
-  background: var(--color-primary-light);
-  color: var(--color-primary);
+  background: #f1f5f9;
+  color: var(--color-text);
+  font-weight: 700;
 }
 
 .sidebarTabActive:hover {

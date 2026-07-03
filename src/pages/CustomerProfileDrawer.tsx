@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -1090,19 +1090,52 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div>
                           <label className="form-label">Tải ảnh lên</label>
-                          <input
-                            type="file"
-                            className="form-input"
-                            accept="image/*"
-                            onChange={e => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => setTempAvatar(reader.result as string);
-                                reader.readAsDataURL(file);
-                              }
+                          <div 
+                            onClick={() => {
+                              const el = document.getElementById('avatar-file-input');
+                              if (el) el.click();
                             }}
-                          />
+                            style={{
+                              border: '2px dashed var(--color-border)',
+                              borderRadius: '16px',
+                              padding: '1.25rem',
+                              textAlign: 'center',
+                              cursor: 'pointer',
+                              background: 'var(--color-bg)',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-primary)';
+                              e.currentTarget.style.background = 'var(--color-primary-light)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = 'var(--color-border)';
+                              e.currentTarget.style.background = 'var(--color-bg)';
+                            }}
+                          >
+                            <Upload size={20} style={{ color: 'var(--color-text-muted)' }} />
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>Click để tải ảnh lên</span>
+                            <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>Hỗ trợ JPG, PNG, WEBP</span>
+                            <input
+                              id="avatar-file-input"
+                              type="file"
+                              style={{ display: 'none' }}
+                              accept="image/*"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const compressed = await compressToWebP(file);
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => setTempAvatar(reader.result as string);
+                                  reader.readAsDataURL(compressed);
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
                         <div>
                           <label className="form-label">Hoặc dán URL ảnh</label>
@@ -1449,14 +1482,35 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           }}>
                             {group.title}
                           </div>
-                          {allowedTabs.map(tab => (
+                           {allowedTabs.map(tab => (
                             <button
                               key={tab.id}
                               className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
                               onClick={() => setActiveTab(tab.id)}
-                              style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem' }}
+                              style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
                             >
-                              {tab.icon} {tab.label}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                {tab.icon}
+                                <span>{tab.label}</span>
+                              </div>
+                              {tab.id === 'tasks' && tasks.filter(t => !t.done).length > 0 && (
+                                <span style={{
+                                  background: 'var(--color-danger)',
+                                  color: 'white',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  padding: '1px 6px',
+                                  borderRadius: '10px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  minWidth: '18px',
+                                  height: '18px',
+                                  lineHeight: 1
+                                }}>
+                                  {tasks.filter(t => !t.done).length}
+                                </span>
+                              )}
                             </button>
                           ))}
                         </div>
@@ -1480,7 +1534,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
                         <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
                           <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DỰ KIẾN DOANH THU</span>
-                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.15rem' }}>{FMT(formData.expected_revenue || 0)}</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', marginTop: '0.15rem' }}>{FMT(formData.expected_revenue || 0)}</span>
                           <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}><span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{formData.win_probability || 0}%</span> xác suất</span>
                         </div>
                         <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
@@ -1494,7 +1548,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                         <div className="card-panel" style={{ padding: '0.75rem 1rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
                           <span style={{ fontSize: '0.675rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TỔNG CHI TIÊU</span>
-                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', marginTop: '0.15rem' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.15rem' }}>{FMT(formData.total_spent || 0)}</span>
                           <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.order_count || 0} đơn • {formData.last_order_at ? new Date(formData.last_order_at).toLocaleDateString('vi-VN') : '—'}
                           </span>
