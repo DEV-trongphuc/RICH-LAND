@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip } from 'lucide-react';
@@ -802,7 +803,7 @@ export default function CooperationSlipsPage() {
       )}
 
       {/* Signature Modal */}
-      {isSignModalOpen && signingSlip && (
+      {isSignModalOpen && signingSlip && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="card animate-fade" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
@@ -922,11 +923,12 @@ export default function CooperationSlipsPage() {
               Tôi đồng ý và Ký xác nhận
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Custom Confirm Modal */}
-      {customConfirm.isOpen && (
+      {customConfirm.isOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="card animate-fade" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{customConfirm.title}</h3>
@@ -951,11 +953,12 @@ export default function CooperationSlipsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Custom Prompt Modal */}
-      {customPrompt.isOpen && (
+      {customPrompt.isOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="card animate-fade" style={{ maxWidth: '440px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{customPrompt.title}</h3>
@@ -997,11 +1000,12 @@ export default function CooperationSlipsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Configuration Modal */}
-      {isUpdateOpen && (
+      {isUpdateOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
           <div className="card" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
@@ -1031,13 +1035,21 @@ export default function CooperationSlipsPage() {
                     <input
                       type="number"
                       required
+                      min="0"
+                      max="100"
                       placeholder="%"
                       value={item.percentage}
-                      onChange={e =>
+                      onChange={e => {
+                        const parsed = parseInt(e.target.value);
+                        let valStr = e.target.value;
+                        if (!isNaN(parsed)) {
+                          if (parsed > 100) valStr = '100';
+                          if (parsed < 0) valStr = '0';
+                        }
                         setSharesInput(prev =>
-                          prev.map((val, i) => (i === idx ? { ...val, percentage: e.target.value } : val))
-                        )
-                      }
+                          prev.map((val, i) => (i === idx ? { ...val, percentage: valStr } : val))
+                        );
+                      }}
                       className="form-input"
                       style={{ fontSize: '0.75rem', padding: '6px 10px', width: '80px', textAlign: 'center' }}
                     />
@@ -1089,7 +1101,8 @@ export default function CooperationSlipsPage() {
               </button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
