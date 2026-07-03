@@ -330,11 +330,12 @@ export default function CooperationSlipsPage() {
     }
   };
 
-  const handleRemoveCoopAttachment = async (slipId: number) => {
+  const handleRemoveCoopAttachment = async (slipId: number, fileUrl: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa tài liệu đính kèm này không?')) return;
     try {
       const res = await fetchAPI(`cooperation-slips/${slipId}/delete-attachment`, {
-        method: 'POST'
+        method: 'POST',
+        body: JSON.stringify({ file_url: fileUrl })
       });
       if (res.success) {
         addToast('Đã xóa tài liệu hợp tác thành công!', 'success');
@@ -347,8 +348,8 @@ export default function CooperationSlipsPage() {
     }
   };
 
-  const handleRenameCoopAttachment = async (slipId: number, currentUrl: string) => {
-    const filename = currentUrl.split('/').pop() || '';
+  const handleRenameCoopAttachment = async (slipId: number, fileUrl: string) => {
+    const filename = fileUrl.split('/').pop() || '';
     const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
     const newName = prompt('Nhập tên mới cho tài liệu hợp tác:', cleanName);
     if (!newName || !newName.trim()) return;
@@ -356,7 +357,7 @@ export default function CooperationSlipsPage() {
     try {
       const res = await fetchAPI(`cooperation-slips/${slipId}/rename-attachment`, {
         method: 'POST',
-        body: JSON.stringify({ name: newName.trim() })
+        body: JSON.stringify({ file_url: fileUrl, name: newName.trim() })
       });
       if (res.success) {
         addToast('Đã đổi tên tài liệu hợp tác thành công!', 'success');
@@ -595,6 +596,8 @@ export default function CooperationSlipsPage() {
           {filteredSlips.map(slip => {
             const hasSigned = slip.shareholders.find(s => s.user_id === user?.consultant_id)?.signed;
             const isShareholder = slip.shareholders.some(s => s.user_id === user?.consultant_id);
+            const allSigned = slip.shareholders.every(s => s.signed);
+            const isPendingSignatures = !allSigned || slip.status === 'pending_signatures';
             const isExpanded = !!expandedSlips[slip.id];
             const baseComm = Number(slip.expected_commission) || Number(slip.expected_revenue) || 0;
             const baseActual = Number(slip.actual_revenue) || 0;
@@ -711,9 +714,9 @@ export default function CooperationSlipsPage() {
                     <span
                       className="badge"
                       style={{
-                        background: slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.08)',
-                        color: slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1',
-                        border: slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(99, 102, 241, 0.2)',
+                        background: isPendingSignatures ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                        color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1',
+                        border: isPendingSignatures ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(99, 102, 241, 0.2)',
                         padding: '6px 12px',
                         borderRadius: '20px',
                         fontSize: '0.725rem',
@@ -727,15 +730,17 @@ export default function CooperationSlipsPage() {
                         width: '6px',
                         height: '6px',
                         borderRadius: '50%',
-                        background: slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1'
+                        background: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1'
                       }} />
-                      {slip.status === 'approved'
+                      {isPendingSignatures
+                        ? 'Chờ ký'
+                        : slip.status === 'approved'
                         ? 'Đã duyệt hoa hồng'
                         : slip.status === 'pending_manager_approval'
                         ? 'Chờ sếp duyệt'
                         : slip.status === 'rejected'
                         ? 'Bị từ chối'
-                        : 'Chờ Sales ký'}
+                        : 'Chờ ký'}
                     </span>
                     
                     {/* Sign / Update buttons */}
@@ -875,10 +880,26 @@ export default function CooperationSlipsPage() {
                                 style={{
                                   fontSize: '10px',
                                   fontWeight: 700,
-                                  color: sh.signed ? 'var(--color-success)' : 'var(--color-warning)'
+                                  color: sh.signed ? 'var(--color-success)' : 'var(--color-warning)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
                                 }}
                               >
-                                {sh.signed ? '✓ Đã ký xác nhận' : '⚡ Chờ ký'}
+                                {sh.signed ? (
+                                  <>✓ Đã ký xác nhận</>
+                                ) : (
+                                  <>
+                                    <span style={{
+                                      width: '6px',
+                                      height: '6px',
+                                      borderRadius: '50%',
+                                      backgroundColor: 'var(--color-warning)',
+                                      display: 'inline-block'
+                                    }} />
+                                    Chờ ký
+                                  </>
+                                )}
                               </span>
                               {sh.signed && (
                                 <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', textAlign: 'right' }}>
@@ -904,39 +925,41 @@ export default function CooperationSlipsPage() {
                       </h4>
                       {slip.attachment_url ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', maxWidth: '500px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                              <FileText size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
-                              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                                <a 
-                                  href={`https://open.domation.net/richland/${slip.attachment_url}`} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                                >
-                                  {slip.attachment_url.split('/').pop() || 'Xem tài liệu hợp tác đính kèm'}
-                                </a>
+                          {slip.attachment_url.split(',').map((url, urlIdx) => (
+                            <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)', maxWidth: '500px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                                <FileText size={18} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                  <a 
+                                    href={`https://open.domation.net/richland/${url}`} 
+                                    target="_blank" 
+                                    rel="noreferrer" 
+                                    style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                  >
+                                    {url.split('/').pop() || 'Xem tài liệu hợp tác đính kèm'}
+                                  </a>
+                                </div>
                               </div>
+                              {isManager && (
+                                <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
+                                  <button 
+                                    className="btn sm outline"
+                                    style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px' }}
+                                    onClick={() => handleRenameCoopAttachment(slip.id, url)}
+                                  >
+                                    Đổi tên
+                                  </button>
+                                  <button 
+                                    className="btn sm outline text-danger"
+                                    style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
+                                    onClick={() => handleRemoveCoopAttachment(slip.id, url)}
+                                  >
+                                    Xóa
+                                  </button>
+                                </div>
+                              )}
                             </div>
-                            {isManager && (
-                              <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
-                                <button 
-                                  className="btn sm outline"
-                                  style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px' }}
-                                  onClick={() => handleRenameCoopAttachment(slip.id, slip.attachment_url)}
-                                >
-                                  Đổi tên
-                                </button>
-                                <button 
-                                  className="btn sm outline text-danger"
-                                  style={{ padding: '4px 8px', fontSize: '0.7rem', height: '26px', borderRadius: '4px', borderColor: 'var(--color-danger)' }}
-                                  onClick={() => handleRemoveCoopAttachment(slip.id)}
-                                >
-                                  Xóa
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          ))}
                           {isManager && (
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                               <input
@@ -951,7 +974,7 @@ export default function CooperationSlipsPage() {
                                 className="btn sm outline"
                                 style={{ padding: '6px 12px', fontSize: '0.725rem', height: '30px', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, color: 'var(--color-text-light)', borderColor: 'var(--color-border)' }}
                               >
-                                Tải lên tài liệu khác để thay thế
+                                Tải lên thêm tài liệu
                               </label>
                             </div>
                           )}
@@ -1011,21 +1034,25 @@ export default function CooperationSlipsPage() {
             <div>
               <h3 style={{ fontSize: '0.875rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text)' }}>1. Đọc tài liệu đính kèm:</h3>
               {signingSlip.attachment_url ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
-                  <FileText size={24} style={{ color: 'var(--color-primary)' }} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {signingSlip.attachment_url.split('/').pop() || 'Tài liệu hợp tác đính kèm'}
-                    </p>
-                    <a 
-                      href={`https://open.domation.net/richland/${signingSlip.attachment_url}`} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
-                    >
-                      Bấm để mở xem tài liệu ở tab mới ↗
-                    </a>
-                  </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {signingSlip.attachment_url.split(',').map((url, urlIdx) => (
+                    <div key={urlIdx} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 16px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                      <FileText size={24} style={{ color: 'var(--color-primary)' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '0.825rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {url.split('/').pop() || 'Tài liệu hợp tác đính kèm'}
+                        </p>
+                        <a 
+                          href={`https://open.domation.net/richland/${url}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline', marginTop: '2px', display: 'inline-block' }}
+                        >
+                          Bấm để mở xem tài liệu ở tab mới ↗
+                        </a>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '8px', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>

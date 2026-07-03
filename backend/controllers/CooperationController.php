@@ -417,13 +417,19 @@ class CooperationController {
             respond(500, null, 'Không thể di chuyển tệp đã tải lên vào thư mục đích', false);
         }
 
+        $stmtCur = $this->db->prepare("SELECT attachment_url FROM cooperation_slips WHERE id = ?");
+        $stmtCur->execute([$id]);
+        $curUrl = $stmtCur->fetchColumn();
+
+        $newUrl = $curUrl ? ($curUrl . ',' . $dbPath) : $dbPath;
+
         $stmt = $this->db->prepare("
             UPDATE cooperation_slips cs
             JOIN contacts c ON cs.contact_id = c.id
             SET cs.attachment_url = ?
             WHERE cs.id = ? AND c.tenant_id = ?
         ");
-        $stmt->execute([$dbPath, $id, $tid]);
+        $stmt->execute([$newUrl, $id, $tid]);
 
         respond(200, ['file_url' => $dbPath], 'Tải lên tài liệu đính kèm thành công');
     }
@@ -448,13 +454,39 @@ class CooperationController {
             respond(403, null, 'Bạn không có quyền xóa tài liệu đính kèm này', false);
         }
 
-        $stmt = $this->db->prepare("
-            UPDATE cooperation_slips cs
-            JOIN contacts c ON cs.contact_id = c.id
-            SET cs.attachment_url = NULL
-            WHERE cs.id = ? AND c.tenant_id = ?
-        ");
-        $stmt->execute([$id, $tid]);
+        $b = getBody();
+        $fileUrl = trim($b['file_url'] ?? '');
+        if (empty($fileUrl)) {
+            respond(422, null, 'Vui lòng cung cấp URL tệp để xóa', false);
+        }
+
+        $stmtCur = $this->db->prepare("SELECT attachment_url FROM cooperation_slips WHERE id = ?");
+        $stmtCur->execute([$id]);
+        $curUrl = $stmtCur->fetchColumn();
+
+        if ($curUrl) {
+            $files = explode(',', $curUrl);
+            $remaining = [];
+            foreach ($files as $f) {
+                if (trim($f) === $fileUrl) {
+                    $physPath = UPLOAD_DIR . '/' . str_replace('uploads/', '', $f);
+                    if (file_exists($physPath) && is_file($physPath)) {
+                        @unlink($physPath);
+                    }
+                } else {
+                    $remaining[] = $f;
+                }
+            }
+            $newUrl = !empty($remaining) ? implode(',', $remaining) : null;
+
+            $stmt = $this->db->prepare("
+                UPDATE cooperation_slips cs
+                JOIN contacts c ON cs.contact_id = c.id
+                SET cs.attachment_url = ?
+                WHERE cs.id = ? AND c.tenant_id = ?
+            ");
+            $stmt->execute([$newUrl, $id, $tid]);
+        }
 
         respond(200, null, 'Xóa tài liệu đính kèm thành công');
     }
@@ -462,7 +494,6 @@ class CooperationController {
     public function renameAttachment(array $auth, int $id): void {
         $tid = $auth['tenant_id'];
         
-        // Ownership / permission check
         $stmtOwner = $this->db->prepare("
             SELECT cs.attachment_url, c.owner_id 
             FROM cooperation_slips cs
@@ -483,38 +514,52 @@ class CooperationController {
         }
 
         $b = getBody();
+        $fileUrl = trim($b['file_url'] ?? '');
         $newName = trim($b['name'] ?? '');
+        if (empty($fileUrl)) {
+            respond(422, null, 'Vui lòng cung cấp URL tệp để đổi tên', false);
+        }
         if (empty($newName)) {
             respond(422, null, 'Tên tài liệu mới không được bỏ trống', false);
         }
 
-        $oldUrl = $row['attachment_url'];
-        if (empty($oldUrl)) {
+        $curUrl = $row['attachment_url'];
+        if (empty($curUrl)) {
             respond(400, null, 'Phiếu hợp tác chưa có tài liệu để đổi tên', false);
         }
 
-        $oldPath = UPLOAD_DIR . '/' . str_replace('uploads/', '', $oldUrl);
-        $ext = strtolower(pathinfo($oldPath, PATHINFO_EXTENSION));
-        
-        $newNameClean = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($newName, PATHINFO_FILENAME));
-        $newFileName = time() . '_' . $newNameClean . '.' . $ext;
-        
-        $targetDir = dirname($oldPath);
-        $newPath = $targetDir . '/' . $newFileName;
-        $dbPath = "uploads/cooperation/$tid/$newFileName";
+        $files = explode(',', $curUrl);
+        $found = false;
+        $dbPath = '';
+        foreach ($files as &$f) {
+            if (trim($f) === $fileUrl) {
+                $oldPath = UPLOAD_DIR . '/' . str_replace('uploads/', '', $f);
+                $ext = strtolower(pathinfo($oldPath, PATHINFO_EXTENSION));
+                $newNameClean = preg_replace('/[^a-zA-Z0-9_-]/', '_', pathinfo($newName, PATHINFO_FILENAME));
+                $newFileName = time() . '_' . $newNameClean . '.' . $ext;
+                $targetDir = dirname($oldPath);
+                $newPath = $targetDir . '/' . $newFileName;
+                $dbPath = "uploads/cooperation/$tid/$newFileName";
 
-        if (file_exists($oldPath) && is_file($oldPath)) {
-            if (rename($oldPath, $newPath)) {
-                $stmt = $this->db->prepare("UPDATE cooperation_slips SET attachment_url = ? WHERE id = ?");
-                $stmt->execute([$dbPath, $id]);
-                respond(200, ['file_url' => $dbPath], 'Đổi tên tài liệu thành công');
-            } else {
-                respond(500, null, 'Không thể đổi tên tệp vật lý trên server', false);
+                if (file_exists($oldPath) && is_file($oldPath)) {
+                    if (rename($oldPath, $newPath)) {
+                        $f = $dbPath;
+                        $found = true;
+                    }
+                } else {
+                    $f = $dbPath;
+                    $found = true;
+                }
             }
-        } else {
+        }
+
+        if ($found) {
+            $newUrl = implode(',', $files);
             $stmt = $this->db->prepare("UPDATE cooperation_slips SET attachment_url = ? WHERE id = ?");
-            $stmt->execute([$dbPath, $id]);
-            respond(200, ['file_url' => $dbPath], 'Đổi tên tài liệu thành công');
+            $stmt->execute([$newUrl, $id]);
+            respond(200, ['file_url' => $newUrl], 'Đổi tên tài liệu thành công');
+        } else {
+            respond(404, null, 'Không tìm thấy tệp cần đổi tên trong danh sách', false);
         }
     }
 
