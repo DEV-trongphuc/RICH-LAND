@@ -1164,7 +1164,13 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                      onClick={() => navigate(`/data?open_id=${log.id}&auto_open=true`)}
+                      onClick={() => {
+                        if (log.status === 'databank' || log.status === 'released_to_kho') {
+                          navigate('/databank');
+                        } else {
+                          navigate(`/data?open_id=${log.id}&auto_open=true`);
+                        }
+                      }}
                     >
                       <Avatar
                         src={
@@ -1242,13 +1248,34 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   color: theme === 'dark' ? '#f472b6' : '#db2777',
                                   text: t('Nhắc lại')
                                 };
+                              case 'databank_claim':
+                                return { bg: 'rgba(16, 185, 129, 0.12)', color: '#10b981', text: 'Databank Claim' };
+                              case 'databank':
+                              case 'released_to_kho':
+                                return { bg: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6', text: 'Databank' };
                               default:
                                 return { bg: 'var(--color-border)', color: 'var(--color-text-muted)', text: status };
                             }
                           };
                           const badge = getBadgeConfig(log.status, log.round_name, log.report_status, log.ai_screener_status, log.created_at);
                           return (
-                            <span className="badge" style={{ background: badge.bg, color: badge.color, border: 'none', padding: '4px 8px', fontSize: '0.65rem' }}>
+                            <span
+                              className="badge"
+                              style={{
+                                background: badge.bg,
+                                color: badge.color,
+                                border: 'none',
+                                padding: '4px 8px',
+                                fontSize: '0.65rem',
+                                cursor: (log.status === 'databank' || log.status === 'databank_claim' || log.status === 'released_to_kho') ? 'pointer' : 'default'
+                              }}
+                              onClick={(e) => {
+                                if (log.status === 'databank' || log.status === 'databank_claim' || log.status === 'released_to_kho') {
+                                  e.stopPropagation();
+                                  navigate('/databank');
+                                }
+                              }}
+                            >
                               {badge.text}
                             </span>
                           );
