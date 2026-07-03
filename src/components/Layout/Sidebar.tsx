@@ -166,7 +166,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           if (resCoop.success) {
             const slips = resCoop.data || [];
             countUnsigned = slips.filter((s: any) => {
-              const sh = s.shareholders?.find((x: any) => x.user_id === user.consultant_id);
+              const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(user.id));
               return s.status === 'pending_signatures' && sh && !sh.signed;
             }).length;
           }

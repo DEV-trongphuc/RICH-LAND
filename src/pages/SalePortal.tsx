@@ -521,7 +521,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (res.success) {
         const slips = res.data || [];
         const filtered = slips.filter((s: any) => {
-          const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(user?.consultant_id));
+          const sh = s.shareholders?.find((x: any) => String(x.user_id) === String(user?.id));
           return s.status === 'pending_signatures' && sh && !sh.signed;
         });
         setPendingCoopSlips(filtered);
@@ -2018,7 +2018,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
               {pendingCoopSlips.map((slip: any) => {
-                const myShare = slip.shareholders?.find((x: any) => String(x.user_id) === String(user?.consultant_id));
+                const myShare = slip.shareholders?.find((x: any) => String(x.user_id) === String(user?.id));
                 const percentage = myShare ? myShare.percentage : 0;
                 
                 return (

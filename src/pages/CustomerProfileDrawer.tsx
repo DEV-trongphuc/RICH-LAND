@@ -2458,6 +2458,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* Status and summary */}
                           {(() => {
                             const status = coopSlip.status;
+                            const isPendingSignatures = coopSlip.shareholders?.some((sh: any) => !sh.signed) || status === 'pending_signatures';
+                            
                             let bg = 'var(--color-bg-light)';
                             let border = '1px solid var(--color-border)';
                             let leftBorder = '4px solid var(--color-text-muted)';
@@ -2466,7 +2468,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             let statusDesc = 'Phiếu hợp tác đang trong quá trình xử lý.';
                             let badgeClass = 'warning';
 
-                            if (status === 'approved') {
+                            if (isPendingSignatures) {
+                              bg = 'linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, rgba(245, 158, 11, 0.08) 100%)';
+                              border = '1px solid rgba(245, 158, 11, 0.2)';
+                              leftBorder = '4px solid #f59e0b';
+                              statusIcon = <Clock size={18} style={{ color: '#f59e0b', animation: 'pulse 2s infinite' }} />;
+                              statusTitle = 'Đang chờ ký';
+                              statusDesc = 'Đang chờ các thành viên liên quan ký xác nhận tỷ lệ phân chia.';
+                              badgeClass = 'warning';
+                            } else if (status === 'approved') {
                               bg = 'linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.08) 100%)';
                               border = '1px solid rgba(16, 185, 129, 0.15)';
                               leftBorder = '4px solid #10b981';
@@ -2531,7 +2541,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                       <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)' }}>{statusTitle}</span>
                                       <span className={`badge ${badgeClass}`} style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
-                                        {status === 'approved' ? 'Hiệu lực' : 
+                                        {isPendingSignatures ? 'Chờ ký' : 
+                                         status === 'approved' ? 'Hiệu lực' : 
                                          status === 'rejected' ? 'Bị từ chối' : 
                                          status === 'pending_manager_approval' ? 'Chờ duyệt' : 'Chờ ký'}
                                       </span>
