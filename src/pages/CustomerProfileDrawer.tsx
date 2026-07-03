@@ -724,6 +724,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const tData = ticketsRes.data.data;
       setDrawerTickets(Array.isArray(tData) ? tData : (tData?.items || []));
 
+      // Fetch Documents (Cloud Files)
+      const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`);
+      const docsData = docsRes.data.data?.items || [];
+      setDocs(docsData.map((d: any) => ({
+        id: d.id,
+        name: d.name,
+        date: new Date(d.created_at).toLocaleDateString('vi-VN'),
+        size: (d.file_size / 1024 / 1024).toFixed(1) + ' MB',
+        type: d.name.split('.').pop() || 'file',
+        path: d.file_path
+      })));
+
     } catch (e: any) {
       console.error("Error fetching drawer data:", e);
     } finally {
@@ -2858,8 +2870,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               if (e.target.files?.[0]) {
                                 const file = e.target.files[0];
                                 const compressed = await compressToWebP(file);
-                                setDocs(prev => [{ id: Date.now(), name: compressed.name, date: new Date().toLocaleDateString('vi-VN'), size: (compressed.size / 1024 / 1024).toFixed(1) + ' MB', type: compressed.name.split('.').pop() || 'file' }, ...prev]);
-                                addToast('Đã tải lên tài liệu mới.', 'success');
+                                const fData = new FormData();
+                                fData.append('file', compressed);
+                                fData.append('contact_id', String(contact.id));
+                                fData.append('category', 'general');
+                                fData.append('visibility', 'shared');
+                                try {
+                                  await api.post('/cloud-files', fData, {
+                                    headers: { 'Content-Type': 'multipart/form-data' }
+                                  });
+                                  fetchData();
+                                  addToast('Đã tải lên tài liệu mới.', 'success');
+                                } catch (err: any) {
+                                  addToast('Lỗi khi tải tài liệu lên server', 'error');
+                                }
                               }
                             }} />
                             <Plus size={14} /> Upload file
@@ -2881,27 +2905,46 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <FileText size={20} />
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</h4>
+                                <a 
+                                  href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.path}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                >
+                                  {doc.name}
+                                </a>
                                 <p className="text-xs text-light mt-1">Tải lên: {doc.date} • {doc.size}</p>
                               </div>
                               {isOwnerOrAdmin && (
                                 <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                                  <button className="btn-icon sm" title="Đổi tên" onClick={() => {
+                                  <button className="btn-icon sm" title="Đổi tên" onClick={async () => {
                                     const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
                                     if (newName && newName.trim()) {
-                                      setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name: newName.trim() } : d));
-                                      addToast('Đã đổi tên tài liệu.', 'success');
+                                      try {
+                                        await api.put(`/cloud-files/${doc.id}`, { name: newName.trim() });
+                                        fetchData();
+                                        addToast('Đã đổi tên tài liệu.', 'success');
+                                      } catch (err) {
+                                        addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                      }
                                     }
                                   }}><Pencil size={14} /></button>
                                   <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
-                                    showConfirm(
-                                      'Xóa tài liệu?',
-                                      `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
-                                      () => {
-                                        setDocs(prev => prev.filter(d => d.id !== doc.id));
-                                        addToast('Đã xóa tài liệu.', 'success');
+                                    showConfirm({
+                                      title: 'Xóa tài liệu?',
+                                      message: `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
+                                      isDanger: true,
+                                      confirmText: 'Xóa',
+                                      onConfirm: async () => {
+                                        try {
+                                          await api.delete(`/cloud-files/${doc.id}`);
+                                          setDocs(prev => prev.filter(d => d.id !== doc.id));
+                                          addToast('Đã xóa tài liệu.', 'success');
+                                        } catch (err) {
+                                          addToast('Lỗi khi xóa tài liệu.', 'error');
+                                        }
                                       }
-                                    );
+                                    });
                                   }}><Trash2 size={14} /></button>
                                 </div>
                               )}

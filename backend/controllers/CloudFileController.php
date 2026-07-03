@@ -6,6 +6,9 @@ class CloudFileController {
         try {
             $this->db->exec("ALTER TABLE cloud_files ADD COLUMN project_id INT NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE cloud_files ADD COLUMN contact_id INT NULL");
+        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {
@@ -15,6 +18,7 @@ class CloudFileController {
         $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
         $offset = ($page - 1) * $limit;
         $cat    = $_GET['category'] ?? '';
+        $contactId = $_GET['contact_id'] ?? '';
 
         $where = ["cf.tenant_id = ?", "(cf.visibility = 'shared' OR cf.uploaded_by = ?)"];
         $params = [$tid, $uid];
@@ -22,6 +26,11 @@ class CloudFileController {
         if ($cat) {
             $where[] = "cf.category = ?";
             $params[] = $cat;
+        }
+
+        if ($contactId !== '') {
+            $where[] = "cf.contact_id = ?";
+            $params[] = (int)$contactId;
         }
 
         $w = implode(' AND ', $where);
@@ -70,6 +79,7 @@ class CloudFileController {
         $category = $_POST['category'] ?? 'general';
         $visibility = $_POST['visibility'] ?? 'shared';
         $project_id = isset($_POST['project_id']) && $_POST['project_id'] !== '' ? (int)$_POST['project_id'] : null;
+        $contact_id = isset($_POST['contact_id']) && $_POST['contact_id'] !== '' ? (int)$_POST['contact_id'] : null;
 
         // 1. Prepare directory
         $targetDir = UPLOAD_DIR . "/cloud/$tid";
@@ -90,13 +100,13 @@ class CloudFileController {
 
         // 4. Save to DB
         $stmt = $this->db->prepare("
-            INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility, project_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility, project_id, contact_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $tid, $uid, $name,
             $dbPath, $file['type'], $file['size'],
-            $category, $visibility, $project_id
+            $category, $visibility, $project_id, $contact_id
         ]);
 
         respond(201, ['id' => $this->db->lastInsertId(), 'path' => $dbPath], 'Đã tải tệp tin lên thành công');
