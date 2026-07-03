@@ -1000,15 +1000,15 @@ export default function CooperationSlipsPage() {
       {/* Configuration Modal */}
       {isUpdateOpen && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out' }}>
+          <div className="card" style={{ maxWidth: '600px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', animation: 'scaleUp 0.2s ease-out', overflow: 'visible' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Cấu hình phân chia tỷ lệ (%)</h2>
               <button onClick={() => setIsUpdateOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
-            <form onSubmit={handleSaveShares} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingRight: '4px' }}>
+            <form onSubmit={handleSaveShares} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflow: 'visible' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflow: 'visible' }}>
                 {sharesInput.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center', overflow: 'visible' }}>
                     <div style={{ flex: 1 }}>
                       <CustomSelect
                         value={item.user_id}
@@ -1019,7 +1019,9 @@ export default function CooperationSlipsPage() {
                         }
                         options={[
                           { value: '', label: '-- Chọn nhân viên --' },
-                          ...salesAccounts.map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
+                          ...salesAccounts
+                            .filter(s => String(s.id) !== String(user?.consultant_id))
+                            .map(s => ({ value: String(s.id), label: s.full_name, avatar: (s as any).avatar }))
                         ]}
                         size="sm"
                         showAvatars

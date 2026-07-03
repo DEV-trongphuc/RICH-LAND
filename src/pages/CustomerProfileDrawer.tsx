@@ -2562,8 +2562,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         }}
                                         options={[
                                           { value: '', label: '-- Chọn nhân sự --' },
-                                          ...salesUsers.map(u => ({ value: String(u.id), label: `${u.full_name} (${u.email})` }))
+                                          ...salesUsers
+                                            .filter(u => String(u.id) !== String(currentUser?.consultant_id) && String(u.id) !== String(currentUser?.id))
+                                            .map(u => ({ value: String(u.id), label: u.full_name, sublabel: u.email, avatar: u.avatar }))
                                         ]}
+                                        showAvatars
+                                        searchable
                                       />
                                     </div>
                                     <div style={{ width: '120px', display: 'flex', alignItems: 'center', gap: '8px' }}>
