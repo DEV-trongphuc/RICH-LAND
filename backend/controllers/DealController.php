@@ -116,7 +116,21 @@ class DealController {
         $stageId = $b['stage_id'] ?? null;
         if (!$stageId) {
             $s = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id=? ORDER BY order_index LIMIT 1");
-            $s->execute([$auth['tenant_id']]); $stageId = $s->fetchColumn();
+            $s->execute([$auth['tenant_id']]); 
+            $stageId = $s->fetchColumn();
+            if (!$stageId) {
+                // Self-healing fallback if database has no stage
+                $this->db->prepare("INSERT INTO pipeline_stages (tenant_id, name, color, order_index) VALUES (?, 'Chưa xác định', '#3b82f6', 0)")
+                         ->execute([$auth['tenant_id']]);
+                $stageId = (int)$this->db->lastInsertId();
+            }
+        } else {
+            // Validate stage_id belongs to this tenant
+            $s = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
+            $s->execute([(int)$stageId, $auth['tenant_id']]);
+            if (!$s->fetch()) {
+                respond(400, null, 'Giai đoạn pipeline không hợp lệ', false);
+            }
         }
         $tid = $auth['tenant_id'];
         if (!empty($b['contact_id'])) {
