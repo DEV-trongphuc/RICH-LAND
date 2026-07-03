@@ -77,7 +77,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
       { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
-      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true }
+      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true },
+      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale },
+      { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt }
     ]
   },
   {
