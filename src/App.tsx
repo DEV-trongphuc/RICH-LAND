@@ -9,6 +9,7 @@ import { Keyboard } from 'lucide-react';
 import { CustomModal } from './components/ui/CustomModal';
 import { getDefaultDateFilter } from './utils/api';
 import { GlobalConfirmModal } from './components/ui/GlobalConfirmModal';
+import { QRCodeCallModal } from './components/ui/QRCodeCallModal';
 
 
 // Lazy load all pages for Code Splitting
@@ -621,6 +622,7 @@ export default function App() {
             </Suspense>
           </Router>
           <GlobalConfirmModal />
+          <QRCodeCallModal />
         </AuthProvider>
 
       </LanguageProvider>

@@ -1117,16 +1117,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </AnimatePresence>
 
               {/* ── Header ── */}
-              <div style={{ padding: '2rem 2.5rem', background: 'linear-gradient(135deg, var(--color-bg) 0%, var(--color-surface) 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
-                <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+              <div style={{ padding: '1.25rem 2rem', background: 'linear-gradient(135deg, var(--color-bg) 0%, var(--color-surface) 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                   {/* Avatar Section */}
-                  <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div
                       className="avatar-placeholder lg"
                       style={{
                         background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #8a0f1b 100%)',
-                        fontSize: '1.5rem', width: 80, height: 80, borderRadius: '24px',
-                        boxShadow: '0 10px 25px -5px rgba(189, 29, 45, 0.4)',
+                        fontSize: '1.25rem', width: 56, height: 56, borderRadius: '18px',
+                        boxShadow: '0 8px 20px -4px rgba(189, 29, 45, 0.3)',
                         overflow: 'hidden',
                         cursor: 'pointer',
                         position: 'relative'
@@ -1147,102 +1147,100 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           alignItems: 'center',
                           justifyContent: 'center',
                           transition: 'opacity 0.2s',
-                          borderRadius: '24px'
+                          borderRadius: '18px'
                         }}
                         onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                         onMouseLeave={e => e.currentTarget.style.opacity = '0'}
                       >
-                        <Pencil size={20} color="white" />
+                        <Pencil size={16} color="white" />
                       </div>
                     </div>
-                    <div style={{ position: 'absolute', bottom: -4, right: -4, width: 28, height: 28, borderRadius: '10px', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
-                      <UserCheck size={14} className="text-success" />
+                    <div style={{ position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: '8px', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
+                      <UserCheck size={11} className="text-success" />
                     </div>
                   </div>
 
                   {/* Info Section */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                      <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>{fullName}</h2>
-                      <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '4px 12px', fontSize: '0.75rem', borderRadius: '8px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fullName}</h2>
+                      <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 8px', fontSize: '0.6875rem', borderRadius: '6px' }}>
                         {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                      <p style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-light)', fontSize: '0.8125rem' }}>
-                        <Clock size={14} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong></span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '6px', flexWrap: 'wrap' }}>
+                      <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
+                        <Clock size={12} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong></span>
                       </p>
                       {formData.updated_at && formData.updated_at !== formData.created_at && (
-                        <p style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-light)', fontSize: '0.8125rem' }}>
+                        <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
                           <span style={{ color: 'var(--color-text-muted)' }}>|</span>
                           <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{formData.updated_at ? new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong></span>
                         </p>
                       )}
                     </div>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => formData.phone && showCall(formData.phone)}>
-                          <Phone size={14} style={{ color: 'var(--color-primary)' }} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => formData.phone && showCall(formData.phone)}>
+                          <Phone size={12} style={{ color: 'var(--color-primary)' }} />
                         </div>
-                        <PhoneLink phone={formData.phone} style={{ fontSize: '0.875rem' }} />
+                        <PhoneLink phone={formData.phone} style={{ fontSize: '0.8125rem' }} />
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Mail size={14} className="text-muted" />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Mail size={12} className="text-muted" />
                         </div>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
                       </div>
                       <div
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
                         onClick={(e) => showUserCard(e, formData.owner_name)}
                       >
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
+                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800 }}>
                           {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
                         </div>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
                       </div>
                     </div>
                   </div>
 
-
                   {/* Actions Section */}
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <button className={styles.closeBtn} onClick={onClose} style={{ order: 2 }}><X size={24} /></button>
-                      <button
-                        className={`btn ${hasChanges ? 'primary' : 'outline'} lg`}
-                        disabled={!hasChanges}
-                        onClick={handleSave}
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', borderRadius: '14px' }}
-                      >
-                        <CheckSquare size={18} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-surface)', padding: '10px 16px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ textAlign: 'right' }}>
-                          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
-                            Lead Score
-                            <Tooltip content="Điểm tiềm năng (Lead Score) tự động tính dựa trên lịch sử tương tác, email, cuộc gọi và độ lớn dự án." />
-                          </p>
-                          <p style={{ fontSize: '1rem', fontWeight: 800, color: score > 70 ? 'var(--color-success)' : 'var(--color-warning)' }}>{score}/100</p>
-                        </div>
-                        <LeadScoreRing score={score} size={40} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                    {/* Lead Score inline card */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface)', padding: '6px 12px', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '2px', justifyContent: 'flex-end', margin: 0, lineHeight: 1 }}>
+                          Lead Score
+                          <Tooltip content="Điểm tiềm năng (Lead Score) tự động tính dựa trên lịch sử tương tác, email, cuộc gọi và độ lớn dự án." />
+                        </p>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: score > 70 ? 'var(--color-success)' : 'var(--color-warning)', margin: 0, marginTop: '2px', lineHeight: 1 }}>{score}/100</p>
                       </div>
+                      <LeadScoreRing score={score} size={32} />
                     </div>
+
+                    <button
+                      className={`btn ${hasChanges ? 'primary' : 'outline'} sm`}
+                      disabled={!hasChanges}
+                      onClick={handleSave}
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '10px', height: '36px', fontSize: '0.8125rem' }}
+                    >
+                      <CheckSquare size={14} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
+                    </button>
+
+                    <button className={styles.closeBtn} onClick={onClose} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', borderRadius: '50%', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.2s', padding: 0 }}><X size={20} /></button>
                   </div>
                 </div>
               </div>
 
               {/* ── Pipeline Stepper Bar ── */}
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
-                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '1rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
-                  <ChevronLeft size={16} />
+                <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
+                  <ChevronLeft size={14} />
                 </button>
 
-                <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: '1.25rem 3.5rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
+                <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: '0.625rem 3rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
                   <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
                   {(() => {
                     const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
@@ -1285,13 +1283,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
                           }}
                           style={{
-                            flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '40px', cursor: isCurrent ? 'default' : 'pointer',
+                            flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : 'pointer',
                             display: 'flex', alignItems: 'center', transition: 'all 0.3s'
                           }}
                         >
                           {/* Connection Line */}
                           {i < pipelineStages.length - 1 && (
-                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '3px', background: i < safeIndex ? stColor : 'var(--color-border)', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
+                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '2px', background: i < safeIndex ? stColor : 'var(--color-border)', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
                           )}
 
                           <div style={{
@@ -1299,14 +1297,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             background: isCurrent ? stColor : 'var(--color-surface)',
                             color: isCurrent ? '#fff' : (isActive ? stColor : 'var(--color-text-muted)'),
                             border: `2px solid ${isActive ? stColor : 'var(--color-border-light)'}`,
-                            padding: '6px 12px', borderRadius: '12px', fontSize: '0.8125rem', fontWeight: 800,
+                            padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                             whiteSpace: 'nowrap',
                             boxShadow: isCurrent ? `0 4px 12px ${stColor}40` : 'none',
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                           }}>
-                            {isActive && !isCurrent && <Check size={14} />}
-                            {isCurrent && <UserCheck size={14} />}
+                            {isActive && !isCurrent && <Check size={12} />}
+                            {isCurrent && <UserCheck size={12} />}
                             {st.name}
                           </div>
                         </div>
@@ -1315,8 +1313,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   })()}
                 </div>
 
-                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '1rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
-                  <ChevronRight size={16} />
+                <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
+                  <ChevronRight size={14} />
                 </button>
               </div>
 
