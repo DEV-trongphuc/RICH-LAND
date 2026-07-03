@@ -33,7 +33,7 @@ if (in_array($baseAction, [
     'cloud-files', 'file-categories', 'tickets', 'suppliers', 'purchase-orders', 
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
     'users', 'reports', 'quotes', 'invoices', 'expenses', 
-    'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns'
+    'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'upload'
 ], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action;
     require_once __DIR__ . '/index.php';

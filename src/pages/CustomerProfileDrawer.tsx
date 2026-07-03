@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -371,6 +371,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showDealModal, setShowDealModal] = useState(false);
   const [editingDealId, setEditingDealId] = useState<number | null>(null);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
@@ -655,13 +656,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       // Load from mock store
       setNotes([]); // No notes in mock store yet
       setDrawerActivities(state.activities.filter((a: any) => a.contact_id === contact.id));
-      setTasks(state.activities.filter((a: any) => a.contact_id === contact.id && a.type === 'task').map((a: any) => ({
-        id: a.id,
-        title: a.subject,
-        done: a.status === 'done',
-        priority: a.priority || 'medium',
-        due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—'
-      })));
+      setTasks(state.activities.filter((a: any) => a.contact_id === contact.id && a.type === 'task').map((a: any) => {
+        const link = a.body ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
+        const description = a.body ? a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
+        return {
+          id: a.id,
+          title: a.subject,
+          done: a.status === 'done',
+          priority: a.priority || 'medium',
+          due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—',
+          link,
+          description
+        };
+      }));
       setDeals(state.deals.filter((d: any) => d.contact_id === contact.id).map((d: any) => ({
         id: d.id,
         title: d.title,
@@ -706,13 +713,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const tasksRes = await api.get(`/activities?related_type=contact&related_id=${contact.id}`);
       const rawActivities = tasksRes.data.data?.items || [];
       setDrawerActivities(rawActivities);
-      setTasks(rawActivities.filter((a: any) => a.type === 'task').map((a: any) => ({
-        id: a.id,
-        title: a.subject,
-        done: a.status === 'done',
-        priority: a.priority,
-        due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—'
-      })));
+      setTasks(rawActivities.filter((a: any) => a.type === 'task').map((a: any) => {
+        const link = a.body ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
+        const description = a.body ? a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
+        return {
+          id: a.id,
+          title: a.subject,
+          done: a.status === 'done',
+          priority: a.priority,
+          due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—',
+          link,
+          description
+        };
+      }));
 
       // Fetch Pipeline Stages
       try {
@@ -1018,6 +1031,40 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast(err.response?.data?.message || 'Lỗi khi lưu ghi chú', 'error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleTaskFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      addToast('Dung lượng tệp tối đa cho phép là 10MB', 'error');
+      return;
+    }
+    setUploadingFile(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('name', file.name);
+    formData.append('category', 'general');
+    formData.append('visibility', 'shared');
+    if (contact?.id) {
+      formData.append('contact_id', contact.id.toString());
+    }
+    try {
+      const res = await api.post('/cloud-files', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        const filePath = res.data.data.path;
+        setTaskForm(prev => ({ ...prev, link: filePath }));
+        addToast('Tải tệp đính kèm thành công', 'success');
+      } else {
+        addToast(res.data.message || 'Lỗi khi tải tệp lên', 'error');
+      }
+    } catch (err: any) {
+      addToast(err.response?.data?.message || 'Lỗi kết nối khi tải tệp lên', 'error');
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -2669,6 +2716,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                               <div style={{ flex: 1 }}>
                                 <p style={{ fontSize: '0.9375rem', fontWeight: 600, textDecoration: t.done ? 'line-through' : 'none', color: 'var(--color-text)' }}>{t.title}</p>
+                                {t.description && (
+                                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>{t.description}</p>
+                                )}
+                                {t.link && (
+                                  <div style={{ marginTop: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }} onClick={e => e.stopPropagation()}>
+                                    <Paperclip size={13} style={{ color: 'var(--color-primary)' }} />
+                                    <a 
+                                      href={t.link.startsWith('http') ? t.link : `/backend/${t.link}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer" 
+                                      style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 500, textDecoration: 'underline' }}
+                                    >
+                                      {t.link.includes('uploads/') ? t.link.split('/').pop().replace(/^\d+_/, '') : t.link}
+                                    </a>
+                                  </div>
+                                )}
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.375rem' }}>
                                   <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem' }}>{t.priority === 'high' ? 'Ưu tiên cao' : 'Trung bình'}</span>
                                   <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Hạn hoàn thành: {t.due}</span>
@@ -3666,9 +3729,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label">Người thực hiện</label>
                   <CustomSelect
+                    showAvatars={true}
                     options={[
                       { value: '', label: 'Chưa giao cho ai' },
-                      ...users.map(u => ({ value: String(u.id), label: `${u.full_name} (${u.role === 'admin' ? 'Admin' : u.role === 'sales' ? 'Sales' : u.role})` }))
+                      ...users.map(u => ({
+                        value: String(u.id),
+                        label: `${u.full_name} (${u.role === 'admin' ? 'Admin' : u.role === 'sales' ? 'Sales' : u.role})`,
+                        avatar: u.avatar_url || undefined
+                      }))
                     ]}
                     value={taskForm.user_id}
                     onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
@@ -3676,8 +3744,29 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </div>
 
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Tài liệu hoặc Link đính kèm (Tùy chọn)</label>
-                  <input className="form-input" placeholder="Nhập link tài liệu hoặc link đính kèm..." value={taskForm.link || ''} onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} />
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>Tài liệu hoặc Link đính kèm (Tùy chọn)</span>
+                    {uploadingFile && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }} className="animate-pulse">Đang tải tệp lên...</span>}
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      className="form-input" 
+                      placeholder="Nhập link tài liệu hoặc link đính kèm..." 
+                      value={taskForm.link || ''} 
+                      onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} 
+                      style={{ flex: 1 }}
+                    />
+                    <label className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, padding: '0 0.75rem', height: '38px', borderRadius: '8px' }}>
+                      <Paperclip size={16} />
+                      Tải tệp
+                      <input 
+                        type="file" 
+                        onChange={handleTaskFileUpload} 
+                        style={{ display: 'none' }} 
+                        disabled={uploadingFile}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
