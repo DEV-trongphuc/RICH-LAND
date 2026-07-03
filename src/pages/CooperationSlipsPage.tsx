@@ -63,6 +63,42 @@ export default function CooperationSlipsPage() {
   // Signature Modal state
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [signingSlip, setSigningSlip] = useState<CooperationSlip | null>(null);
+
+  // Custom Confirm/Prompt Modal state
+  const [customConfirm, setCustomConfirm] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
+
+  const [customPrompt, setCustomPrompt] = useState<{
+    isOpen: boolean;
+    title: string;
+    label: string;
+    value: string;
+    onConfirm: (val: string) => void;
+  }>({
+    isOpen: false,
+    title: '',
+    label: '',
+    value: '',
+    onConfirm: () => {}
+  });
+
+  const getInitials = (name: string) => {
+    if (!name) return 'U';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+    const first = parts[0].charAt(0).toUpperCase();
+    const last = parts[parts.length - 1].charAt(0).toUpperCase();
+    return `${first}${last}`;
+  };
   
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const isDrawing = React.useRef(false);
@@ -196,18 +232,24 @@ export default function CooperationSlipsPage() {
   }, [slips, searchQuery, filterSale, filterTime]);
 
   const handleDeleteSlip = async (slipId: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa phiếu hợp tác này không?')) return;
-    try {
-      const res = await fetchAPI(`cooperation-slips/${slipId}`, { method: 'DELETE' });
-      if (res.success) {
-        setSuccess('Đã xóa phiếu hợp tác thành công!');
-        loadData();
-      } else {
-        setError(res.message || 'Lỗi khi xóa phiếu');
+    setCustomConfirm({
+      isOpen: true,
+      title: 'Xác nhận xóa phiếu',
+      message: 'Bạn có chắc chắn muốn xóa phiếu hợp tác này không? Thao tác này không thể hoàn tác.',
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`cooperation-slips/${slipId}`, { method: 'DELETE' });
+          if (res.success) {
+            setSuccess('Đã xóa phiếu hợp tác thành công!');
+            loadData();
+          } else {
+            setError(res.message || 'Lỗi khi xóa phiếu');
+          }
+        } catch (e: any) {
+          setError(e.message || 'Lỗi kết nối');
+        }
       }
-    } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
-    }
+    });
   };
 
   const loadData = async () => {
@@ -327,37 +369,53 @@ export default function CooperationSlipsPage() {
   };
 
   const handleApproveSlip = async (slipId: number) => {
-    try {
-      const res = await fetchAPI(`cooperation-slips/${slipId}/approve`, { method: 'POST' });
-      if (res.success) {
-        setSuccess('Phê duyệt phiếu hoa hồng thành công!');
-        loadData();
-      } else {
-        setError(res.message || 'Lỗi phê duyệt');
+    setCustomConfirm({
+      isOpen: true,
+      title: 'Xác nhận duyệt hoa hồng',
+      message: 'Bạn có chắc chắn muốn phê duyệt phiếu hợp tác này không?',
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`cooperation-slips/${slipId}/approve`, { method: 'POST' });
+          if (res.success) {
+            setSuccess('Phê duyệt phiếu hoa hồng thành công!');
+            loadData();
+          } else {
+            setError(res.message || 'Lỗi phê duyệt');
+          }
+        } catch (e: any) {
+          setError(e.message || 'Lỗi kết nối');
+        }
       }
-    } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
-    }
+    });
   };
 
   const handleRejectSlip = async (slipId: number) => {
-    const reason = window.prompt('Nhập lý do từ chối phiếu hợp tác:');
-    if (reason === null) return;
-
-    try {
-      const res = await fetchAPI(`cooperation-slips/${slipId}/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ reason })
-      });
-      if (res.success) {
-        setSuccess('Đã từ chối phiếu hợp tác và yêu cầu ký lại');
-        loadData();
-      } else {
-        setError(res.message || 'Lỗi từ chối');
+    setCustomPrompt({
+      isOpen: true,
+      title: 'Từ chối phiếu hợp tác',
+      label: 'Nhập lý do bác bỏ phiếu hợp tác này:',
+      value: '',
+      onConfirm: async (reason: string) => {
+        if (!reason.trim()) {
+          setError('Lý do từ chối không được bỏ trống.');
+          return;
+        }
+        try {
+          const res = await fetchAPI(`cooperation-slips/${slipId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason })
+          });
+          if (res.success) {
+            setSuccess('Đã từ chối phiếu hợp tác và yêu cầu ký lại');
+            loadData();
+          } else {
+            setError(res.message || 'Lỗi từ chối');
+          }
+        } catch (e: any) {
+          setError(e.message || 'Lỗi kết nối');
+        }
       }
-    } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
-    }
+    });
   };
 
   return (
@@ -494,8 +552,22 @@ export default function CooperationSlipsPage() {
                 {/* General Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ padding: '8px', background: 'rgba(163, 20, 34, 0.1)', borderRadius: '10px', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <FileText size={20} />
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: '#3b82f6',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.2)',
+                      border: '2px solid #ffffff',
+                      flexShrink: 0
+                    }}>
+                      {getInitials(`${slip.last_name} ${slip.first_name}`)}
                     </div>
                     <div>
                       <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -614,14 +686,37 @@ export default function CooperationSlipsPage() {
                               gap: '0.5rem'
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                              <div>
-                                <h5 style={{ fontWeight: 700, fontSize: '0.825rem', color: 'var(--color-text)' }}>{sh.name}</h5>
-                                <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{sh.email}</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  background: '#e0f2fe',
+                                  color: '#0284c7',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 700,
+                                  fontSize: '0.8rem',
+                                  border: '1px solid #bae6fd',
+                                  flexShrink: 0
+                                }}>
+                                  {getInitials(sh.name)}
+                                </div>
+                                <div>
+                                  <h5 style={{ fontWeight: 700, fontSize: '0.825rem', color: 'var(--color-text)' }}>{sh.name}</h5>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{sh.email}</span>
+                                </div>
                               </div>
-                              <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-primary)' }}>
-                                {sh.percentage}%
-                              </span>
+                              <div style={{ textAlign: 'right' }}>
+                                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-primary)' }}>
+                                  {sh.percentage}%
+                                </span>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-success)', fontWeight: 700, marginTop: '2px' }}>
+                                  {((slip.expected_commission * sh.percentage) / 100).toLocaleString()} VND
+                                </div>
+                              </div>
                             </div>
 
                             <div style={{ paddingTop: '6px', borderTop: sh.signed ? '1px solid rgba(16, 185, 129, 0.1)' : '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
@@ -783,6 +878,81 @@ export default function CooperationSlipsPage() {
             >
               Tôi đồng ý và Ký xác nhận
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirm Modal */}
+      {customConfirm.isOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card animate-fade" style={{ maxWidth: '400px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{customConfirm.title}</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{customConfirm.message}</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => setCustomConfirm(prev => ({ ...prev, isOpen: false }))} 
+                className="btn outline sm"
+                style={{ height: '36px', padding: '0 16px' }}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={() => {
+                  customConfirm.onConfirm();
+                  setCustomConfirm(prev => ({ ...prev, isOpen: false }));
+                }} 
+                className="btn primary sm"
+                style={{ height: '36px', padding: '0 16px', background: 'var(--color-primary)' }}
+              >
+                Đồng ý
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Prompt Modal */}
+      {customPrompt.isOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', padding: '1rem' }}>
+          <div className="card animate-fade" style={{ maxWidth: '440px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)' }}>{customPrompt.title}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{customPrompt.label}</label>
+              <textarea
+                value={customPrompt.value}
+                onChange={e => setCustomPrompt(prev => ({ ...prev, value: e.target.value }))}
+                placeholder="Nhập lý do tại đây..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg-light)',
+                  color: 'var(--color-text)',
+                  fontSize: '0.875rem'
+                }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.25rem' }}>
+              <button 
+                onClick={() => setCustomPrompt(prev => ({ ...prev, isOpen: false }))} 
+                className="btn outline sm"
+                style={{ height: '36px', padding: '0 16px' }}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={() => {
+                  customPrompt.onConfirm(customPrompt.value);
+                  setCustomPrompt(prev => ({ ...prev, isOpen: false }));
+                }} 
+                className="btn primary sm"
+                style={{ height: '36px', padding: '0 16px', background: 'var(--color-danger)', border: 'none', color: 'white' }}
+              >
+                Xác nhận từ chối
+              </button>
+            </div>
           </div>
         </div>
       )}
