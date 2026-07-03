@@ -168,6 +168,31 @@ class CooperationController {
         ");
         $stmt->execute([$sharesJson, $newStatus, $reason ?: null, $id]);
 
+        if ($newStatus === 'pending_manager_approval') {
+            $stmtUser = $this->db->prepare("SELECT full_name, name FROM users WHERE id = ?");
+            $stmtUser->execute([$auth['user_id']]);
+            $userRow = $stmtUser->fetch();
+            $userName = $userRow['full_name'] ?? $userRow['name'] ?? 'Nhân viên';
+
+            $stmtMgrs = $this->db->prepare("
+                SELECT id FROM users 
+                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager')
+            ");
+            $stmtMgrs->execute([$auth['tenant_id']]);
+            $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+            $notifTitle = "Yêu cầu thay đổi tỷ lệ hoa hồng";
+            $notifBody = "Nhân viên $userName yêu cầu thay đổi tỷ lệ hoa hồng cho Phiếu hợp tác #$id. Lý do: $reason";
+
+            $stmtNotif = $this->db->prepare("
+                INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                VALUES (?, ?, ?, ?, 'cooperation_change_request', ?)
+            ");
+            foreach ($mgrs as $mgrId) {
+                $stmtNotif->execute([$mgrId, $auth['tenant_id'], $notifTitle, $notifBody, "/cooperation-slips"]);
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_COOPERATION_SHARES', 'cooperation_slip', $id, "Cập nhật/Yêu cầu thay đổi tỷ lệ hoa hồng phiên bản " . ($slip['version'] + 1) . ". Lý do: $reason");
         respond(200, null, 'Cập nhật tỷ lệ chia sẻ thành công. Đã gửi yêu cầu phê duyệt.');
     }
