@@ -548,6 +548,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [salesUsers, setSalesUsers] = useState<any[]>([]);
   const [coopShares, setCoopShares] = useState<{ user_id: string; percentage: string }[]>([]);
   const [coopError, setCoopError] = useState('');
+  const [isRequestingChange, setIsRequestingChange] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
 
   const fetchCoopSlip = async () => {
     if (!contact?.id) return;
@@ -563,6 +565,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (resSlips.success) {
         const found = (resSlips.data || []).find((s: any) => Number(s.contact_id) === Number(contact.id));
         setCoopSlip(found || null);
+        setIsRequestingChange(false);
+        setChangeReason('');
         if (found) {
           const initialShares = found.shareholders.map((s: any) => ({
             user_id: String(s.user_id),
@@ -626,10 +630,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       });
       const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/shares`, {
         method: 'PUT',
-        body: JSON.stringify({ shares: sharesObj })
+        body: JSON.stringify({ shares: sharesObj, reason: changeReason })
       });
       if (res.success) {
-        addToast('Cập nhật tỷ lệ chia sẻ thành công!', 'success');
+        addToast(isRequestingChange ? 'Gửi yêu cầu thay đổi tỷ lệ thành công!' : 'Cập nhật tỷ lệ chia sẻ thành công!', 'success');
+        setIsRequestingChange(false);
+        setChangeReason('');
         await fetchCoopSlip();
       } else {
         addToast(res.message || 'Lỗi lưu tỷ lệ', 'error');
@@ -2544,7 +2550,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                       flex: 1,
-                                      pointerEvents: (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected') ? 'none' : 'auto',
+                                      pointerEvents: (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange) ? 'none' : 'auto',
                                       opacity: (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected') ? 0.6 : 1
                                     }}>
                                       <CustomSelect
@@ -2572,12 +2578,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           newShares[idx].percentage = e.target.value;
                                           setCoopShares(newShares);
                                         }}
-                                        disabled={coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected'}
+                                        disabled={coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange}
                                         style={{ textAlign: 'right' }}
                                       />
                                       <span style={{ fontWeight: 600 }}>%</span>
                                     </div>
-                                    {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected') ? (
+                                    {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
                                       <button 
                                         className="btn ghost text-danger sm" 
                                         onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
@@ -2600,7 +2606,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
 
                             {/* Actions to Add New Shareholder or Save */}
-                            {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected') && (
+                            {isRequestingChange && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '1rem' }}>
+                                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lý do thay đổi / Yêu cầu điều chỉnh</label>
+                                <textarea
+                                  placeholder="VD: Bổ sung thêm sale tư vấn hoặc điều chỉnh lại tỷ lệ..."
+                                  value={changeReason}
+                                  onChange={e => setChangeReason(e.target.value)}
+                                  className="form-control"
+                                  style={{ fontSize: '0.8rem', padding: '8px 12px', height: '60px', resize: 'vertical' }}
+                                  required
+                                />
+                              </div>
+                            )}
+
+                            {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <button 
                                   className="btn outline sm"
@@ -2608,13 +2628,38 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 >
                                   <Plus size={14} /> Thêm nhân sự
                                 </button>
-                                <button 
-                                  className="btn primary sm"
-                                  onClick={handleSaveCoopShares}
-                                >
-                                  Lưu tỷ lệ mới
-                                </button>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  {isRequestingChange && (
+                                    <button 
+                                      className="btn outline sm"
+                                      onClick={() => {
+                                        setIsRequestingChange(false);
+                                        setChangeReason('');
+                                      }}
+                                    >
+                                      Hủy bỏ
+                                    </button>
+                                  )}
+                                  <button 
+                                    className="btn primary sm"
+                                    onClick={handleSaveCoopShares}
+                                  >
+                                    {isRequestingChange ? 'Gửi yêu cầu thay đổi' : 'Lưu tỷ lệ mới'}
+                                  </button>
+                                </div>
                               </div>
+                            ) : (
+                              (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && (
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                  <button 
+                                    className="btn outline sm"
+                                    onClick={() => setIsRequestingChange(true)}
+                                    style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
+                                  >
+                                    Yêu cầu thay đổi tỷ lệ
+                                  </button>
+                                </div>
+                              )
                             )}
                           </div>
 
