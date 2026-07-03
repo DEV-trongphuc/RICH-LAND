@@ -34,6 +34,7 @@ interface Props {
   onClose: () => void;
   contact: any;
   onUpdate?: (data: any) => void;
+  initialTab?: string;
 }
 
 const FMT = (v: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(Number(v) || 0);
@@ -408,11 +409,19 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
   );
 };
 
-export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate }) => {
+export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate, initialTab }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('info');
+
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    } else if (isOpen) {
+      setActiveTab('info');
+    }
+  }, [isOpen, initialTab]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [tags, setTags] = useState<string[]>([]);
@@ -1119,6 +1128,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (isOpen) {
       if (currentUser && currentUser.role !== 'sale') {
         api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
+      } else {
+        fetchAPI('get_consultants').then(res => {
+          if (res && res.success && res.data) {
+            const mapped = res.data.map((u: any) => ({
+              ...u,
+              id: u.id,
+              full_name: u.full_name || u.name,
+              avatar_url: u.avatar || u.avatar_url
+            }));
+            setUsers(mapped);
+          }
+        }).catch(() => {});
       }
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
       api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });

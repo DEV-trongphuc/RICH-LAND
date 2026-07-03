@@ -262,6 +262,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [timeline, setTimeline] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
   const [profileContact, setProfileContact] = useState<any>(null);
+  const [profileDrawerTab, setProfileDrawerTab] = useState<string>('info');
 
   // Tab & Layout states
   const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'tickets' | 'schedule' | 'calendar' | 'fair-share' | 'databank' | 'invoices' | 'projects' | 'files' | 'consultants'>(activeTabProp || 'dashboard');
@@ -874,8 +875,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     };
   }, [checkInModalOpen]);
 
-  const handleOpenContactProfile = async (contactId: number) => {
+  const handleOpenContactProfile = async (contactId: number, tab: string = 'info') => {
     if (!contactId) return;
+    setProfileDrawerTab(tab);
     try {
       const res = await api.get(`/contacts/${contactId}`);
       if (res.data.success && res.data.data) {
@@ -1778,6 +1780,120 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           })}
         </div>
 
+        {/* Row 1.5: My Tasks (Công việc cần làm) */}
+        <div className="card animate-fade" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckSquare size={18} color="var(--color-primary)" />
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                {t('CÔNG VIỆC CẦN LÀM')}
+              </h3>
+            </div>
+            <button className="btn primary sm" onClick={() => {
+              setTaskForm({
+                title: '',
+                priority: 'medium',
+                due_date: new Date().toISOString().slice(0, 10),
+                description: '',
+                link: '',
+                related_id: ''
+              });
+              setShowTaskModal(true);
+            }}>
+              <Plus size={14} /> {t('Tạo công việc')}
+            </button>
+          </div>
+
+          {loadingTasks ? (
+            <div style={{ padding: '2rem', textAlign: 'center' }}><RefreshCw className="spin" /> {t('Đang tải công việc...')}</div>
+          ) : portalTasks.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+              {t('Tuyệt vời! Bạn không có công việc nào chưa hoàn thành hôm nay.')}
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+              {portalTasks.map(task => {
+                const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
+                const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
+                let dateBadgeColor = 'var(--color-text-muted)';
+                let dateBadgeBg = 'var(--color-bg)';
+                if (isOverdue) {
+                  dateBadgeColor = 'var(--color-danger)';
+                  dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
+                } else if (isToday) {
+                  dateBadgeColor = 'var(--color-warning)';
+                  dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
+                }
+
+                return (
+                  <div key={task.id} style={{
+                    padding: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)',
+                    borderRadius: '12px', display: 'flex', gap: '1rem', alignItems: 'flex-start',
+                    boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
+                  }}
+                    className="hover-lift"
+                  >
+                    <button
+                      onClick={() => handleToggleTaskStatus(task.id)}
+                      style={{
+                        width: 20, height: 20, borderRadius: '6px', border: '2px solid var(--color-border)',
+                        background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        marginTop: 2, cursor: 'pointer', color: 'var(--color-primary)'
+                      }}
+                      title={t('Đánh dấu hoàn thành')}
+                    >
+                      <CheckSquare size={12} style={{ opacity: 0.3 }} />
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div 
+                        onClick={() => {
+                          if (task.related_type === 'contact' && task.related_id) {
+                            handleOpenContactProfile(Number(task.related_id), 'tasks');
+                          }
+                        }}
+                        style={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.9rem', 
+                          color: 'var(--color-text)', 
+                          marginBottom: 4,
+                          cursor: task.related_type === 'contact' && task.related_id ? 'pointer' : 'default'
+                        }}
+                        className={task.related_type === 'contact' && task.related_id ? 'hover:underline' : ''}
+                      >
+                        {task.subject}
+                      </div>
+                      {task.body && (
+                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: 8, whiteSpace: 'pre-wrap' }}>
+                          {task.body}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {task.due_date && (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg }}>
+                            📅 {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
+                          </span>
+                        )}
+                        {task.related_type === 'contact' && task.related_id && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenContactProfile(Number(task.related_id), 'tasks')}
+                            style={{
+                              fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
+                              color: 'var(--color-primary)', background: 'var(--color-primary-light)', border: 'none', cursor: 'pointer'
+                            }}
+                          >
+                            👤 {task.contact_name || t('Khách hàng')}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Row 1: Charts & Recent Leads feed */}
         <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '6fr 4fr', gap: '1.25rem' }}>
           {/* Chart Left (Performance) */}
@@ -1888,104 +2004,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         </div>
 
-        {/* Row 1.5: My Tasks (Công việc cần làm) */}
-        <div className="card animate-fade" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CheckSquare size={18} color="var(--color-primary)" />
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                {t('CÔNG VIỆC CẦN LÀM')}
-              </h3>
-            </div>
-            <button className="btn primary sm" onClick={() => {
-              setTaskForm({
-                title: '',
-                priority: 'medium',
-                due_date: new Date().toISOString().slice(0, 10),
-                description: '',
-                link: '',
-                related_id: ''
-              });
-              setShowTaskModal(true);
-            }}>
-              <Plus size={14} /> {t('Tạo công việc')}
-            </button>
-          </div>
 
-          {loadingTasks ? (
-            <div style={{ padding: '2rem', textAlign: 'center' }}><RefreshCw className="spin" /> {t('Đang tải công việc...')}</div>
-          ) : portalTasks.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-              {t('Tuyệt vời! Bạn không có công việc nào chưa hoàn thành hôm nay.')}
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
-              {portalTasks.map(task => {
-                const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
-                const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
-                let dateBadgeColor = 'var(--color-text-muted)';
-                let dateBadgeBg = 'var(--color-bg)';
-                if (isOverdue) {
-                  dateBadgeColor = 'var(--color-danger)';
-                  dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
-                } else if (isToday) {
-                  dateBadgeColor = 'var(--color-warning)';
-                  dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
-                }
-
-                return (
-                  <div key={task.id} style={{
-                    padding: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)',
-                    borderRadius: '12px', display: 'flex', gap: '1rem', alignItems: 'flex-start',
-                    boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s'
-                  }}
-                    className="hover-lift"
-                  >
-                    <button
-                      onClick={() => handleToggleTaskStatus(task.id)}
-                      style={{
-                        width: 20, height: 20, borderRadius: '6px', border: '2px solid var(--color-border)',
-                        background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginTop: 2, cursor: 'pointer', color: 'var(--color-primary)'
-                      }}
-                      title={t('Đánh dấu hoàn thành')}
-                    >
-                      <CheckSquare size={12} style={{ opacity: 0.3 }} />
-                    </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: 4 }}>
-                        {task.subject}
-                      </div>
-                      {task.body && (
-                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: 8, whiteSpace: 'pre-wrap' }}>
-                          {task.body}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                        {task.due_date && (
-                          <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg }}>
-                            📅 {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
-                          </span>
-                        )}
-                        {task.related_type === 'contact' && task.related_id && (
-                          <button
-                            onClick={() => handleOpenContactProfile(Number(task.related_id))}
-                            style={{
-                              fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
-                              color: 'var(--color-primary)', background: 'var(--color-primary-light)', border: 'none', cursor: 'pointer'
-                            }}
-                          >
-                            👤 {task.contact_name || t('Khách hàng')}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
         {/* PHIẾU HỢP TÁC CHỜ KÝ */}
         {pendingCoopSlips.length > 0 && (
@@ -5794,6 +5813,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         isOpen={!!profileContact}
         onClose={() => setProfileContact(null)}
         contact={profileContact}
+        initialTab={profileDrawerTab}
         onUpdate={updated => {
           setProfileContact(updated);
           loadPortalData();

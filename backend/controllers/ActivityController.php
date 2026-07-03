@@ -39,7 +39,10 @@ class ActivityController {
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'ASC';
 
         if (in_array($auth['role'], ['sales', 'sale'], true) && !$relType && !$relId) {
-            $where[] = 'a.user_id = ?';
+            $where[] = '(a.user_id = ? OR (a.related_type = \'contact\' AND EXISTS (SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND ct.owner_id = ?)) OR (a.related_type = \'deal\' AND EXISTS (SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (d.owner_id = ? OR ct.owner_id = ?))))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
         if ($type)     { $where[]='a.type=?';    $params[]=$type; }
