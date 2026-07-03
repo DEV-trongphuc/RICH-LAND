@@ -75,7 +75,9 @@ $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:5174',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://rich-land.vercel.app',
+    'https://crm-richland.vercel.app'
 ];
 
 $frontendUrl = get_system_setting($conn, 'frontend_url');
