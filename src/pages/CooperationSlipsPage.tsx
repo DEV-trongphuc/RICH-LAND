@@ -628,209 +628,222 @@ export default function CooperationSlipsPage() {
                 onClick={() => toggleSlip(slip.id)}
               >
                 {/* General Info */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   
-                  {/* Left Side: Slip Details & Project */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, minWidth: '300px' }}>
-                    <div style={{ 
-                      padding: '12px', 
-                      background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(163, 20, 34, 0.02) 100%)', 
-                      borderRadius: '10px', 
-                      color: 'var(--color-primary)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      flexShrink: 0,
-                      border: '1px solid rgba(163, 20, 34, 0.15)'
-                    }}>
-                      <FileText size={22} />
-                    </div>
+                  {/* Top Row: Basic Info & Badges */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {/* Left: Icon, ID, Unit, Project, Customer */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                      <div style={{ 
+                        padding: '10px', 
+                        background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(163, 20, 34, 0.02) 100%)', 
+                        borderRadius: '8px', 
+                        color: 'var(--color-primary)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        border: '1px solid rgba(163, 20, 34, 0.15)'
+                      }}>
+                        <FileText size={18} />
+                      </div>
+                      
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span style={{ 
-                          fontSize: '0.7rem', 
+                          fontSize: '0.65rem', 
                           fontWeight: 700, 
                           color: 'var(--color-primary)', 
                           background: 'rgba(163, 20, 34, 0.08)', 
-                          padding: '2px 8px', 
+                          padding: '2px 6px', 
                           borderRadius: '4px',
                           letterSpacing: '0.5px'
                         }}>
                           ID: #{slip.id}
                         </span>
-                        <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
                           Căn: <span style={{ color: 'var(--color-primary)' }}>{slip.unit_code || '—'}</span>
                         </h3>
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>•</span>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-light)' }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-light)' }}>
                           {slip.project_name || 'Dự án khác'}
                         </span>
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách hàng:</span>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách:</span>
                           <Avatar 
                             name={`${slip.last_name} ${slip.first_name}`} 
-                            size={20}
+                            size={18}
                           />
-                          <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text)' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text)' }}>
                             {slip.last_name} {slip.first_name}
                           </span>
                         </div>
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>•</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tỷ lệ chia:</span>
-                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                          {slip.shareholders?.map((sh, sIdx) => (
-                            <span key={sh.user_id} style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <Avatar src={(sh as any).avatar} name={sh.name} size={18} />
-                              <span>{sh.name} ({sh.percentage}%)</span>
-                              {sIdx < slip.shareholders.length - 1 ? ',' : ''}
-                            </span>
-                          ))}
-                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Badge Status & Header Controls */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
+                      <span
+                        className="badge"
+                        style={{
+                          background: isPendingSignatures ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                          color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1',
+                          border: isPendingSignatures ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(99, 102, 241, 0.2)',
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        {isPendingSignatures ? (
+                          <>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
+                            Chờ ký
+                          </>
+                        ) : slip.status === 'approved' ? (
+                          <>
+                            <Check size={12} style={{ color: 'var(--color-success)' }} />
+                            Đã duyệt
+                          </>
+                        ) : slip.status === 'pending_manager_approval' ? (
+                          <>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--color-warning)' }} />
+                            Chờ sếp duyệt
+                          </>
+                        ) : slip.status === 'rejected' ? (
+                          <>
+                            <X size={12} style={{ color: 'var(--color-danger)' }} />
+                            Bị bác bỏ
+                          </>
+                        ) : (
+                          slip.status
+                        )}
+                      </span>
+                      
+                      {/* Delete icon */}
+                      {(isManager || (String(slip.created_by) === String(user?.id) && slip.status === 'pending_signatures')) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteSlip(slip.id); }}
+                          className="btn sm outline text-danger"
+                          style={{ height: '28px', width: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderColor: 'transparent', background: 'transparent' }}
+                          title="Xóa phiếu hợp tác"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+
+                      {/* Expand indicator */}
+                      <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                       </div>
                     </div>
                   </div>
 
-                  {/* Middle Side: Financial Columns */}
-                  <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Hoa hồng dự kiến</span>
-                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)' }}>
-                        {totalComm.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>VND</span>
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Thực thu</span>
-                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)' }}>
-                        {totalActual.toLocaleString()} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>VND</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Right Side: Badges & Controls */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} onClick={e => e.stopPropagation()}>
-                    <span
-                      className="badge"
-                      style={{
-                        background: isPendingSignatures ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.08)',
-                        color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1',
-                        border: isPendingSignatures ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(99, 102, 241, 0.2)',
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        fontSize: '0.725rem',
-                        fontWeight: 700,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <span style={{
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1'
-                      }} />
-                      {isPendingSignatures
-                        ? 'Chờ ký'
-                        : slip.status === 'approved'
-                        ? 'Đã duyệt hoa hồng'
-                        : slip.status === 'pending_manager_approval'
-                        ? 'Chờ sếp duyệt'
-                        : slip.status === 'rejected'
-                        ? 'Bị từ chối'
-                        : 'Chờ ký'}
-                    </span>
+                  {/* Bottom Row: Cooperation details & financials & Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     
-                    {/* Sign / Update buttons */}
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {/* Configuration: only allowed in pending_signatures */}
+                    {/* Left: Shareholders & percentages */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '280px' }}>
+                      <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Tỷ lệ chia:</span>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        {slip.shareholders?.map((sh) => (
+                          <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 8px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                            <Avatar src={(sh as any).avatar} name={sh.name} size={16} />
+                            <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text)' }}>{sh.name}</span>
+                            <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-primary)' }}>{sh.percentage}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Middle: Financials */}
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>H.Hồng dự kiến</span>
+                        <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                          {totalComm.toLocaleString()} <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>VND</span>
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                        <span style={{ fontSize: '0.6rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.5px' }}>Thực thu</span>
+                        <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                          {totalActual.toLocaleString()} <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>VND</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Actions */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                      
+                      {/* Sign / Update buttons */}
                       {slip.status === 'pending_signatures' && (String(slip.created_by) === String(user?.id) || isManager) && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleOpenUpdateShares(slip); }}
+                          onClick={() => handleOpenUpdateShares(slip)}
                           className="btn sm outline"
-                          style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', borderRadius: '6px', fontWeight: 600 }}
+                          style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', borderRadius: '6px', fontWeight: 600 }}
                         >
                           Cấu hình chia %
                         </button>
                       )}
 
-                      {/* Sign: allowed if shareholder and hasn't signed yet, regardless of status */}
                       {isShareholder && !hasSigned && (
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
                           <button
-                            onClick={(e) => { e.stopPropagation(); handleOpenSignModal(slip); }}
+                            onClick={() => handleOpenSignModal(slip)}
                             className="btn sm primary"
-                            style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '6px', fontWeight: 600 }}
+                            style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '6px', fontWeight: 600 }}
                           >
-                            <PenTool size={12} /> Ký
+                            <PenTool size={11} /> Ký
                           </button>
                           {slip.status === 'pending_signatures' && (
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleRejectSlip(slip.id); }}
+                              onClick={() => handleRejectSlip(slip.id)}
                               className="btn sm outline"
-                              style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger)', borderRadius: '6px', fontWeight: 600 }}
+                              style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger)', borderRadius: '6px', fontWeight: 600 }}
                             >
                               Từ chối
                             </button>
                           )}
                         </div>
                       )}
-                    </div>
 
-                    {/* Request change if already approved or pending manager approval */}
-                    {(slip.status === 'approved' || slip.status === 'pending_manager_approval') && 
-                     (isManager || isShareholder || String(slip.created_by) === String(user?.id)) && (
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      {/* Request change if already approved or pending manager approval */}
+                      {(slip.status === 'approved' || slip.status === 'pending_manager_approval') && 
+                       (isManager || isShareholder || String(slip.created_by) === String(user?.id)) && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleOpenUpdateShares(slip); }}
+                          onClick={() => handleOpenUpdateShares(slip)}
                           className="btn sm outline"
-                          style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', color: 'var(--color-primary)', borderColor: 'var(--color-primary)', borderRadius: '6px', fontWeight: 600 }}
+                          style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', color: 'var(--color-primary)', borderColor: 'var(--color-primary)', borderRadius: '6px', fontWeight: 600 }}
                         >
                           {isManager ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
                         </button>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Manager Approval actions */}
-                    {isManager && slip.status === 'pending_manager_approval' && (
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleApproveSlip(slip.id); }}
-                          className="btn sm primary"
-                          style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', background: 'var(--color-success)', border: 'none', borderRadius: '6px', fontWeight: 600 }}
-                        >
-                          <CheckCircle size={12} /> Duyệt
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleRejectSlip(slip.id); }}
-                          className="btn sm"
-                          style={{ height: '32px', padding: '0 12px', fontSize: '0.75rem', background: 'var(--color-danger)', border: 'none', color: 'white', borderRadius: '6px', fontWeight: 600 }}
-                        >
-                          <X size={12} /> Bác bỏ
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Delete button */}
-                    {(isManager || (String(slip.created_by) === String(user?.id) && slip.status === 'pending_signatures')) && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteSlip(slip.id); }}
-                        className="btn sm outline text-danger"
-                        style={{ height: '32px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, borderColor: 'transparent', background: 'transparent' }}
-                        title="Xóa phiếu hợp tác"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-
-                    {/* Expand/Collapse Indicator */}
-                    <div style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', paddingLeft: '4px' }}>
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      {/* Manager Approval actions */}
+                      {isManager && slip.status === 'pending_manager_approval' && (
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={() => handleApproveSlip(slip.id)}
+                            className="btn sm primary"
+                            style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', background: 'var(--color-success)', border: 'none', borderRadius: '6px', fontWeight: 600 }}
+                          >
+                            <CheckCircle size={11} /> Duyệt
+                          </button>
+                          <button
+                            onClick={() => handleRejectSlip(slip.id)}
+                            className="btn sm"
+                            style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', background: 'var(--color-danger)', border: 'none', color: 'white', borderRadius: '6px', fontWeight: 600 }}
+                          >
+                            <X size={11} /> Bác bỏ
+                          </button>
+                        </div>
+                      )}
                     </div>
+
                   </div>
                 </div>
 
