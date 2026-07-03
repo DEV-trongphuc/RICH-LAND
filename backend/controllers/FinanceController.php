@@ -79,8 +79,17 @@ class FinanceController
             $params[] = (int)$contactId;
         }
         if ($auth['role'] === 'sales') {
-            $where[] = 'i.created_by = ?';
-            $params[] = $auth['user_id'];
+            if ($contactId) {
+                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
+                $stmtContact->execute([(int)$contactId, $tid]);
+                $ownerId = $stmtContact->fetchColumn();
+                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                    respond(403, null, 'Bạn không có quyền xem hóa đơn của liên hệ này', false);
+                }
+            } else {
+                $where[] = 'i.created_by = ?';
+                $params[] = $auth['user_id'];
+            }
         }
         if ($status) {
             $where[] = 'i.status=?';
@@ -825,8 +834,24 @@ class FinanceController
         $where = "ee.entity_type=? AND ee.entity_id=? AND e.tenant_id=?";
         $p = [$type, $id, $auth['tenant_id']];
         if ($auth['role'] === 'sales') {
-            $where .= " AND e.created_by=?";
-            $p[] = $auth['user_id'];
+            if ($type === 'contact') {
+                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
+                $stmtContact->execute([$id, $auth['tenant_id']]);
+                $ownerId = $stmtContact->fetchColumn();
+                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                    respond(403, null, 'Bạn không có quyền xem chi phí của liên hệ này', false);
+                }
+            } else if ($type === 'deal') {
+                $stmtDeal = $this->db->prepare("SELECT owner_id FROM deals WHERE id = ? AND tenant_id = ?");
+                $stmtDeal->execute([$id, $auth['tenant_id']]);
+                $ownerId = $stmtDeal->fetchColumn();
+                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                    respond(403, null, 'Bạn không có quyền xem chi phí của cơ hội này', false);
+                }
+            } else {
+                $where .= " AND e.created_by=?";
+                $p[] = $auth['user_id'];
+            }
         }
         $stmt = $this->db->prepare("
             SELECT e.*, ee.amount as split_amount, u.full_name as creator_name

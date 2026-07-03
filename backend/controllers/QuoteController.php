@@ -23,8 +23,17 @@ class QuoteController {
         }
 
         if ($auth['role'] === 'sales') {
-            $where[] = 'q.created_by = ?';
-            $params[] = $auth['user_id'];
+            if ($contactId) {
+                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
+                $stmtContact->execute([(int)$contactId, $tid]);
+                $ownerId = $stmtContact->fetchColumn();
+                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                    respond(403, null, 'Bạn không có quyền xem báo giá của liên hệ này', false);
+                }
+            } else {
+                $where[] = 'q.created_by = ?';
+                $params[] = $auth['user_id'];
+            }
         }
 
         if ($status) { $where[] = 'q.status = ?'; $params[] = $status; }
