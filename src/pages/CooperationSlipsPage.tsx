@@ -347,15 +347,15 @@ export default function CooperationSlipsPage() {
         body: JSON.stringify({ signature_img: signatureImg })
       });
       if (res.success) {
-        setSuccess('Ký xác nhận phiếu hợp tác thành công!');
+        addToast('Ký xác nhận phiếu hợp tác thành công!', 'success');
         setIsSignModalOpen(false);
         setSigningSlip(null);
         loadData();
       } else {
-        setError(res.message || 'Lỗi ký xác nhận');
+        addToast(res.message || 'Lỗi ký xác nhận', 'error');
       }
     } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
+      addToast(e.message || 'Lỗi kết nối', 'error');
     }
   };
 
@@ -368,13 +368,13 @@ export default function CooperationSlipsPage() {
         try {
           const res = await fetchAPI(`cooperation-slips/${slipId}/approve`, { method: 'POST' });
           if (res.success) {
-            setSuccess('Phê duyệt phiếu hoa hồng thành công!');
+            addToast('Phê duyệt phiếu hoa hồng thành công!', 'success');
             loadData();
           } else {
-            setError(res.message || 'Lỗi phê duyệt');
+            addToast(res.message || 'Lỗi phê duyệt', 'error');
           }
         } catch (e: any) {
-          setError(e.message || 'Lỗi kết nối');
+          addToast(e.message || 'Lỗi kết nối', 'error');
         }
       }
     });
@@ -388,7 +388,7 @@ export default function CooperationSlipsPage() {
       value: '',
       onConfirm: async (reason: string) => {
         if (!reason.trim()) {
-          setError('Lý do từ chối không được bỏ trống.');
+          addToast('Lý do từ chối không được bỏ trống.', 'error');
           return;
         }
         try {
@@ -397,13 +397,13 @@ export default function CooperationSlipsPage() {
             body: JSON.stringify({ reason })
           });
           if (res.success) {
-            setSuccess('Đã từ chối phiếu hợp tác và yêu cầu ký lại');
+            addToast('Đã từ chối phiếu hợp tác và yêu cầu ký lại', 'success');
             loadData();
           } else {
-            setError(res.message || 'Lỗi từ chối');
+            addToast(res.message || 'Lỗi từ chối', 'error');
           }
         } catch (e: any) {
-          setError(e.message || 'Lỗi kết nối');
+          addToast(e.message || 'Lỗi kết nối', 'error');
         }
       }
     });

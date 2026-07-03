@@ -118,8 +118,8 @@ class CooperationController {
             $sum += (int)$percent;
         }
 
-        if ($sum !== 100) {
-            respond(422, null, 'Tổng tỷ lệ chia sẻ hoa hồng phải bằng 100% (Hiện tại là ' . $sum . '%)', false);
+        if ($sum > 100) {
+            respond(422, null, 'Tổng tỷ lệ chia sẻ hoa hồng không được vượt quá 100% (Hiện tại là ' . $sum . '%)', false);
         }
 
         // Verify slip exists & status is pending_signatures
@@ -163,10 +163,10 @@ class CooperationController {
 
         $stmt = $this->db->prepare("
             UPDATE cooperation_slips 
-            SET shares_json = ?, signatures_json = '{}', version = version + 1, status = ?, dispute_details = ?
+            SET shares_json = ?, total_percentage = ?, signatures_json = '{}', version = version + 1, status = ?, dispute_details = ?
             WHERE id = ?
         ");
-        $stmt->execute([$sharesJson, $newStatus, $reason ?: null, $id]);
+        $stmt->execute([$sharesJson, $sum, $newStatus, $reason ?: null, $id]);
 
         if ($newStatus === 'pending_manager_approval') {
             $stmtUser = $this->db->prepare("SELECT full_name, name FROM users WHERE id = ?");
