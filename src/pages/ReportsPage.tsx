@@ -481,7 +481,8 @@ export const ReportsPage: React.FC = () => {
                   return data.map((s: any, idx: number) => {
                     const width = (s.count / maxVal) * 100;
                     const nextS = data[idx+1];
-                    const dropoff = nextS ? Math.round((nextS.count / s.count) * 100) : null;
+                    const hasDropoff = nextS !== undefined;
+                    const dropoff = (nextS && s.count > 0) ? Math.round((nextS.count / s.count) * 100) : null;
                     
                     return (
                       <React.Fragment key={s.stage}>
@@ -501,9 +502,9 @@ export const ReportsPage: React.FC = () => {
                             <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 500 }}>{FMT_VND(s.total_value)}</span>
                           </div>
                         </div>
-                        {dropoff !== null && (
+                        {hasDropoff && (
                           <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>
-                            Tỷ lệ chuyển đổi: <span style={{ color: dropoff < 50 ? 'var(--color-danger)' : 'var(--color-success)', marginLeft: '4px', fontWeight: 600 }}>{dropoff}%</span>
+                            Tỷ lệ chuyển đổi: <span style={{ color: dropoff === null ? 'var(--color-text-muted)' : (dropoff < 50 ? 'var(--color-danger)' : 'var(--color-success)'), marginLeft: '4px', fontWeight: 600 }}>{dropoff !== null ? `${dropoff}%` : '—'}</span>
                           </div>
                         )}
                       </React.Fragment>
