@@ -167,6 +167,16 @@ const api = axios.create({
 
 // Attach access token
 api.interceptors.request.use((config) => {
+  // Translate PUT, PATCH, DELETE to POST with method override header/param for production to bypass server restrictions
+  if (!DEV_MODE && config.method && ['put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
+    const originalMethod = config.method.toUpperCase();
+    if (config.headers) {
+      (config.headers as any)['X-HTTP-Method-Override'] = originalMethod;
+    }
+    config.params = config.params || {};
+    config.params._method = originalMethod;
+    config.method = 'post';
+  }
   // In production (not DEV_MODE), rewrite URL to api.php?action=... to bypass missing web server rewrite rules
   if (!DEV_MODE && config.url && !config.url.startsWith('http') && !config.url.includes('api.php')) {
     const cleanUrl = config.url.replace(/^\//, ''); // remove leading slash

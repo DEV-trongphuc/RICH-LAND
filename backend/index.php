@@ -350,6 +350,13 @@ $path       = trim($requestUri, '/');
 $segments   = array_values(array_filter(explode('/', $path)));
 
 $method        = $_SERVER['REQUEST_METHOD'];
+if ($method === 'POST') {
+    if (isset($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE'])) {
+        $method = strtoupper($_SERVER['HTTP_X_HTTP_METHOD_OVERRIDE']);
+    } elseif (isset($_GET['_method'])) {
+        $method = strtoupper($_GET['_method']);
+    }
+}
 $resource      = $segments[0] ?? '';
 $resourceId    = $segments[1] ?? null;
 $subResource   = $segments[2] ?? null;

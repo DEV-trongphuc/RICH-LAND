@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -558,9 +558,13 @@ const ConsultantsInner = () => {
             fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
             color: activeTab === 'consultants' ? 'var(--color-primary)' : 'var(--color-text-muted)',
             borderBottom: activeTab === 'consultants' ? '2px solid var(--color-primary)' : 'none',
-            transition: 'all 0.18s'
+            transition: 'all 0.18s',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
           }}
         >
+          <User size={15} />
           {t('Tư vấn viên')}
         </button>
         <button
@@ -570,9 +574,13 @@ const ConsultantsInner = () => {
             fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
             color: activeTab === 'teams' ? 'var(--color-primary)' : 'var(--color-text-muted)',
             borderBottom: activeTab === 'teams' ? '2px solid var(--color-primary)' : 'none',
-            transition: 'all 0.18s'
+            transition: 'all 0.18s',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
           }}
         >
+          <Users size={15} />
           {t('Nhóm (Team)')}
         </button>
         <button
@@ -582,9 +590,13 @@ const ConsultantsInner = () => {
             fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
             color: activeTab === 'branches' ? 'var(--color-primary)' : 'var(--color-text-muted)',
             borderBottom: activeTab === 'branches' ? '2px solid var(--color-primary)' : 'none',
-            transition: 'all 0.18s'
+            transition: 'all 0.18s',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
           }}
         >
+          <Building2 size={15} />
           {t('Chi nhánh')}
         </button>
       </div>
@@ -892,7 +904,7 @@ const ConsultantsInner = () => {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', width: '100%' }}>
           {(() => {
             const branchMap: Record<string, any[]> = {};
             teams.forEach(t => {
@@ -903,27 +915,50 @@ const ConsultantsInner = () => {
             const branchList = Object.entries(branchMap);
             if (branchList.length === 0) {
               return (
-                <div className="card" style={{ gridColumn: 'span 3', padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-                  {t('Chưa có chi nhánh nào được cấu hình qua nhóm.')}
+                <div className="card" style={{ 
+                  gridColumn: '1 / -1', 
+                  padding: '5rem 2rem', 
+                  textAlign: 'center', 
+                  color: 'var(--color-text-muted)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'var(--color-surface)',
+                  borderRadius: '16px',
+                  boxShadow: 'var(--shadow-sm)',
+                  border: '1px solid var(--color-border-light)'
+                }}>
+                  <Building2 size={48} color="var(--color-text-muted)" style={{ marginBottom: '1.5rem', opacity: 0.4 }} />
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>
+                    {t('Chưa có chi nhánh nào')}
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '320px', margin: '0 auto' }}>
+                    {t('Hãy liên kết các Nhóm (Team) vào các chi nhánh văn phòng tương ứng để hiển thị cấu trúc sơ đồ tổ chức tại đây.')}
+                  </p>
                 </div>
               );
             }
             return branchList.map(([bName, bTeams], idx) => {
               const totalMembers = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
               return (
-                <div key={idx} className="card hover-lift" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{bName}</h3>
-                    <span className="badge success">{bTeams.length} {t('nhóm')}</span>
+                <div key={idx} className="card hover-lift" style={{ padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Building2 size={18} color="var(--color-primary)" />
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{bName}</h3>
+                    </div>
+                    <span className="badge success" style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700 }}>{bTeams.length} {t('nhóm')}</span>
                   </div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
-                    {t('Tổng nhân sự:')} <strong style={{ color: 'var(--color-text)' }}>{totalMembers}</strong>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-light)', padding: '8px 12px', borderRadius: '8px' }}>
+                    <span>{t('Tổng nhân sự:')}</span>
+                    <strong style={{ color: 'var(--color-text)', fontSize: '0.95rem' }}>{totalMembers}</strong>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                     {bTeams.map(team => (
-                      <div key={team.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-bg)', borderRadius: 6, fontSize: '0.75rem' }}>
-                        <span style={{ fontWeight: 600 }}>{team.name}</span>
-                        <span style={{ color: 'var(--color-text-muted)' }}>{team.member_count} {t('sales')}</span>
+                      <div key={team.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--color-bg)', borderRadius: 10, fontSize: '0.8rem', border: '1px solid var(--color-border-light)' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{team.name}</span>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>{team.member_count} {t('sales')}</span>
                       </div>
                     ))}
                   </div>
