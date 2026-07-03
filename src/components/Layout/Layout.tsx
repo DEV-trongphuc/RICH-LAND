@@ -11,6 +11,8 @@ import { Avatar } from '../ui/Avatar';
 import { AIChatbot } from '../ui/AIChatbot';
 import { useAuth } from '../../contexts/AuthContext';
 import { fetchAPI } from '../../utils/api';
+import { useUIStore } from '../../store/uiStore';
+import { POSModal } from '../ui/POSModal';
 import { 
   Ticket as TicketIcon, 
   Activity, 
@@ -37,6 +39,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { t, language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  
+  const { showPOS, setShowPOS } = useUIStore();
   
   // Notification states
   const { user } = useAuth();
@@ -395,6 +399,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </div>
       <QuickAddLeadModal />
       <ProfileModal />
+      {showPOS && (
+        <POSModal 
+          onClose={() => setShowPOS(false)} 
+          defaultContact={typeof showPOS === 'object' ? showPOS : null}
+        />
+      )}
 
       {/* Ticket Notification Modal */}
       <CustomModal
