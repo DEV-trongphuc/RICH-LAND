@@ -5,6 +5,23 @@ class UploadController {
 
     public function handle(array $auth): void {
         $tid = $auth['tenant_id'];
+        $method = $_SERVER['REQUEST_METHOD'];
+
+        if ($method === 'DELETE' || (isset($_GET['_method']) && $_GET['_method'] === 'DELETE')) {
+            $b = getBody();
+            $fileUrl = $b['file_url'] ?? $_GET['file_url'] ?? null;
+            if ($fileUrl && strpos($fileUrl, "/storage/uploads/tenant_{$tid}/") !== false) {
+                $storageDir = __DIR__ . "/../storage/uploads/tenant_{$tid}/";
+                $filename = basename($fileUrl);
+                $filePath = $storageDir . $filename;
+                if (file_exists($filePath) && is_file($filePath)) {
+                    unlink($filePath);
+                    respond(200, null, 'Đã xóa tệp tin thành công khỏi hệ thống');
+                }
+            }
+            respond(200, null, 'Không tìm thấy tệp hoặc đã được xóa trước đó');
+        }
+
         $fileKey = isset($_FILES['file']) ? 'file' : (isset($_FILES['avatar']) ? 'avatar' : null);
         if (!$fileKey) {
             respond(400, null, 'Không có file nào được tải lên');

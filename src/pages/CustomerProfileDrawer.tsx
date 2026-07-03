@@ -81,6 +81,27 @@ const overridePurpleColor = (c: string | null | undefined): string => {
   return c;
 };
 
+const resolveAttachmentUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  
+  let cleanPath = url.replace(/^\/+/, '');
+  const apiBase = import.meta.env.VITE_API_URL || '/backend';
+  let baseUrl = apiBase;
+  if (baseUrl.includes('api.php')) {
+    baseUrl = baseUrl.split('api.php')[0];
+  }
+  baseUrl = baseUrl.replace(/\/+$/, '');
+  
+  if (baseUrl.endsWith('/backend') || baseUrl === '/backend') {
+    if (cleanPath.startsWith('backend/')) {
+      cleanPath = cleanPath.substring('backend/'.length);
+    }
+  }
+  
+  return `${baseUrl}/${cleanPath}`;
+};
+
 const TABS = [
   { id: 'info', label: 'Thông tin chung', icon: <User size={16} /> },
   { id: 'tags', label: 'Tags', icon: <TagIcon size={16} /> },
@@ -156,6 +177,9 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
       }
       const fd = new FormData();
       fd.append('file', fileToUpload);
+      if (attachment) {
+        fd.append('previous_url', attachment);
+      }
       const res = await api.post('/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -225,8 +249,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
                 {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>}
                 {c.attachments && c.attachments.map((att: string, i: number) => {
                   const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(att);
-                  const apiURL = api.defaults.baseURL || '';
-                  const fullUrl = att.startsWith('http') ? att : (att.startsWith('/') ? `${apiURL}${att}` : `${apiURL}/${att}`);
+                  const fullUrl = resolveAttachmentUrl(att);
                   return (
                     <div key={i} style={{ marginTop: '0.5rem' }}>
                       {isImg ? (
@@ -269,8 +292,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
               
               {attachment && (() => {
                 const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(attachment);
-                const apiURL = api.defaults.baseURL || '';
-                const fullUrl = attachment.startsWith('http') ? attachment : (attachment.startsWith('/') ? `${apiURL}${attachment}` : `${apiURL}/${attachment}`);
+                const fullUrl = resolveAttachmentUrl(attachment);
                 return (
                   <div style={{ position: 'relative', display: 'inline-block', width: 'fit-content' }}>
                     {isImg ? (
@@ -284,7 +306,15 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
                     <button 
                       className="btn-icon sm" 
                       style={{ position: 'absolute', top: -6, right: -6, background: 'var(--color-danger)', color: 'white', padding: 2, height: 18, width: 18, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      onClick={() => setAttachment(null)}
+                      onClick={async () => {
+                        const fileToDelete = attachment;
+                        setAttachment(null);
+                        if (fileToDelete) {
+                          try {
+                            await api.delete('/upload', { data: { file_url: fileToDelete } });
+                          } catch (e) {}
+                        }
+                      }}
                     >
                       <X size={12} />
                     </button>
@@ -1138,6 +1168,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
       const fd = new FormData();
       fd.append('file', fileToUpload);
+      if (noteAttachment) {
+        fd.append('previous_url', noteAttachment);
+      }
       const res = await api.post('/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -2275,7 +2308,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     <Camera size={24} style={{ color: '#10b981' }} />
                                   )}
                                   <div>
-                                    <a href={`${api.defaults.baseURL || ''}/${coopSlip.attachment_url}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
+                                    <a href={resolveAttachmentUrl(coopSlip.attachment_url)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
                                       Xem tài liệu hợp tác
                                     </a>
                                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
@@ -2896,7 +2929,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div style={{ marginTop: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }} onClick={e => e.stopPropagation()}>
                                     <Paperclip size={13} style={{ color: 'var(--color-primary)' }} />
                                     <a 
-                                      href={t.link.startsWith('http') ? t.link : `/backend/${t.link}`} 
+                                      href={resolveAttachmentUrl(t.link)} 
                                       target="_blank" 
                                       rel="noopener noreferrer" 
                                       style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 500, textDecoration: 'underline' }}
@@ -3196,7 +3229,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 )}
                                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{noteAttachment.split('/').pop()}</span>
                               </div>
-                              <button className="btn ghost text-danger sm" onClick={() => setNoteAttachment(null)} style={{ padding: '6px' }}>
+                              <button 
+                                className="btn ghost text-danger sm" 
+                                onClick={async () => {
+                                  const fileToDelete = noteAttachment;
+                                  setNoteAttachment(null);
+                                  if (fileToDelete) {
+                                    try {
+                                      await api.delete('/upload', { data: { file_url: fileToDelete } });
+                                    } catch (e) {}
+                                  }
+                                }} 
+                                style={{ padding: '6px' }}
+                              >
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -3247,7 +3292,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         <FileText size={14} style={{ color: 'var(--color-primary)' }} />
                                       )}
                                       <a
-                                        href={n.attachment_url.startsWith('http') ? n.attachment_url : `${api.defaults.baseURL || ''}/${n.attachment_url}`}
+                                        href={resolveAttachmentUrl(n.attachment_url)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
