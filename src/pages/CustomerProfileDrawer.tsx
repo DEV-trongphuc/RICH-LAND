@@ -86,18 +86,22 @@ const resolveAttachmentUrl = (url: string | null | undefined): string => {
   if (url.startsWith('http')) return url;
   
   let cleanPath = url.replace(/^\/+/, '');
+  
+  // Rewrite legacy storage paths to the new uploads paths
+  if (cleanPath.includes('storage/uploads/')) {
+    cleanPath = cleanPath.replace('storage/uploads/', 'uploads/');
+  }
+  
+  if (cleanPath.startsWith('backend/')) {
+    cleanPath = cleanPath.substring('backend/'.length);
+  }
+  
   const apiBase = import.meta.env.VITE_API_URL || '/backend';
   let baseUrl = apiBase;
   if (baseUrl.includes('api.php')) {
     baseUrl = baseUrl.split('api.php')[0];
   }
   baseUrl = baseUrl.replace(/\/+$/, '');
-  
-  if (baseUrl.endsWith('/backend') || baseUrl === '/backend') {
-    if (cleanPath.startsWith('backend/')) {
-      cleanPath = cleanPath.substring('backend/'.length);
-    }
-  }
   
   return `${baseUrl}/${cleanPath}`;
 };
@@ -121,7 +125,28 @@ const TABS = [
 
 const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> = ({ activityId, initialCount = 0 }) => {
   const { addToast } = useUIStore();
+  const { user: currentUser } = useAuth();
   const [comments, setComments] = useState<any[]>([]);
+
+  const canDeleteComment = (c: any) => {
+    if (!currentUser) return false;
+    const role = currentUser.role as any;
+    if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'assistant') {
+      return true;
+    }
+    return String(c.user_id) === String(currentUser.id);
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) return;
+    try {
+      await api.delete(`/activities/comments/${commentId}`);
+      setComments(comments.filter((c: any) => c.id !== commentId));
+      addToast('Đã xóa bình luận thành công', 'success');
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Không thể xóa bình luận', 'error');
+    }
+  };
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -246,7 +271,20 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
               <div style={{ flex: 1, background: 'var(--color-surface)', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                   <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
+                    {canDeleteComment(c) && (
+                      <button
+                        className="btn ghost sm"
+                        style={{ padding: '2px', height: '16px', width: '16px', color: 'var(--color-danger)', opacity: 0.5 }}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteComment(c.id); }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                        onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>}
                 {c.attachments && c.attachments.map((att: string, i: number) => {
@@ -1044,7 +1082,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : '#10b981',
       icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : <Mail size={16} />,
       note: a.body || a.note || '',
-      comment_count: a.comment_count
+      comment_count: a.comment_count,
+      expense_image_url: a.expense_image_url
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   }, [drawerActivities, mockStore.activities, contact?.id]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
@@ -2545,11 +2584,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                               </div>
-                              {ev.note && (() => {
-                                const linkMatch = ev.note.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m);
-                                const hasLink = !!linkMatch;
-                                const linkUrl = hasLink ? linkMatch[1].trim() : '';
-                                const displayNoteText = hasLink ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : ev.note;
+                              {(ev.note || ev.expense_image_url) && (() => {
+                                const linkMatch = ev.note ? ev.note.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m) : null;
+                                const hasLink = !!linkMatch || !!ev.expense_image_url;
+                                const linkUrl = linkMatch ? linkMatch[1].trim() : (ev.expense_image_url || '');
+                                const displayNoteText = linkMatch ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : (ev.note || '');
 
                                 return (
                                   <div style={{ padding: '0.875rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', marginTop: '0.5rem', border: '1px solid var(--color-border-light)' }}>

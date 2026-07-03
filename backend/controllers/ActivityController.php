@@ -57,7 +57,8 @@ class ActivityController {
                    CONCAT(ct.first_name,' ',ct.last_name) as contact_name,
                    d.title as deal_name,
                    c.name as company_name,
-                   (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count
+                   (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count,
+                   (SELECT e.image_url FROM expenses e WHERE e.tenant_id = a.tenant_id AND e.title = REPLACE(a.subject, 'Ghi nhận Chi phí: ', '') AND e.image_url IS NOT NULL AND e.image_url != '' ORDER BY e.id DESC LIMIT 1) as expense_image_url
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
             LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
@@ -350,5 +351,45 @@ class ActivityController {
         if(!$stmt->rowCount()) respond(404,null,'Không tìm thấy hoặc không có quyền',false);
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'activity', $id);
         respond(200,null,'Đã xóa hoạt động');
+    }
+
+    public function deleteComment(array $auth, int $commentId): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa bình luận', false);
+
+        // Fetch comment to check ownership and tenant isolation
+        $stmt = $this->db->prepare("SELECT * FROM activity_comments WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$commentId, $auth['tenant_id']]);
+        $comment = $stmt->fetch();
+
+        if (!$comment) {
+            respond(404, null, 'Không tìm thấy bình luận', false);
+        }
+
+        // Access check: Admin/Manager can delete any comment. Sales can only delete their own.
+        if (in_array($auth['role'], ['sales', 'sale'], true) && (int)$comment['user_id'] !== (int)$auth['user_id']) {
+            respond(403, null, 'Bạn không có quyền xóa bình luận của người khác', false);
+        }
+
+        // Delete physical attachments from disk if they exist
+        if (!empty($comment['attachments'])) {
+            $files = json_decode($comment['attachments'], true);
+            if (is_array($files)) {
+                $uploadDirBase = defined('UPLOAD_DIR') ? UPLOAD_DIR : (__DIR__ . '/../uploads');
+                foreach ($files as $fileUrl) {
+                    $filename = basename($fileUrl);
+                    $filePath = $uploadDirBase . "/tenant_" . $auth['tenant_id'] . "/" . $filename;
+                    if (file_exists($filePath) && is_file($filePath)) {
+                        @unlink($filePath);
+                    }
+                }
+            }
+        }
+
+        // Delete DB record
+        $deleteStmt = $this->db->prepare("DELETE FROM activity_comments WHERE id = ? AND tenant_id = ?");
+        $deleteStmt->execute([$commentId, $auth['tenant_id']]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE_COMMENT', 'activity_comment', $commentId);
+        respond(200, null, 'Đã xóa bình luận thành công');
     }
 }

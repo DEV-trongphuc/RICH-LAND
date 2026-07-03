@@ -513,6 +513,7 @@ switch ($resource) {
         $ctrl = new ActivityController($db);
         if     ($resourceId && $subResource === 'comments' && $method === 'GET')  $ctrl->getComments($auth, (int)$resourceId);
         elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif ($resourceId === 'comments' && $subResource && $method === 'DELETE') $ctrl->deleteComment($auth, (int)$subResource);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
