@@ -189,6 +189,43 @@ class DepositController {
             ");
             $stmt->execute([$auth['user_id'], $milestoneId, $id]);
 
+            // Fetch deposit details to link the invoice
+            $stmtDep = $this->db->prepare("
+                SELECT d.*, c.company_id, c.first_name, c.last_name, p.name as project_name 
+                FROM deposits d
+                JOIN contacts c ON d.contact_id = c.id
+                LEFT JOIN projects p ON d.project_id = p.id
+                WHERE d.id = ?
+            ");
+            $stmtDep->execute([$id]);
+            $depositData = $stmtDep->fetch();
+
+            $stmtMile = $this->db->prepare("SELECT milestone_name, expected_amount FROM deposit_milestones WHERE id = ?");
+            $stmtMile->execute([$milestoneId]);
+            $mileData = $stmtMile->fetch();
+
+            if ($depositData && $mileData) {
+                $invoiceNum = 'INV-' . strtoupper(uniqid());
+                $title = "Hóa đơn đợt thanh toán: " . $mileData['milestone_name'] . " - Dự án " . ($depositData['project_name'] ?? 'BĐS');
+                $total = (float)$mileData['expected_amount'];
+                
+                $stmtInv = $this->db->prepare("
+                    INSERT INTO invoices (tenant_id, contact_id, company_id, created_by, invoice_number, title, status, issue_date, due_date, paid_at, subtotal, total, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, 'paid', CURDATE(), CURDATE(), NOW(), ?, ?, ?)
+                ");
+                $stmtInv->execute([
+                    $auth['tenant_id'],
+                    $depositData['contact_id'],
+                    $depositData['company_id'],
+                    $auth['user_id'],
+                    $invoiceNum,
+                    $title,
+                    $total,
+                    $total,
+                    "Tự động tạo từ đợt UNC đặt cọc được duyệt. Mã phiếu cọc: #" . $id
+                ]);
+            }
+
             // Check if all milestones are approved. If so, approve the deposit slip as well
             $stmtCheck = $this->db->prepare("SELECT COUNT(*) FROM deposit_milestones WHERE deposit_id = ? AND status != 'approved'");
             $stmtCheck->execute([$id]);
