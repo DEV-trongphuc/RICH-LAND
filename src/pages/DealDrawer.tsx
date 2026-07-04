@@ -26,6 +26,7 @@ const TABS = [
   { id: 'activities', label: 'Lịch sử tương tác', icon: <History size={16} /> },
   { id: 'products', label: 'Sản phẩm báo giá', icon: <Box size={16} /> },
   { id: 'quotes', label: 'Báo giá & Hợp đồng', icon: <FileText size={16} /> },
+  { id: 'audit', label: 'Vết kiểm toán', icon: <Link2 size={16} /> },
 ];
 
 export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, onSave, stages }) => {
@@ -230,12 +231,28 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     return null;
   };
 
+  const fetchDealDetails = async (dealId: number) => {
+    try {
+      const res = await api.get(`/deals/${dealId}`);
+      if (res.data.success && res.data.data) {
+        const d = res.data.data;
+        setFormData({
+          ...d,
+          tags: Array.isArray(d.tags) ? d.tags : (typeof d.tags === 'string' ? JSON.parse(d.tags) : [])
+        });
+      }
+    } catch (e) {
+      console.error("Error fetching deal details:", e);
+    }
+  };
+
   useEffect(() => {
     if (deal) {
       setFormData({
         ...deal,
         tags: Array.isArray(deal.tags) ? deal.tags : (typeof deal.tags === 'string' ? JSON.parse(deal.tags) : [])
       });
+      fetchDealDetails(deal.id);
       fetchNotes();
     }
     fetchLists();
@@ -593,6 +610,182 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                       description="Sau khi chốt xong sản phẩm, bạn có thể tạo báo giá PDF chuyên nghiệp và gửi thẳng cho khách hàng."
                       action={<button className="btn primary" onClick={() => setShowPOS(true)}>Tạo báo giá qua POS</button>}
                     />
+                  </div>
+                )}
+
+                {activeTab === 'audit' && (
+                  <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '0.5rem' }}>
+                    {/* Header summary of audit trail */}
+                    <div style={{ display: 'flex', gap: '1rem', background: 'var(--color-bg-light)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(163,20,34,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                        <Link2 size={20} />
+                      </div>
+                      <div>
+                        <h4 style={{ margin: 0, fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>Sơ đồ Vết kiểm toán</h4>
+                        <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          Lịch sử dịch chuyển trạng thái, thay đổi căn hộ hoặc hoàn/bể cọc được đồng bộ thời gian thực.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Horizontal Graphic for Unit Switching (if any parent or child exists) */}
+                    {(() => {
+                      const linkedId = getLinkedDealId();
+                      if (!linkedId) return null;
+                      
+                      // Check if current deal description contains "Đổi từ căn cũ"
+                      const desc = formData?.description || '';
+                      const isChild = desc.toLowerCase().includes('đổi từ căn cũ') || desc.toLowerCase().includes('đổi căn');
+                      
+                      return (
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          background: 'var(--color-surface)',
+                          border: '1px solid var(--color-border-light)',
+                          padding: '1.25rem',
+                          borderRadius: '12px',
+                        }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                            Luồng dịch chuyển Giao dịch (Unit Switching Flow)
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginTop: '8px' }}>
+                            {isChild ? (
+                              <>
+                                <div 
+                                  style={{ border: '1px dashed var(--color-border)', borderRadius: '8px', padding: '8px 12px', textAlign: 'center', opacity: 0.7, cursor: 'pointer', background: 'var(--color-bg-light)' }}
+                                  onClick={async () => {
+                                    try {
+                                      const res = await api.get(`/deals/${linkedId}`);
+                                      if (res.data.success && res.data.data) {
+                                        setFormData(res.data.data);
+                                        const rNotes = await api.get(`/notes?entity_type=deal&entity_id=${linkedId}`);
+                                        setNotes(rNotes.data.data || []);
+                                        addToast(`Đã chuyển sang Deal cũ #${linkedId}`, 'success');
+                                      }
+                                    } catch (e) {}
+                                  }}
+                                >
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Deal Cũ (Đã Đóng)</div>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>ID: #{linkedId}</div>
+                                </div>
+                                <div style={{ fontSize: '1.5rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>➔</div>
+                                <div style={{ border: '1.5px solid var(--color-primary)', borderRadius: '8px', padding: '8px 12px', textAlign: 'center', background: 'var(--color-primary-light)' }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600 }}>Deal Hiện tại</div>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 800 }}>ID: #{formData.id} ({formData.title})</div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div style={{ border: '1.5px solid var(--color-primary)', borderRadius: '8px', padding: '8px 12px', textAlign: 'center', background: 'var(--color-primary-light)' }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600 }}>Deal Cũ (Đã Đóng)</div>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 800 }}>ID: #{formData.id} ({formData.title})</div>
+                                </div>
+                                <div style={{ fontSize: '1.5rem', color: 'var(--color-primary)', fontWeight: 'bold' }}>➔</div>
+                                <div 
+                                  style={{ border: '1px dashed var(--color-border)', borderRadius: '8px', padding: '8px 12px', textAlign: 'center', opacity: 0.7, cursor: 'pointer', background: 'var(--color-bg-light)' }}
+                                  onClick={async () => {
+                                    try {
+                                      const res = await api.get(`/deals/${linkedId}`);
+                                      if (res.data.success && res.data.data) {
+                                        setFormData(res.data.data);
+                                        const rNotes = await api.get(`/notes?entity_type=deal&entity_id=${linkedId}`);
+                                        setNotes(rNotes.data.data || []);
+                                        addToast(`Đã chuyển sang Deal mới #${linkedId}`, 'success');
+                                      }
+                                    } catch (e) {}
+                                  }}
+                                >
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Deal Mới (Đang chạy)</div>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>ID: #{linkedId}</div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Timeline representation of audit trails */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                        Vết kiểm toán chi tiết (Audit Timeline)
+                      </div>
+
+                      {(() => {
+                        // Merge stage history and internal notes
+                        const combinedEvents: any[] = [];
+                        
+                        // Add stage history
+                        if (formData?.stage_history) {
+                          formData.stage_history.forEach((h: any) => {
+                            combinedEvents.push({
+                              type: 'stage',
+                              date: h.moved_at,
+                              title: 'Dịch chuyển cột trạng thái',
+                              body: `Chuyển từ "${h.from_stage_name || 'Bắt đầu'}" sang "${h.to_stage_name}"`,
+                              user: h.moved_by_name || 'Hệ thống'
+                            });
+                          });
+                        }
+
+                        // Add internal notes (audit trails)
+                        if (formData?.internal_notes) {
+                          formData.internal_notes.forEach((n: any) => {
+                            combinedEvents.push({
+                              type: 'audit_note',
+                              date: n.created_at,
+                              title: 'Ghi chú nghiệp vụ hệ thống',
+                              body: n.body,
+                              user: n.user_name || 'Hệ thống'
+                            });
+                          });
+                        }
+
+                        if (combinedEvents.length === 0) {
+                          return (
+                            <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '2rem 0', fontSize: '0.8rem' }}>
+                              Chưa ghi nhận vết kiểm toán nào cho giao dịch này.
+                            </div>
+                          );
+                        }
+
+                        // Sort chronologically
+                        combinedEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+                        return (
+                          <div style={{ position: 'relative', borderLeft: '2px solid var(--color-border-light)', paddingLeft: '1rem', marginLeft: '0.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            {combinedEvents.map((ev, idx) => (
+                              <div key={idx} style={{ position: 'relative' }}>
+                                {/* Timeline dot */}
+                                <div style={{
+                                  position: 'absolute',
+                                  left: 'calc(-1rem - 7px)',
+                                  top: '4px',
+                                  width: '12px',
+                                  height: '12px',
+                                  borderRadius: '50%',
+                                  background: ev.type === 'stage' ? 'var(--color-primary)' : '#3b82f6',
+                                  border: '2px solid var(--color-surface)',
+                                  boxShadow: '0 0 0 2px rgba(0,0,0,0.05)'
+                                }} />
+                                
+                                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>
+                                  {new Date(ev.date).toLocaleString('vi-VN')} {ev.user ? `• ${ev.user}` : ''}
+                                </div>
+                                <div style={{ fontWeight: 800, fontSize: '0.825rem', color: 'var(--color-text)' }}>
+                                  {ev.title}
+                                </div>
+                                <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: '2px', background: 'var(--color-bg-light)', padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--color-border-light)' }}>
+                                  {ev.body}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 )}
               </div>

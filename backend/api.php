@@ -11219,9 +11219,44 @@ switch ($action) {
             }
         }
 
+        // Query uncontacted count for all consultants
+        $uncontactedMap = [];
+        $uncontactedRes = $conn->query("
+            SELECT assigned_to, COUNT(*) as cnt 
+            FROM leads 
+            WHERE status != 'reminder' AND is_accepted = 1 AND (contact_last_contact IS NULL OR contact_last_contact = '')
+            GROUP BY assigned_to
+        ");
+        if ($uncontactedRes) {
+            while ($r = $uncontactedRes->fetch_assoc()) {
+                $uncontactedMap[(int)$r['assigned_to']] = (int)$r['cnt'];
+            }
+        }
+
+        // Query recalled (timed out) count
+        $recalledMap = [];
+        $recalledRes = $conn->query("
+            SELECT assigned_to, COUNT(*) as cnt 
+            FROM distribution_logs 
+            WHERE status = 'recalled' AND $dateCondition 
+            GROUP BY assigned_to
+        ");
+        if ($recalledRes) {
+            while ($r = $recalledRes->fetch_assoc()) {
+                $recalledMap[(int)$r['assigned_to']] = (int)$r['cnt'];
+            }
+        }
+
         $topConsultantsList = [];
         foreach ($consultantStats as $cId => $cStats) {
             $data_count = $cStats['assigned'] + $cStats['compensation'] + $cStats['rule_6_month'] + $cStats['pending_work_hours'] + $cStats['reminder'] + $cStats['databank_claim'] + max(0, $cStats['error'] - $cStats['compensation']);
+            
+            $uCount = $uncontactedMap[$cId] ?? 0;
+            $rCount = $recalledMap[$cId] ?? 0;
+            $offered = $data_count + $rCount;
+            $acceptedPercent = $offered > 0 ? round(($data_count / $offered) * 100, 1) : 100.0;
+            $recalledPercent = $offered > 0 ? round(($rCount / $offered) * 100, 1) : 0.0;
+
             $topConsultantsList[] = [
                 'id' => $cStats['id'],
                 'name' => $cStats['name'],
@@ -11229,7 +11264,12 @@ switch ($action) {
                 'avatar' => $cStats['avatar'],
                 'status' => $cStats['status'],
                 'vacation_mode' => $cStats['vacation_mode'],
-                'data' => $data_count
+                'data' => $data_count,
+                'uncontacted_count' => $uCount,
+                'recalled_count' => $rCount,
+                'offered_count' => $offered,
+                'accepted_percent' => $acceptedPercent,
+                'recalled_percent' => $recalledPercent
             ];
         }
 
@@ -11253,7 +11293,12 @@ switch ($action) {
                 'vacation_mode' => $row['vacation_mode'],
                 'data' => (int) $row['data'],
                 'percent' => $percent,
-                'color' => $colors[$i % 4]
+                'color' => $colors[$i % 4],
+                'uncontacted_count' => $row['uncontacted_count'],
+                'recalled_count' => $row['recalled_count'],
+                'offered_count' => $row['offered_count'],
+                'accepted_percent' => $row['accepted_percent'],
+                'recalled_percent' => $row['recalled_percent']
             ];
             $i++;
         }

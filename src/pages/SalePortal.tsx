@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -320,7 +320,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsSearch, setWsSearch] = useState('');
   const [wsPriority, setWsPriority] = useState('');
   const [wsStatus, setWsStatus] = useState('planned'); // Default: hide completed
-  const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban'>('grid');
+  const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban' | 'focus'>('grid');
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
   const [wsDatePreset, setWsDatePreset] = useState('all');
@@ -571,6 +571,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   } : user;
 
   const effectiveRole = displayUser?.role;
+
+  // Find oldest active offered lead to accept
+  const activeIncomingOffer = useMemo(() => {
+    if (effectiveRole !== 'sale') return null;
+    const unacceptedLeads = (data.leads || []).filter(
+      (l: any) => !Number(l.is_accepted) && Number(l.lead_recall_minutes) > 0
+    );
+    if (unacceptedLeads.length === 0) return null;
+    
+    const activeOffers = unacceptedLeads.map((lead: any) => {
+      const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
+      const limitMs = leadRecallMins * 60 * 1000;
+      const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
+      const remainingMs = limitMs - elapsedMs;
+      return { lead, remainingMs };
+    }).filter(item => item.remainingMs > 0);
+
+    if (activeOffers.length === 0) return null;
+    activeOffers.sort((a, b) => a.remainingMs - b.remainingMs);
+    return activeOffers[0];
+  }, [data.leads, effectiveRole, now]);
 
   // Tickets states & loading logic
   const [tickets, setTickets] = useState<any[]>([]);
@@ -2310,6 +2331,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, [data.leads]);
 
   useEffect(() => {
+    window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: uncontactedCount }));
+  }, [uncontactedCount]);
+
+  useEffect(() => {
     const params = new URLSearchParams(loc.search);
     const statusParam = params.get('status');
     if (statusParam) {
@@ -3042,6 +3067,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <Layers size={13} />
                   <span>{t('Dạng Kanban')}</span>
                 </button>
+                <button
+                  onClick={() => setWsViewMode('focus')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: wsViewMode === 'focus' ? 'var(--color-surface)' : 'transparent',
+                    color: wsViewMode === 'focus' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: wsViewMode === 'focus' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Monitor size={13} />
+                  <span>{t('Chế độ Focus')}</span>
+                </button>
               </div>
             </div>
           </div>
@@ -3432,7 +3478,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               );
             })}
           </div>
-        ) : (
+        ) : wsViewMode === 'kanban' ? (
           /* Kanban View */
           <>
             {(() => {
@@ -3691,6 +3737,158 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               );
             })()}
           </>
+        ) : (
+          /* Focus Mode (Split-Screen) */
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '360px 1fr',
+            gap: '1.25rem',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            minHeight: '600px'
+          }}>
+            {/* Left Column: Tasks List */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              borderRight: isMobile ? 'none' : '1px solid var(--color-border-light)',
+              maxHeight: '750px',
+              overflowY: 'auto'
+            }}>
+              <div style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)', fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                {t('DANH SÁCH CÔNG VIỆC')} ({filteredWsTasks.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', padding: '0.5rem', gap: '0.5rem' }}>
+                {filteredWsTasks.map(task => {
+                  const isSelected = selectedTaskForDetails?.id === task.id;
+                  return (
+                    <div
+                      key={task.id}
+                      onClick={() => {
+                        const link = task.body && !task.body.startsWith('{"erp_task":') 
+                          ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
+                          : '';
+                        
+                        let description = '';
+                        if (task.body) {
+                          if (task.body.startsWith('{"erp_task":')) {
+                            try {
+                              const parsed = JSON.parse(task.body);
+                              description = parsed.erp_task?.description || '';
+                            } catch (e) {
+                              description = task.body;
+                            }
+                          } else {
+                            description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+                          }
+                        }
+                        const parsed = parseDescriptionAndChecklist(description);
+                        const parsedTask = {
+                          id: task.id,
+                          title: task.subject,
+                          done: task.status === 'done',
+                          priority: task.priority,
+                          due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+                          link,
+                          description: parsed.pureDescription,
+                          user_id: task.user_id,
+                          user_name: task.user_name || 'Hệ thống',
+                          tags: task.tags || '',
+                          participant_ids: task.participant_ids || '',
+                          progress: task.progress || 0,
+                          require_approval: task.require_approval || 0,
+                          approver_id: task.approver_id,
+                          approval_status: task.approval_status,
+                          contact_id: task.contact_id,
+                          contact_name: task.contact_name,
+                          contact_avatar: task.contact_avatar,
+                          related_type: task.related_type,
+                          related_id: task.related_id
+                        };
+                        setChecklist(parsed.checklist);
+                        setSelectedTaskForDetails(parsedTask);
+                      }}
+                      style={{
+                        padding: '0.75rem 1rem',
+                        borderRadius: '10px',
+                        border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                        background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}
+                      className="hover-lift"
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: '220px'
+                        }}>
+                          {task.subject}
+                        </span>
+                        {task.priority === 'high' && (
+                          <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '1px 4px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)' }}>
+                            {t('Gấp')}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                        <span>
+                          {task.due_date ? getDueDateLabel(task.due_date, task.status === 'done', t) : ''}
+                        </span>
+                        <span style={{ fontWeight: 600 }}>{task.progress || 0}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Column: Task Detail Embed */}
+            <div style={{ display: 'flex', flexDirection: 'column', height: '750px', background: 'var(--color-bg)', flex: 1 }}>
+              {selectedTaskForDetails ? (
+                <div style={{ height: '100%', overflowY: 'auto' }}>
+                  <WorkspaceTaskDrawer
+                    isOpen={true}
+                    onClose={() => setSelectedTaskForDetails(null)}
+                    task={selectedTaskForDetails}
+                    onUpdate={() => {
+                      fetchPortalTasks();
+                      fetchWorkspaceTasks();
+                    }}
+                    users={users}
+                    embedMode={true}
+                    onOpenContact={(contactId) => {
+                      handleOpenContactProfile(contactId);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)', gap: '1rem', padding: '2rem', flex: 1 }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                    <CheckSquare size={32} />
+                  </div>
+                  <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontWeight: 800, color: 'var(--color-text)', margin: 0, fontSize: '1rem' }}>
+                      {t('CHẾ ĐỘ TẬP TRUNG (FOCUS MODE)')}
+                    </p>
+                    <p style={{ fontSize: '0.8125rem', margin: '4px 0 0', maxWidth: '300px' }}>
+                      {t('Chọn một công việc ở cột bên trái để bắt đầu gọi điện và ghi chú thông tin khách hàng trực tiếp.')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Task Details Modal moved to root level */}
@@ -8635,7 +8833,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       {/* Task Details Drawer */}
       <WorkspaceTaskDrawer
-        isOpen={!!selectedTaskForDetails}
+        isOpen={!!selectedTaskForDetails && wsViewMode !== 'focus'}
         onClose={() => setSelectedTaskForDetails(null)}
         task={selectedTaskForDetails}
         onUpdate={() => {
@@ -8648,6 +8846,89 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           handleOpenContactProfile(contactId);
         }}
       />
+
+      {/* 2-Minute Lead Offer Countdown Modal */}
+      {activeIncomingOffer && (
+        <CustomModal
+          isOpen={true}
+          onClose={() => {}}
+          title={t('🚨 CÓ LEAD MỚI ĐƯỢC PHÂN BỔ!')}
+          width="400px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.25rem', padding: '1rem 0' }}>
+            <div style={{ position: 'relative', width: '100px', height: '100px' }}>
+              <svg width="100" height="100" style={{ transform: 'rotate(-90deg)' }}>
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="44"
+                  stroke="var(--color-border-light)"
+                  strokeWidth="8"
+                  fill="transparent"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="44"
+                  stroke="var(--color-danger)"
+                  strokeWidth="8"
+                  fill="transparent"
+                  strokeDasharray={2 * Math.PI * 44}
+                  strokeDashoffset={
+                    (2 * Math.PI * 44) * 
+                    (1 - Math.max(0, activeIncomingOffer.remainingMs) / (Number(activeIncomingOffer.lead.lead_recall_minutes) * 60 * 1000))
+                  }
+                  style={{ transition: 'stroke-dashoffset 1s linear' }}
+                />
+              </svg>
+              <div style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.25rem',
+                fontWeight: 800,
+                color: 'var(--color-danger)',
+              }}>
+                {(() => {
+                  const totalSecs = Math.max(0, Math.floor(activeIncomingOffer.remainingMs / 1000));
+                  const mins = Math.floor(totalSecs / 60);
+                  const secs = totalSecs % 60;
+                  return `${mins}:${String(secs).padStart(2, '0')}`;
+                })()}
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                {activeIncomingOffer.lead.full_name || t('Khách hàng mới')}
+              </p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                Nguồn: <strong style={{ color: 'var(--color-primary)' }}>{activeIncomingOffer.lead.source || 'Facebook CAPI'}</strong>
+              </p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-danger)', marginTop: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <AlertTriangle size={12} /> {t('Vui lòng tiếp nhận ngay. Lead sẽ bị thu hồi khi hết giờ!')}
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleAcceptLead(activeIncomingOffer.lead.lead_id)}
+              className="btn danger pulsing"
+              style={{
+                width: '100%',
+                height: '44px',
+                borderRadius: '22px',
+                fontSize: '0.9rem',
+                fontWeight: 800,
+                boxShadow: '0 4px 15px rgba(189,29,45,0.3)',
+              }}
+            >
+              {t('TIẾP NHẬN LEAD NGAY')}
+            </button>
+          </div>
+        </CustomModal>
+      )}
 
       {/* Task Participants List Modal */}
       {participantsModalOpen && (

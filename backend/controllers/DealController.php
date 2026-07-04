@@ -220,6 +220,31 @@ class DealController {
         if (!$row) respond(404, null, 'Không tìm thấy deal', false);
         $row['tags'] = json_decode($row['tags']??'[]');
         $row['custom_fields'] = getCustomFields($this->db, $auth['tenant_id'], $id, 'deal');
+        
+        // Fetch stage history
+        $stmtHistory = $this->db->prepare("
+            SELECT h.*, u.full_name as moved_by_name, fs.name as from_stage_name, ts.name as to_stage_name
+            FROM deal_stage_history h
+            LEFT JOIN users u ON h.moved_by = u.id
+            LEFT JOIN pipeline_stages fs ON h.from_stage = fs.id
+            LEFT JOIN pipeline_stages ts ON h.to_stage = ts.id
+            WHERE h.deal_id = ?
+            ORDER BY h.moved_at ASC
+        ");
+        $stmtHistory->execute([$id]);
+        $row['stage_history'] = $stmtHistory->fetchAll(PDO::FETCH_ASSOC);
+
+        // Fetch internal notes (audit trails)
+        $stmtNotes = $this->db->prepare("
+            SELECT n.*, u.full_name as user_name
+            FROM notes n
+            LEFT JOIN users u ON n.user_id = u.id
+            WHERE n.entity_type = 'deal' AND n.entity_id = ? AND n.deleted_at IS NULL AND n.type = 'internal'
+            ORDER BY n.created_at DESC
+        ");
+        $stmtNotes->execute([$id]);
+        $row['internal_notes'] = $stmtNotes->fetchAll(PDO::FETCH_ASSOC);
+
         respond(200, $row);
     }
 

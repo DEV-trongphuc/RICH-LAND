@@ -21,6 +21,7 @@ interface WorkspaceTaskDrawerProps {
   onUpdate: () => void;
   users: any[];
   onOpenContact?: (contactId: number) => void;
+  embedMode?: boolean;
 }
 
 export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({ 
@@ -29,7 +30,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   task, 
   onUpdate, 
   users,
-  onOpenContact
+  onOpenContact,
+  embedMode = false
 }) => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
@@ -96,7 +98,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   }, [isOpen]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !embedMode) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -104,7 +106,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, embedMode]);
 
   useEffect(() => {
     if (task) {
@@ -488,40 +490,33 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
            (u.role || '').toLowerCase().includes(participantsSearch.toLowerCase());
   });
 
-  return createPortal(
-    <>
-      {/* Backdrop */}
-      <div 
-        className="drawer-backdrop" 
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.65)',
-          zIndex: 10500,
-          backdropFilter: 'blur(4px)',
-          animation: 'fade-in 0.2s ease-out'
-        }}
-      />
-
-      {/* Slideout Panel */}
-      <div 
-        className={styles.drawer}
-        style={{
-          width: 'calc(100vw - var(--sidebar-width, 260px))',
-          maxWidth: '100vw',
-          zIndex: 10600,
-          background: 'var(--color-bg)',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
-          animation: 'slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}
-      >
+  const content = (
+    <div 
+      className={styles.drawer}
+      style={embedMode ? {
+        width: '100%',
+        background: 'var(--color-bg)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        position: 'relative',
+        boxShadow: 'none',
+        borderLeft: '1px solid var(--color-border-light)'
+      } : {
+        width: 'calc(100vw - var(--sidebar-width, 260px))',
+        maxWidth: '100vw',
+        zIndex: 10600,
+        background: 'var(--color-bg)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
+        animation: 'slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}
+    >
         {/* Drawer Header */}
         <div style={{
           padding: '1.25rem 1.5rem',
@@ -1661,9 +1656,28 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             </div>
           </div>
-        )}
-
       </div>
+  );
+
+  if (embedMode) {
+    return content;
+  }
+
+  return createPortal(
+    <>
+      <div 
+        className="drawer-backdrop" 
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.65)',
+          zIndex: 10500,
+          backdropFilter: 'blur(4px)',
+          animation: 'fade-in 0.2s ease-out'
+        }}
+      />
+      {content}
     </>,
     document.body
   );

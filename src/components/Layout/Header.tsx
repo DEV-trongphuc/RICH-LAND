@@ -43,6 +43,22 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
 
+  const [uncontactedCount, setUncontactedCount] = useState(() => {
+    return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
+  });
+
+  useEffect(() => {
+    const handleUncontactedCountChanged = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setUncontactedCount(Number(detail) || 0);
+    };
+
+    window.addEventListener('uncontacted-count-changed', handleUncontactedCountChanged);
+    return () => {
+      window.removeEventListener('uncontacted-count-changed', handleUncontactedCountChanged);
+    };
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -455,6 +471,35 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         {/* Sales widgets for receiving data and check-in */}
         {user?.role === 'sale' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
+            {/* Limit Warning Widget */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: uncontactedCount >= 5 
+                ? 'rgba(239, 68, 68, 0.12)' 
+                : uncontactedCount >= 4 
+                  ? 'rgba(245, 158, 11, 0.12)' 
+                  : 'rgba(16, 185, 129, 0.08)',
+              border: uncontactedCount >= 5 
+                ? '1px solid rgba(239, 68, 68, 0.3)' 
+                : uncontactedCount >= 4 
+                  ? '1px solid rgba(245, 158, 11, 0.3)' 
+                  : '1px solid rgba(16, 185, 129, 0.2)',
+              color: uncontactedCount >= 5 
+                ? 'var(--color-danger)' 
+                : uncontactedCount >= 4 
+                  ? 'var(--color-warning)' 
+                  : 'var(--color-success)',
+              borderRadius: '8px',
+              padding: '4px 10px',
+              height: '36px',
+              fontSize: '0.72rem',
+              fontWeight: 700
+            }}>
+              <span>Hạn mức: {uncontactedCount}/5 lead Chưa XĐ</span>
+            </div>
+
             {/* Receiving Data Toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '4px 10px', height: '36px' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: !headerVacationMode ? '#10b981' : '#f59e0b' }}>

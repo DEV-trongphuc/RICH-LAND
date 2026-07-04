@@ -1492,6 +1492,104 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             </div>
           </div>
 
+          {/* Lead Flow Distribution & Timeout analysis */}
+          <div className="card" style={{ padding: '1.25rem', marginBottom: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: isMobile ? '0.95rem' : '1.125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-text)' }}>
+                <Zap size={18} color="var(--color-warning)" /> {t('Giám sát Dòng chảy Phân bổ & Tỷ lệ Tiếp nhận Lead')}
+              </h3>
+            </div>
+            
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1.5px solid var(--color-border-light)', textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                    <th style={{ padding: '8px 12px' }}>{t('Nhân viên')}</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Lead nhận')}</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Tỷ lệ nhận')}</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Quá hạn/Thu hồi')}</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Chưa XĐ (Van ôm)')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('Dòng chảy (Flow)')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.map((c: any, idx: number) => {
+                    const total = c.offered_count || c.data || 0;
+                    const accepted = c.data || 0;
+                    const recalled = c.recalled_count || 0;
+                    const uncontacted = c.uncontacted_count || 0;
+                    
+                    const acceptPct = c.accepted_percent || 0;
+                    const recallPct = c.recalled_percent || 0;
+                    
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', height: '48px' }}>
+                        <td style={{ padding: '8px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Avatar src={c.avatar} name={c.name} size={24} />
+                            <div>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{c.name}</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>{accepted}/{total}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            background: acceptPct >= 80 ? 'rgba(16,185,129,0.08)' : acceptPct >= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+                            color: acceptPct >= 80 ? 'var(--color-success)' : acceptPct >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'
+                          }}>
+                            {acceptPct}%
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            background: recalled > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(163,20,34,0.04)',
+                            color: recalled > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)'
+                          }}>
+                            {recalled} ({recallPct}%)
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            background: uncontacted >= 5 ? 'rgba(239,68,68,0.12)' : uncontacted >= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.08)',
+                            color: uncontacted >= 5 ? 'var(--color-danger)' : uncontacted >= 3 ? 'var(--color-warning)' : 'var(--color-success)'
+                          }}>
+                            {uncontacted}/5
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', minWidth: '150px' }}>
+                          <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'var(--color-bg)' }}>
+                            <div style={{ width: `${acceptPct}%`, background: 'var(--color-success)' }} title={`Đã nhận: ${acceptPct}%`} />
+                            <div style={{ width: `${recallPct}%`, background: 'var(--color-danger)' }} title={`Thu hồi: ${recallPct}%`} />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>
+                        {t('Chưa có dữ liệu phân bổ')}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* NEW ROW: Source Stats & Error Stats */}
           <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
             {/* Source Pie Chart */}
