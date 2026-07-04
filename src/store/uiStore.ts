@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import toast from 'react-hot-toast';
+import React from 'react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -22,7 +24,9 @@ export interface ConfirmModalState {
   isDanger?: boolean;
   impactInfo?: string; // e.g. "Ảnh hưởng đến 45 khách hàng"
   requireWordMatch?: string; // e.g. "DELETE"
-  onConfirm: () => void;
+  requirePromptInput?: boolean;
+  promptPlaceholder?: string;
+  onConfirm: (promptValue?: string) => void;
   onCancel?: () => void;
   onExtra?: () => void;
 }
@@ -70,14 +74,40 @@ export const useUIStore = create<UIStore>((set) => ({
   showCall: (phone: string) => set({ callModal: { isOpen: true, phone } }),
   closeCall: () => set((state) => ({ callModal: { ...state.callModal, isOpen: false } })),
   addToast: (message, type = 'info', action) => {
-    const id = Math.random().toString(36).substring(2, 9);
-    set((state) => ({ toasts: [...state.toasts, { id, type, message, action }] }));
-    
-    // Auto remove after 3s
-    setTimeout(() => {
-      set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) }));
-    }, 3000);
+    if (action) {
+      toast((t) => (
+        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+          React.createElement('span', null, message),
+          React.createElement('button', {
+            onClick: () => {
+              action.onClick();
+              toast.dismiss(t.id);
+            },
+            style: {
+              padding: '2px 8px',
+              backgroundColor: '#a31422',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontWeight: 'bold'
+            }
+          }, action.label)
+        )
+      ), { id: Math.random().toString(), duration: 4000 });
+    } else {
+      if (type === 'success') {
+        toast.success(message);
+      } else if (type === 'error') {
+        toast.error(message);
+      } else if (type === 'warning') {
+        toast(message, { icon: '⚠️', duration: 3000 });
+      } else {
+        toast(message, { duration: 3000 });
+      }
+    }
   },
-  removeToast: (id) => 
-    set((state) => ({ toasts: state.toasts.filter(t => t.id !== id) }))
+  removeToast: () => {}
 }));
+

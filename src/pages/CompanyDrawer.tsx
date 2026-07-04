@@ -693,21 +693,33 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             <div className="flex gap-1" style={{ flexShrink: 0 }}>
                               <button className="btn-icon sm" title="Tải xuống" onClick={() => addToast(`Đang tải xuống ${doc.name}...`, 'success')}><Download size={14} /></button>
                               <button className="btn-icon sm" title="Đổi tên" onClick={() => {
-                                const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
-                                if (newName && newName.trim()) {
-                                  setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name: newName.trim() } : d));
-                                  addToast('Đã đổi tên tài liệu.', 'success');
-                                }
+                                showConfirm({
+                                  title: 'Đổi tên tài liệu',
+                                  message: 'Nhập tên mới cho tài liệu:',
+                                  requirePromptInput: true,
+                                  promptPlaceholder: doc.name,
+                                  confirmText: 'Lưu',
+                                  cancelText: 'Hủy',
+                                  onConfirm: (newName) => {
+                                    if (newName && newName.trim()) {
+                                      setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name: newName.trim() } : d));
+                                      addToast('Đã đổi tên tài liệu.', 'success');
+                                    }
+                                  }
+                                });
                               }}><Pencil size={14} /></button>
                               <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
-                                showConfirm(
-                                  'Xóa tài liệu?',
-                                  `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
-                                  () => {
+                                showConfirm({
+                                  title: 'Xóa tài liệu?',
+                                  message: `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
+                                  confirmText: 'Xóa',
+                                  cancelText: 'Hủy',
+                                  isDanger: true,
+                                  onConfirm: () => {
                                     setDocs(prev => prev.filter(d => d.id !== doc.id));
                                     addToast('Đã xóa tài liệu doanh nghiệp.', 'success');
                                   }
-                                );
+                                });
                               }}><Trash2 size={14} /></button>
                             </div>
                           </div>

@@ -654,32 +654,37 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [isSavingLeadFields, setIsSavingLeadFields] = useState(false);
   const [isReleasingLead, setIsReleasingLead] = useState(false);
 
-  const handleReleaseToDatabank = async (leadId: number) => {
-    if (!window.confirm(t('Bạn có chắc chắn muốn nhả khách hàng này về Kho chung (Databank)? Việc này sẽ thu hồi quyền sở hữu của các tư vấn viên hiện tại.'))) {
-      return;
-    }
-    setIsReleasingLead(true);
-    try {
-      const res = await fetchAPI('release_to_databank', {
-        method: 'POST',
-        body: JSON.stringify({ lead_id: leadId })
-      });
-      if (res.success) {
-        toast.success(res.message || t('Đã nhả về Kho chung thành công!'));
-        setSelectedLead(null);
-        fetchLeads();
-        if (viewMode === 'databank') {
-          fetchPublicLeads();
+  const handleReleaseToDatabank = (leadId: number) => {
+    showConfirm({
+      title: t('Nhả khách về Kho chung'),
+      message: t('Bạn có chắc chắn muốn nhả khách hàng này về Kho chung (Databank)? Việc này sẽ thu hồi quyền sở hữu của các tư vấn viên hiện tại.'),
+      confirmText: t('Nhả về Kho chung'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        setIsReleasingLead(true);
+        try {
+          const res = await fetchAPI('release_to_databank', {
+            method: 'POST',
+            body: JSON.stringify({ lead_id: leadId })
+          });
+          if (res.success) {
+            toast.success(res.message || t('Đã nhả về Kho chung thành công!'));
+            setSelectedLead(null);
+            fetchLeads();
+            if (viewMode === 'databank') {
+              fetchPublicLeads();
+            }
+          } else {
+            toast.error(res.message || t('Lỗi khi nhả về Kho chung.'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi kết nối') + ': ' + e.message);
+        } finally {
+          setIsReleasingLead(false);
         }
-      } else {
-        toast.error(res.message || t('Lỗi khi nhả về Kho chung.'));
       }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(t('Lỗi kết nối hệ thống.'));
-    } finally {
-      setIsReleasingLead(false);
-    }
+    });
   };
 
   const [isDeletingClaim, setIsDeletingClaim] = useState(false);
@@ -1943,7 +1948,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                     {publicLeads.map((lead: any) => (
                       <tr 
                         key={lead.id} 
-                        style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s', cursor: isAdmin ? 'pointer' : 'default' }} 
+                        style={{ 
+                          borderBottom: '1px solid var(--color-border)', 
+                          transition: 'background-color 0.2s', 
+                          cursor: (isAdmin || (lead.takers && !lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id)) && lead.takers.length < 2)) ? 'pointer' : 'default'
+                        }} 
                         onMouseEnter={e => e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(255,255,255,0.01)' : '#fff9fa'} 
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                         onClick={() => {
@@ -1962,6 +1971,12 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                               type: '-',
                               takers: lead.takers || []
                             });
+                          } else {
+                            const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id));
+                            const isFull = lead.takers && lead.takers.length >= 2;
+                            if (!hasClaimed && !isFull) {
+                              handleClaimLead(lead.id, lead.full_name || lead.name);
+                            }
                           }
                         }}
                       >

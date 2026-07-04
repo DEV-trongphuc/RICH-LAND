@@ -6,6 +6,7 @@ import {
   Link2, Info, Clock, Zap, Target
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useUIStore } from '../../store/uiStore';
 import { fetchAPI } from '../../utils/api';
 import { CustomSelect } from './CustomSelect';
 
@@ -49,6 +50,7 @@ const INVENTORY_FIELDS = [
 ];
 
 export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, onClose }) => {
+  const { showConfirm } = useUIStore();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selected, setSelected] = useState<Connection | null>(null);
   const [loading, setLoading] = useState(false);
@@ -220,16 +222,24 @@ export const InventorySyncModal: React.FC<InventorySyncModalProps> = ({ isOpen, 
     }
   };
 
-  const handleDeleteConnection = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa kết nối đồng bộ này và toàn bộ ánh xạ trường liên quan?')) return;
-    try {
-      await fetchAPI(`delete_connection&id=${id}`);
-      toast.success('Đã xóa kết nối thành công');
-      setSelected(null);
-      fetchData();
-    } catch (e: any) {
-      toast.error('Lỗi: ' + e.message);
-    }
+  const handleDeleteConnection = (id: number) => {
+    showConfirm({
+      title: 'Xóa kết nối đồng bộ',
+      message: 'Bạn có chắc chắn muốn xóa kết nối đồng bộ này và toàn bộ ánh xạ trường liên quan?',
+      confirmText: 'Xóa kết nối',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await fetchAPI(`delete_connection&id=${id}`);
+          toast.success('Đã xóa kết nối thành công');
+          setSelected(null);
+          fetchData();
+        } catch (e: any) {
+          toast.error('Lỗi: ' + e.message);
+        }
+      }
+    });
   };
 
   const handleSaveMapping = async (e: React.FormEvent) => {

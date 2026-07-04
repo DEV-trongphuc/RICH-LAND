@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
+import { useUIStore } from '../store/uiStore';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban } from 'lucide-react';
@@ -55,6 +56,7 @@ const formatMoney = (val: string | number) => {
 
 export default function DepositsPage() {
   const { user } = useAuth();
+  const { showConfirm } = useUIStore();
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -211,24 +213,32 @@ export default function DepositsPage() {
     }
   };
 
-  const handleRejectMilestone = async (depositId: number, milestoneId: number) => {
-    const reason = window.prompt('Nhập lý do từ chối UNC:');
-    if (reason === null) return; // cancelled prompt
-
-    try {
-      const res = await fetchAPI(`deposits/${depositId}/milestones/${milestoneId}/reject`, {
-        method: 'POST',
-        body: JSON.stringify({ reason: reason || 'UNC không hợp lệ' })
-      });
-      if (res.success) {
-        setSuccess('Đã từ chối UNC thành công');
-        loadData();
-      } else {
-        setError(res.message || 'Lỗi xử lý');
+  const handleRejectMilestone = (depositId: number, milestoneId: number) => {
+    showConfirm({
+      title: 'Từ chối UNC',
+      message: 'Vui lòng nhập lý do từ chối bản xác nhận thanh toán này:',
+      confirmText: 'Từ chối UNC',
+      cancelText: 'Hủy',
+      isDanger: true,
+      requirePromptInput: true,
+      promptPlaceholder: 'Nhập lý do từ chối (bắt buộc)...',
+      onConfirm: async (reason) => {
+        try {
+          const res = await fetchAPI(`deposits/${depositId}/milestones/${milestoneId}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: reason || 'UNC không hợp lệ' })
+          });
+          if (res.success) {
+            setSuccess('Đã từ chối UNC thành công');
+            loadData();
+          } else {
+            setError(res.message || 'Lỗi xử lý');
+          }
+        } catch (e: any) {
+          setError(e.message || 'Lỗi kết nối');
+        }
       }
-    } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
-    }
+    });
   };
 
   const handleOpenCancel = (depositId: number) => {

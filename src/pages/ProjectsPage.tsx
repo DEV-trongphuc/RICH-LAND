@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useUIStore } from '../store/uiStore';
 import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
@@ -53,6 +54,7 @@ interface ProjectDoc {
 
 export default function ProjectsPage() {
   const { user } = useAuth();
+  const { showConfirm } = useUIStore();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,20 +200,27 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleDeleteCampaign = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa chiến dịch này?')) return;
-
-    try {
-      const res = await fetchAPI(`campaigns/${id}`, { method: 'DELETE' });
-      if (res.success) {
-        setSuccess('Xóa chiến dịch thành công!');
-        loadCampaigns();
-      } else {
-        setError(res.message || 'Lỗi khi xóa chiến dịch');
+  const handleDeleteCampaign = (id: number) => {
+    showConfirm({
+      title: 'Xóa chiến dịch',
+      message: 'Bạn có chắc chắn muốn xóa chiến dịch này không? Hành động này không thể hoàn tác.',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`campaigns/${id}`, { method: 'DELETE' });
+          if (res.success) {
+            setSuccess('Xóa chiến dịch thành công!');
+            loadCampaigns();
+          } else {
+            setError(res.message || 'Lỗi khi xóa chiến dịch');
+          }
+        } catch (err: any) {
+          setError(err.message || 'Lỗi kết nối');
+        }
       }
-    } catch (err: any) {
-      setError(err.message || 'Lỗi kết nối');
-    }
+    });
   };
 
   useEffect(() => {
@@ -254,20 +263,27 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleDeleteProject = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa dự án này?')) return;
-
-    try {
-      const res = await fetchAPI(`projects/${id}`, { method: 'DELETE' });
-      if (res.success) {
-        setSuccess('Xóa dự án thành công!');
-        loadProjects();
-      } else {
-        setError(res.message || 'Lỗi xóa dự án');
+  const handleDeleteProject = (id: number) => {
+    showConfirm({
+      title: 'Xóa dự án',
+      message: 'Bạn có chắc chắn muốn xóa dự án này không? Toàn bộ tài liệu, chiến dịch và roster liên quan sẽ bị ảnh hưởng.',
+      confirmText: 'Xóa dự án',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`projects/${id}`, { method: 'DELETE' });
+          if (res.success) {
+            setSuccess('Xóa dự án thành công!');
+            loadProjects();
+          } else {
+            setError(res.message || 'Lỗi xóa dự án');
+          }
+        } catch (e: any) {
+          setError(e.message || 'Lỗi kết nối');
+        }
       }
-    } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
-    }
+    });
   };
 
   // Roster logic
@@ -368,20 +384,28 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleDeleteDoc = async (docId: number) => {
-    if (!selectedProjectId || !window.confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) return;
-
-    try {
-      const res = await fetchAPI(`projects/${selectedProjectId}/documents/${docId}`, { method: 'DELETE' });
-      if (res.success) {
-        setSuccess('Xóa tài liệu thành công!');
-        loadDocuments(selectedProjectId);
-      } else {
-        setError(res.message || 'Lỗi xóa tài liệu');
+  const handleDeleteDoc = (docId: number) => {
+    if (!selectedProjectId) return;
+    showConfirm({
+      title: 'Xóa tài liệu',
+      message: 'Bạn có chắc chắn muốn xóa tài liệu này không?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`projects/${selectedProjectId}/documents/${docId}`, { method: 'DELETE' });
+          if (res.success) {
+            setSuccess('Xóa tài liệu thành công!');
+            loadDocuments(selectedProjectId);
+          } else {
+            setError(res.message || 'Lỗi xóa tài liệu');
+          }
+        } catch (e: any) {
+          setError(e.message || 'Lỗi kết nối');
+        }
       }
-    } catch (e: any) {
-      setError(e.message || 'Lỗi kết nối');
-    }
+    });
   };
 
   const handleDownloadDoc = (docId: number) => {

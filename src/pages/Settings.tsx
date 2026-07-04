@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -94,6 +95,7 @@ const DEFAULT_REPORT_REASONS = [
 
 const SettingsInner = () => {
   const { t } = useLanguage();
+  const { showConfirm } = useUIStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -570,21 +572,29 @@ const SettingsInner = () => {
     }
   };
 
-  const handleDeleteWorkflowTemplate = async (id: number) => {
-    if (!window.confirm(t('Bạn có chắc chắn muốn xóa mẫu công việc này?'))) return;
-    try {
-      const res = await fetchAPI(`workflow-task-templates/${id}`, {
-        method: 'DELETE'
-      });
-      if (res.success) {
-        toast.success(res.message || t('Đã xóa thành công'));
-        fetchWorkflowData();
-      } else {
-        toast.error(res.message || t('Lỗi khi xóa'));
+  const handleDeleteWorkflowTemplate = (id: number) => {
+    showConfirm({
+      title: t('Xóa mẫu công việc'),
+      message: t('Bạn có chắc chắn muốn xóa mẫu công việc này? Hành động này không thể hoàn tác.'),
+      confirmText: t('Xóa'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`workflow-task-templates/${id}`, {
+            method: 'DELETE'
+          });
+          if (res.success) {
+            toast.success(res.message || t('Đã xóa thành công'));
+            fetchWorkflowData();
+          } else {
+            toast.error(res.message || t('Lỗi khi xóa'));
+          }
+        } catch (err: any) {
+          toast.error(t('Lỗi kết nối: ') + err.message);
+        }
       }
-    } catch (err: any) {
-      toast.error(t('Lỗi kết nối: ') + err.message);
-    }
+    });
   };
 
   const handleSave = async () => {
@@ -3123,9 +3133,16 @@ function doPost(e) {
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        if (window.confirm(t('Bạn có chắc chắn muốn xóa luật "{name}"?').replace('{name}', rule.name))) {
-                                          setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
-                                        }
+                                        showConfirm({
+                                          title: t('Xóa luật tự động duyệt ticket'),
+                                          message: t('Bạn có chắc chắn muốn xóa luật "{name}"?').replace('{name}', rule.name),
+                                          confirmText: t('Xóa'),
+                                          cancelText: t('Hủy'),
+                                          isDanger: true,
+                                          onConfirm: () => {
+                                            setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
+                                          }
+                                        });
                                       }}
                                       style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}
                                       className="btn-icon-hover"

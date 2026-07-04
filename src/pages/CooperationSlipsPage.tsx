@@ -83,7 +83,7 @@ function numberToVietnameseWords(num: number): string {
 }
 
 export default function CooperationSlipsPage() {
-  const { addToast } = useUIStore();
+  const { addToast, showConfirm } = useUIStore();
   const { user } = useAuth();
   const [slips, setSlips] = useState<CooperationSlip[]>([]);
   const [salesAccounts, setSalesAccounts] = useState<SalesAccount[]>([]);
@@ -332,44 +332,60 @@ export default function CooperationSlipsPage() {
     }
   };
 
-  const handleRemoveCoopAttachment = async (slipId: number, fileUrl: string) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa tài liệu đính kèm này không?')) return;
-    try {
-      const res = await fetchAPI(`cooperation-slips/${slipId}/delete-attachment`, {
-        method: 'POST',
-        body: JSON.stringify({ file_url: fileUrl })
-      });
-      if (res.success) {
-        addToast('Đã xóa tài liệu hợp tác thành công!', 'success');
-        loadData();
-      } else {
-        addToast(res.message || 'Lỗi khi xóa tài liệu', 'error');
+  const handleRemoveCoopAttachment = (slipId: number, fileUrl: string) => {
+    showConfirm({
+      title: 'Xóa tài liệu đính kèm',
+      message: 'Bạn có chắc chắn muốn xóa tài liệu đính kèm này không? Hành động này không thể hoàn tác.',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI(`cooperation-slips/${slipId}/delete-attachment`, {
+            method: 'POST',
+            body: JSON.stringify({ file_url: fileUrl })
+          });
+          if (res.success) {
+            addToast('Đã xóa tài liệu hợp tác thành công!', 'success');
+            loadData();
+          } else {
+            addToast(res.message || 'Lỗi khi xóa tài liệu', 'error');
+          }
+        } catch (err: any) {
+          addToast(err.message || 'Lỗi khi xóa tài liệu', 'error');
+        }
       }
-    } catch (err: any) {
-      addToast(err.message || 'Lỗi khi xóa tài liệu', 'error');
-    }
+    });
   };
 
-  const handleRenameCoopAttachment = async (slipId: number, fileUrl: string) => {
+  const handleRenameCoopAttachment = (slipId: number, fileUrl: string) => {
     const filename = fileUrl.split('/').pop() || '';
     const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
-    const newName = prompt('Nhập tên mới cho tài liệu hợp tác:', cleanName);
-    if (!newName || !newName.trim()) return;
-    
-    try {
-      const res = await fetchAPI(`cooperation-slips/${slipId}/rename-attachment`, {
-        method: 'POST',
-        body: JSON.stringify({ file_url: fileUrl, name: newName.trim() })
-      });
-      if (res.success) {
-        addToast('Đã đổi tên tài liệu hợp tác thành công!', 'success');
-        loadData();
-      } else {
-        addToast(res.message || 'Lỗi khi đổi tên tài liệu', 'error');
+    showConfirm({
+      title: 'Đổi tên tài liệu hợp tác',
+      message: 'Nhập tên mới cho tài liệu hợp tác:',
+      requirePromptInput: true,
+      promptPlaceholder: cleanName,
+      confirmText: 'Lưu',
+      cancelText: 'Hủy',
+      onConfirm: async (newName) => {
+        if (!newName || !newName.trim()) return;
+        try {
+          const res = await fetchAPI(`cooperation-slips/${slipId}/rename-attachment`, {
+            method: 'POST',
+            body: JSON.stringify({ file_url: fileUrl, name: newName.trim() })
+          });
+          if (res.success) {
+            addToast('Đã đổi tên tài liệu hợp tác thành công!', 'success');
+            loadData();
+          } else {
+            addToast(res.message || 'Lỗi khi đổi tên tài liệu', 'error');
+          }
+        } catch (err: any) {
+          addToast(err.message || 'Lỗi khi đổi tên tài liệu', 'error');
+        }
       }
-    } catch (err: any) {
-      addToast(err.message || 'Lỗi khi đổi tên tài liệu', 'error');
-    }
+    });
   };
 
   useEffect(() => {

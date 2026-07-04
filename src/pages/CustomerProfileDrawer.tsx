@@ -287,7 +287,7 @@ const renderFormattedText = (text: string, users: any[]) => {
 };
 
 const ActivityComments: React.FC<{ activityId: number, initialCount?: number, users?: any[] }> = ({ activityId, initialCount = 0, users = [] }) => {
-  const { addToast } = useUIStore();
+  const { addToast, showConfirm } = useUIStore();
   const { user: currentUser } = useAuth();
   const [comments, setComments] = useState<any[]>([]);
 
@@ -300,15 +300,23 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
     return String(c.user_id) === String(currentUser.id);
   };
 
-  const handleDeleteComment = async (commentId: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này không?')) return;
-    try {
-      await api.delete(`/activities/comments/${commentId}`);
-      setComments(comments.filter((c: any) => c.id !== commentId));
-      addToast('Đã xóa bình luận thành công', 'success');
-    } catch (e: any) {
-      addToast(e.response?.data?.message || 'Không thể xóa bình luận', 'error');
-    }
+  const handleDeleteComment = (commentId: number) => {
+    showConfirm({
+      title: 'Xóa bình luận',
+      message: 'Bạn có chắc chắn muốn xóa bình luận này không?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/activities/comments/${commentId}`);
+          setComments(comments.filter((c: any) => c.id !== commentId));
+          addToast('Đã xóa bình luận thành công', 'success');
+        } catch (e: any) {
+          addToast(e.response?.data?.message || 'Không thể xóa bình luận', 'error');
+        }
+      }
+    });
   };
   const [expanded, setExpanded] = useState(false);
   const [text, setText] = useState('');
@@ -1078,44 +1086,53 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopLoading(false);
   };
 
-  const handleCoopAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoopAttachmentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0 || !coopSlip) return;
     const file = e.target.files[0];
-    e.target.value = '';
+    const inputTarget = e.target;
     
     const originalName = file.name;
     const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-    const customName = window.prompt("Nhập tên tài liệu:", defaultName);
-    if (customName === null) {
-      return; // User cancelled
-    }
     const ext = originalName.substring(originalName.lastIndexOf('.'));
-    const finalName = (customName.trim() || defaultName) + ext;
 
-    setCoopLoading(true);
-    try {
-      let fileToUpload = file;
-      if (file.type.startsWith('image/')) {
-        fileToUpload = await compressToWebP(file);
+    showConfirm({
+      title: 'Tải lên tài liệu đính kèm',
+      message: 'Nhập tên cho tài liệu hợp tác này trước khi tải lên:',
+      requirePromptInput: true,
+      promptPlaceholder: defaultName,
+      confirmText: 'Tải lên',
+      cancelText: 'Hủy',
+      onConfirm: async (customName) => {
+        const finalName = ((customName && customName.trim()) || defaultName) + ext;
+        setCoopLoading(true);
+        try {
+          let fileToUpload = file;
+          if (file.type.startsWith('image/')) {
+            fileToUpload = await compressToWebP(file);
+          }
+          const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
+          const fd = new FormData();
+          fd.append('file', renamedFile);
+          const res = await api.post(`/cooperation-slips/${coopSlip.id}/upload-attachment`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          if (res.data.success) {
+            addToast('Tải lên tài liệu thành công!', 'success');
+            await fetchCoopSlip();
+          } else {
+            addToast(res.data.message || 'Lỗi khi tải lên tài liệu', 'error');
+          }
+        } catch (e: any) {
+          addToast(e.message, 'error');
+        } finally {
+          setCoopLoading(false);
+        }
+      },
+      onCancel: () => {
+        inputTarget.value = '';
       }
-      const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
-      const fd = new FormData();
-      fd.append('file', renamedFile);
-      const res = await api.post(`/cooperation-slips/${coopSlip.id}/upload-attachment`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      if (res.data.success) {
-        addToast('Tải lên tài liệu đính kèm thành công!', 'success');
-        await fetchCoopSlip();
-      } else {
-        addToast(res.data.message || 'Lỗi tải lên tài liệu', 'error');
-      }
-    } catch (e: any) {
-      addToast(e.message || 'Lỗi tải lên tài liệu', 'error');
-    }
-    setCoopLoading(false);
+    });
   };
-
   const handleRemoveCoopAttachment = async () => {
     if (!coopSlip) return;
     setCoopLoading(true);
@@ -1201,9 +1218,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       user_id: String(contact?.owner_id || currentUser?.id || ''),
       progress: 0,
       require_approval: 0,
-      approver_id: ''
+      approver_id: '',
+      participant_ids: [] as string[],
+      related_contact_ids: [] as string[],
+      checklist: [] as any[]
     };
   });
+
+  const [subTaskTitle, setSubTaskTitle] = useState('');
+  const [subTaskAssignee, setSubTaskAssignee] = useState('');
 
 
   const [drawerTaskFilter, setDrawerTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
@@ -2019,16 +2042,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const handleDeleteTaskComment = async (commentId: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bình luận này?')) return;
-    try {
-      await api.delete(`/activities/comments/${commentId}`);
-      await fetchTaskComments(selectedTaskForDetails.id);
-      fetchData();
-      addToast('Đã xóa bình luận thành công!', 'success');
-    } catch (err: any) {
-      addToast(err.response?.data?.message || 'Lỗi khi xóa bình luận', 'error');
-    }
+  const handleDeleteTaskComment = (commentId: number) => {
+    showConfirm({
+      title: 'Xóa bình luận',
+      message: 'Bạn có chắc chắn muốn xóa bình luận này?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/activities/comments/${commentId}`);
+          await fetchTaskComments(selectedTaskForDetails.id);
+          fetchData();
+          addToast('Đã xóa bình luận thành công!', 'success');
+        } catch (err: any) {
+          addToast(err.response?.data?.message || 'Lỗi khi xóa bình luận', 'error');
+        }
+      }
+    });
   };
 
   const handleUpdateTaskDetail = async (updatedFields: any) => {
@@ -2160,10 +2191,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const handleAddTask = async () => {
     if (!taskForm.title.trim() || isSubmitting) return;
     setIsSubmitting(true);
-    let bodyText = taskForm.description.trim();
-    if (taskForm.link && taskForm.link.trim()) {
-      bodyText += (bodyText ? "\n\n" : "") + `Tài liệu/Link đính kèm: ${taskForm.link.trim()}`;
-    }
+
+    const additionalContactIds = (taskForm.related_contact_ids || [])
+      .filter((id: any) => id !== 'all' && id !== '')
+      .map(Number);
+
+    const erpPayload = {
+      erp_task: {
+        description: taskForm.description.trim(),
+        internal_type: 'task',
+        scope: 'personal',
+        recurrence: {
+          pattern: 'none',
+          weekly_days: [],
+          monthly_day: 1,
+          last_generated: ''
+        },
+        checklist: taskForm.checklist || [],
+        links: taskForm.link?.trim() ? [{ label: t('Đường dẫn đính kèm'), url: taskForm.link.trim() }] : [],
+        related_contact_ids: additionalContactIds
+      }
+    };
+
+    const mainAssignee = taskForm.user_id ? Number(taskForm.user_id) : currentUser?.id;
+    const participantIdsString = (taskForm.participant_ids || [])
+      .filter((id: any) => id !== 'all' && Number(id) !== Number(mainAssignee))
+      .join(',');
+
     try {
       await api.post('/activities', {
         related_type: 'contact',
@@ -2173,11 +2227,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         priority: taskForm.priority,
         due_date: taskForm.due_date,
         user_id: taskForm.user_id ? Number(taskForm.user_id) : null,
-        body: bodyText || null,
+        body: JSON.stringify(erpPayload),
         status: 'planned',
         progress: Number(taskForm.progress || 0),
         require_approval: Number(taskForm.require_approval || 0),
-        approver_id: taskForm.approver_id ? Number(taskForm.approver_id) : null
+        approver_id: taskForm.approver_id ? Number(taskForm.approver_id) : null,
+        participant_ids: participantIdsString || null
       });
       setShowTaskModal(false);
       setTaskForm({ 
@@ -2189,7 +2244,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         user_id: String(contact?.owner_id || currentUser?.id || ''),
         progress: 0,
         require_approval: 0,
-        approver_id: ''
+        approver_id: '',
+        participant_ids: [] as string[],
+        related_contact_ids: [] as string[],
+        checklist: [] as any[]
       });
       fetchData();
       addToast('Đã thêm công việc mới', 'success');
@@ -2318,22 +2376,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  const handleCancelDeposit = async (depositId: number) => {
-    const reason = window.prompt("Nhập lý do hủy đặt cọc / bể cọc:");
-    if (reason === null) return; // User cancelled
-    if (!reason.trim()) {
-      addToast("Vui lòng nhập lý do hủy", "error");
-      return;
-    }
-    try {
-      const res = await api.post(`/deposits/${depositId}/cancel`, { reason });
-      if (res.data.success || res.data) {
-        addToast("Đã hủy đặt cọc thành công", "success");
-        fetchData();
+  const handleCancelDeposit = (depositId: number) => {
+    showConfirm({
+      title: 'Báo cáo bể cọc / Hủy đặt cọc',
+      message: 'Vui lòng nhập lý do hủy đặt cọc / bể cọc của khách hàng:',
+      confirmText: 'Báo cáo bể cọc',
+      cancelText: 'Hủy',
+      isDanger: true,
+      requirePromptInput: true,
+      promptPlaceholder: 'Nhập lý do chi tiết (bắt buộc)...',
+      onConfirm: async (reason) => {
+        if (!reason || !reason.trim()) {
+          addToast("Vui lòng nhập lý do hủy", "error");
+          return;
+        }
+        try {
+          const res = await api.post(`/deposits/${depositId}/cancel`, { reason });
+          if (res.data.success || res.data) {
+            addToast("Đã hủy đặt cọc thành công", "success");
+            fetchData();
+          }
+        } catch (e: any) {
+          addToast(e?.response?.data?.message || "Không thể hủy đặt cọc", "error");
+        }
       }
-    } catch (e: any) {
-      addToast(e?.response?.data?.message || "Không thể hủy đặt cọc", "error");
-    }
+    });
   };
 
   const handleAddMilestoneInput = () => {
@@ -2827,21 +2894,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         >
                           {/* Connection Line */}
                           {i < pipelineStages.length - 1 && (
-                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '2px', background: i < safeIndex ? stColor : 'var(--color-border)', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
+                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '2px', background: 'var(--color-border-light)', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
                           )}
 
                           <div style={{
                             position: 'relative', zIndex: 2, flex: 1,
-                            background: isCurrent ? stColor : 'var(--color-surface)',
-                            color: isCurrent ? '#fff' : (isActive ? stColor : 'var(--color-text-muted)'),
-                            border: `2px solid ${isActive ? stColor : 'var(--color-border-light)'}`,
+                            background: isCurrent ? stColor : 'var(--color-bg-light)',
+                            color: isCurrent ? '#fff' : 'var(--color-text-muted)',
+                            border: isCurrent ? `2px solid ${stColor}` : '1px solid var(--color-border-light)',
                             padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                             whiteSpace: 'nowrap',
-                            boxShadow: isCurrent ? `0 4px 12px ${stColor}40` : 'none',
+                            boxShadow: isCurrent ? `0 4px 12px ${stColor}33` : 'none',
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                           }}>
-                            {isActive && !isCurrent && <Check size={12} />}
                             {isCurrent && <UserCheck size={12} />}
                             {st.name}
                           </div>
@@ -3904,16 +3970,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
                                       <button 
                                         className="btn primary sm" 
-                                        onClick={async () => {
-                                          if (window.confirm('Bạn có chắc chắn muốn duyệt phiếu hợp tác này không?')) {
-                                            try {
-                                              await api.post(`/cooperation-slips/${coopSlip.id}/approve`);
-                                              addToast('Đã phê duyệt phiếu hợp tác thành công!', 'success');
-                                              await fetchCoopSlip();
-                                            } catch (err: any) {
-                                              addToast(err.response?.data?.message || 'Lỗi khi duyệt phiếu', 'error');
+                                        onClick={() => {
+                                          showConfirm({
+                                            title: 'Duyệt phiếu hợp tác',
+                                            message: 'Bạn có chắc chắn muốn duyệt phiếu hợp tác này không?',
+                                            confirmText: 'Phê duyệt',
+                                            cancelText: 'Hủy',
+                                            onConfirm: async () => {
+                                              try {
+                                                await api.post(`/cooperation-slips/${coopSlip.id}/approve`);
+                                                addToast('Đã phê duyệt phiếu hợp tác thành công!', 'success');
+                                                await fetchCoopSlip();
+                                              } catch (err: any) {
+                                                addToast(err.response?.data?.message || 'Lỗi khi duyệt phiếu', 'error');
+                                              }
                                             }
-                                          }
+                                          });
                                         }}
                                         style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
                                       >
@@ -3921,16 +3993,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       </button>
                                       <button 
                                         className="btn outline sm text-danger" 
-                                        onClick={async () => {
-                                          const reason = window.prompt('Nhập lý do từ chối phiếu hợp tác:');
-                                          if (reason === null) return;
-                                          try {
-                                            await api.post(`/cooperation-slips/${coopSlip.id}/reject`, { reason });
-                                            addToast('Đã từ chối phiếu hợp tác thành công!', 'success');
-                                            await fetchCoopSlip();
-                                          } catch (err: any) {
-                                            addToast(err.response?.data?.message || 'Lỗi khi từ chối phiếu', 'error');
-                                          }
+                                        onClick={() => {
+                                          showConfirm({
+                                            title: 'Từ chối phiếu hợp tác',
+                                            message: 'Vui lòng nhập lý do từ chối phiếu hợp tác này:',
+                                            confirmText: 'Từ chối',
+                                            cancelText: 'Hủy',
+                                            isDanger: true,
+                                            requirePromptInput: true,
+                                            promptPlaceholder: 'Nhập lý do từ chối...',
+                                            onConfirm: async (reason) => {
+                                              try {
+                                                await api.post(`/cooperation-slips/${coopSlip.id}/reject`, { reason: reason || 'Từ chối' });
+                                                addToast('Đã từ chối phiếu hợp tác thành công!', 'success');
+                                                await fetchCoopSlip();
+                                              } catch (err: any) {
+                                                addToast(err.response?.data?.message || 'Lỗi khi từ chối phiếu', 'error');
+                                              }
+                                            }
+                                          });
                                         }}
                                         style={{ padding: '4px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-danger)', borderRadius: '8px' }}
                                       >
@@ -3987,19 +4068,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                                 {isOwnerOrAdmin && (
                                   <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                    <button className="btn-icon sm" title="Đổi tên" onClick={async () => {
+                                    <button className="btn-icon sm" title="Đổi tên" onClick={() => {
                                       const filename = coopSlip.attachment_url.split('/').pop() || '';
                                       const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
-                                      const newName = prompt('Nhập tên mới cho tài liệu hợp tác:', cleanName);
-                                      if (newName && newName.trim()) {
-                                        try {
-                                          await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim() });
-                                          await fetchCoopSlip();
-                                          addToast('Đã đổi tên tài liệu hợp tác.', 'success');
-                                        } catch (err) {
-                                          addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                      showConfirm({
+                                        title: 'Đổi tên tài liệu hợp tác',
+                                        message: 'Nhập tên mới cho tài liệu hợp tác:',
+                                        requirePromptInput: true,
+                                        promptPlaceholder: cleanName,
+                                        confirmText: 'Lưu',
+                                        cancelText: 'Hủy',
+                                        onConfirm: async (newName) => {
+                                          if (newName && newName.trim()) {
+                                            try {
+                                              await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim() });
+                                              await fetchCoopSlip();
+                                              addToast('Đã đổi tên tài liệu hợp tác.', 'success');
+                                            } catch (err) {
+                                              addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                            }
+                                          }
                                         }
-                                      }
+                                      });
                                     }}>
                                       <Pencil size={14} />
                                     </button>
@@ -5247,18 +5337,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <button
                               onClick={() => {
-                                const name = prompt('Nhập tên thư mục mới:');
-                                if (name && name.trim()) {
-                                  const trimmed = name.trim();
-                                  if (allFolders.includes(trimmed)) {
-                                    addToast('Thư mục đã tồn tại.', 'warning');
-                                    return;
+                                showConfirm({
+                                  title: 'Thư mục mới',
+                                  message: 'Vui lòng nhập tên cho thư mục mới:',
+                                  requirePromptInput: true,
+                                  promptPlaceholder: 'Tên thư mục...',
+                                  confirmText: 'Tạo thư mục',
+                                  cancelText: 'Hủy',
+                                  onConfirm: (name) => {
+                                    if (name && name.trim()) {
+                                      const trimmed = name.trim();
+                                      if (allFolders.includes(trimmed)) {
+                                        addToast('Thư mục đã tồn tại.', 'warning');
+                                        return;
+                                      }
+                                      const next = [...localFolders, trimmed];
+                                      setLocalFolders(next);
+                                      localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(next));
+                                      addToast('Đã tạo thư mục mới.', 'success');
+                                    }
                                   }
-                                  const next = [...localFolders, trimmed];
-                                  setLocalFolders(next);
-                                  localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(next));
-                                  addToast('Đã tạo thư mục mới.', 'success');
-                                }
+                                });
                               }}
                               style={{
                                 display: 'inline-flex',
@@ -5463,26 +5562,35 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       }}
                                       className="hover-lift"
                                       title="Đổi tên thư mục"
-                                      onClick={async () => {
-                                        const newName = prompt('Nhập tên mới cho thư mục:', folder);
-                                        if (newName && newName.trim() && newName.trim() !== folder) {
-                                          const trimmed = newName.trim();
-                                          try {
-                                            const updates = folderFiles.map(d =>
-                                              api.put(`/cloud-files/${d.id}`, { name: d.name, category: trimmed })
-                                            );
-                                            await Promise.all(updates);
-                                            
-                                            const next = localFolders.map(f => f === folder ? trimmed : f);
-                                            setLocalFolders(next);
-                                            localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(next));
-                                            
-                                            fetchData();
-                                            addToast('Đã đổi tên thư mục thành công.', 'success');
-                                          } catch (err) {
-                                            addToast('Lỗi khi đổi tên thư mục.', 'error');
+                                      onClick={() => {
+                                        showConfirm({
+                                          title: 'Đổi tên thư mục',
+                                          message: `Nhập tên mới cho thư mục "${folder}":`,
+                                          requirePromptInput: true,
+                                          promptPlaceholder: folder,
+                                          confirmText: 'Lưu',
+                                          cancelText: 'Hủy',
+                                          onConfirm: async (newName) => {
+                                            if (newName && newName.trim() && newName.trim() !== folder) {
+                                              const trimmed = newName.trim();
+                                              try {
+                                                const updates = folderFiles.map(d =>
+                                                  api.put(`/cloud-files/${d.id}`, { name: d.name, category: trimmed })
+                                                );
+                                                await Promise.all(updates);
+                                                
+                                                const next = localFolders.map(f => f === folder ? trimmed : f);
+                                                setLocalFolders(next);
+                                                localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(next));
+                                                
+                                                fetchData();
+                                                addToast('Đã đổi tên thư mục thành công.', 'success');
+                                              } catch (err) {
+                                                addToast('Lỗi khi đổi tên thư mục.', 'error');
+                                              }
+                                            }
                                           }
-                                        }
+                                        });
                                       }}
                                     >
                                       <Pencil size={12} /> Đổi tên
@@ -5701,17 +5809,26 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       }}
                                       className="hover-lift"
                                       title="Đổi tên tài liệu"
-                                      onClick={async () => {
-                                        const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
-                                        if (newName && newName.trim()) {
-                                          try {
-                                            await api.put(`/cloud-files/${doc.id}`, { name: newName.trim(), category: doc.category || 'general' });
-                                            fetchData();
-                                            addToast('Đã đổi tên tài liệu.', 'success');
-                                          } catch (err) {
-                                            addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                      onClick={() => {
+                                        showConfirm({
+                                          title: 'Đổi tên tài liệu',
+                                          message: `Nhập tên mới cho tài liệu "${doc.name}":`,
+                                          requirePromptInput: true,
+                                          promptPlaceholder: doc.name,
+                                          confirmText: 'Lưu',
+                                          cancelText: 'Hủy',
+                                          onConfirm: async (newName) => {
+                                            if (newName && newName.trim()) {
+                                              try {
+                                                await api.put(`/cloud-files/${doc.id}`, { name: newName.trim(), category: doc.category || 'general' });
+                                                fetchData();
+                                                addToast('Đã đổi tên tài liệu.', 'success');
+                                              } catch (err) {
+                                                addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                              }
+                                            }
                                           }
-                                        }
+                                        });
                                       }}
                                     >
                                       <Pencil size={13} /> Đổi tên
@@ -6696,212 +6813,371 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       </AnimatePresence>
 
       {/* CREATE TASK MODAL */}
-      <AnimatePresence>
-        {showTaskModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowTaskModal(false)}>
-            <motion.div
-              className="modal-sheet"
-              style={{ width: '100%', maxWidth: 720 }}
-              initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
-              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(245,158,11,0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CheckSquare size={20} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontWeight: 800 }}>Thêm công việc mới</h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Liên quan đến khách hàng: <strong>{fullName}</strong></p>
-                  </div>
-                </div>
-                <button className="btn-icon sm" onClick={() => setShowTaskModal(false)}><X size={18} /></button>
+      <CustomModal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        title={t('Thêm công việc mới')}
+        width="960px"
+      >
+        <div style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+            {/* Left Column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700 }}>{t('Tên công việc *')}</label>
+                <input
+                  className="form-input"
+                  placeholder={t('VD: Gửi báo giá, Demo tính năng...')}
+                  value={taskForm.title}
+                  onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
+                  autoFocus
+                />
               </div>
-              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', padding: '1.25rem' }}>
-                {/* Cột trái */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700 }}>{t('Mô tả chi tiết công việc')}</label>
+                <textarea
+                  className="form-input"
+                  placeholder={t('Nhập ghi chú hoặc mô tả chi tiết công việc...')}
+                  value={taskForm.description}
+                  onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
+                  style={{ minHeight: 120, resize: 'vertical' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
+                  <span>{t('Tài liệu hoặc Link đính kèm (Tùy chọn)')}</span>
+                  {uploadingFile && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }} className="animate-pulse">{t('Đang tải tệp lên...')}</span>}
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input 
+                    className="form-input" 
+                    placeholder={t('Nhập link tài liệu...')} 
+                    value={taskForm.link || ''} 
+                    onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} 
+                    style={{ flex: 1 }}
+                  />
+                  <label className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, padding: '0 0.75rem', height: '38px', borderRadius: '8px' }}>
+                    <Paperclip size={16} />
+                    {t('Tải tệp')}
+                    <input 
+                      type="file" 
+                      onChange={handleTaskFileUpload} 
+                      style={{ display: 'none' }} 
+                      disabled={uploadingFile}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Công việc con (Checklist) */}
+              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, marginBottom: '2px' }}>📋 {t('Công việc con (Checklist)')}</label>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '0.5rem', alignItems: 'start' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Tên công việc *</label>
-                    <input className="form-input" placeholder="VD: Gửi báo giá, Demo tính năng..." value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} autoFocus />
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Tên việc con')}</label>
+                    <input
+                      className="form-input"
+                      placeholder={t('VD: Gửi file pdf, Gọi lại...')}
+                      value={subTaskTitle}
+                      onChange={e => setSubTaskTitle(e.target.value)}
+                      style={{ height: '38px', fontSize: '0.8125rem' }}
+                    />
                   </div>
-                  
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Người thực hiện</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Giao cho')}</label>
                     <CustomSelect
                       showAvatars={true}
                       searchable={true}
                       options={[
-                        { value: '', label: 'Chưa giao cho ai' },
+                        { value: '', label: t('Người nhận...') },
                         ...users.map(u => ({
                           value: String(u.id),
-                          label: `${u.full_name} (${u.role === 'admin' ? 'Admin' : u.role === 'sales' ? 'Sales' : u.role})`,
+                          label: u.full_name,
                           avatar: u.avatar_url || undefined
                         }))
                       ]}
-                      value={taskForm.user_id}
-                      onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
+                      value={subTaskAssignee}
+                      onChange={val => setSubTaskAssignee(val.toString())}
                     />
                   </div>
-
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Tài liệu hoặc Link đính kèm (Tùy chọn)</span>
-                      {uploadingFile && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }} className="animate-pulse">Đang tải tệp lên...</span>}
-                    </label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <input 
-                        className="form-input" 
-                        placeholder="Nhập link tài liệu..." 
-                        value={taskForm.link || ''} 
-                        onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} 
-                        style={{ flex: 1 }}
-                      />
-                      <label className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, padding: '0 0.75rem', height: '38px', borderRadius: '8px' }}>
-                        <Paperclip size={16} />
-                        Tải tệp
-                        <input 
-                          type="file" 
-                          onChange={handleTaskFileUpload} 
-                          style={{ display: 'none' }} 
-                          disabled={uploadingFile}
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Mô tả chi tiết công việc</label>
-                    <textarea 
-                      className="form-input" 
-                      placeholder="Nhập ghi chú hoặc mô tả chi tiết công việc..." 
-                      value={taskForm.description} 
-                      onChange={e => setTaskForm({ ...taskForm, description: e.target.value })} 
-                      style={{ minHeight: 90, resize: 'vertical' }}
-                    />
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, visibility: 'hidden' }}>{'\u00A0'}</label>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => {
+                        if (!subTaskTitle.trim()) {
+                          toast.error(t('Vui lòng nhập tên công việc con'));
+                          return;
+                        }
+                        const newItem = {
+                          id: 'sub_' + Date.now(),
+                          title: subTaskTitle.trim(),
+                          assignee_id: subTaskAssignee ? Number(subTaskAssignee) : null,
+                          done: false
+                        };
+                        setTaskForm(prev => ({
+                          ...prev,
+                          checklist: [...(prev.checklist || []), newItem]
+                        }));
+                        setSubTaskTitle('');
+                        setSubTaskAssignee('');
+                        toast.success(t('Đã thêm việc con'));
+                      }}
+                      style={{ height: '38px', width: '38px', minWidth: '38px', padding: 0, border: 'none', margin: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}
+                    >
+                      <Plus size={16} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Cột phải */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {/* Progress Slider */}
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <label className="form-label" style={{ margin: 0 }}>Tiến độ công việc</label>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="10"
-                      value={taskForm.progress || 0}
-                      onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
-                      style={{
-                        width: '100%',
-                        cursor: 'pointer',
-                        accentColor: 'var(--color-primary)',
-                        height: '6px',
-                        borderRadius: '3px',
-                        background: '#e5e7eb'
-                      }}
-                    />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                      <span>0%</span>
-                      <span>50%</span>
-                      <span>100%</span>
-                    </div>
+                {/* Subtasks List */}
+                {taskForm.checklist && taskForm.checklist.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                    {taskForm.checklist.map((item) => {
+                      const assigneeUser = users.find(u => Number(u.id) === Number(item.assignee_id));
+                      return (
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: 'var(--color-text)' }}>• {item.title}</span>
+                            {assigneeUser && (
+                              <span style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.72rem' }}>({assigneeUser.full_name})</span>
+                            )}
+                          </div>
+                          <button 
+                            type="button" 
+                            className="btn-icon sm" 
+                            onClick={() => setTaskForm(prev => ({
+                              ...prev,
+                              checklist: prev.checklist.filter(x => x.id !== item.id)
+                            }))}
+                            style={{ color: 'var(--color-text-muted)' }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
+                )}
+              </div>
+            </div>
 
-                  {/* Approval Toggle */}
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Yêu cầu phê duyệt</span>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+            {/* Right Column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng chính')}</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', borderRadius: '8px', height: '38px' }}>
+                  <Avatar name={fullName || t('Khách hàng')} size={24} />
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{fullName}</span>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng liên kết thêm (Tùy chọn)')}</label>
+                <CustomSelect
+                  multiple={true}
+                  showAvatars={true}
+                  align="right"
+                  options={[
+                    { value: 'all', label: t('Không có khách hàng khác') },
+                    ...contacts
+                      .filter(c => Number(c.id) !== Number(contact.id))
+                      .map(c => ({
+                        value: String(c.id),
+                        label: `${c.full_name || c.name || t('Không tên')} (${c.phone || ''})`,
+                        avatar: c.avatar_url || undefined
+                      }))
+                  ]}
+                  value={taskForm.related_contact_ids || ['all']}
+                  onChange={val => setTaskForm({ ...taskForm, related_contact_ids: val })}
+                  width="100%"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 750 }}>{t('Người thực hiện')}</label>
+                  <CustomSelect
+                    showAvatars={true}
+                    searchable={true}
+                    options={[
+                      { value: '', label: t('Chưa giao cho ai') },
+                      ...users.map(u => ({
+                        value: String(u.id),
+                        label: u.full_name,
+                        avatar: u.avatar_url || undefined
+                      }))
+                    ]}
+                    value={taskForm.user_id}
+                    onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 750 }}>{t('Người liên quan (Tùy chọn)')}</label>
+                  <CustomSelect
+                    multiple={true}
+                    showAvatars={true}
+                    align="right"
+                    searchable={true}
+                    options={[
+                      { value: 'all', label: t('Không có người liên quan') },
+                      ...users.filter(u => String(u.id) !== String(taskForm.user_id)).map(u => ({
+                        value: String(u.id),
+                        label: u.full_name,
+                        avatar: u.avatar_url || undefined
+                      }))
+                    ]}
+                    value={taskForm.participant_ids || ['all']}
+                    onChange={val => setTaskForm({ ...taskForm, participant_ids: val })}
+                  />
+                </div>
+              </div>
+
+              {/* Progress Slider */}
+              <div className="form-group" style={{ margin: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label className="form-label" style={{ margin: 0 }}>{t('Tiến độ công việc')}</label>
+                  <span style={{ fontSize: '0.825rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="10"
+                  value={taskForm.progress || 0}
+                  onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
+                  style={{
+                    width: '100%',
+                    cursor: 'pointer',
+                    accentColor: 'var(--color-primary)',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: '#e5e7eb'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              {/* Approval Row (Toggle & Approver) */}
+              <div style={{ display: 'grid', gridTemplateColumns: taskForm.require_approval === 1 ? '1.2fr 1.8fr' : '1fr', gap: '1rem', alignItems: 'end' }}>
+                {/* Approval Toggle */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '6px 10px', borderRadius: '10px', border: '1px solid var(--color-border-light)', height: '38px' }}>
+                    <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cần duyệt')}</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <div 
+                        style={{
+                          width: 34,
+                          height: 18,
+                          borderRadius: 9,
+                          background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
+                          position: 'relative',
+                          transition: 'background 0.2s'
+                        }}
+                        onClick={() => {
+                          const next = taskForm.require_approval === 1 ? 0 : 1;
+                          setTaskForm({ ...taskForm, require_approval: next });
+                        }}
+                      >
                         <div 
                           style={{
-                            width: 38,
-                            height: 20,
-                            borderRadius: 10,
-                            background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
-                            position: 'relative',
-                            transition: 'background 0.2s'
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            background: 'white',
+                            position: 'absolute',
+                            top: 2,
+                            left: taskForm.require_approval === 1 ? 18 : 2,
+                            transition: 'left 0.2s',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
                           }}
-                          onClick={() => {
-                            const next = taskForm.require_approval === 1 ? 0 : 1;
-                            setTaskForm({ ...taskForm, require_approval: next });
-                          }}
-                        >
-                          <div 
-                            style={{
-                              width: 16,
-                              height: 16,
-                              borderRadius: '50%',
-                              background: 'white',
-                              position: 'absolute',
-                              top: 2,
-                              left: taskForm.require_approval === 1 ? 20 : 2,
-                              transition: 'left 0.2s',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-                            }}
-                          />
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Approver Select */}
-                  {taskForm.require_approval === 1 && (
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Người duyệt</label>
-                      <CustomSelect
-                        showAvatars={true}
-                        searchable={true}
-                        options={[
-                          { value: '', label: 'Chọn người duyệt...' },
-                          ...users.map(u => ({
-                            value: String(u.id),
-                            label: `${u.full_name} (${u.role})`,
-                            avatar: u.avatar_url || undefined
-                          }))
-                        ]}
-                        value={taskForm.approver_id}
-                        onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
-                      />
-                    </div>
-                  )}
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Mức độ ưu tiên</label>
-                      <CustomSelect
-                        options={[
-                          { value: 'low', label: 'Thấp' },
-                          { value: 'medium', label: 'Trung bình' },
-                          { value: 'high', label: 'Cao' }
-                        ]}
-                        value={taskForm.priority}
-                        onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
-                      />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label className="form-label">Hạn hoàn thành</label>
-                      <input className="form-input" type="date" value={taskForm.due_date} onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })} />
-                    </div>
+                        />
+                      </div>
+                    </label>
                   </div>
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn outline" onClick={() => setShowTaskModal(false)} disabled={isSubmitting}>Hủy</button>
 
-                <button className="btn primary" onClick={handleAddTask} disabled={isSubmitting}>
-                  {isSubmitting ? 'Đang lưu...' : 'Lưu công việc'}
-                </button>
+                {/* Approver Select */}
+                {taskForm.require_approval === 1 && (
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <CustomSelect
+                      showAvatars={true}
+                      searchable={true}
+                      direction="up"
+                      align="right"
+                      options={[
+                        { value: '', label: t('Chọn người duyệt...') },
+                        ...users.map(u => ({
+                          value: String(u.id),
+                          label: `${u.full_name} (${u.role})`,
+                          avatar: u.avatar_url || undefined
+                        }))
+                      ]}
+                      value={taskForm.approver_id}
+                      onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
+                    />
+                  </div>
+                )}
               </div>
-            </motion.div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Mức độ ưu tiên')}</label>
+                  <CustomSelect
+                    direction="up"
+                    options={[
+                      { value: 'low', label: t('Thấp') },
+                      { value: 'medium', label: t('Trung bình') },
+                      { value: 'high', label: t('Cao') }
+                    ]}
+                    value={taskForm.priority}
+                    onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
+                    width="100%"
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Hạn hoàn thành')}</label>
+                  <input
+                    className="form-input"
+                    type="date"
+                    value={taskForm.due_date}
+                    onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            marginTop: '1.5rem',
+            borderTop: '1px solid var(--color-border-light)',
+            position: 'sticky',
+            bottom: '-24px',
+            background: 'var(--color-surface)',
+            zIndex: 10,
+            margin: '1.5rem -24px -24px -24px',
+            padding: '16px 24px 24px 24px'
+          }}>
+            <button className="btn outline" type="button" onClick={() => setShowTaskModal(false)} disabled={isSubmitting}>{t('Hủy')}</button>
+            <button className="btn primary" type="button" onClick={handleAddTask} disabled={isSubmitting}>
+              {isSubmitting ? t('Đang lưu...') : t('Tạo công việc')}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
 
       {/* TASK DETAILS MODAL */}
       <AnimatePresence>

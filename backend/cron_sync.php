@@ -2330,6 +2330,14 @@ try {
     logSync("Error running AI worker from cron_sync: " . $aiEx->getMessage());
 }
 
+// --- Chạy sinh công việc lặp lại định kỳ (Recurring Tasks Cron) ---
+try {
+    require_once __DIR__ . '/cron_recurring_tasks.php';
+    runRecurringTasksCron($conn);
+} catch (Exception $recurrenceEx) {
+    logSync("Error running recurring tasks cron: " . $recurrenceEx->getMessage());
+}
+
 if (php_sapi_name() === 'cli') {
     $conn->close();
 }

@@ -8,6 +8,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import toast from 'react-hot-toast';
+import { useUIStore } from '../store/uiStore';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -16,6 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 const AccountsInner = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const { showConfirm } = useUIStore();
   const isSale = user?.role === 'sale';
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -123,28 +125,36 @@ const AccountsInner = () => {
     }
   };
 
-  const handleUnlinkZaloInModal = async () => {
+  const handleUnlinkZaloInModal = () => {
     if (!editingAccount) return;
-    if (!window.confirm(t("Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không?"))) return;
-    setIsUnlinking(true);
-    try {
-      const json = await fetchAPI('unlink_zalo', {
-        method: 'POST',
-        body: JSON.stringify({ id: editingAccount.id, type: 'account' })
-      });
-      if (json.success) {
-        toast.success(t('Đã hủy liên kết Zalo thành công!'));
-        setFormData(prev => ({ ...prev, zalo_chat_id: '' }));
-        setEditingAccount((prev: any) => ({ ...prev, zalo_chat_id: null }));
-        fetchAccounts();
-      } else {
-        toast.error(json.message || t('Lỗi khi hủy liên kết'));
+    showConfirm({
+      title: t('Hủy liên kết Zalo'),
+      message: t('Bạn có chắc chắn muốn hủy liên kết Zalo của tài khoản này không?'),
+      confirmText: t('Hủy liên kết'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        setIsUnlinking(true);
+        try {
+          const json = await fetchAPI('unlink_zalo', {
+            method: 'POST',
+            body: JSON.stringify({ id: editingAccount.id, type: 'account' })
+          });
+          if (json.success) {
+            toast.success(t('Đã hủy liên kết Zalo thành công!'));
+            setFormData(prev => ({ ...prev, zalo_chat_id: '' }));
+            setEditingAccount((prev: any) => ({ ...prev, zalo_chat_id: null }));
+            fetchAccounts();
+          } else {
+            toast.error(json.message || t('Lỗi khi hủy liên kết'));
+          }
+        } catch (e: any) {
+          toast.error(`${t('Lỗi')}: ` + e.message);
+        } finally {
+          setIsUnlinking(false);
+        }
       }
-    } catch (e: any) {
-      toast.error(`${t('Lỗi')}: ` + e.message);
-    } finally {
-      setIsUnlinking(false);
-    }
+    });
   };
 
   const handleDeleteClickInModal = () => {
@@ -160,25 +170,33 @@ const AccountsInner = () => {
   const [logsPage, setLogsPage] = useState(1);
   const [rollingBackLogId, setRollingBackLogId] = useState<number | null>(null);
 
-  const handleRollback = async (logId: number) => {
-    if (!window.confirm(t("Bạn có chắc chắn muốn hoàn tác hành động này không?"))) return;
-    setRollingBackLogId(logId);
-    try {
-      const res = await fetchAPI('rollback_admin_action', {
-        method: 'POST',
-        body: JSON.stringify({ log_id: logId })
-      });
-      if (res.success) {
-        toast.success(res.message || t('Hoàn tác thành công!'));
-        fetchLogs();
-      } else {
-        toast.error(res.message || t('Hoàn tác thất bại'));
+  const handleRollback = (logId: number) => {
+    showConfirm({
+      title: t('Hoàn tác hành động'),
+      message: t('Bạn có chắc chắn muốn hoàn tác hành động này không?'),
+      confirmText: t('Hoàn tác'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        setRollingBackLogId(logId);
+        try {
+          const res = await fetchAPI('rollback_admin_action', {
+            method: 'POST',
+            body: JSON.stringify({ log_id: logId })
+          });
+          if (res.success) {
+            toast.success(res.message || t('Hoàn tác thành công!'));
+            fetchLogs();
+          } else {
+            toast.error(res.message || t('Hoàn tác thất bại'));
+          }
+        } catch (e: any) {
+          toast.error(`${t('Lỗi')}: ` + e.message);
+        } finally {
+          setRollingBackLogId(null);
+        }
       }
-    } catch (e: any) {
-      toast.error(`${t('Lỗi')}: ` + e.message);
-    } finally {
-      setRollingBackLogId(null);
-    }
+    });
   };
 
   const fetchLogs = async () => {

@@ -7,6 +7,7 @@ import {
   PieChart, Pie, Cell, BarChart, LabelList
 } from 'recharts';
 import toast from 'react-hot-toast';
+import { useUIStore } from '../store/uiStore';
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 import { TableSkeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -225,6 +226,7 @@ const parseBlacklistNote = (note: string) => {
 const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: boolean; searchParams: URLSearchParams; setSearchParams: any }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { showConfirm } = useUIStore();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -781,26 +783,34 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
 
   const [isCompensatingNoComp, setIsCompensatingNoComp] = useState(false);
 
-  const handleCompensateNoComp = async (reportId: number) => {
-    if (!window.confirm(t("Bạn có chắc chắn muốn thực hiện bù lỗi cho ticket này không? Hệ thống sẽ cộng 1 lượt đền bù cho Sale và chuyển trạng thái log phân bổ sang lỗi."))) return;
-    setIsCompensatingNoComp(true);
-    try {
-      const res = await fetchAPI('compensate_approved_no_comp', {
-        method: 'POST',
-        body: JSON.stringify({ id: reportId })
-      });
-      if (res.success) {
-        toast.success(t('Đã thực hiện bù lỗi thành công!'));
-        setSelectedLead(null);
-        fetchReports();
-      } else {
-        toast.error(res.message || t('Có lỗi xảy ra'));
+  const handleCompensateNoComp = (reportId: number) => {
+    showConfirm({
+      title: t('Đền bù lỗi cho Ticket'),
+      message: t('Bạn có chắc chắn muốn thực hiện bù lỗi cho ticket này không? Hệ thống sẽ cộng 1 lượt đền bù cho Sale và chuyển trạng thái log phân bổ sang lỗi.'),
+      confirmText: t('Đền bù'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        setIsCompensatingNoComp(true);
+        try {
+          const res = await fetchAPI('compensate_approved_no_comp', {
+            method: 'POST',
+            body: JSON.stringify({ id: reportId })
+          });
+          if (res.success) {
+            toast.success(t('Đã thực hiện bù lỗi thành công!'));
+            setSelectedLead(null);
+            fetchReports();
+          } else {
+            toast.error(res.message || t('Có lỗi xảy ra'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi: ') + e.message);
+        } finally {
+          setIsCompensatingNoComp(false);
+        }
       }
-    } catch (e: any) {
-      toast.error(t('Lỗi: ') + e.message);
-    } finally {
-      setIsCompensatingNoComp(false);
-    }
+    });
   };
 
   const openRejectModal = (id: number) => {
@@ -3904,9 +3914,16 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (window.confirm(t('Bạn có chắc chắn muốn xóa luật') + ` "${rule.name}"?`)) {
-                                    setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
-                                  }
+                                  showConfirm({
+                                    title: t('Xóa luật tự động duyệt ticket'),
+                                    message: t('Bạn có chắc chắn muốn xóa luật') + ` "${rule.name}"?`,
+                                    confirmText: t('Xóa'),
+                                    cancelText: t('Hủy'),
+                                    isDanger: true,
+                                    onConfirm: () => {
+                                      setTicketAutoApproveRules(prev => prev.filter(r => r.id !== rule.id));
+                                    }
+                                  });
                                 }}
                                 style={{ padding: 4, color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                                 title={t("Xóa")}

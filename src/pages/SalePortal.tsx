@@ -273,8 +273,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     scope: 'team',
     recurrence_pattern: 'none',
     recurrence_weekly_days: [] as number[],
-    recurrence_monthly_day: 1
+    recurrence_monthly_day: 1,
+    participant_ids: [] as string[],
+    related_contact_ids: [] as string[],
+    checklist: [] as any[]
   });
+
+  // Local states for subtasks creation
+  const [subTaskTitle, setSubTaskTitle] = useState('');
+  const [subTaskAssignee, setSubTaskAssignee] = useState('');
+  const [taskTypeTab, setTaskTypeTab] = useState<'customer' | 'team' | 'personal'>('customer');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [databankPage, setDatabankPage] = useState(1);
@@ -2052,28 +2060,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setSubmittingTask(true);
 
     let tagsPayload = '';
-    if (wsSubTab === 'personal') {
+    if (taskTypeTab === 'personal') {
       tagsPayload = 'personal_task';
-    } else if (wsSubTab === 'team') {
+    } else if (taskTypeTab === 'team') {
       tagsPayload = `internal_${taskForm.internal_type || 'task'}`;
     }
+
+    const additionalContactIds = (taskForm.related_contact_ids || [])
+      .filter((id: any) => id !== 'all' && id !== '')
+      .map(Number);
 
     // Always structure body as JSON to support Checklist, Links, and Recurrence
     const erpPayload = {
       erp_task: {
         description: taskForm.description.trim(),
-        internal_type: wsSubTab === 'team' ? (taskForm.internal_type || 'task') : 'task',
-        scope: wsSubTab === 'team' ? (taskForm.scope || 'team') : 'personal',
+        internal_type: taskTypeTab === 'team' ? (taskForm.internal_type || 'task') : 'task',
+        scope: taskTypeTab === 'team' ? (taskForm.scope || 'team') : 'personal',
         recurrence: {
           pattern: taskForm.recurrence_pattern || 'none',
           weekly_days: taskForm.recurrence_weekly_days || [],
           monthly_day: Number(taskForm.recurrence_monthly_day || 1),
           last_generated: ''
         },
-        checklist: [],
-        links: taskForm.link?.trim() ? [{ label: t('Đường dẫn đính kèm'), url: taskForm.link.trim() }] : []
+        checklist: taskForm.checklist || [],
+        links: taskForm.link?.trim() ? [{ label: t('Đường dẫn đính kèm'), url: taskForm.link.trim() }] : [],
+        related_contact_ids: additionalContactIds
       }
     };
+
+    const mainAssignee = taskForm.user_id ? Number(taskForm.user_id) : currentUser?.id;
+    const participantIdsString = (taskForm.participant_ids || [])
+      .filter((id: any) => id !== 'all' && Number(id) !== Number(mainAssignee))
+      .join(',');
 
     const bodyPayload = JSON.stringify(erpPayload);
 
@@ -2083,15 +2101,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         type: 'task',
         priority: taskForm.priority,
         due_date: taskForm.due_date,
-        related_type: (wsSubTab === 'customer' && taskForm.related_id) ? 'contact' : null,
-        related_id: (wsSubTab === 'customer' && taskForm.related_id) ? Number(taskForm.related_id) : null,
+        related_type: (taskTypeTab === 'customer' && taskForm.related_id) ? 'contact' : null,
+        related_id: (taskTypeTab === 'customer' && taskForm.related_id) ? Number(taskForm.related_id) : null,
         user_id: taskForm.user_id ? Number(taskForm.user_id) : currentUser?.id,
         body: bodyPayload,
         status: 'planned',
         progress: Number(taskForm.progress || 0),
         require_approval: Number(taskForm.require_approval || 0),
         approver_id: taskForm.approver_id ? Number(taskForm.approver_id) : null,
-        tags: tagsPayload || null
+        tags: tagsPayload || null,
+        participant_ids: participantIdsString || null
       });
       setShowTaskModal(false);
       setTaskForm({
@@ -2109,7 +2128,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         scope: 'team',
         recurrence_pattern: 'none',
         recurrence_weekly_days: [],
-        recurrence_monthly_day: 1
+        recurrence_monthly_day: 1,
+        participant_ids: [] as string[],
+        related_contact_ids: [] as string[],
+        checklist: [] as any[]
       });
       fetchPortalTasks();
       fetchWorkspaceTasks();
@@ -2741,6 +2763,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 recurrence_weekly_days: [],
                 recurrence_monthly_day: 1
               });
+              setTaskTypeTab(wsSubTab);
               setShowTaskModal(true);
             }}
           >
@@ -5495,60 +5518,77 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedPublicLeads.map((lead) => (
-                    <tr key={lead.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text)', transition: 'background 0.2s' }}>
-                      <td style={{ padding: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <Avatar name={lead.full_name || t('Khách hàng')} size={32} />
-                          <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.full_name || t('Khách hàng')}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                          {lead.phone || '-'}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
-                      </td>
-                      <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
-                        {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
-                      </td>
-                      <td style={{ padding: '1rem', textAlign: 'right' }}>
-                        {(() => {
-                          const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
-                          const isFull = lead.takers && lead.takers.length >= 2;
-                          return (
-                            <button
-                              onClick={() => handleClaimLead(lead.id, lead.name)}
+                  {paginatedPublicLeads.map((lead) => {
+                    const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
+                    const isFull = lead.takers && lead.takers.length >= 2;
+                    const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null;
 
-                              disabled={isClaimingLeadId !== null || hasClaimed || isFull}
-                              className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
-                              style={{
-                                height: 32,
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                padding: '0 12px',
-                                background: hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D'),
-                                color: hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff'),
-                                border: hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none'),
-                                borderRadius: '16px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                boxShadow: (hasClaimed || isFull) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)'
-                              }}
-                            >
-                              {isClaimingLeadId === lead.id 
-                                ? t('Đang nhận...') 
-                                : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : t('Nhận Data')))}
-                            </button>
-                          );
-                        })()}
-                      </td>
-                    </tr>
-                  ))}
+                    return (
+                      <tr 
+                        key={lead.id} 
+                        className="table-row-hover" 
+                        onClick={() => {
+                          if (canClaim) {
+                            handleClaimLead(lead.id, lead.full_name || lead.name);
+                          }
+                        }}
+                        style={{ 
+                          borderBottom: '1px solid var(--color-border-light)', 
+                          color: 'var(--color-text)', 
+                          transition: 'background 0.2s',
+                          cursor: canClaim ? 'pointer' : 'default'
+                        }}
+                      >
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <Avatar name={lead.full_name || t('Khách hàng')} size={32} />
+                            <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{lead.full_name || t('Khách hàng')}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {lead.phone || '-'}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                          {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
+                        </td>
+                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClaimLead(lead.id, lead.full_name || lead.name);
+                            }}
+
+                            disabled={isClaimingLeadId !== null || hasClaimed || isFull}
+                            className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
+                            style={{
+                              height: 32,
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              padding: '0 12px',
+                              background: hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D'),
+                              color: hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff'),
+                              border: hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none'),
+                              borderRadius: '16px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: (hasClaimed || isFull) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)'
+                            }}
+                          >
+                            {isClaimingLeadId === lead.id 
+                              ? t('Đang nhận...') 
+                              : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : t('Nhận Data')))}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -8757,305 +8797,519 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       <CustomModal
         isOpen={showTaskModal}
         onClose={() => setShowTaskModal(false)}
-        title={wsSubTab === 'personal' ? t('Tạo công việc cá nhân') : wsSubTab === 'team' ? t('Tạo công việc nội bộ team') : t('Tạo công việc khách hàng')}
+        title={taskTypeTab === 'personal' ? t('Tạo công việc cá nhân') : taskTypeTab === 'team' ? t('Tạo công việc nội bộ team') : t('Tạo công việc khách hàng')}
+        width="960px"
       >
-        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           
+          {/* Loại công việc Switcher (iOS Segmented Control style) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label className="form-label" style={{ fontWeight: 750, marginBottom: 2 }}>{t('Phân loại công việc')}</label>
+            <div style={{
+              display: 'flex',
+              background: 'var(--color-bg-light)',
+              border: '1px solid var(--color-border-light)',
+              padding: '4px',
+              borderRadius: '12px',
+              gap: '4px',
+              width: 'fit-content'
+            }}>
+              {[
+                { key: 'customer', label: t('Khách hàng') },
+                { key: 'team', label: t('Nội bộ Team') },
+                { key: 'personal', label: t('Cá nhân') }
+              ].map(tab => {
+                const isActive = taskTypeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setTaskTypeTab(tab.key as any)}
+                    style={{
+                      padding: '6px 18px',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      background: isActive ? 'var(--color-surface)' : 'transparent',
+                      color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                    className={isActive ? '' : 'hover-lift'}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Personal Task Warning Banner */}
-          {wsSubTab === 'personal' && (
+          {taskTypeTab === 'personal' && (
             <div style={{ display: 'flex', gap: '8px', padding: '10px 12px', background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '10px', color: '#d97706', fontSize: '0.75rem' }}>
               <AlertCircle size={16} style={{ flexShrink: 0 }} />
               <span>{t('Chú ý: Nhiệm vụ cá nhân này chỉ hiển thị với bạn và quản lý trực tiếp của bạn (Manager), các đồng nghiệp khác không thể xem.')}</span>
             </div>
           )}
 
-          <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>{t('Tên công việc *')}</label>
-            <input
-              className="form-input"
-              placeholder={t('VD: Gọi điện tư vấn, Gửi bảng giá...')}
-              value={taskForm.title}
-              onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
-              autoFocus
-            />
-          </div>
-
-          {/* Render related contact only for Customer Tab */}
-          {wsSubTab === 'customer' && (
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng liên quan (Tùy chọn)')}</label>
-              <CustomSelect
-                options={[
-                  { value: '', label: t('Không chọn khách hàng') },
-                  ...(data.leads || []).map((l: any) => ({
-                    value: String(l.contact_id || ''),
-                    label: `${l.lead_name || t('Không tên')} (${l.phone || ''})`
-                  }))
-                ]}
-                value={taskForm.related_id}
-                onChange={val => setTaskForm({ ...taskForm, related_id: val.toString() })}
-                width="100%"
-              />
-            </div>
-          )}
-
-          {/* Render Team options only for Team Tab */}
-          {wsSubTab === 'team' && (
-            <>
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 700 }}>{t('Loại công việc nội bộ')}</label>
-                <CustomSelect
-                  options={[
-                    { value: 'task', label: t('Nhiệm vụ') },
-                    { value: 'announcement', label: t('Thông báo') },
-                    { value: 'campaign', label: t('Chiến dịch thi đua') },
-                    { value: 'policy', label: t('Chính sách ưu đãi') }
-                  ]}
-                  value={taskForm.internal_type}
-                  onChange={val => setTaskForm({ ...taskForm, internal_type: val.toString() })}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
+            {/* Left Column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700 }}>{t('Tên công việc *')}</label>
+                <input
+                  className="form-input"
+                  placeholder={t('VD: Gọi điện tư vấn, Gửi bảng giá...')}
+                  value={taskForm.title}
+                  onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
+                  autoFocus
                 />
               </div>
 
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 700 }}>{t('Phạm vi áp dụng')}</label>
-                <CustomSelect
-                  options={[
-                    { value: 'team', label: t('Nội bộ Team') },
-                    { value: 'global', label: t('Toàn hệ thống') }
-                  ]}
-                  value={taskForm.scope}
-                  onChange={val => setTaskForm({ ...taskForm, scope: val.toString() })}
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700 }}>{t('Mô tả chi tiết công việc')}</label>
+                <textarea
+                  className="form-input"
+                  placeholder={t('Mô tả chi tiết nội dung cần làm...')}
+                  value={taskForm.description}
+                  onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
+                  style={{ minHeight: 120, resize: 'vertical' }}
                 />
               </div>
-            </>
-          )}
 
-          <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>{t('Tài liệu hoặc Link đính kèm (Tùy chọn)')}</label>
-            <input
-              className="form-input"
-              placeholder={t('Link tài liệu hoặc ghi chú nhanh...')}
-              value={taskForm.link || ''}
-              onChange={e => setTaskForm({ ...taskForm, link: e.target.value })}
-            />
-          </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: 700 }}>{t('Tài liệu hoặc Link đính kèm (Tùy chọn)')}</label>
+                <input
+                  className="form-input"
+                  placeholder={t('Link tài liệu hoặc ghi chú nhanh...')}
+                  value={taskForm.link || ''}
+                  onChange={e => setTaskForm({ ...taskForm, link: e.target.value })}
+                />
+              </div>
 
-          <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700 }}>{t('Mô tả chi tiết công việc')}</label>
-            <textarea
-              className="form-input"
-              placeholder={t('Mô tả chi tiết nội dung cần làm...')}
-              value={taskForm.description}
-              onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
-              style={{ minHeight: 80, resize: 'vertical' }}
-            />
-          </div>
+              {/* Công việc con (Checklist) */}
+              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, marginBottom: '2px' }}>📋 {t('Công việc con (Checklist)')}</label>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '0.5rem', alignItems: 'start' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Tên việc con')}</label>
+                    <input
+                      className="form-input"
+                      placeholder={t('VD: Gửi file pdf, Gọi lại...')}
+                      value={subTaskTitle}
+                      onChange={e => setSubTaskTitle(e.target.value)}
+                      style={{ height: '38px', fontSize: '0.8125rem' }}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Giao cho')}</label>
+                    <CustomSelect
+                      showAvatars={true}
+                      searchable={true}
+                      options={[
+                        { value: '', label: t('Người nhận...') },
+                        ...users.map(u => ({
+                          value: String(u.id),
+                          label: u.full_name,
+                          avatar: u.avatar_url || undefined
+                        }))
+                      ]}
+                      value={subTaskAssignee}
+                      onChange={val => setSubTaskAssignee(val.toString())}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, visibility: 'hidden' }}>{'\u00A0'}</label>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={() => {
+                        if (!subTaskTitle.trim()) {
+                          toast.error(t('Vui lòng nhập tên công việc con'));
+                          return;
+                        }
+                        const newItem = {
+                          id: 'sub_' + Date.now(),
+                          title: subTaskTitle.trim(),
+                          assignee_id: subTaskAssignee ? Number(subTaskAssignee) : null,
+                          done: false
+                        };
+                        setTaskForm(prev => ({
+                          ...prev,
+                          checklist: [...(prev.checklist || []), newItem]
+                        }));
+                        setSubTaskTitle('');
+                        setSubTaskAssignee('');
+                        toast.success(t('Đã thêm việc con'));
+                      }}
+                      style={{ height: '38px', width: '38px', minWidth: '38px', padding: 0, border: 'none', margin: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
+                </div>
 
-          <div className="form-group">
-            <label className="form-label">{t('Người thực hiện')}</label>
-            <CustomSelect
-              showAvatars={true}
-              searchable={true}
-              options={[
-                { value: '', label: t('Chưa giao cho ai') },
-                ...users.map(u => ({
-                  value: String(u.id),
-                  label: `${u.full_name} (${u.role})`,
-                  avatar: u.avatar_url || undefined
-                }))
-              ]}
-              value={taskForm.user_id}
-              onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
-            />
-          </div>
-
-          {/* Progress Slider */}
-          <div className="form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <label className="form-label" style={{ margin: 0 }}>{t('Tiến độ công việc')}</label>
-              <span style={{ fontSize: '0.85rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
+                {/* Subtasks List */}
+                {taskForm.checklist && taskForm.checklist.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                    {taskForm.checklist.map((item) => {
+                      const assigneeUser = users.find(u => Number(u.id) === Number(item.assignee_id));
+                      return (
+                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ color: 'var(--color-text)' }}>• {item.title}</span>
+                            {assigneeUser && (
+                              <span style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.72rem' }}>({assigneeUser.full_name})</span>
+                            )}
+                          </div>
+                          <button 
+                            type="button" 
+                            className="btn-icon sm" 
+                            onClick={() => setTaskForm(prev => ({
+                              ...prev,
+                              checklist: prev.checklist.filter(x => x.id !== item.id)
+                            }))}
+                            style={{ color: 'var(--color-text-muted)' }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="10"
-              value={taskForm.progress || 0}
-              onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
-              style={{
-                width: '100%',
-                cursor: 'pointer',
-                accentColor: 'var(--color-primary)',
-                height: '6px',
-                borderRadius: '3px',
-                background: '#e5e7eb'
-              }}
-            />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
-            </div>
-          </div>
 
-          {/* Approval Toggle */}
-          <div className="form-group">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Yêu cầu phê duyệt')}</span>
-              <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
-                <div 
-                  style={{
-                    width: 38,
-                    height: 20,
-                    borderRadius: 10,
-                    background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
-                    position: 'relative',
-                    transition: 'background 0.2s'
-                  }}
-                  onClick={() => {
-                    const next = taskForm.require_approval === 1 ? 0 : 1;
-                    setTaskForm({ ...taskForm, require_approval: next });
-                  }}
-                >
-                  <div 
-                    style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: '50%',
-                      background: 'white',
-                      position: 'absolute',
-                      top: 2,
-                      left: taskForm.require_approval === 1 ? 20 : 2,
-                      transition: 'left 0.2s',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-                    }}
+            {/* Right Column */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* Render related contact only for Customer Tab */}
+              {taskTypeTab === 'customer' && (
+                <>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng chính *')}</label>
+                    <CustomSelect
+                      showAvatars={true}
+                      searchable={true}
+                      options={[
+                        { value: '', label: t('Chọn khách hàng chính...') },
+                        ...(data.leads || []).map((l: any) => ({
+                          value: String(l.contact_id || ''),
+                          label: `${l.lead_name || t('Không tên')} (${l.phone || ''})`,
+                          avatar: l.avatar_url || undefined
+                        }))
+                      ]}
+                      value={taskForm.related_id}
+                      onChange={val => setTaskForm({ ...taskForm, related_id: val.toString() })}
+                      width="100%"
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng liên kết thêm (Tùy chọn)')}</label>
+                    <CustomSelect
+                      multiple={true}
+                      showAvatars={true}
+                      align="right"
+                      options={[
+                        { value: 'all', label: t('Không có khách hàng khác') },
+                        ...(data.leads || [])
+                          .filter((l: any) => l.contact_id && String(l.contact_id) !== String(taskForm.related_id))
+                          .map((l: any) => ({
+                            value: String(l.contact_id),
+                            label: `${l.lead_name || t('Không tên')} (${l.phone || ''})`,
+                            avatar: l.avatar_url || undefined
+                          }))
+                      ]}
+                      value={taskForm.related_contact_ids || ['all']}
+                      onChange={val => setTaskForm({ ...taskForm, related_contact_ids: val })}
+                      width="100%"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Render Team options only for Team Tab */}
+              {taskTypeTab === 'team' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700 }}>{t('Loại công việc nội bộ')}</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'task', label: t('Nhiệm vụ') },
+                        { value: 'announcement', label: t('Thông báo') },
+                        { value: 'campaign', label: t('Chiến dịch thi đua') },
+                        { value: 'policy', label: t('Chính sách ưu đãi') }
+                      ]}
+                      value={taskForm.internal_type}
+                      onChange={val => setTaskForm({ ...taskForm, internal_type: val.toString() })}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700 }}>{t('Phạm vi áp dụng')}</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'team', label: t('Nội bộ Team') },
+                        { value: 'global', label: t('Toàn hệ thống') }
+                      ]}
+                      value={taskForm.scope}
+                      onChange={val => setTaskForm({ ...taskForm, scope: val.toString() })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 750 }}>{t('Người thực hiện')}</label>
+                  <CustomSelect
+                    showAvatars={true}
+                    searchable={true}
+                    options={[
+                      { value: '', label: t('Chưa giao cho ai') },
+                      ...users.map(u => ({
+                        value: String(u.id),
+                        label: u.full_name,
+                        avatar: u.avatar_url || undefined
+                      }))
+                    ]}
+                    value={taskForm.user_id}
+                    onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
                   />
                 </div>
-              </label>
-            </div>
-          </div>
 
-          {/* Approver Select */}
-          {taskForm.require_approval === 1 && (
-            <div className="form-group">
-              <label className="form-label">{t('Người duyệt')}</label>
-              <CustomSelect
-                showAvatars={true}
-                searchable={true}
-                options={[
-                  { value: '', label: t('Chọn người duyệt...') },
-                  ...users.map(u => ({
-                    value: String(u.id),
-                    label: `${u.full_name} (${u.role})`,
-                    avatar: u.avatar_url || undefined
-                  }))
-                ]}
-                value={taskForm.approver_id}
-                onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
-              />
-            </div>
-          )}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 750 }}>{t('Người liên quan (Tùy chọn)')}</label>
+                  <CustomSelect
+                    multiple={true}
+                    showAvatars={true}
+                    align="right"
+                    searchable={true}
+                    options={[
+                      { value: 'all', label: t('Không có người liên quan') },
+                      ...users.filter(u => String(u.id) !== String(taskForm.user_id)).map(u => ({
+                        value: String(u.id),
+                        label: u.full_name,
+                        avatar: u.avatar_url || undefined
+                      }))
+                    ]}
+                    value={taskForm.participant_ids || ['all']}
+                    onChange={val => setTaskForm({ ...taskForm, participant_ids: val })}
+                  />
+                </div>
+              </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">{t('Mức độ ưu tiên')}</label>
-              <CustomSelect
-                options={[
-                  { value: 'low', label: t('Thấp') },
-                  { value: 'medium', label: t('Trung bình') },
-                  { value: 'high', label: t('Cao') }
-                ]}
-                value={taskForm.priority}
-                onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
-                width="100%"
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">{t('Hạn hoàn thành')}</label>
-              <input
-                className="form-input"
-                type="date"
-                value={taskForm.due_date}
-                onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
-              />
-            </div>
-          </div>
+              {/* Progress Slider */}
+              <div className="form-group" style={{ margin: 0 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label className="form-label" style={{ margin: 0 }}>{t('Tiến độ công việc')}</label>
+                  <span style={{ fontSize: '0.825rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="10"
+                  value={taskForm.progress || 0}
+                  onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
+                  style={{
+                    width: '100%',
+                    cursor: 'pointer',
+                    accentColor: 'var(--color-primary)',
+                    height: '6px',
+                    borderRadius: '3px',
+                    background: '#e5e7eb'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                  <span>0%</span>
+                  <span>50%</span>
+                  <span>100%</span>
+                </div>
+              </div>
 
-          {/* Recurrence Settings Block */}
-          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', marginTop: '0.25rem' }}>
-            <label className="form-label" style={{ fontWeight: 800 }}>🔄 {t('Lặp lại định kỳ')}</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem', alignItems: 'center' }}>
-              <CustomSelect
-                options={[
-                  { value: 'none', label: t('Không lặp lại') },
-                  { value: 'daily', label: t('Hàng ngày') },
-                  { value: 'weekly', label: t('Hàng tuần') },
-                  { value: 'monthly', label: t('Hàng tháng') }
-                ]}
-                value={taskForm.recurrence_pattern}
-                onChange={val => setTaskForm({ ...taskForm, recurrence_pattern: val.toString() })}
-              />
-
-              {taskForm.recurrence_pattern === 'weekly' && (
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {[
-                    { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
-                    { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
-                    { key: 0, label: 'CN' }
-                  ].map(day => {
-                    const isSelected = taskForm.recurrence_weekly_days.includes(day.key);
-                    return (
-                      <button
-                        key={day.key}
-                        type="button"
-                        onClick={() => {
-                          let newDays = [...taskForm.recurrence_weekly_days];
-                          if (newDays.includes(day.key)) {
-                            newDays = newDays.filter(d => d !== day.key);
-                          } else {
-                            newDays.push(day.key);
-                          }
-                          setTaskForm({ ...taskForm, recurrence_weekly_days: newDays });
-                        }}
+              {/* Approval Row (Toggle & Approver) */}
+              <div style={{ display: 'grid', gridTemplateColumns: taskForm.require_approval === 1 ? '1.2fr 1.8fr' : '1fr', gap: '1rem', alignItems: 'end' }}>
+                {/* Approval Toggle */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '6px 10px', borderRadius: '10px', border: '1px solid var(--color-border-light)', height: '38px' }}>
+                    <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cần duyệt')}</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <div 
                         style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--color-border)',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
-                          color: isSelected ? 'white' : 'var(--color-text)'
+                          width: 34,
+                          height: 18,
+                          borderRadius: 9,
+                          background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
+                          position: 'relative',
+                          transition: 'background 0.2s'
+                        }}
+                        onClick={() => {
+                          const next = taskForm.require_approval === 1 ? 0 : 1;
+                          setTaskForm({ ...taskForm, require_approval: next });
                         }}
                       >
-                        {day.label}
-                      </button>
-                    );
-                  })}
+                        <div 
+                          style={{
+                            width: 14,
+                            height: 14,
+                            borderRadius: '50%',
+                            background: 'white',
+                            position: 'absolute',
+                            top: 2,
+                            left: taskForm.require_approval === 1 ? 18 : 2,
+                            transition: 'left 0.2s',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                          }}
+                        />
+                      </div>
+                    </label>
+                  </div>
                 </div>
-              )}
 
-              {taskForm.recurrence_pattern === 'monthly' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t('Vào ngày:')}</span>
-                  <input
-                    type="number"
-                    className="form-input"
-                    min={1}
-                    max={31}
-                    value={taskForm.recurrence_monthly_day}
-                    onChange={e => setTaskForm({ ...taskForm, recurrence_monthly_day: Math.min(31, Math.max(1, Number(e.target.value))) })}
-                    style={{ width: '60px', height: '32px', textAlign: 'center', padding: 0 }}
+                {/* Approver Select */}
+                {taskForm.require_approval === 1 && (
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <CustomSelect
+                      showAvatars={true}
+                      searchable={true}
+                      direction="up"
+                      align="right"
+                      options={[
+                        { value: '', label: t('Chọn người duyệt...') },
+                        ...users.map(u => ({
+                          value: String(u.id),
+                          label: `${u.full_name} (${u.role})`,
+                          avatar: u.avatar_url || undefined
+                        }))
+                      ]}
+                      value={taskForm.approver_id}
+                      onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Mức độ ưu tiên')}</label>
+                  <CustomSelect
+                    direction="up"
+                    options={[
+                      { value: 'low', label: t('Thấp') },
+                      { value: 'medium', label: t('Trung bình') },
+                      { value: 'high', label: t('Cao') }
+                    ]}
+                    value={taskForm.priority}
+                    onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
+                    width="100%"
                   />
                 </div>
-              )}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Hạn hoàn thành')}</label>
+                  <input
+                    className="form-input"
+                    type="date"
+                    value={taskForm.due_date}
+                    onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Recurrence Settings Block */}
+              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, marginBottom: '6px' }}>🔄 {t('Lặp lại định kỳ')}</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem', alignItems: 'center' }}>
+                  <CustomSelect
+                    direction="up"
+                    options={[
+                      { value: 'none', label: t('Không lặp lại') },
+                      { value: 'daily', label: t('Hàng ngày') },
+                      { value: 'weekly', label: t('Hàng tuần') },
+                      { value: 'monthly', label: t('Hàng tháng') }
+                    ]}
+                    value={taskForm.recurrence_pattern}
+                    onChange={val => setTaskForm({ ...taskForm, recurrence_pattern: val.toString() })}
+                  />
+
+                  {taskForm.recurrence_pattern === 'weekly' && (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {[
+                        { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
+                        { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
+                        { key: 0, label: 'CN' }
+                      ].map(day => {
+                        const isSelected = taskForm.recurrence_weekly_days.includes(day.key);
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            onClick={() => {
+                              let newDays = [...taskForm.recurrence_weekly_days];
+                              if (newDays.includes(day.key)) {
+                                newDays = newDays.filter(d => d !== day.key);
+                              } else {
+                                newDays.push(day.key);
+                              }
+                              setTaskForm({ ...taskForm, recurrence_weekly_days: newDays });
+                            }}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--color-border)',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                              color: isSelected ? 'white' : 'var(--color-text)'
+                            }}
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {taskForm.recurrence_pattern === 'monthly' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t('Vào ngày:')}</span>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={1}
+                        max={31}
+                        value={taskForm.recurrence_monthly_day}
+                        onChange={e => setTaskForm({ ...taskForm, recurrence_monthly_day: Math.min(31, Math.max(1, Number(e.target.value))) })}
+                        style={{ width: '60px', height: '32px', textAlign: 'center', padding: 0 }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '0.5rem' }}>
-            <button className="btn outline" onClick={() => setShowTaskModal(false)}>{t('Hủy')}</button>
-            <button className="btn primary" onClick={handleCreatePortalTask} disabled={submittingTask}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            marginTop: '1.5rem',
+            borderTop: '1px solid var(--color-border-light)',
+            position: 'sticky',
+            bottom: '-24px',
+            background: 'var(--color-surface)',
+            zIndex: 10,
+            margin: '1.5rem -24px -24px -24px',
+            padding: '16px 24px 24px 24px'
+          }}>
+            <button className="btn outline" type="button" onClick={() => setShowTaskModal(false)}>{t('Hủy')}</button>
+            <button className="btn primary" type="button" onClick={handleCreatePortalTask} disabled={submittingTask}>
               {submittingTask ? t('Đang lưu...') : t('Tạo công việc')}
             </button>
           </div>
