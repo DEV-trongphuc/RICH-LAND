@@ -2438,8 +2438,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               return;
                             }
                             
-                            // Check interaction guardrail: if transitioning to 'churned' (Đã rời bỏ/Đóng), must have at least 1 activity
-                            if (st.id === 'churned' && drawerActivities.length === 0) {
+                            // Check interaction guardrail: if transitioning to 'churned' or 'dong_deal' (Đã rời bỏ/Đóng), must have at least 1 activity
+                            if ((st.id === 'churned' || st.id === 'dong_deal') && drawerActivities.length === 0) {
                               addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
                               return;
                             }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, DollarSign, History, Briefcase, Tag as TagIcon, Box, FileText, CheckCircle2 } from 'lucide-react';
+import { X, DollarSign, History, Briefcase, Tag as TagIcon, Box, FileText, CheckCircle2, Link2 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { EmptyCard } from '../components/ui/EmptyCard';
@@ -215,6 +215,21 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     }
   };
 
+  const getLinkedDealId = () => {
+    // 1. Check description
+    const desc = formData?.description || '';
+    const matchDesc = desc.match(/Deal ID:\s*(\d+)/i) || desc.match(/Deal ID mới:\s*(\d+)/i) || desc.match(/Deal ID cũ:\s*(\d+)/i);
+    if (matchDesc) return parseInt(matchDesc[1], 10);
+
+    // 2. Check notes
+    for (const note of notes) {
+      const body = note.body || '';
+      const matchNote = body.match(/Deal ID:\s*(\d+)/i) || body.match(/Deal ID mới:\s*(\d+)/i) || body.match(/Deal ID cũ:\s*(\d+)/i);
+      if (matchNote) return parseInt(matchNote[1], 10);
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (deal) {
       setFormData({
@@ -298,6 +313,49 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
               <div className={styles.contentArea}>
                 {activeTab === 'info' && (
                   <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {(() => {
+                      const linkedId = getLinkedDealId();
+                      if (!linkedId) return null;
+                      return (
+                        <div style={{
+                          background: 'rgba(59, 130, 246, 0.08)',
+                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                          padding: '12px 16px',
+                          borderRadius: 'var(--radius-lg)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                          fontSize: '0.875rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)', fontWeight: 600 }}>
+                            <Link2 size={16} />
+                            <span>Giao dịch này liên quan đến một Deal đổi căn hộ</span>
+                          </div>
+                          <button 
+                            className="btn primary sm" 
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                            onClick={async () => {
+                              try {
+                                const res = await api.get(`/deals/${linkedId}`);
+                                if (res.data.success && res.data.data) {
+                                  setFormData(res.data.data);
+                                  const rNotes = await api.get(`/notes?entity_type=deal&entity_id=${linkedId}`);
+                                  setNotes(rNotes.data.data || []);
+                                  addToast(`Đã chuyển sang Deal liên kết #${linkedId}`, 'success');
+                                } else {
+                                  addToast('Không tìm thấy thông tin Deal liên kết', 'error');
+                                }
+                              } catch (e: any) {
+                                addToast('Không thể tải Deal liên kết', 'error');
+                              }
+                            }}
+                          >
+                            Xem Deal #{linkedId}
+                          </button>
+                        </div>
+                      );
+                    })()}
                     <div className="card-panel">
                       <h4 className="panel-title">Cơ hội bán hàng</h4>
                       <div className="grid grid-2">

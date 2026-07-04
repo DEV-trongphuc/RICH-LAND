@@ -393,6 +393,13 @@ try {
     error_log("Auto Migration Error: " . $e->getMessage());
 }
 
+// ── Auto-wipe expired night shift registrations ────────────────
+try {
+    $db->exec("DELETE FROM night_shift_registrations WHERE shift_date < CURDATE()");
+} catch (Exception $e) {
+    error_log("Night Shift Wipe Error: " . $e->getMessage());
+}
+
 if ($resource === 'check') {
     require_once __DIR__ . '/check_data.php';
     exit;

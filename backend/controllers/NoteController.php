@@ -95,6 +95,21 @@ class NoteController {
         ]);
         $id = (int)$this->db->lastInsertId();
 
+        // Maintain quyen_truy_cap audit log for Cooperation Slips
+        if ($type === 'contact') {
+            $stmtOwner = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ?");
+            $stmtOwner->execute([$entityId]);
+            $ownerId = $stmtOwner->fetchColumn();
+            if ($ownerId && $ownerId != $auth['user_id']) {
+                $stmtCheck = $this->db->prepare("SELECT id FROM quyen_truy_cap WHERE contact_id = ? AND user_id = ?");
+                $stmtCheck->execute([$entityId, $auth['user_id']]);
+                if (!$stmtCheck->fetch()) {
+                    $stmtInsQ = $this->db->prepare("INSERT INTO quyen_truy_cap (contact_id, user_id, invited_by) VALUES (?, ?, ?)");
+                    $stmtInsQ->execute([$entityId, $auth['user_id'], $ownerId]);
+                }
+            }
+        }
+
         // 1. Extract mentions from body text (@Full_Name_With_Underscores)
         $mentions = $b['mentions'] ?? [];
         if (empty($mentions)) {

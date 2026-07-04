@@ -328,6 +328,16 @@ class ContactController {
             }
         }
 
+        // Check interaction gate before closing as 'dong_deal' or 'churned'
+        if ($newStatus === 'dong_deal' || (isset($b['status']) && $b['status'] === 'churned')) {
+            $stmtCheckAct = $this->db->prepare("SELECT COUNT(*) FROM activities WHERE related_type = 'contact' AND related_id = ?");
+            $stmtCheckAct->execute([$id]);
+            $actCount = (int)$stmtCheckAct->fetchColumn();
+            if ($actCount === 0) {
+                respond(400, null, 'Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', false);
+            }
+        }
+
         $fields = [
             'company_id','owner_id','first_name','last_name','email','phone',
             'mobile','job_title','department','source','status','notes',

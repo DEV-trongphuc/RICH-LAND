@@ -92,14 +92,25 @@ class CooperationController {
         if (!$contact) return;
         $ownerId = (int)$contact['owner_id'];
 
-        // Query all unique sales who interacted with this contact
+        // Query all unique sales who had access to this contact (both active and revoked)
         $stmtAct = $this->db->prepare("
             SELECT DISTINCT user_id 
-            FROM activities 
-            WHERE related_type = 'contact' AND related_id = ? AND user_id IS NOT NULL AND user_id != ?
+            FROM quyen_truy_cap 
+            WHERE contact_id = ? AND user_id != ?
         ");
         $stmtAct->execute([$contactId, $ownerId]);
         $supporters = $stmtAct->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+        if (empty($supporters)) {
+            // Fallback to activities for backward compatibility
+            $stmtFallback = $this->db->prepare("
+                SELECT DISTINCT user_id 
+                FROM activities 
+                WHERE related_type = 'contact' AND related_id = ? AND user_id IS NOT NULL AND user_id != ?
+            ");
+            $stmtFallback->execute([$contactId, $ownerId]);
+            $supporters = $stmtFallback->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        }
 
         // Build default shares: Owner gets 100% (Sales can update this later)
         $shares = [];

@@ -143,6 +143,21 @@ class ActivityController {
             }
         }
 
+        // Maintain quyen_truy_cap audit log for Cooperation Slips
+        if (!empty($b['related_type']) && $b['related_type'] === 'contact' && !empty($b['related_id'])) {
+            $stmtOwner = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ?");
+            $stmtOwner->execute([(int)$b['related_id']]);
+            $ownerId = $stmtOwner->fetchColumn();
+            if ($ownerId && $ownerId != $auth['user_id']) {
+                $stmtCheck = $this->db->prepare("SELECT id FROM quyen_truy_cap WHERE contact_id = ? AND user_id = ?");
+                $stmtCheck->execute([(int)$b['related_id'], $auth['user_id']]);
+                if (!$stmtCheck->fetch()) {
+                    $stmtInsQ = $this->db->prepare("INSERT INTO quyen_truy_cap (contact_id, user_id, invited_by) VALUES (?, ?, ?)");
+                    $stmtInsQ->execute([(int)$b['related_id'], $auth['user_id'], $ownerId]);
+                }
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'activity', $actId, json_encode(['subject' => $b['subject'], 'type' => $b['type']]));
 
         if (!empty($b['auto_trigger'])) {
