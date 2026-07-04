@@ -17,7 +17,17 @@ export default defineConfig(({ mode }) => {
         '/backend': {
           target: targetUrl,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/backend/, '')
+          rewrite: (path) => path.replace(/^\/backend/, ''),
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq) => {
+              // Override User-Agent to standard desktop Chrome to bypass Imunify360 bot-protection for E2E tests and local dev
+              proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+              // Remove automation headers if present
+              proxyReq.removeHeader('x-playwright-version');
+              proxyReq.removeHeader('x-cypress-instance');
+              proxyReq.removeHeader('x-puppeteer-version');
+            });
+          }
         }
       }
     }

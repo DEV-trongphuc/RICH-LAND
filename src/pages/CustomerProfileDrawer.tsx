@@ -1452,6 +1452,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setDrawerExpenses([]);
       setDrawerTickets([]);
       setActiveTab(initialTab || 'info');
+
+      let initialTtl1 = { group1: false, group2: false, group3: false, group4: false, group5: false };
+      try {
+        if (contact.ttl1_data) {
+          const parsed = typeof contact.ttl1_data === 'string' ? JSON.parse(contact.ttl1_data) : contact.ttl1_data;
+          if (parsed && typeof parsed === 'object') {
+            initialTtl1 = { ...initialTtl1, ...parsed };
+          }
+        }
+      } catch {}
+      setTtl1Data(initialTtl1);
+
       if (isOpen) fetchData();
     }
   }, [contact, isOpen, fetchData]);
@@ -3466,10 +3478,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
 
-                      <div className="timeline-stepper" style={{ position: 'relative', marginTop: '1rem', marginLeft: '0.5rem', paddingBottom: '1.5rem' }}>
-                        <div style={{ position: 'absolute', left: 18, top: 10, bottom: 0, width: 2, background: 'linear-gradient(to bottom, var(--color-border) 0%, rgba(0,0,0,0) 100%)' }} />
+                      {timeline.length === 0 ? (
+                        <EmptyCard
+                          icon={<History size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
+                          title="Chưa có nhật ký tương tác"
+                          description="Các cuộc gọi, email, task hoặc lịch hẹn của khách hàng này sẽ xuất hiện tại đây."
+                          actionText="Ghi nhận tương tác"
+                          onAction={() => setShowActivityModal(true)}
+                        />
+                      ) : (
+                        <div className="timeline-stepper" style={{ position: 'relative', marginTop: '1rem', marginLeft: '0.5rem', paddingBottom: '1.5rem' }}>
+                          <div style={{ position: 'absolute', left: 18, top: 10, bottom: 0, width: 2, background: 'linear-gradient(to bottom, var(--color-border) 0%, rgba(0,0,0,0) 100%)' }} />
 
-                        {timeline.map((ev: any, index) => (
+                          {timeline.map((ev: any, index) => (
                           <motion.div
                             key={ev.id}
                             initial={{ opacity: 0, x: -10 }}
@@ -3600,7 +3621,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           </motion.div>
                         ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -4160,11 +4182,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       )}
 
                       {docs.length === 0 ? (
-                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
-                          <FileText size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
-                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có tài liệu nào</h4>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Upload hợp đồng, CMND/CCCD hoặc báo giá tại đây.</p>
-                        </div>
+                        <EmptyCard
+                          icon={<FileText size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
+                          title="Chưa có tài liệu nào"
+                          description="Upload hợp đồng, CMND/CCCD hoặc báo giá tại đây."
+                          actionText={isOwnerOrAdmin ? "Upload file" : undefined}
+                          onAction={isOwnerOrAdmin ? () => {
+                            const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+                            if (fileInput) fileInput.click();
+                          } : undefined}
+                        />
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                           {docs.map(doc => {

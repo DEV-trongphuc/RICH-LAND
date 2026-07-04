@@ -1035,7 +1035,10 @@ export const ContactsPage: React.FC = () => {
         isOpen={!!profileContact}
         onClose={() => setProfileContact(null)}
         contact={profileContact}
-        onUpdate={updated => { setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated}:c)); }}
+        onUpdate={updated => {
+          setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated}:c));
+          setProfileContact(prev => prev && prev.id === updated?.id ? { ...prev, ...updated } : prev);
+        }}
       />
       
       <ImportExportModal 
