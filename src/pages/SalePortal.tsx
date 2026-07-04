@@ -2750,10 +2750,66 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const renderDashboardView = () => {
     const kpis = [
-      { key: 'data', status: 'all', label: t('DATA KHÁCH HÀNG'), value: data.stats.total_received, sub: t('Tổng nhận được bàn giao'), color: '#a31422', bg: 'rgba(163, 20, 34, 0.08)', icon: FileText },
-      { key: 'tickets', status: 'pending', label: t('TICKET BÁO LỖI'), value: data.stats.tickets_total, sub: `${data.stats.tickets_pending} đang chờ duyệt`, color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.08)', icon: AlertCircle },
-      { key: 'data', status: 'approved_ticket', label: t('ĐÃ DUYỆT BÙ'), value: data.stats.tickets_approved, sub: t('Hợp lệ & Đã được bù'), color: '#10b981', bg: 'rgba(16, 185, 129, 0.08)', icon: CheckCircle2 },
-      { key: 'data', status: 'rejected_ticket', label: t('TỪ CHỐI BÙ'), value: data.stats.tickets_rejected, sub: t('Bị từ chối / Không đền bù'), color: '#ef4444', bg: 'rgba(239, 68, 68, 0.08)', icon: XCircle }
+      { 
+        id: 'total',
+        key: 'data', 
+        status: 'all', 
+        label: t('DATA KHÁCH HÀNG'), 
+        value: data.stats.total_received, 
+        color: '#a31422', 
+        bg: 'rgba(163, 20, 34, 0.08)', 
+        icon: FileText,
+        change: '+100%', 
+        up: true,
+        bullets: [
+          { text: t('Tổng nhận được bàn giao'), color: '#a31422' }
+        ]
+      },
+      { 
+        id: 'tickets',
+        key: 'tickets', 
+        status: 'pending', 
+        label: t('TICKET BÁO LỖI'), 
+        value: data.stats.tickets_total, 
+        color: '#f59e0b', 
+        bg: 'rgba(245, 158, 11, 0.08)', 
+        icon: AlertCircle,
+        change: '0%', 
+        up: true,
+        bullets: [
+          { text: `${data.stats.tickets_pending} ${t('đang chờ duyệt')}`, color: '#f59e0b' }
+        ]
+      },
+      { 
+        id: 'approved',
+        key: 'data', 
+        status: 'approved_ticket', 
+        label: t('ĐÃ DUYỆT BÙ'), 
+        value: data.stats.tickets_approved, 
+        color: '#10b981', 
+        bg: 'rgba(16, 185, 129, 0.08)', 
+        icon: CheckCircle2,
+        change: '0%', 
+        up: true,
+        bullets: [
+          { text: t('Hợp lệ & Đã được bù'), color: '#10b981' }
+        ]
+      },
+      { 
+        id: 'rejected',
+        key: 'data', 
+        status: 'rejected_ticket', 
+        label: t('TỪ CHỐI BÙ'), 
+        value: data.stats.tickets_rejected, 
+        color: '#ef4444', 
+        bg: 'rgba(239, 68, 68, 0.08)', 
+        icon: XCircle,
+        change: '0%', 
+        up: false,
+        bullets: [
+          { text: t('Bị từ chối / Không đền bù'), color: '#ef4444' }
+        ]
+      }
     ];
 
     const recentLeads = data.leads.slice(0, 5);
@@ -2855,6 +2911,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         )}
 
+        <style>{`
+          .stat-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          }
+          .stat-card.total-card:hover {
+            box-shadow: 0 6px 16px rgba(163, 20, 34, 0.15) !important;
+            border-color: #a31422 !important;
+          }
+          .stat-card.tickets-card:hover {
+            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.15) !important;
+            border-color: #f59e0b !important;
+          }
+          .stat-card.approved-card:hover {
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.15) !important;
+            border-color: #10b981 !important;
+          }
+          .stat-card.rejected-card:hover {
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.15) !important;
+            border-color: #ef4444 !important;
+          }
+        `}</style>
+
         {/* KPI Cards Grid */}
         <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '0.75rem' : '1.25rem' }}>
           {kpis.map((kpi, idx) => {
@@ -2862,7 +2940,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             return (
               <div
                 key={idx}
-                className="stat-card hover-lift"
+                className={`stat-card hover-lift ${kpi.id}-card`}
                 style={{
                   minHeight: isMobile ? '105px' : '140px',
                   padding: isMobile ? '12px' : '1.25rem',
@@ -2899,9 +2977,40 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div className="stat-value" style={{ fontWeight: 800, color: 'var(--color-text)', fontSize: isMobile ? '1.5rem' : '2.25rem', lineHeight: 1.1 }}>{kpi.value}</div>
-                  <div className="stat-desc" style={{ color: 'var(--color-text-muted)', marginTop: 'auto', fontWeight: 500, fontSize: isMobile ? '0.65rem' : '0.75rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {kpi.sub}
+                  
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                    {kpi.bullets.map((b, bIdx) => (
+                      <span key={bIdx} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: b.color, display: 'inline-block', flexShrink: 0 }} />
+                        <span>{b.text}</span>
+                      </span>
+                    ))}
                   </div>
+
+                  {(() => {
+                    const isIncrease = kpi.change.startsWith('+');
+                    const isZero = kpi.change === '0%';
+                    const changeColor = isZero ? 'var(--color-text-light)' : (kpi.up ? 'var(--color-success)' : 'var(--color-danger)');
+                    return (
+                      <div className="stat-change" style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '4px', color: changeColor, fontWeight: 700, fontSize: '0.75rem' }}>
+                        {!isZero && (
+                          isIncrease ? (
+                            <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
+                              <path d="M12 5l9 14H3z" />
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" width="8" height="8" fill="currentColor" style={{ flexShrink: 0 }}>
+                              <path d="M12 19L3 5h18z" />
+                            </svg>
+                          )
+                        )}
+                        {kpi.change}
+                        <span className="stat-desc" style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 500 }}>
+                          {t('so với kỳ trước')}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             );
