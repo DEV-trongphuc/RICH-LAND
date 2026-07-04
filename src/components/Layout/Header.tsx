@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2 } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
 import { toast } from 'react-hot-toast';
@@ -467,31 +467,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
             </div>
 
             {/* Check-in status / trigger button */}
-            {(!headerCheckIn || headerCheckIn.status === 'rejected') ? (
-              <button
-                onClick={() => {
-                  localStorage.setItem('trigger_checkin', '1');
-                  navigate('/sale-portal');
-                  window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
-                }}
-                className="btn danger sm"
-                style={{
-                  height: 36,
-                  fontSize: '0.75rem',
-                  padding: '0 12px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontWeight: 700,
-                  boxShadow: '0 0 10px rgba(239, 68, 68, 0.4)',
-                  animation: 'pulse 1.5s infinite'
-                }}
-              >
-                <Clock size={14} />
-                <span>{t('Chấm công ngay')}</span>
-              </button>
-            ) : headerCheckIn.status === 'approved' ? (
+            {(!headerCheckIn || headerCheckIn.status === 'rejected') ? null : headerCheckIn.status === 'approved' ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px', padding: '4px 10px', height: '36px', fontSize: '0.75rem', fontWeight: 700 }}>
                 <CheckCircle2 size={12} />
                 <span>{t('Đã Chấm công')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
@@ -1280,6 +1256,40 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           }
         `}</style>
       </CustomModal>
+
+      {user?.role === 'sale' && (!headerCheckIn || headerCheckIn.status === 'rejected') && (
+        <button
+          onClick={() => {
+            localStorage.setItem('trigger_checkin', '1');
+            navigate('/sale-portal');
+            window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
+          }}
+          style={{
+            position: 'fixed',
+            bottom: 88,
+            right: 24,
+            width: 52,
+            height: 52,
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            color: 'white',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 10px 25px rgba(239, 68, 68, 0.4)',
+            zIndex: 90,
+            transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            outline: 'none'
+          }}
+          title={t('Chấm công ngay')}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <Fingerprint size={24} />
+        </button>
+      )}
     </header>
   );
 };

@@ -417,7 +417,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
   };
 
   return (
-    <div style={{ marginTop: '0.75rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.75rem' }}>
+    <div onClick={e => e.stopPropagation()} style={{ marginTop: '0.75rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.75rem' }}>
       <button 
         className="btn ghost sm" 
         style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
@@ -643,6 +643,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
   const [activeTab, setActiveTab] = useState<string>('info');
   const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [prevContactId, setPrevContactId] = useState<number | null>(null);
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -1246,6 +1247,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
     
+    if (ev.type !== 'task') {
+      const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
+      if (rawAct) {
+        setEditingActivity(rawAct);
+        setShowActivityModal(true);
+      }
+      return;
+    }
+    
     // Fallback to task details modal
     if (ev.rawActivity) {
       setSelectedTaskForDetails(ev.rawActivity);
@@ -1575,19 +1585,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   useEffect(() => {
     if (contact) {
+      const isNewContact = contact.id !== prevContactId;
+      
       setFormData(contact);
       setTags(contact.tags || []);
       setBaseData(contact);
       setBaseTags(contact.tags || []);
-      setNotes([]);
-      setTasks([]);
-      setDeals([]);
-      setDrawerInvoices([]);
-      setDrawerQuotes([]);
-      setDrawerExpenses([]);
-      setDrawerTickets([]);
-      setActiveTab(initialTab || 'info');
-
+      
       let initialTtl1 = { group1: false, group2: false, group3: false, group4: false, group5: false };
       try {
         if (contact.ttl1_data) {
@@ -1599,9 +1603,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       } catch {}
       setTtl1Data(initialTtl1);
 
-      if (isOpen) fetchData();
+      if (isNewContact) {
+        setNotes([]);
+        setTasks([]);
+        setDeals([]);
+        setDrawerInvoices([]);
+        setDrawerQuotes([]);
+        setDrawerExpenses([]);
+        setDrawerTickets([]);
+        setActiveTab(initialTab || 'info');
+        setPrevContactId(contact.id);
+      }
+
+      if (isOpen && (isNewContact || timeline.length === 0)) {
+        fetchData();
+      }
+    } else {
+      setPrevContactId(null);
     }
-  }, [contact, isOpen, fetchData]);
+  }, [contact, isOpen, fetchData, prevContactId, initialTab]);
 
   useEffect(() => {
     if (isOpen) {
@@ -4118,23 +4138,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Lưu vết toàn bộ quá trình chăm sóc khách hàng</p>
                         </div>
                         <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: '100%', width: 'auto', paddingBottom: '2px', flexShrink: 0 }}>
-                          <button className="btn outline sm" onClick={() => setShowCallLogger(true)} style={{ color: '#3b82f6', borderColor: '#3b82f630', background: '#3b82f608', fontWeight: 600 }}><Phone size={14} /> Log Call</button>
-                          <button className="btn outline sm" onClick={() => setShowActivityModal(true)} style={{ color: '#BD1D2D', borderColor: '#BD1D2D30', background: '#BD1D2D08', fontWeight: 600 }}><Mail size={14} /> Email</button>
-                          <button className="btn outline sm" onClick={() => {
-                            const today = new Date().toISOString().slice(0, 10);
-                            setTaskForm({
-                              title: '',
-                              priority: 'medium',
-                              due_date: today,
-                              description: '',
-                              link: '',
-                              user_id: String(contact?.owner_id || currentUser?.id || ''),
-                              progress: 0,
-                              require_approval: 0,
-                              approver_id: ''
-                            });
-                            setShowTaskModal(true);
-                          }} style={{ color: '#f59e0b', borderColor: '#f59e0b30', background: '#f59e0b08', fontWeight: 600 }}><CheckSquare size={14} /> Task</button>
                           <button className="btn primary sm" onClick={() => setShowActivityModal(true)} style={{ fontWeight: 600 }}><Plus size={14} /> Tương tác</button>
                         </div>
                       </div>
@@ -4142,11 +4145,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       {/* Timeline Type Filters */}
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.25rem', background: 'white', padding: '4px', borderRadius: '10px', width: 'fit-content', border: '1px solid var(--color-border)' }}>
                         {[
-                          { value: 'all', label: 'Tất cả' },
-                          { value: 'call', label: '📞 Cuộc gọi' },
-                          { value: 'email', label: '✉️ Email' },
-                          { value: 'meeting', label: '🤝 Gặp gỡ' },
-                          { value: 'task', label: '📋 Công việc' }
+                          { value: 'all', label: 'Tất cả', icon: null },
+                          { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
+                          { value: 'email', label: 'Email', icon: <Mail size={13} /> },
+                          { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
+                          { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
                         ].map(tab => {
                           const isSelected = timelineFilter === tab.value;
                           return (
@@ -4154,7 +4157,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               key={tab.value}
                               onClick={() => setTimelineFilter(tab.value as any)}
                               style={{
-                                padding: '4px 12px',
+                                padding: '6px 12px',
                                 borderRadius: '6px',
                                 border: 'none',
                                 fontSize: '0.75rem',
@@ -4163,10 +4166,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 transition: 'all 0.2s',
                                 background: isSelected ? 'var(--color-primary)' : 'transparent',
                                 color: isSelected ? 'white' : 'var(--color-text-muted)',
-                                boxShadow: isSelected ? '0 2px 8px rgba(189, 29, 45, 0.15)' : 'none'
+                                boxShadow: isSelected ? '0 2px 8px rgba(189, 29, 45, 0.15)' : 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
                               }}
                             >
-                              {tab.label}
+                              {tab.icon}
+                              <span>{tab.label}</span>
                             </button>
                           );
                         })}
@@ -4250,7 +4257,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 const linkMatch = ev.note ? ev.note.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m) : null;
                                 const hasLink = !!linkMatch || !!ev.expense_image_url;
                                 const linkUrl = linkMatch ? linkMatch[1].trim() : (ev.expense_image_url || '');
-                                const displayNoteText = linkMatch ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : (ev.note || '');
+                                let displayNoteText = linkMatch ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : (ev.note || '');
+                                if (displayNoteText.startsWith('{"erp_task":')) {
+                                  try {
+                                    const parsed = JSON.parse(displayNoteText);
+                                    displayNoteText = parsed.erp_task?.description || '';
+                                  } catch (e) {}
+                                }
 
                                 return (
                                   <div style={{ padding: '0.875rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', marginTop: '0.5rem', border: '1px solid var(--color-border-light)' }}>
@@ -6087,7 +6100,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 transition: 'all 0.2s'
                               }}
                             >
-                              {ch === 'text' ? '📝 Nối Đất' : ch === 'call' ? '📞 Nối Đồng' : '🤝 Nối Áp Suất'}
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center', width: '100%' }}>
+                                {ch === 'text' ? <PenTool size={12} /> : ch === 'call' ? <Phone size={12} /> : <Users size={12} />}
+                                <span>{ch === 'text' ? 'Nối Đất' : ch === 'call' ? 'Nối Đồng' : 'Nối Áp Suất'}</span>
+                              </span>
                             </button>
                           ))}
                         </div>

@@ -2886,14 +2886,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* Left side: Search & Advanced Filters Trigger */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '280px', maxWidth: isMobile ? '100%' : '500px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                <Search size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                 <input
                   type="text"
                   className="form-input"
                   placeholder="Tìm theo tên, mô tả..."
                   value={wsSearch}
                   onChange={e => setWsSearch(e.target.value)}
-                  style={{ height: '38px', fontSize: '0.85rem', padding: '8px 12px 8px 36px', borderRadius: '10px', width: '100%' }}
+                  style={{ height: '38px', fontSize: '0.85rem', padding: '8px 36px 8px 12px', borderRadius: '10px', width: '100%' }}
                 />
               </div>
               <button

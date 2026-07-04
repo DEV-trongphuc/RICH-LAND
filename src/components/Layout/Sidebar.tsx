@@ -36,7 +36,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Khách hàng', href: '/contacts', icon: Users },
       { name: 'Kho Data', href: '/data', icon: Database },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
-      { name: 'Công việc', href: '/activities', icon: CheckSquare },
+      { name: 'Công việc', href: '/activities', icon: CheckSquare, hideForRoles: ['sale'] },
       { name: 'Lịch biểu & Chấm công', href: '/calendar', icon: Calendar },
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
