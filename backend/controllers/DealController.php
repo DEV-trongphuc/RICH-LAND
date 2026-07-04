@@ -11,15 +11,15 @@ class DealController {
         $roleFilter = "";
         $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid];
         if (in_array($auth['role'], ['sales', 'sale'], true)) {
-            $roleFilter = " AND owner_id = :uid";
-            $p['uid'] = $auth['user_id'];
+            $uid = (int)$auth['user_id'];
+            $roleFilter = " AND owner_id = $uid";
         } else if ($auth['role'] === 'manager') {
-            $roleFilter = " AND (owner_id = :uid OR owner_id IN (
+            $uid = (int)$auth['user_id'];
+            $roleFilter = " AND (owner_id = $uid OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
-                    SELECT id FROM teams WHERE leader_id = :uid
+                    SELECT id FROM teams WHERE leader_id = $uid
                 )
             ))";
-            $p['uid'] = $auth['user_id'];
         }
 
         $sql = "
