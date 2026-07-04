@@ -1225,6 +1225,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return d.toLocaleDateString('vi-VN');
   };
 
+  const handleTimelineItemClick = (ev: any) => {
+    // Check if it's an expense log
+    const match = ev.title.match(/Ghi nhận Chi phí:\s*(.*)/i);
+    if (match) {
+      const expTitle = match[1].trim();
+      const foundExp = drawerExpenses.find((e: any) => e.title.toLowerCase() === expTitle.toLowerCase());
+      if (foundExp) {
+        setViewExpense(foundExp);
+        return;
+      }
+    }
+    
+    // Fallback to task details modal
+    if (ev.rawActivity) {
+      setSelectedTaskForDetails(ev.rawActivity);
+    }
+  };
+
   const [docs, setDocs] = useState<any[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [deals, setDeals] = useState<any[]>([]);
@@ -1643,7 +1661,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : <Mail size={16} />,
       note: a.body || a.note || '',
       comment_count: a.comment_count,
-      expense_image_url: a.expense_image_url
+      expense_image_url: a.expense_image_url,
+      rawActivity: a
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   }, [drawerActivities, mockStore.activities, contact?.id, timelineFilter]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
@@ -3630,7 +3649,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                             {/* Step Content */}
                             <div
-                              style={{ flex: 1, padding: '1rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', cursor: 'default' }}
+                              onClick={() => handleTimelineItemClick(ev)}
+                              style={{ flex: 1, padding: '1rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', cursor: 'pointer' }}
                               onMouseEnter={e => { e.currentTarget.style.borderColor = ev.color; e.currentTarget.style.transform = 'translateX(4px)'; }}
                               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.transform = 'translateX(0)'; }}
                             >
