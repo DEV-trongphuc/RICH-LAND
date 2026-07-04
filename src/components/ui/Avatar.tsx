@@ -12,30 +12,47 @@ interface AvatarProps {
   aiScreened?: boolean;
 }
 
+const cleanNameForAvatar = (name: string) => {
+  if (!name) return '';
+  // Remove brackets, parentheses and their contents, e.g. [E2E] or (VIP)
+  const cleaned = name.replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '');
+  return cleaned.replace(/\s+/g, ' ').trim();
+};
+
 const getInitials = (name: string) => {
-  if (!name) return '?';
-  const parts = name.trim().split(' ');
+  const cleaned = cleanNameForAvatar(name);
+  if (!cleaned) return '?';
+  const parts = cleaned.split(' ');
   if (parts.length >= 2) {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
-  return name[0].toUpperCase();
+  return cleaned[0].toUpperCase();
 };
 
 const getColorFromName = (name: string) => {
   const colors = [
-    '#3b82f6', // blue
-    '#10b981', // green
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#BD1D2D', // violet
-    '#ec4899', // pink
-    '#06b6d4', // cyan
-    '#f97316', // orange
+    '#007AFF', // iOS Blue
+    '#34C759', // iOS Green
+    '#FF9500', // iOS Orange
+    '#FF2D55', // iOS Pink
+    '#5856D6', // iOS Purple
+    '#AF52DE', // iOS Indigo
+    '#5AC8FA', // iOS Teal
+    '#FFCC00', // iOS Yellow
+    '#10b981', // Emerald
+    '#6366f1', // Indigo Blue
+    '#a855f7', // Light Purple
+    '#ec4899', // Rose Pink
+    '#14b8a6', // Dark Teal
+    '#f43f5e', // Coral Rose
+    '#84cc16', // Lime Green
+    '#0ea5e9', // Sky Blue
   ];
-  if (!name) return colors[0];
+  const cleaned = cleanNameForAvatar(name);
+  if (!cleaned) return colors[0];
   let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < cleaned.length; i++) {
+    hash = cleaned.charCodeAt(i) + ((hash << 5) - hash);
   }
   return colors[Math.abs(hash) % colors.length];
 };
