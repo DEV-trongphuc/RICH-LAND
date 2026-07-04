@@ -50,6 +50,9 @@ function _getBaseHtml($title, $subtitle, $contentHtml)
 function sendEmailNotification($to, $subject, $title, $content, $ccEmailString = '', $sync = false, $leadId = 0)
 {
     global $conn;
+    if (!isset($conn) || $conn === null) {
+        require __DIR__ . '/db_connect.php';
+    }
 
     $htmlBody = _getBaseHtml($title, "", $content);
 
