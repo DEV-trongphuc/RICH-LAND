@@ -39,8 +39,11 @@ import {
   Users,
   Database,
   Calendar,
-  BarChart2
+  BarChart2,
+  Fingerprint,
+  Camera
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { t, language } = useLanguage();
@@ -49,7 +52,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   
   const { showPOS, setShowPOS } = useUIStore();
   
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(0);
@@ -61,6 +64,194 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   // Sales pending signatures state
   const [salesPendingSignCount, setSalesPendingSignCount] = useState<number>(0);
   const [isSalesSignModalOpen, setIsSalesSignModalOpen] = useState<boolean>(false);
+
+  // Global Check-In State
+  const [todayCheckIn, setTodayCheckIn] = useState<any>(null);
+  const [checkInModalOpen, setCheckInModalOpen] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [checkInReason, setCheckInReason] = useState('');
+  const [checkInSubmitting, setCheckInSubmitting] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [consultantProfile, setConsultantProfile] = useState<any>(null);
+
+  const loadCheckInStatus = async () => {
+    if (!user || user.role !== 'sale') return;
+    try {
+      const res = await fetchAPI('check-ins&today_only=1');
+      if (res.success) {
+        setTodayCheckIn(res.data);
+      }
+    } catch (err) {
+      console.error("Error loading check-in status:", err);
+    }
+  };
+
+  const loadConsultantProfile = async () => {
+    if (!user || user.role !== 'sale') return;
+    try {
+      const res = await fetchAPI('consultant-profile');
+      if (res.success) {
+        setConsultantProfile(res.data);
+      }
+    } catch (err) {
+      console.error("Error loading consultant profile:", err);
+    }
+  };
+
+  const startCamera = async () => {
+    setCapturedImage(null);
+    setCameraError('');
+    setIsCameraActive(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 480, height: 480 }
+      });
+      setCameraStream(stream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    } catch (err: any) {
+      console.error(err);
+      setCameraError(t('Không thể truy cập camera. Vui lòng cấp quyền.'));
+      setIsCameraActive(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        setCapturedImage(dataUrl);
+        stopCamera();
+      }
+    }
+  };
+
+  const checkIsLate = () => {
+    const workStart = consultantProfile?.work_start_time || '08:00';
+    const now = new Date();
+    const curHM = now.toTimeString().substring(0, 5); 
+    return curHM > workStart;
+  };
+
+  const isLate = checkIsLate();
+
+  const handleGlobalCheckIn = async () => {
+    if (checkInSubmitting) return;
+    setCheckInSubmitting(true);
+    let selfieUrl = '';
+    try {
+      if (capturedImage) {
+        const compressToWebP = (dataUrl: string): Promise<Blob> => {
+          return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.src = dataUrl;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((b) => {
+                  if (b) resolve(b);
+                  else reject(new Error('WebP conversion failed'));
+                }, 'image/webp', 0.8);
+              } else {
+                reject(new Error('Canvas context error'));
+              }
+            };
+            img.onerror = () => reject(new Error('Image loading error'));
+          });
+        };
+
+        const webpBlob = await compressToWebP(capturedImage);
+        const file = new File([webpBlob], 'selfie.webp', { type: 'image/webp' });
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await fetchAPI('upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (uploadRes.success && uploadRes.data?.url) {
+          selfieUrl = uploadRes.data.url;
+        } else {
+          toast.error(uploadRes.message || t('Lỗi tải ảnh lên'));
+          setCheckInSubmitting(false);
+          return;
+        }
+      } else {
+        toast.error(t('Vui lòng chụp hình selfie.'));
+        setCheckInSubmitting(false);
+        return;
+      }
+
+      if (isLate && !checkInReason.trim()) {
+        toast.error(t('Bạn đi trễ. Vui lòng điền lý do để quản lý duyệt.'));
+        setCheckInSubmitting(false);
+        return;
+      }
+
+      const res = await fetchAPI('check-ins', {
+        method: 'POST',
+        body: JSON.stringify({
+          selfie_url: selfieUrl,
+          reason: isLate ? checkInReason : null
+        })
+      });
+
+      if (res.success) {
+        toast.success(res.message || t('Check-in thành công!'));
+        setCheckInModalOpen(false);
+        setCapturedImage(null);
+        setCheckInReason('');
+        loadCheckInStatus();
+        window.dispatchEvent(new CustomEvent('checkin-status-changed'));
+      } else {
+        toast.error(res.message || t('Check-in thất bại'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi check-in: ') + err.message);
+    }
+    setCheckInSubmitting(false);
+  };
+
+  useEffect(() => {
+    loadCheckInStatus();
+    loadConsultantProfile();
+    const handleSync = () => loadCheckInStatus();
+    window.addEventListener('checkin-status-changed', handleSync);
+    return () => window.removeEventListener('checkin-status-changed', handleSync);
+  }, [user]);
+
+  useEffect(() => {
+    if (checkInModalOpen) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [checkInModalOpen]);
 
   // Hover states for notification buttons
   const [isTicketViewHovered, setIsTicketViewHovered] = useState(false);
@@ -234,8 +425,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     window.addEventListener('open-activity-feed', handleOpenFeed);
     return () => {
       window.removeEventListener('open-activity-feed', handleOpenFeed);
-    };
   }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--sidebar-width',
+      isSidebarCollapsed ? '72px' : '260px'
+    );
+  }, [isSidebarCollapsed]);
 
   useEffect(() => {
     if (user) {
@@ -1494,6 +1691,196 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </div>
 
       <AIChatbot />
+
+      {/* Floating Fingerprint button when not checked in */}
+      {token && user && user.role === 'sale' && (!todayCheckIn || (todayCheckIn.status !== 'approved' && todayCheckIn.status !== 'pending_approval')) && (
+        <button
+          onClick={() => setCheckInModalOpen(true)}
+          style={{
+            position: 'fixed',
+            bottom: '90px',
+            right: '24px',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'var(--color-danger)',
+            color: 'white',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 4px 20px rgba(189, 29, 45, 0.4)',
+            zIndex: 999,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            animation: 'pulse-avatar-global 2s infinite'
+          }}
+          title={t('Chưa chấm công ngày hôm nay')}
+          className="hover-lift"
+        >
+          <Fingerprint size={28} />
+        </button>
+      )}
+
+      {/* Global Check-in Modal */}
+      {checkInModalOpen && (
+        <CustomModal
+          isOpen={checkInModalOpen}
+          onClose={() => setCheckInModalOpen(false)}
+          title={t("CHẤM CÔNG HÀNG NGÀY")}
+          width="500px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+              {t('Vui lòng chụp ảnh selfie khuôn mặt của bạn để thực hiện chấm công và nhận data hôm nay.')}
+            </p>
+
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                backgroundColor: 'var(--color-bg)',
+                color: 'var(--color-text)',
+                padding: '6px 14px',
+                borderRadius: '20px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                border: '1px solid var(--color-border)'
+              }}>
+                {t('Giờ vào làm quy định:')} <span style={{ color: '#BD1D2D' }}>{consultantProfile?.work_start_time || '08:00'}</span>
+              </div>
+            </div>
+
+            <div style={{
+              position: 'relative',
+              width: '260px',
+              height: '260px',
+              backgroundColor: '#000',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '4px solid var(--color-border)',
+              margin: '0 auto',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.12)'
+            }}>
+              {capturedImage ? (
+                <img
+                  src={capturedImage}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  alt="Captured Selfie"
+                />
+              ) : isCameraActive ? (
+                <video
+                  ref={videoRef}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  playsInline
+                  muted
+                />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', color: '#fff', padding: '20px', textAlign: 'center' }}>
+                  <Camera size={40} style={{ opacity: 0.5 }} />
+                  <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>
+                    {cameraError || t('Camera chưa được kích hoạt')}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn primary sm"
+                    onClick={startCamera}
+                    style={{ backgroundColor: '#BD1D2D', border: 'none' }}
+                  >
+                    {t('Kích hoạt Camera')}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              {isCameraActive && !capturedImage && (
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={capturePhoto}
+                  style={{
+                    backgroundColor: '#BD1D2D',
+                    color: '#fff',
+                    borderRadius: '20px',
+                    padding: '8px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Camera size={16} />
+                  {t('Chụp ảnh selfie')}
+                </button>
+              )}
+              {capturedImage && (
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={startCamera}
+                  style={{
+                    borderRadius: '20px',
+                    padding: '8px 20px'
+                  }}
+                >
+                  {t('Chụp lại')}
+                </button>
+              )}
+            </div>
+
+            {isLate && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.05)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                borderRadius: '8px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', color: 'var(--color-danger)', fontSize: '0.8125rem', fontWeight: 700 }}>
+                  <AlertTriangle size={16} />
+                  {t('Bạn đã trễ giờ làm việc!')}
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', margin: 0 }}>
+                  {t('Vui lòng gửi lý do "Xin nhận lead hôm nay" để Quản lý duyệt mở cổng nhận data.')}
+                </p>
+                <textarea
+                  className="form-control"
+                  style={{
+                    width: '100%',
+                    height: '70px',
+                    fontSize: '0.8125rem',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--color-border)',
+                    resize: 'none'
+                  }}
+                  placeholder={t('Ví dụ: Kẹt xe tại ngã tư Thủ Đức, hỏng xe...')}
+                  value={checkInReason}
+                  onChange={(e) => setCheckInReason(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1.25rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+            <button className="btn outline" onClick={() => setCheckInModalOpen(false)} disabled={checkInSubmitting}>{t('Đóng')}</button>
+            <button className="btn primary" onClick={handleGlobalCheckIn} disabled={checkInSubmitting} style={{ backgroundColor: '#BD1D2D', border: 'none' }}>
+              {checkInSubmitting ? t('Đang gửi...') : t('Xác nhận Chấm công')}
+            </button>
+          </div>
+        </CustomModal>
+      )}
+
+      <style>{`
+        @keyframes pulse-avatar-global {
+          0% { transform: scale(1); box-shadow: 0 4px 20px rgba(189, 29, 45, 0.4); }
+          50% { transform: scale(1.08); box-shadow: 0 4px 24px rgba(189, 29, 45, 0.7); }
+          100% { transform: scale(1); box-shadow: 0 4px 20px rgba(189, 29, 45, 0.4); }
+        }
+      `}</style>
     </div>
   );
 };

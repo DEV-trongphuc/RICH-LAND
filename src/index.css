@@ -3596,7 +3596,7 @@ button:active,
 }
 
 .page-header {
-  padding: 1.25rem 1.5rem !important; /* Shorter header area */
+  padding: 1.25rem 0 !important; /* Shorter header area, aligned perfectly to the edges */
   margin-bottom: 1rem !important;
 }
 
@@ -3774,5 +3774,11 @@ table td.wrap-cell, table th.wrap-cell {
 @media (max-width: 768px) {
   .responsive-main {
     padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --sidebar-width: 0px !important;
   }
 }

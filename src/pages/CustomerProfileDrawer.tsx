@@ -1410,12 +1410,49 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       })));
 
       // Fetch Tasks (Activities)
-      const tasksRes = await api.get(`/activities?related_type=contact&related_id=${contact.id}`);
-      const rawActivities = tasksRes.data.data?.items || [];
-      setDrawerActivities(rawActivities);
-      setTasks(rawActivities.filter((a: any) => a.type === 'task').map((a: any) => {
-        const link = a.body ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
-        const description = a.body ? a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
+      const [tasksRes, allTasksRes] = await Promise.all([
+        api.get(`/activities?related_type=contact&related_id=${contact.id}`),
+        api.get(`/activities?type=task&limit=200`)
+      ]);
+      const rawActivities = tasksRes.data.data?.items || tasksRes.data.data || [];
+      const allTasks = allTasksRes.data.data?.items || allTasksRes.data.data || [];
+
+      // Filter tasks that have this contact in their related_contact_ids
+      const secondaryTasks = allTasks.filter((a: any) => {
+        if (a.type !== 'task') return false;
+        if (rawActivities.some((ra: any) => ra.id === a.id)) return false;
+        if (a.body && a.body.startsWith('{"erp_task":')) {
+          try {
+            const parsed = JSON.parse(a.body);
+            const rContactIds = parsed.erp_task?.related_contact_ids || [];
+            return rContactIds.includes(Number(contact.id)) || rContactIds.includes(String(contact.id));
+          } catch (e) {
+            return false;
+          }
+        }
+        return false;
+      });
+
+      const combinedActivities = [...rawActivities, ...secondaryTasks];
+      setDrawerActivities(combinedActivities);
+      setTasks(combinedActivities.filter((a: any) => a.type === 'task').map((a: any) => {
+        const link = a.body && !a.body.startsWith('{"erp_task":') 
+          ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
+          : '';
+        
+        let description = '';
+        if (a.body) {
+          if (a.body.startsWith('{"erp_task":')) {
+            try {
+              const parsed = JSON.parse(a.body);
+              description = parsed.erp_task?.description || '';
+            } catch (e) {
+              description = a.body;
+            }
+          } else {
+            description = a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+          }
+        }
         return {
           id: a.id,
           title: a.subject,
@@ -4175,9 +4212,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         {[
                           { value: 'all', label: 'Tất cả' },
                           { value: 'assigned_to_me', label: 'Tôi thực hiện' },
-                          { value: 'approve_by_me', label: 'Tôi duyệt' },
+                          currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: 'Tôi duyệt' },
                           { value: 'collaborator', label: 'Tôi liên quan' }
-                        ].map(tab => {
+                        ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
                           const isSelected = drawerTaskFilter === tab.value;
                           return (
                             <button

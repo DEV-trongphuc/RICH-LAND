@@ -2966,9 +2966,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {[
             { value: 'all', label: t('Tất cả') },
             { value: 'assigned_to_me', label: t('Tôi thực hiện') },
-            { value: 'approve_by_me', label: t('Tôi duyệt') },
+            currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
             { value: 'collaborator', label: t('Tôi liên quan') }
-          ].map(tab => {
+          ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
             const isSelected = wsTaskFilter === tab.value;
             return (
               <button
@@ -3020,8 +3020,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
               }
 
-              const link = task.body ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
-              const description = task.body ? task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
+              const link = task.body && !task.body.startsWith('{"erp_task":') 
+                ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
+                : '';
+              
+              let description = '';
+              if (task.body) {
+                if (task.body.startsWith('{"erp_task":')) {
+                  try {
+                    const parsed = JSON.parse(task.body);
+                    description = parsed.erp_task?.description || '';
+                  } catch (e) {
+                    description = task.body;
+                  }
+                } else {
+                  description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+                }
+              }
+              
               const participantCount = task.participant_ids ? task.participant_ids.split(',').filter(Boolean).length : 0;
               const progressVal = task.progress || 0;
 
@@ -8005,6 +8021,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           fetchWorkspaceTasks();
         }}
         users={users}
+        onOpenContact={(contactId) => {
+          setSelectedTaskForDetails(null);
+          handleOpenContactProfile(contactId);
+        }}
       />
 
       {/* Task Participants List Modal */}
@@ -8033,45 +8053,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         </CustomModal>
       )}
-      {/* Floating Fingerprint icon when not checked in */}
-      {(!todayCheckIn || (todayCheckIn.status !== 'approved' && todayCheckIn.status !== 'pending_approval')) && (
-        <button
-          onClick={() => setCheckInModalOpen(true)}
-          style={{
-            position: 'fixed',
-            bottom: '90px',
-            right: '24px',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--color-danger)',
-            color: 'white',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(189, 29, 45, 0.4)',
-            zIndex: 999,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            animation: 'pulse-avatar 2s infinite'
-          }}
-          title={t('Chưa chấm công ngày hôm nay')}
-          className="hover-lift"
-        >
-          <Fingerprint size={28} />
-        </button>
-      )}
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        @keyframes pulse-avatar {
-          0% { transform: scale(1); box-shadow: 0 4px 20px rgba(189, 29, 45, 0.4); }
-          50% { transform: scale(1.08); box-shadow: 0 4px 24px rgba(189, 29, 45, 0.7); }
-          100% { transform: scale(1); box-shadow: 0 4px 20px rgba(189, 29, 45, 0.4); }
-        }
-      `}</style>
     </div>
   );
 };

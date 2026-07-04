@@ -324,51 +324,14 @@ class ActivityController {
     public function update(array $auth,int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b=getBody();
-        
-        // Auto set done_at if status changes to done, or clear it if changed to something else
-        if (isset($b['status'])) {
-            if ($b['status'] === 'done' && empty($b['done_at'])) {
-                $b['done_at'] = date('Y-m-d H:i:s');
-            } elseif ($b['status'] !== 'done') {
-                $b['done_at'] = null;
-            }
-        }
 
-        // Verify related entity if changed
-        $allowedRelTypes = ['contact', 'company', 'deal'];
-        if (!empty($b['related_type']) && !empty($b['related_id'])) {
-            if (in_array($b['related_type'], $allowedRelTypes)) {
-                $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
-                $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
-                $check->execute([(int)$b['related_id'], $auth['tenant_id']]);
-                if (!$check->fetch()) {
-                    $b['related_type'] = null; $b['related_id'] = null;
-                }
-            } else {
-                $b['related_type'] = null; $b['related_id'] = null;
-            }
-        }
-
-        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','tags','participant_ids','progress','require_approval','approver_id','approval_status','link'];
-        $sets=[];$params=[];
-        foreach($fields as $f){
-            if(array_key_exists($f,$b)){
-                $sets[]="$f=?";
-                if (in_array($f, ['due_date', 'done_at']) && $b[$f] === '') {
-                    $params[] = null;
-                } else {
-                    $params[]=$b[$f];
-                }
-            }
-        }
-        if(!$sets) respond(422,null,'Không có dữ liệu',false);
-
-        // Check permission first
+        // Load activity first to verify permission and current state
         $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
         $check->execute([$id, $auth['tenant_id']]);
         $activity = $check->fetch();
         if (!$activity) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
+        // Permissions check
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $allowed = false;
             if ((int)$activity['user_id'] === (int)$auth['user_id']) {
@@ -381,7 +344,6 @@ class ActivityController {
                     $allowed = true;
                 }
             } elseif ($activity['tags'] && strpos($activity['tags'], 'internal_') === 0) {
-                // Check if creator is in the same team or scope is global
                 $stmtTeamCheck = $this->db->prepare("
                     SELECT 1 FROM users u 
                     WHERE u.id = ? 
@@ -410,7 +372,6 @@ class ActivityController {
                     $allowed = true;
                 }
             } else {
-                // Check if target user belongs to manager's team
                 $stmtMgrTeam = $this->db->prepare("
                     SELECT 1 FROM users WHERE id = ? AND team_id IN (
                         SELECT id FROM teams WHERE leader_id = ?
@@ -423,6 +384,115 @@ class ActivityController {
             }
             if (!$allowed) respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
         }
+
+        // Validate approver_id: Sale can only select admin, super_admin, superadmin, director OR their own team manager
+        $approver_id = isset($b['approver_id']) ? (empty($b['approver_id']) ? null : (int)$b['approver_id']) : (empty($activity['approver_id']) ? null : (int)$activity['approver_id']);
+        if ($approver_id && isset($b['approver_id']) && (int)$b['approver_id'] !== (int)$activity['approver_id'] && (in_array($auth['role'], ['sales', 'sale'], true))) {
+            $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+            $stmtUserTeam->execute([$auth['user_id']]);
+            $saleTeamId = $stmtUserTeam->fetchColumn();
+
+            $stmtAppr = $this->db->prepare("SELECT role, team_id FROM users WHERE id = ? AND tenant_id = ?");
+            $stmtAppr->execute([$approver_id, $auth['tenant_id']]);
+            $apprRow = $stmtAppr->fetch(PDO::FETCH_ASSOC);
+
+            if (!$apprRow) {
+                respond(422, null, 'Người phê duyệt không hợp lệ', false);
+            }
+
+            $apprRole = strtolower($apprRow['role'] ?? '');
+            $isAllowedRole = in_array($apprRole, ['admin', 'superadmin', 'super_admin', 'director'], true);
+            $isOwnManager = ($apprRole === 'manager' && $apprRow['team_id'] && (int)$apprRow['team_id'] === (int)$saleTeamId);
+
+            if (!$isAllowedRole && !$isOwnManager) {
+                respond(403, null, 'Người phê duyệt phải là Admin hoặc Quản lý của bạn', false);
+            }
+        }
+
+        // Auto set done_at if status changes to done, or clear it if changed to something else
+        if (isset($b['status'])) {
+            if ($b['status'] === 'done' && empty($b['done_at'])) {
+                $b['done_at'] = date('Y-m-d H:i:s');
+            } elseif ($b['status'] !== 'done') {
+                $b['done_at'] = null;
+            }
+        }
+
+        // Apply progress/approval completion rule:
+        $currentProgress = isset($b['progress']) ? (int)$b['progress'] : (int)$activity['progress'];
+        $currentReqApproval = isset($b['require_approval']) ? (int)$b['require_approval'] : (int)$activity['require_approval'];
+        $currentStatus = isset($b['status']) ? $b['status'] : $activity['status'];
+        $nextApprovalStatus = isset($b['approval_status']) ? $b['approval_status'] : ($activity['approval_status'] ?? '');
+
+        // If status explicitly updated to done but progress < 100, auto-set progress to 100
+        if (isset($b['status']) && $b['status'] === 'done' && $currentProgress < 100) {
+            $b['progress'] = 100;
+            $currentProgress = 100;
+        }
+
+        if ($currentProgress === 100) {
+            if ($currentReqApproval === 1) {
+                // If approval is required, task is ONLY done if approved
+                if ($nextApprovalStatus !== 'approved') {
+                    $b['status'] = 'planned'; // Force status to not be done
+                    if ($nextApprovalStatus !== 'pending' && $nextApprovalStatus !== 'rejected') {
+                        $b['approval_status'] = 'pending';
+                    }
+                } else {
+                    $b['status'] = 'done';
+                }
+            } else {
+                // No approval required, automatically complete
+                $b['status'] = 'done';
+                $b['approval_status'] = null;
+            }
+        } else {
+            // Progress < 100
+            if ($nextApprovalStatus !== 'rejected') {
+                $b['approval_status'] = null;
+            }
+            if ($currentStatus === 'done') {
+                $b['status'] = 'planned';
+            }
+        }
+
+        // Auto set done_at based on final resolved status
+        if (isset($b['status'])) {
+            if ($b['status'] === 'done' && empty($b['done_at'])) {
+                $b['done_at'] = date('Y-m-d H:i:s');
+            } elseif ($b['status'] !== 'done') {
+                $b['done_at'] = null;
+            }
+        }
+
+        // Verify related entity if changed
+        $allowedRelTypes = ['contact', 'company', 'deal'];
+        if (!empty($b['related_type']) && !empty($b['related_id'])) {
+            if (in_array($b['related_type'], $allowedRelTypes)) {
+                $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
+                $checkRel = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
+                $checkRel->execute([(int)$b['related_id'], $auth['tenant_id']]);
+                if (!$checkRel->fetch()) {
+                    $b['related_type'] = null; $b['related_id'] = null;
+                }
+            } else {
+                $b['related_type'] = null; $b['related_id'] = null;
+            }
+        }
+
+        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','tags','participant_ids','progress','require_approval','approver_id','approval_status','link'];
+        $sets=[];$params=[];
+        foreach($fields as $f){
+            if(array_key_exists($f,$b)){
+                $sets[]="$f=?";
+                if (in_array($f, ['due_date', 'done_at']) && $b[$f] === '') {
+                    $params[] = null;
+                } else {
+                    $params[]=$b[$f];
+                }
+            }
+        }
+        if(!$sets) respond(422,null,'Không có dữ liệu',false);
 
         // Calculate edit history (cap at 3)
         $history = json_decode($activity['edit_history'] ?? '[]', true);
