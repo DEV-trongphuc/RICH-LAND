@@ -11,6 +11,7 @@ import styles from './EntityDrawer.module.css';
 import { TagInput } from '../components/ui/TagInput';
 import { MentionInput } from '../components/ui/MentionInput';
 import { numberToText } from '../utils/numberToText';
+import { CustomModal } from '../components/ui/CustomModal';
 
 interface DealDrawerProps {
   isOpen: boolean;
@@ -38,7 +39,46 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   const [companies, setCompanies] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
+
+  // Unit Switching State
+  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+  const [switchUnitCode, setSwitchUnitCode] = useState('');
+  const [switchPrice, setSwitchPrice] = useState('');
+  const [switchProjectId, setSwitchProjectId] = useState('');
+  const [switchReason, setSwitchReason] = useState('');
+  const [submittingSwitch, setSubmittingSwitch] = useState(false);
+
+  const handleSwitchUnit = async () => {
+    if (!switchUnitCode.trim() || !switchPrice) {
+      addToast('Vui lòng điền đầy đủ mã căn hộ mới và giá bán mới', 'error');
+      return;
+    }
+    setSubmittingSwitch(true);
+    try {
+      const res = await api.post(`/deals/${deal.id}/switch`, {
+        new_unit_code: switchUnitCode,
+        new_price: parseFloat(switchPrice),
+        new_project_id: switchProjectId ? Number(switchProjectId) : undefined,
+        reason: switchReason
+      });
+      if (res.data.success) {
+        addToast('Đổi căn hộ giao dịch thành công!', 'success');
+        setIsSwitchModalOpen(false);
+        onClose(); // Close the drawer to refresh the main page
+        if (onSave) {
+          onSave(null); // trigger reload on main page
+        }
+      } else {
+        addToast(res.data.message || 'Lỗi đổi căn hộ', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.response?.data?.message || e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setSubmittingSwitch(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -139,17 +179,19 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   const fetchLists = async () => {
     setLoadingLists(true);
     try {
-      const [rC, rCo, rT, rU] = await Promise.all([
+      const [rC, rCo, rT, rU, rP] = await Promise.all([
         api.get('/contacts'),
         api.get('/companies'),
         api.get('/tags'),
-        api.get('/users').catch(() => ({ data: { data: [] } }))
+        api.get('/users').catch(() => ({ data: { data: [] } })),
+        api.get('/projects').catch(() => ({ data: { data: [] } }))
       ]);
       setContacts(rC.data.data?.items || []);
       setCompanies(rCo.data.data?.items || []);
       setAllTags(rT.data.data || []);
       const ud = rU.data.data;
       setUsers(Array.isArray(ud) ? ud : (ud?.items || []));
+      setProjects(rP.data.data || []);
     } catch (e: any) {
       // Keep empty or mock
     } finally {
@@ -207,7 +249,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       {isOpen && (
         <>
           <motion.div 
-            className="overlay-backdrop" 
+            className="drawer-backdrop" 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
             onClick={onClose} 
             style={{ zIndex: 1000 }}
@@ -500,6 +542,21 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
 
             {/* Footer */}
             <div className={styles.footer}>
+              {stages.find(s => s.id === formData?.stage_id)?.name?.toLowerCase()?.includes('cọc') && (
+                <button 
+                  className="btn outline" 
+                  style={{ marginRight: 'auto', color: '#BD1D2D', borderColor: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  onClick={() => {
+                    setSwitchUnitCode('');
+                    setSwitchPrice(formData.value ? String(formData.value) : '');
+                    setSwitchProjectId(formData.project_id ? String(formData.project_id) : '');
+                    setSwitchReason('');
+                    setIsSwitchModalOpen(true);
+                  }}
+                >
+                  🔄 Đổi Căn
+                </button>
+              )}
               <button className="btn ghost" onClick={onClose}>Hủy bỏ</button>
               <button className="btn primary" onClick={() => {
                 const payload = { ...formData };
@@ -516,6 +573,75 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                 onSave(payload);
               }}>Lưu Cơ Hội</button>
             </div>
+            {/* Unit Switching Modal */}
+            <CustomModal
+              isOpen={isSwitchModalOpen}
+              onClose={() => setIsSwitchModalOpen(false)}
+              title="Đổi căn hộ giao dịch (Unit Switch)"
+              width="500px"
+            >
+              <div style={{ padding: '0.5rem 0', color: 'var(--color-text)' }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                  <strong>Quy tắc đổi căn:</strong> Hệ thống sẽ tự động đóng deal cũ này (đánh dấu thất bại), tạo một deal mới hoàn toàn cho căn hộ mới, chuyển lịch thanh toán cọc, và tự động ghi chú lưu vết kiểm toán (audit trail).
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Mã căn hộ mới <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="VD: B-205"
+                      value={switchUnitCode}
+                      onChange={e => setSwitchUnitCode(e.target.value.toUpperCase())}
+                      className="form-input"
+                      style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem' }}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Giá bán mới (VND) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <input
+                      type="number"
+                      required
+                      placeholder="Nhập giá bán mới..."
+                      value={switchPrice}
+                      onChange={e => setSwitchPrice(e.target.value)}
+                      className="form-input"
+                      style={{ height: '38px', padding: '8px 12px', fontSize: '0.85rem' }}
+                    />
+                    {parseFloat(switchPrice) > 0 && (
+                      <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                        {numberToText(parseFloat(switchPrice))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Dự án mới (Nếu đổi dự án)</label>
+                    <CustomSelect
+                      options={projects.map(p => ({ value: String(p.id), label: p.name }))}
+                      value={switchProjectId}
+                      onChange={val => setSwitchProjectId(val.toString())}
+                      placeholder="-- Giữ nguyên dự án cũ --"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Lý do đổi căn</label>
+                    <textarea
+                      placeholder="Nhập lý do đổi căn..."
+                      value={switchReason}
+                      onChange={e => setSwitchReason(e.target.value)}
+                      className="form-input"
+                      style={{ height: '80px', resize: 'none', padding: '8px 12px', fontSize: '0.85rem' }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <button className="btn ghost w-full" onClick={() => setIsSwitchModalOpen(false)}>Hủy bỏ</button>
+                    <button className="btn primary w-full" style={{ backgroundColor: '#BD1D2D', borderColor: '#BD1D2D' }} onClick={handleSwitchUnit} disabled={submittingSwitch}>
+                      {submittingSwitch ? 'Đang xử lý...' : 'Xác nhận Đổi Căn'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </CustomModal>
           </motion.div>
         </>
       )}

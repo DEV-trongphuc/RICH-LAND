@@ -246,7 +246,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       {isOpen && (
         <>
           <motion.div 
-            className="overlay-backdrop" 
+            className="drawer-backdrop" 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
             onClick={handleClose} 
             style={{ zIndex: 1000 }}

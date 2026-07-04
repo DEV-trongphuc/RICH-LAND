@@ -261,9 +261,30 @@ class DepositController {
                 ];
                 $nextTemp = $tempDecayMap[$currTemp] ?? 'neutral';
 
+                // Resolve stage_id for 'booking'
+                $stmtStages = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
+                $stmtStages->execute([$auth['tenant_id']]);
+                $stages = $stmtStages->fetchAll(PDO::FETCH_COLUMN);
+
+                $stmtH = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
+                $stmtH->execute();
+                $hierarchyJson = $stmtH->fetchColumn();
+                $hierarchy = $hierarchyJson ? json_decode($hierarchyJson, true) : [];
+                if (empty($hierarchy)) {
+                    $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
+                }
+
+                $bookingStageId = 0;
+                foreach ($hierarchy as $idx => $s) {
+                    if ($s === 'booking') {
+                        $bookingStageId = isset($stages[$idx]) ? (int)$stages[$idx] : 0;
+                        break;
+                    }
+                }
+
                 // Revert status to Booking or Da Gap
-                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = 'booking', temperature = ?, status = 'lead', security_expires_at = DATE_ADD(NOW(), INTERVAL 3 MONTH) WHERE id = ?");
-                $stmtRev->execute([$nextTemp, $contactId]);
+                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = 'booking', stage_id = ?, temperature = ?, status = 'lead', security_expires_at = DATE_ADD(NOW(), INTERVAL 3 MONTH) WHERE id = ?");
+                $stmtRev->execute([$bookingStageId, $nextTemp, $contactId]);
             } else {
                 // If paid, keep in Dat Coc but mark deposit cancelled (Bể cọc, tiền thu hoặc chuyển đợt)
                 // In this case, contact remains in Customer status

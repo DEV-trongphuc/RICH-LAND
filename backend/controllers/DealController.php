@@ -343,4 +343,135 @@ class DealController {
         $stmt->execute($p);
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " deal");
     }
+
+    public function switchUnit(array $auth, int $id): void {
+        if (in_array($auth['role'], ['viewer'])) respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+        $b = getBody();
+        $newUnitCode = trim($b['new_unit_code'] ?? '');
+        $newPrice = (float)($b['new_price'] ?? 0);
+        $newProjectId = (int)($b['new_project_id'] ?? 0);
+        $reason = trim($b['reason'] ?? 'Đổi căn hộ giao dịch');
+
+        if (empty($newUnitCode) || $newPrice <= 0) {
+            respond(422, null, 'Thiếu thông tin căn hộ mới hoặc giá bán mới', false);
+        }
+
+        $this->db->beginTransaction();
+        try {
+            // 1. Fetch old deal and check owner
+            $stmt = $this->db->prepare("SELECT * FROM deals WHERE id=? AND tenant_id=? AND deleted_at IS NULL FOR UPDATE");
+            $params = [$id, $auth['tenant_id']];
+            $stmt->execute($params);
+            $oldDeal = $stmt->fetch();
+            if (!$oldDeal) respond(404, null, 'Không tìm thấy deal cũ', false);
+
+            if ($auth['role'] === 'sales' && $oldDeal['owner_id'] != $auth['user_id']) {
+                respond(403, null, 'Bạn không có quyền đổi căn cho deal của người khác', false);
+            }
+
+            // 2. Resolve lost stage for the old deal
+            $stmtLost = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? AND is_lost = 1 LIMIT 1");
+            $stmtLost->execute([$auth['tenant_id']]);
+            $lostStageId = $stmtLost->fetchColumn();
+            if (!$lostStageId) {
+                // Self-healing fallback if no lost stage exists
+                $stmtStages = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index DESC LIMIT 1");
+                $stmtStages->execute([$auth['tenant_id']]);
+                $lostStageId = $stmtStages->fetchColumn() ?: $oldDeal['stage_id'];
+            }
+
+            // 3. Close the old deal
+            $stmtClose = $this->db->prepare("UPDATE deals SET stage_id = ?, lost_reason = 'Unit Switch', actual_close_date = CURDATE() WHERE id = ?");
+            $stmtClose->execute([$lostStageId, $id]);
+
+            // Add history record for the old deal closing
+            $this->db->prepare("INSERT INTO deal_stage_history (deal_id, from_stage, to_stage, moved_by) VALUES (?, ?, ?, ?)")
+                     ->execute([$id, $oldDeal['stage_id'], $lostStageId, $auth['user_id']]);
+
+            // 4. Create new deal
+            $newTitle = "[Đổi căn] " . preg_replace('/(\[Đổi căn\]\s*)+/i', '', $oldDeal['title']);
+            // Replace old unit code in title if it exists, or just use new unit code
+            if (strpos($newTitle, $oldDeal['title']) !== false) {
+                $newTitle = "Giao dịch căn " . $newUnitCode . " - " . ($newProjectId ? "Dự án mới" : "Dự án");
+            } else {
+                $newTitle = preg_replace('/căn\s+[a-zA-Z0-9_-]+/i', "căn " . $newUnitCode, $newTitle);
+            }
+
+            $stmtNewDeal = $this->db->prepare("
+                INSERT INTO deals (tenant_id, stage_id, contact_id, company_id, owner_id, created_by,
+                    title, description, priority, value, probability, source, tags)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmtNewDeal->execute([
+                $auth['tenant_id'],
+                $oldDeal['stage_id'], // start at the same stage
+                $oldDeal['contact_id'],
+                $oldDeal['company_id'],
+                $oldDeal['owner_id'],
+                $auth['user_id'],
+                $newTitle,
+                "Đổi từ căn cũ (Deal ID: $id). Lý do: " . $reason,
+                $oldDeal['priority'],
+                $newPrice,
+                $oldDeal['probability'],
+                $oldDeal['source'],
+                $oldDeal['tags']
+            ]);
+            $newDealId = (int)$this->db->lastInsertId();
+
+            // Insert into history for the new deal
+            $this->db->prepare("INSERT INTO deal_stage_history (deal_id, from_stage, to_stage, moved_by) VALUES (?, NULL, ?, ?)")
+                     ->execute([$newDealId, $oldDeal['stage_id'], $auth['user_id']]);
+
+            // 5. Add audit trail notes to both deals
+            $auditNoteOld = "Khách hàng đổi sang căn hộ mới $newUnitCode (Deal ID mới: $newDealId). Đã đóng giao dịch cũ theo chính sách đổi căn.";
+            $auditNoteNew = "Yêu cầu đổi căn hộ từ deal cũ (Deal ID: $id) sang căn mới $newUnitCode. Lý do: $reason. Giữ vết kiểm toán và lịch sử phí.";
+
+            $stmtNote = $this->db->prepare("INSERT INTO notes (tenant_id, user_id, entity_type, entity_id, body, type) VALUES (?, ?, 'deal', ?, ?, 'internal')");
+            $stmtNote->execute([$auth['tenant_id'], $auth['user_id'], $id, $auditNoteOld]);
+            $stmtNote->execute([$auth['tenant_id'], $auth['user_id'], $newDealId, $auditNoteNew]);
+
+            // 6. Handle deposits change if exists
+            if ($oldDeal['contact_id']) {
+                $stmtDep = $this->db->prepare("SELECT id, project_id FROM deposits WHERE contact_id = ? AND status != 'cancelled' ORDER BY id DESC LIMIT 1");
+                $stmtDep->execute([$oldDeal['contact_id']]);
+                $oldDep = $stmtDep->fetch();
+                if ($oldDep) {
+                    // Mark old deposit as cancelled/switched
+                    $stmtCancelDep = $this->db->prepare("UPDATE deposits SET status = 'cancelled', cancelled_reason = ? WHERE id = ?");
+                    $stmtCancelDep->execute(["Đổi sang căn mới $newUnitCode (Deal ID: $newDealId)", $oldDep['id']]);
+
+                    // Insert new deposit
+                    $targetProjId = $newProjectId ?: $oldDep['project_id'];
+                    $stmtNewDep = $this->db->prepare("
+                        INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by)
+                        VALUES (?, ?, ?, ?, ?, 'pending_admin', ?)
+                    ");
+                    // standard commission is 3% if not set
+                    $comm = $newPrice * 0.03;
+                    $stmtNewDep->execute([
+                        $oldDeal['contact_id'],
+                        $targetProjId,
+                        $newUnitCode,
+                        $newPrice,
+                        $comm,
+                        $auth['user_id']
+                    ]);
+                    $newDepId = (int)$this->db->lastInsertId();
+
+                    // Create first milestone for the new deposit
+                    $this->db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1 - Cọc giữ chỗ (Đổi căn)', ?, 'pending')")
+                             ->execute([$newDepId, $newPrice]);
+                }
+            }
+
+            $this->db->commit();
+            logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Đổi căn hộ', "Đã đổi từ deal $id sang deal $newDealId cho căn hộ mới $newUnitCode.", 'deal', $newDealId);
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'SWITCH_UNIT', 'deal', $id, json_encode(['old_deal_id' => $id, 'new_deal_id' => $newDealId, 'new_unit_code' => $newUnitCode, 'reason' => $reason]));
+            respond(200, ['new_deal_id' => $newDealId], 'Đổi căn hộ thành công, hệ thống đã đóng deal cũ và tạo deal mới lưu vết kiểm toán.');
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, 'Lỗi đổi căn: ' . $e->getMessage(), false);
+        }
+    }
 }

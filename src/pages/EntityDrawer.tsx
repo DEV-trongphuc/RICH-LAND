@@ -64,7 +64,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
         {isOpen && (
           <>
             <motion.div
-              className="overlay-backdrop"
+              className="drawer-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={onClose}
               style={{ zIndex: 1000 }}

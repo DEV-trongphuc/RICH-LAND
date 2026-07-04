@@ -490,6 +490,7 @@ switch ($resource) {
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $subResource === 'stage' && $method === 'PATCH') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'move' && $method === 'POST') $ctrl->moveStage($auth, (int)$resourceId);
+        elseif ($resourceId  && $subResource === 'switch' && $method === 'POST') $ctrl->switchUnit($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
@@ -803,13 +804,12 @@ switch ($resource) {
     case 'deposits':
         $auth = requireAuth();
         $ctrl = new DepositController($db);
-        if ($resourceId && $subResource === 'milestones' && $segments[3] && $subResource === 'unc' && $method === 'POST') $ctrl->uploadUnc($auth, (int)$resourceId, (int)$segments[3]);
+        if ($resourceId && $subResource === 'milestones' && $segments[3] && ($segments[4] ?? '') === 'approve' && $method === 'POST') $ctrl->approveMilestone($auth, (int)$resourceId, (int)$segments[3]);
+        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && ($segments[4] ?? '') === 'reject' && $method === 'POST') $ctrl->rejectMilestone($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'milestones' && $segments[3] && $method === 'POST') {
             // Upload UNC standard POST
             $ctrl->uploadUnc($auth, (int)$resourceId, (int)$segments[3]);
         }
-        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && $segments[4] === 'approve' && $method === 'POST') $ctrl->approveMilestone($auth, (int)$resourceId, (int)$segments[3]);
-        elseif ($resourceId && $subResource === 'milestones' && $segments[3] && $segments[4] === 'reject' && $method === 'POST') $ctrl->rejectMilestone($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'cancel' && $method === 'POST') $ctrl->cancelDeposit($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);

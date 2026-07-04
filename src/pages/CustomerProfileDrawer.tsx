@@ -2090,7 +2090,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         {isOpen && (
           <>
             <motion.div
-              className="overlay-backdrop"
+              className="drawer-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={handleClose}
               style={{ zIndex: 1000 }}
