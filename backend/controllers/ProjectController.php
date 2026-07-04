@@ -12,6 +12,24 @@ class ProjectController {
         try {
             $this->db->exec("ALTER TABLE projects ADD COLUMN campaign_ids TEXT NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN progress_percent INT DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN construction_status VARCHAR(100) DEFAULT 'Chưa khởi công'");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN legal_status VARCHAR(255) DEFAULT 'Đang hoàn thiện pháp lý'");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN scale_block_count INT DEFAULT 1");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN scale_unit_count INT DEFAULT 100");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN handover_year INT DEFAULT 2026");
+        } catch (Exception $e) {}
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
@@ -94,6 +112,12 @@ class ProjectController {
         $developer = trim($b['developer'] ?? '');
         $document_ids = trim($b['document_ids'] ?? '');
         $campaign_ids = trim($b['campaign_ids'] ?? '');
+        $progress_percent = isset($b['progress_percent']) ? (int)$b['progress_percent'] : 0;
+        $construction_status = trim($b['construction_status'] ?? 'Chưa khởi công');
+        $legal_status = trim($b['legal_status'] ?? 'Đang hoàn thiện pháp lý');
+        $scale_block_count = isset($b['scale_block_count']) ? (int)$b['scale_block_count'] : 1;
+        $scale_unit_count = isset($b['scale_unit_count']) ? (int)$b['scale_unit_count'] : 100;
+        $handover_year = isset($b['handover_year']) ? (int)$b['handover_year'] : 2026;
 
         if (!$name) {
             respond(422, null, 'Tên dự án là bắt buộc', false);
@@ -112,10 +136,10 @@ class ProjectController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO projects (tenant_id, name, code, description, status, location, developer, document_ids, campaign_ids) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO projects (tenant_id, name, code, description, status, location, developer, document_ids, campaign_ids, progress_percent, construction_status, legal_status, scale_block_count, scale_unit_count, handover_year) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids]);
+        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year]);
         $newId = $this->db->lastInsertId();
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_PROJECT', 'project', $newId, "Tạo dự án: $name ($code)");
@@ -133,6 +157,12 @@ class ProjectController {
         $developer = trim($b['developer'] ?? '');
         $document_ids = trim($b['document_ids'] ?? '');
         $campaign_ids = trim($b['campaign_ids'] ?? '');
+        $progress_percent = isset($b['progress_percent']) ? (int)$b['progress_percent'] : 0;
+        $construction_status = trim($b['construction_status'] ?? 'Chưa khởi công');
+        $legal_status = trim($b['legal_status'] ?? 'Đang hoàn thiện pháp lý');
+        $scale_block_count = isset($b['scale_block_count']) ? (int)$b['scale_block_count'] : 1;
+        $scale_unit_count = isset($b['scale_unit_count']) ? (int)$b['scale_unit_count'] : 100;
+        $handover_year = isset($b['handover_year']) ? (int)$b['handover_year'] : 2026;
 
         if (!$name) {
             respond(422, null, 'Tên dự án là bắt buộc', false);
@@ -152,10 +182,10 @@ class ProjectController {
 
         $stmt = $this->db->prepare("
             UPDATE projects 
-            SET name = ?, code = ?, description = ?, status = ?, location = ?, developer = ?, document_ids = ?, campaign_ids = ? 
+            SET name = ?, code = ?, description = ?, status = ?, location = ?, developer = ?, document_ids = ?, campaign_ids = ?, progress_percent = ?, construction_status = ?, legal_status = ?, scale_block_count = ?, scale_unit_count = ?, handover_year = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $id, $auth['tenant_id']]);
+        $stmt->execute([$name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year, $id, $auth['tenant_id']]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT', 'project', $id, "Cập nhật dự án: $name ($code)");
         respond(200, null, 'Cập nhật dự án thành công');

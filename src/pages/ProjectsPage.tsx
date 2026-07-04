@@ -25,6 +25,12 @@ interface Project {
   doc_count?: number;
   document_ids?: string;
   campaign_ids?: string;
+  progress_percent?: number;
+  construction_status?: string;
+  legal_status?: string;
+  scale_block_count?: number;
+  scale_unit_count?: number;
+  handover_year?: number;
 }
 
 interface RosterMember {
@@ -501,6 +507,25 @@ export default function ProjectsPage() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-400 line-clamp-3 mb-4" style={{ color: 'var(--color-text-muted)' }}>{proj.description || 'Không có mô tả'}</p>
+
+                  {/* Construction Progress Bar */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.75rem' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ: {proj.construction_status || 'Chưa khởi công'}</span>
+                      <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{proj.progress_percent ?? 0}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '6px', background: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ width: `${proj.progress_percent ?? 0}%`, height: '100%', background: 'var(--color-primary)', borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
+                    </div>
+                  </div>
+
+                  {/* Project Details Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '1rem', padding: '10px', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border-light)', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                    <div>Pháp lý: <strong style={{ color: 'var(--color-text)' }}>{proj.legal_status || 'Đang hoàn thiện'}</strong></div>
+                    <div>Bàn giao: <strong style={{ color: 'var(--color-text)' }}>{proj.handover_year || 2026}</strong></div>
+                    <div>Quy mô: <strong style={{ color: 'var(--color-text)' }}>{proj.scale_block_count || 1} Block</strong></div>
+                    <div>Số căn: <strong style={{ color: 'var(--color-text)' }}>{proj.scale_unit_count || 100} căn</strong></div>
+                  </div>
                   
                   <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '4px 8px', borderRadius: '4px', fontWeight: 600 }}>
@@ -853,6 +878,86 @@ export default function ProjectsPage() {
                     value={parseIds(editingProject?.campaign_ids)}
                     onChange={val => setEditingProject(prev => ({ ...prev, campaign_ids: Array.isArray(val) ? val.join(',') : String(val) }))}
                     placeholder="Chọn chiến dịch liên kết..."
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Tiến độ thi công (%)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={editingProject?.progress_percent ?? 0}
+                      onChange={e => setEditingProject(prev => ({ ...prev, progress_percent: Number(e.target.value) }))}
+                      style={{ flex: 1, accentColor: 'var(--color-primary)' }}
+                    />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, width: '40px', textAlign: 'right' }}>
+                      {editingProject?.progress_percent ?? 0}%
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="form-label">Trạng thái thi công</label>
+                  <CustomSelect
+                    options={[
+                      { value: 'Chưa khởi công', label: 'Chưa khởi công' },
+                      { value: 'Đang thi công móng', label: 'Đang thi công móng' },
+                      { value: 'Đang xây thân', label: 'Đang xây thân' },
+                      { value: 'Đã cất nóc', label: 'Đã cất nóc' },
+                      { value: 'Đang hoàn thiện', label: 'Đang hoàn thiện' },
+                      { value: 'Đã bàn giao', label: 'Đã bàn giao' }
+                    ]}
+                    value={editingProject?.construction_status || 'Chưa khởi công'}
+                    onChange={val => setEditingProject(prev => ({ ...prev, construction_status: String(val) }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Trạng thái pháp lý</label>
+                  <CustomSelect
+                    options={[
+                      { value: 'Đang hoàn thiện pháp lý', label: 'Đang hoàn thiện pháp lý' },
+                      { value: 'Quy hoạch 1/500', label: 'Quy hoạch 1/500' },
+                      { value: 'Giấy phép xây dựng', label: 'Giấy phép xây dựng' },
+                      { value: 'Sổ hồng riêng từng căn', label: 'Sổ hồng riêng từng căn' }
+                    ]}
+                    value={editingProject?.legal_status || 'Đang hoàn thiện pháp lý'}
+                    onChange={val => setEditingProject(prev => ({ ...prev, legal_status: String(val) }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Năm bàn giao dự kiến</label>
+                  <input
+                    type="number"
+                    value={editingProject?.handover_year ?? 2026}
+                    onChange={e => setEditingProject(prev => ({ ...prev, handover_year: Number(e.target.value) }))}
+                    className="form-input"
+                    placeholder="ví dụ: 2026"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Quy mô: Số Block</label>
+                  <input
+                    type="number"
+                    value={editingProject?.scale_block_count ?? 1}
+                    onChange={e => setEditingProject(prev => ({ ...prev, scale_block_count: Number(e.target.value) }))}
+                    className="form-input"
+                    placeholder="ví dụ: 2"
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label">Quy mô: Số Căn hộ</label>
+                  <input
+                    type="number"
+                    value={editingProject?.scale_unit_count ?? 100}
+                    onChange={e => setEditingProject(prev => ({ ...prev, scale_unit_count: Number(e.target.value) }))}
+                    className="form-input"
+                    placeholder="ví dụ: 500"
                   />
                 </div>
 
