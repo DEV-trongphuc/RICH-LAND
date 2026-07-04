@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -323,7 +323,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban' | 'focus'>('grid');
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
-  const [wsDatePreset, setWsDatePreset] = useState('all');
+  const [wsDatePreset, setWsDatePreset] = useState('7_days');
+  const [completedCallsCount, setCompletedCallsCount] = useState<number>(0);
+  const [showCallsModal, setShowCallsModal] = useState(false);
+  const [modalCalls, setModalCalls] = useState<any[]>([]);
+  const [loadingModalCalls, setLoadingModalCalls] = useState(false);
+  const [callsSearch, setCallsSearch] = useState('');
   const [wsStartDate, setWsStartDate] = useState('');
   const [wsEndDate, setWsEndDate] = useState('');
   const [wsTasks, setWsTasks] = useState<any[]>([]);
@@ -874,6 +879,87 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
+  const getPresetDates = (preset: string) => {
+    let start = '';
+    let end = '';
+    if (preset === 'today') {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      start = todayStr;
+      end = todayStr;
+    } else if (preset === 'tomorrow') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomStr = tomorrow.toISOString().slice(0, 10);
+      start = tomStr;
+      end = tomStr;
+    } else if (preset === 'week') {
+      const today = new Date();
+      const first = today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1);
+      const monday = new Date(today);
+      const sunday = new Date(today);
+      sunday.setDate(monday.getDate() + 6);
+      start = monday.toISOString().slice(0, 10);
+      end = sunday.toISOString().slice(0, 10);
+    } else if (preset === '7_days') {
+      const now = new Date();
+      const startD = new Date();
+      startD.setDate(now.getDate() - 7);
+      start = startD.toISOString().slice(0, 10);
+      end = now.toISOString().slice(0, 10);
+    } else if (preset === '30_days') {
+      const now = new Date();
+      const startD = new Date();
+      startD.setDate(now.getDate() - 30);
+      start = startD.toISOString().slice(0, 10);
+      end = now.toISOString().slice(0, 10);
+    } else if (preset === 'this_month') {
+      const now = new Date();
+      const startD = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endD = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      start = startD.toISOString().slice(0, 10);
+      end = endD.toISOString().slice(0, 10);
+    } else if (preset === 'last_month') {
+      const now = new Date();
+      const startD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endD = new Date(now.getFullYear(), now.getMonth(), 0);
+      start = startD.toISOString().slice(0, 10);
+      end = endD.toISOString().slice(0, 10);
+    } else if (preset === 'overdue') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      end = yesterday.toISOString().slice(0, 10);
+    } else if (preset === 'custom') {
+      start = wsStartDate;
+      end = wsEndDate;
+    }
+    return { start, end };
+  };
+
+  const handleOpenCallsModal = async () => {
+    setShowCallsModal(true);
+    setLoadingModalCalls(true);
+    setCallsSearch('');
+    try {
+      const { start, end } = getPresetDates(wsDatePreset);
+      let url = '/activities?type=call&status=done&limit=100';
+      if (start) url += `&start_date=${start}`;
+      if (end) url += `&end_date=${end}`;
+      if (wsUserId) url += `&user_id=${wsUserId}`;
+      else url += `&user_id=${user?.id}`;
+
+      const res = await api.get(url);
+      if (res.data && res.data.data) {
+        const rawCalls = res.data.data.items || res.data.data || [];
+        setModalCalls(rawCalls);
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error(t('Không thể tải danh sách cuộc gọi'));
+    } finally {
+      setLoadingModalCalls(false);
+    }
+  };
+
   const fetchWorkspaceTasks = async () => {
     if (!token) return;
     setLoadingWsTasks(true);
@@ -882,32 +968,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (wsPriority) url += `&priority=${wsPriority}`;
       if (wsStatus) url += `&status=${wsStatus}`;
       
-      let start = '';
-      let end = '';
-      if (wsDatePreset === 'today') {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        start = todayStr;
-        end = todayStr;
-      } else if (wsDatePreset === 'tomorrow') {
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomStr = tomorrow.toISOString().slice(0, 10);
-        start = tomStr;
-        end = tomStr;
-      } else if (wsDatePreset === 'week') {
-        const today = new Date();
-        const first = today.getDate() - today.getDay();
-        const last = first + 6;
-        start = new Date(today.setDate(first)).toISOString().slice(0, 10);
-        end = new Date(today.setDate(last)).toISOString().slice(0, 10);
-      } else if (wsDatePreset === 'overdue') {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        end = yesterday.toISOString().slice(0, 10);
-      } else if (wsDatePreset === 'custom') {
-        start = wsStartDate;
-        end = wsEndDate;
-      }
+      const { start, end } = getPresetDates(wsDatePreset);
 
       if (start) url += `&start_date=${start}`;
       if (end) url += `&end_date=${end}`;
@@ -919,6 +980,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         const rawTasks = res.data.data.items || res.data.data || [];
         setWsTasks(rawTasks);
         triggerRecurrenceCheck(rawTasks);
+      }
+
+      // Fetch completed calls count
+      let callsUrl = '/activities?type=call&status=done&limit=1';
+      if (start) callsUrl += `&start_date=${start}`;
+      if (end) callsUrl += `&end_date=${end}`;
+      if (wsUserId) callsUrl += `&user_id=${wsUserId}`;
+      else callsUrl += `&user_id=${user?.id}`;
+
+      const callsRes = await api.get(callsUrl);
+      if (callsRes.data && callsRes.data.data) {
+        setCompletedCallsCount(callsRes.data.data.total || 0);
       }
     } catch (e) {
       console.error(e);
@@ -2987,6 +3060,42 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* Right side: Role filters & View Mode switcher */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+              {/* Completed Calls Count Pill */}
+              <div 
+                onClick={handleOpenCallsModal}
+                className="hover-lift"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.15)',
+                  padding: '6px 12px',
+                  borderRadius: '10px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#10b981',
+                  cursor: 'pointer',
+                  userSelect: 'none'
+                }}
+              >
+                <Phone size={13} style={{ flexShrink: 0 }} />
+                <span>
+                  {t('Đã gọi:')} <strong>{completedCallsCount}</strong> {
+                    wsDatePreset === 'today' ? t('hôm nay') :
+                    wsDatePreset === 'yesterday' ? t('hôm qua') :
+                    wsDatePreset === 'week' ? t('tuần này') :
+                    wsDatePreset === '7_days' ? t('7 ngày qua') :
+                    wsDatePreset === '30_days' ? t('30 ngày qua') :
+                    wsDatePreset === 'this_month' ? t('tháng này') :
+                    wsDatePreset === 'last_month' ? t('tháng trước') :
+                    wsDatePreset === 'tomorrow' ? t('ngày mai') :
+                    wsDatePreset === 'overdue' ? t('quá hạn') :
+                    t('từ trước tới nay')
+                  }
+                </span>
+              </div>
+
               <div style={{ display: 'flex', gap: '4px', background: 'var(--color-border-light)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
                 {[
                   { value: 'all', label: t('Tất cả') },
@@ -3147,6 +3256,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         { value: 'today', label: 'Hôm nay' },
                         { value: 'tomorrow', label: 'Ngày mai' },
                         { value: 'week', label: 'Tuần này' },
+                        { value: '7_days', label: '7 ngày qua' },
+                        { value: '30_days', label: '30 ngày qua' },
+                        { value: 'this_month', label: 'Tháng này' },
+                        { value: 'last_month', label: 'Tháng trước' },
                         { value: 'overdue', label: 'Quá hạn' },
                         { value: 'custom', label: 'Tùy chỉnh ngày...' }
                       ]}
@@ -3747,19 +3860,82 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             border: '1px solid var(--color-border-light)',
             borderRadius: '16px',
             overflow: 'hidden',
-            minHeight: '600px'
+            height: isMobile ? 'auto' : 'calc(100vh - 220px)',
+            minHeight: '650px'
           }}>
             {/* Left Column: Tasks List */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
               borderRight: isMobile ? 'none' : '1px solid var(--color-border-light)',
-              maxHeight: '750px',
+              height: '100%',
               overflowY: 'auto'
             }}>
-              <div style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)', fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
-                {t('DANH SÁCH CÔNG VIỆC')} ({filteredWsTasks.length})
+              <div style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)', fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{t('DANH SÁCH CÔNG VIỆC')} ({filteredWsTasks.length})</span>
               </div>
+              {/* Gamification Progress Bar */}
+              {(filteredWsTasks.length > 0 || completedCallsCount > 0) && (
+                <div style={{ padding: '0.65rem 1rem 0.8rem', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)' }}>
+                  {filteredWsTasks.length > 0 && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', marginBottom: '4px' }}>
+                        <span>{t('Tiến độ công việc')}</span>
+                        <span>
+                          {filteredWsTasks.filter(t => t.status === 'done').length}/{filteredWsTasks.length} ({
+                            Math.round((filteredWsTasks.filter(t => t.status === 'done').length / filteredWsTasks.length) * 100)
+                          }%)
+                        </span>
+                      </div>
+                      <div style={{ width: '100%', height: '6px', background: 'var(--color-border-light)', borderRadius: '3px', overflow: 'hidden', marginBottom: '8px' }}>
+                        <div style={{
+                          width: `${(filteredWsTasks.filter(t => t.status === 'done').length / filteredWsTasks.length) * 100}%`,
+                          height: '100%',
+                          background: 'var(--color-success)',
+                          borderRadius: '3px',
+                          transition: 'width 0.4s ease-in-out'
+                        }} />
+                      </div>
+                    </>
+                  )}
+                  {/* Call Stats with dynamic preset label */}
+                  <div 
+                    onClick={handleOpenCallsModal}
+                    className="hover-lift"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '0.72rem',
+                      color: 'var(--color-text-muted)',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      background: 'rgba(16, 185, 129, 0.06)',
+                      padding: '5px 10px',
+                      borderRadius: '8px',
+                      marginTop: '2px',
+                      border: '1px solid rgba(16, 185, 129, 0.12)'
+                    }}
+                  >
+                    <Phone size={12} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                    <span>
+                      {t('Đã thực hiện:')} <strong style={{ color: 'var(--color-success)', fontSize: '0.8rem' }}>{completedCallsCount}</strong> {t('cuộc gọi')} {
+                        wsDatePreset === 'today' ? t('hôm nay') :
+                        wsDatePreset === 'yesterday' ? t('hôm qua') :
+                        wsDatePreset === 'week' ? t('tuần này') :
+                        wsDatePreset === '7_days' ? t('7 ngày qua') :
+                        wsDatePreset === '30_days' ? t('30 ngày qua') :
+                        wsDatePreset === 'this_month' ? t('tháng này') :
+                        wsDatePreset === 'last_month' ? t('tháng trước') :
+                        wsDatePreset === 'tomorrow' ? t('ngày mai') :
+                        wsDatePreset === 'overdue' ? t('quá hạn') :
+                        t('từ trước tới nay')
+                      }
+                    </span>
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', padding: '0.5rem', gap: '0.5rem' }}>
                 {filteredWsTasks.map(task => {
                   const isSelected = selectedTaskForDetails?.id === task.id;
@@ -3854,7 +4030,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
 
             {/* Right Column: Task Detail Embed */}
-            <div style={{ display: 'flex', flexDirection: 'column', height: '750px', background: 'var(--color-bg)', flex: 1 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--color-bg)', flex: 1, overflow: 'hidden' }}>
               {selectedTaskForDetails ? (
                 <div style={{ height: '100%', overflowY: 'auto' }}>
                   <WorkspaceTaskDrawer
@@ -9038,6 +9214,133 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 {isClaimingLeadId ? t('Đang xử lý...') : t('Nhận Khách')}
               </button>
             </div>
+          </div>
+        </CustomModal>
+      )}
+
+      {showCallsModal && (
+        <CustomModal
+          isOpen={showCallsModal}
+          onClose={() => setShowCallsModal(false)}
+          title={`${t('Danh sách cuộc gọi')} (${modalCalls.length})`}
+          width="680px"
+        >
+          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '550px', overflowY: 'auto' }}>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                style={{ paddingLeft: '2.25rem', height: '38px', borderRadius: '10px' }}
+                value={callsSearch}
+                onChange={e => setCallsSearch(e.target.value)}
+                placeholder={t('Tìm theo tên khách hàng, nội dung cuộc gọi...')}
+              />
+              <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+            </div>
+
+            {loadingModalCalls ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <StatRowSkeleton />
+                <StatRowSkeleton />
+                <StatRowSkeleton />
+              </div>
+            ) : (
+              (() => {
+                const filteredCalls = modalCalls.filter(c => {
+                  const s = callsSearch.toLowerCase();
+                  return (
+                    (c.subject || '').toLowerCase().includes(s) ||
+                    (c.body || '').toLowerCase().includes(s) ||
+                    (c.contact_name || '').toLowerCase().includes(s)
+                  );
+                });
+
+                if (filteredCalls.length === 0) {
+                  return (
+                    <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                      <Phone size={36} style={{ marginBottom: '8px', opacity: 0.5, marginLeft: 'auto', marginRight: 'auto' }} />
+                      <p>{t('Không tìm thấy cuộc gọi nào phù hợp.')}</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {filteredCalls.map(call => (
+                      <div 
+                        key={call.id}
+                        style={{
+                          padding: '1rem',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '12px',
+                          background: 'var(--color-surface)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '8px',
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              color: 'var(--color-success)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <Phone size={14} />
+                            </div>
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
+                              {call.subject || t('Cuộc gọi')}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Clock size={12} />
+                            {call.due_date ? new Date(call.due_date).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ''}
+                          </span>
+                        </div>
+
+                        {call.body && (
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', margin: '4px 0', background: 'var(--color-bg-light)', padding: '8px 10px', borderRadius: '8px', whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>
+                            {call.body}
+                          </p>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', marginTop: '2px' }}>
+                          <span style={{ color: 'var(--color-text-muted)' }}>
+                            {t('Người thực hiện:')} <strong style={{ color: 'var(--color-text)' }}>{call.user_name || currentUser?.name || t('Tư vấn viên')}</strong>
+                          </span>
+                          {call.related_type === 'contact' && (
+                            <button
+                              onClick={() => {
+                                setShowCallsModal(false);
+                                handleOpenContactProfile(call.related_id);
+                              }}
+                              style={{
+                                border: 'none',
+                                background: 'none',
+                                padding: 0,
+                                color: 'var(--color-primary)',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                            >
+                              <Users size={12} />
+                              {call.contact_name || t('Xem khách hàng')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()
+            )}
           </div>
         </CustomModal>
       )}
