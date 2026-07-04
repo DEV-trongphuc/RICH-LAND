@@ -323,7 +323,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban' | 'focus'>('grid');
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
-  const [wsDatePreset, setWsDatePreset] = useState('7_days');
+  const [wsDatePreset, setWsDatePreset] = useState('all');
   const [completedCallsCount, setCompletedCallsCount] = useState<number>(0);
   const [showCallsModal, setShowCallsModal] = useState(false);
   const [modalCalls, setModalCalls] = useState<any[]>([]);
@@ -336,6 +336,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsUserId, setWsUserId] = useState('');
   const [teamsList, setTeamsList] = useState<any[]>([]);
   const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([]);
+
+  useEffect(() => {
+    const isFocus = wsViewMode === 'focus';
+    const event = new CustomEvent('focus-mode-toggle', { detail: { isFocusMode: isFocus } });
+    window.dispatchEvent(event);
+  }, [wsViewMode]);
 
   const parseDescriptionAndChecklist = (descText: string) => {
     const lines = descText ? descText.split('\n') : [];
@@ -940,7 +946,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setLoadingModalCalls(true);
     setCallsSearch('');
     try {
-      const { start, end } = getPresetDates(wsDatePreset);
+      let { start, end } = getPresetDates(wsDatePreset);
+      if (wsDatePreset === 'all') {
+        const p7 = getPresetDates('7_days');
+        start = p7.start;
+        end = p7.end;
+      }
       let url = '/activities?type=call&status=done&limit=100';
       if (start) url += `&start_date=${start}`;
       if (end) url += `&end_date=${end}`;
@@ -984,8 +995,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       // Fetch completed calls count
       let callsUrl = '/activities?type=call&status=done&limit=1';
-      if (start) callsUrl += `&start_date=${start}`;
-      if (end) callsUrl += `&end_date=${end}`;
+      let callsStart = start;
+      let callsEnd = end;
+      if (wsDatePreset === 'all') {
+        const p7 = getPresetDates('7_days');
+        callsStart = p7.start;
+        callsEnd = p7.end;
+      }
+      if (callsStart) callsUrl += `&start_date=${callsStart}`;
+      if (callsEnd) callsUrl += `&end_date=${callsEnd}`;
       if (wsUserId) callsUrl += `&user_id=${wsUserId}`;
       else callsUrl += `&user_id=${user?.id}`;
 
@@ -2692,9 +2710,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     ];
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Workspace Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: wsViewMode === 'focus' ? '0' : '1.25rem' }}>
+        {wsViewMode !== 'focus' && (
+          <>
+            {/* Workspace Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 className="page-title">{t("Bàn làm việc")}</h1>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
@@ -3186,9 +3206,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    background: wsViewMode === 'focus' ? 'var(--color-surface)' : 'transparent',
-                    color: wsViewMode === 'focus' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    boxShadow: wsViewMode === 'focus' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                    background: (wsViewMode as string) === 'focus' ? 'var(--color-surface)' : 'transparent',
+                    color: (wsViewMode as string) === 'focus' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: (wsViewMode as string) === 'focus' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px'
@@ -3339,14 +3359,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
           </AnimatePresence>
         </div>
+        </>)}
 
         {/* Task Grid */}
-        {loadingWsTasks ? (
+        {wsViewMode !== 'focus' && loadingWsTasks ? (
           <div style={{ padding: '3rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
             <RefreshCw className="spin" size={24} style={{ color: 'var(--color-primary)', marginBottom: 8 }} />
             <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Đang tải danh sách công việc...</div>
           </div>
-        ) : filteredWsTasks.length === 0 ? (
+        ) : wsViewMode !== 'focus' && filteredWsTasks.length === 0 ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)' }}>
             <CheckSquare size={36} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
             <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Không tìm thấy công việc nào phù hợp với bộ lọc.</p>
@@ -3851,17 +3872,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             })()}
           </>
         ) : (
-          /* Focus Mode (Split-Screen) */
+          /* Focus Mode (Fullscreen Zen Mode) */
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: isMobile ? '1fr' : '360px 1fr',
-            gap: '1.25rem',
             background: 'var(--color-surface)',
             border: '1px solid var(--color-border-light)',
             borderRadius: '16px',
+            display: 'grid',
+            gridTemplateColumns: isMobile ? '1fr' : '360px 1fr',
             overflow: 'hidden',
-            height: isMobile ? 'auto' : 'calc(100vh - 220px)',
-            minHeight: '650px'
+            height: isMobile ? 'auto' : 'calc(100vh - 120px)',
+            minHeight: '600px',
+            width: '100%'
           }}>
             {/* Left Column: Tasks List */}
             <div style={{
@@ -3871,8 +3892,42 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               height: '100%',
               overflowY: 'auto'
             }}>
-              <div style={{ padding: '1rem', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)', fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{t('DANH SÁCH CÔNG VIỆC')} ({filteredWsTasks.length})</span>
+              <div style={{ 
+                padding: '1.25rem 1rem', 
+                borderBottom: '1px solid var(--color-border-light)', 
+                background: 'var(--color-surface)', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '8px' 
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                    {t('CHẾ ĐỘ TẬP TRUNG')}
+                  </span>
+                  <button 
+                    onClick={() => setWsViewMode('grid')}
+                    style={{
+                      border: 'none',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      color: 'var(--color-danger)',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                    className="hover-lift"
+                  >
+                    <X size={12} />
+                    {t('Thoát')}
+                  </button>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                  <span>{t('DANH SÁCH CÔNG VIỆC')} ({filteredWsTasks.length})</span>
+                </div>
               </div>
               {/* Gamification Progress Bar */}
               {(filteredWsTasks.length > 0 || completedCallsCount > 0) && (
@@ -4053,11 +4108,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
                     <CheckSquare size={32} />
                   </div>
-                  <div style={{ textAlign: 'center' }}>
+                  <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                     <p style={{ fontWeight: 800, color: 'var(--color-text)', margin: 0, fontSize: '1rem' }}>
                       {t('CHẾ ĐỘ TẬP TRUNG (FOCUS MODE)')}
                     </p>
-                    <p style={{ fontSize: '0.8125rem', margin: '4px 0 0', maxWidth: '300px' }}>
+                    <p style={{ fontSize: '0.8125rem', margin: '6px auto 0', maxWidth: '320px', lineHeight: 1.5, color: 'var(--color-text-muted)' }}>
                       {t('Chọn một công việc ở cột bên trái để bắt đầu gọi điện và ghi chú thông tin khách hàng trực tiếp.')}
                     </p>
                   </div>

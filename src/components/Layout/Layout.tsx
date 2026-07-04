@@ -437,6 +437,19 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
+    const handleFocusMode = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail) {
+        setIsSidebarCollapsed(!!customEvent.detail.isFocusMode);
+      }
+    };
+    window.addEventListener('focus-mode-toggle', handleFocusMode);
+    return () => {
+      window.removeEventListener('focus-mode-toggle', handleFocusMode);
+    };
+  }, []);
+
+  useEffect(() => {
     if (user) {
       console.log('Layout useEffect calling get_settings, user exists:', user);
       fetchAPI('get_settings')
