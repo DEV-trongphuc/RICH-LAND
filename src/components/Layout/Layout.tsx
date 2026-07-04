@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
@@ -34,7 +34,12 @@ import {
   Mail,
   MessageSquare,
   Search,
-  Check
+  Check,
+  Home,
+  Users,
+  Database,
+  Calendar,
+  BarChart2
 } from 'lucide-react';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -44,9 +49,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   
   const { showPOS, setShowPOS } = useUIStore();
   
-  // Notification states
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(0);
   const [heldLeadsCount, setHeldLeadsCount] = useState<number>(0);
   const [pendingCheckInsCount, setPendingCheckInsCount] = useState<number>(0);
@@ -1448,6 +1453,46 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           )}
         </div>
       </CustomModal>
+      
+      {/* Mobile Bottom Navigation Bar */}
+      <div className="mobile-bottom-nav">
+        <button 
+          className={`mobile-bottom-nav-item ${location.pathname === '/' ? 'active' : ''}`}
+          onClick={() => navigate('/')}
+        >
+          <Home />
+          <span className="mobile-bottom-nav-item-label">{t('Tổng quan')}</span>
+        </button>
+        <button 
+          className={`mobile-bottom-nav-item ${location.pathname === '/contacts' ? 'active' : ''}`}
+          onClick={() => navigate('/contacts')}
+        >
+          <Users />
+          <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
+        </button>
+        <button 
+          className={`mobile-bottom-nav-item ${location.pathname === '/data' ? 'active' : ''}`}
+          onClick={() => navigate('/data')}
+        >
+          <Database />
+          <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
+        </button>
+        <button 
+          className={`mobile-bottom-nav-item ${location.pathname === '/calendar' ? 'active' : ''}`}
+          onClick={() => navigate('/calendar')}
+        >
+          <Calendar />
+          <span className="mobile-bottom-nav-item-label">{t('Lịch biểu')}</span>
+        </button>
+        <button 
+          className={`mobile-bottom-nav-item ${location.pathname === '/reports-crm' ? 'active' : ''}`}
+          onClick={() => navigate('/reports-crm')}
+        >
+          <BarChart2 />
+          <span className="mobile-bottom-nav-item-label">{t('Báo cáo')}</span>
+        </button>
+      </div>
+
       <AIChatbot />
     </div>
   );

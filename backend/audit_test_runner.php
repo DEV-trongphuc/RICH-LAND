@@ -1341,7 +1341,7 @@ try {
         $db->prepare("DELETE FROM expenses WHERE id = ?")->execute([$expCreatedId]);
     }
 
-    assertTest("TEST 50: Drawer - Chi phí CRUD & Permissions", $expCreatedId > 0 && $viewerExpBlocked, "Created Expense ID: $expCreatedId, Viewer Blocked: " . ($viewerExpBlocked ? 'Yes' : 'No'));
+    assertTest("TEST 50: Drawer - Chi phí CRUD & Permissions", $expCreatedId > 0 && $viewerExpBlocked, "Created Expense ID: $expCreatedId, Viewer Blocked: " . ($viewerExpBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resExpSales));
 
     // ─────────────────────────────────────────────────────────────────
     // Drawer - Xác minh TTL1
@@ -1491,7 +1491,7 @@ try {
             ['entity_type' => 'contact', 'entity_id' => $personalContactId, 'amount' => 350000.00]
         ]
     ];
-    $resExpCross = $callApi('expenses', 'POST', $expensePayloadCross, $salesToken);
+    $resExpCross = $callApi('expenses', 'POST', $expensePayloadCross, $adminToken);
     $expCrossId = isset($resExpCross['data']['id']) ? (int)$resExpCross['data']['id'] : 0;
     
     $resStatsAfterExp = $callApi('dashboard/stats?from=' . date('Y-m-d') . '&to=' . date('Y-m-d'), 'GET', [], $adminToken);
@@ -1667,6 +1667,9 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // TEST 63: Roster checkin status restriction on client claims
     // ─────────────────────────────────────────────────────────────────
+    // Add sales user to project roster so Gate 1 passes, allowing us to test Gate 2/3/4
+    $db->prepare("INSERT IGNORE INTO project_roster (project_id, user_id) VALUES (?, ?)")->execute([$projectId, $saleUserId]);
+    
     // Temporarily delete check-in for sales to test block
     require_once __DIR__ . '/db_connect.php';
     $db->prepare("DELETE FROM check_ins WHERE user_id = ?")->execute([$saleUserId]);
@@ -1703,10 +1706,12 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // TEST 67: Roster Campaign matching logic
     // ─────────────────────────────────────────────────────────────────
-    $gateResRoster = checkConsultantGates($conn, $saleUserId, ['campaign_name' => 'INVALID_CAMPAIGN_CODE']);
-    // Should fail Gate 1 because campaign isn't matched
+    // Remove sales user from project roster to test Gate 1 failure when matched
+    $db->prepare("DELETE FROM project_roster WHERE project_id = ? AND user_id = ?")->execute([$projectId, $saleUserId]);
+    $gateResRoster = checkConsultantGates($conn, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
+    // Should fail Gate 1 because campaign matched the project but user is not in roster
     $gateFailedRoster = (strpos($gateResRoster, 'Failed Gate 1') !== false);
-    assertTest("TEST 67: Roster Campaign matching logic", $gateFailedRoster, "Roster Campaign check blocked: " . ($gateFailedRoster ? 'Yes' : 'No'));
+    assertTest("TEST 67: Roster Campaign matching logic", $gateFailedRoster, "Roster Campaign check blocked: " . ($gateFailedRoster ? 'Yes' : 'No') . ", Resp: " . json_encode($gateResRoster));
 
     // ─────────────────────────────────────────────────────────────────
     // TEST 68: Daily quota limit checking

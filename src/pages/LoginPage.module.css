@@ -37,13 +37,11 @@
 .formCard {
   width: 100%;
   max-width: 440px;
-  background: rgba(15, 20, 35, 0.65);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(189, 29, 45, 0.18);
+  background: #1C1C1E;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 24px;
   padding: 3rem 2.5rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
   z-index: 10;
   display: flex;
   flex-direction: column;

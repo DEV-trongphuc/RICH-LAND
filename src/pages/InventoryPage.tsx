@@ -277,25 +277,11 @@ export default function InventoryPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           
-          {/* Mobile Tab Selector */}
-          <div className="mobile-only" style={{ flex: 1, minWidth: '160px' }}>
-            <select
-              value={activeTab}
-              onChange={e => setActiveTab(e.target.value as any)}
-              className="form-select"
-              style={{ width: '100%', height: 38 }}
-            >
-              <option value="batches">Danh sách căn / lô</option>
-              <option value="history">Lịch sử giao dịch</option>
-              <option value="purchase_orders">Hợp đồng/Bảng hàng</option>
-            </select>
-          </div>
-
-          {/* Desktop Tab Buttons */}
-          <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
-            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'batches' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'batches' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('batches')}>Danh sách căn / lô</button>
-            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'history' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')}>Lịch sử giao dịch</button>
-            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'purchase_orders' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')}>Hợp đồng/Bảng hàng</button>
+          {/* Pill Tab Switcher */}
+          <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', padding: '3px', flexWrap: 'wrap' }}>
+            <button style={{ padding: '6px 14px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeTab === 'batches' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'batches' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeTab === 'batches' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('batches')}>Danh sách căn / lô</button>
+            <button style={{ padding: '6px 14px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeTab === 'history' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'history' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeTab === 'history' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')}>Lịch sử giao dịch</button>
+            <button style={{ padding: '6px 14px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeTab === 'purchase_orders' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'purchase_orders' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeTab === 'purchase_orders' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')}>Hợp đồng/Bảng hàng</button>
           </div>
 
           {!isSale && (

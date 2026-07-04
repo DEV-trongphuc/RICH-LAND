@@ -553,53 +553,56 @@ const ConsultantsInner = () => {
 
       {/* Tab bar */}
       {showAllTabs && (
-        <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '1.5rem', paddingBottom: '0.25rem' }}>
+        <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', padding: '3px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content' }}>
           <button
             onClick={() => navigate('/consultants?tab=consultants')}
             style={{
-              padding: '0.5rem 1rem', border: 'none', background: 'transparent',
-              fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
-              color: activeTab === 'consultants' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              borderBottom: activeTab === 'consultants' ? '2px solid var(--color-primary)' : 'none',
-              transition: 'all 0.18s',
+              padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, border: 'none',
+              background: activeTab === 'consultants' ? 'var(--color-surface)' : 'transparent',
+              color: activeTab === 'consultants' ? 'var(--color-text)' : 'var(--color-text-muted)',
+              boxShadow: activeTab === 'consultants' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'all 0.2s',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              cursor: 'pointer'
             }}
           >
-            <User size={15} />
+            <User size={14} />
             {t('Tư vấn viên')}
           </button>
           <button
             onClick={() => navigate('/consultants?tab=teams')}
             style={{
-              padding: '0.5rem 1rem', border: 'none', background: 'transparent',
-              fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
-              color: activeTab === 'teams' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              borderBottom: activeTab === 'teams' ? '2px solid var(--color-primary)' : 'none',
-              transition: 'all 0.18s',
+              padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, border: 'none',
+              background: activeTab === 'teams' ? 'var(--color-surface)' : 'transparent',
+              color: activeTab === 'teams' ? 'var(--color-text)' : 'var(--color-text-muted)',
+              boxShadow: activeTab === 'teams' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'all 0.2s',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              cursor: 'pointer'
             }}
           >
-            <Users size={15} />
+            <Users size={14} />
             {t('Nhóm (Team)')}
           </button>
           <button
             onClick={() => navigate('/consultants?tab=branches')}
             style={{
-              padding: '0.5rem 1rem', border: 'none', background: 'transparent',
-              fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
-              color: activeTab === 'branches' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              borderBottom: activeTab === 'branches' ? '2px solid var(--color-primary)' : 'none',
-              transition: 'all 0.18s',
+              padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, border: 'none',
+              background: activeTab === 'branches' ? 'var(--color-surface)' : 'transparent',
+              color: activeTab === 'branches' ? 'var(--color-text)' : 'var(--color-text-muted)',
+              boxShadow: activeTab === 'branches' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              transition: 'all 0.2s',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px'
+              gap: '6px',
+              cursor: 'pointer'
             }}
           >
-            <Building2 size={15} />
+            <Building2 size={14} />
             {t('Chi nhánh')}
           </button>
         </div>
@@ -1261,15 +1264,15 @@ const ConsultantsInner = () => {
                       </label>
 
                       {/* Segmented Control for Schedule Mode */}
-                      <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: 'var(--radius-full)', marginBottom: '0.75rem' }}>
                         <button
                           type="button"
                           onClick={() => setScheduleMode('daily')}
                           style={{
-                            flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
+                            flex: 1, padding: '6px 12px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.75rem',
+                            background: scheduleMode === 'daily' ? 'var(--color-surface)' : 'transparent',
+                            color: scheduleMode === 'daily' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                            boxShadow: scheduleMode === 'daily' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
                           }}
                         >{t('Cố định hàng ngày')}</button>
@@ -1282,10 +1285,10 @@ const ConsultantsInner = () => {
                             }
                           }}
                           style={{
-                            flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
+                            flex: 1, padding: '6px 12px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.75rem',
+                            background: scheduleMode === 'custom' ? 'var(--color-surface)' : 'transparent',
+                            color: scheduleMode === 'custom' ? 'var(--color-text)' : 'var(--color-text-muted)',
+                            boxShadow: scheduleMode === 'custom' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
                           }}
                         >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>

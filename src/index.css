@@ -426,8 +426,7 @@
 .responsive-sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 990 !important;
   /* Stand behind mobile sidebar drawer (1000) but in front of sticky page elements */
 }
@@ -443,130 +442,121 @@
    MINTH CRM - Design System
    ================================================ */
 :root {
-  /* Brand */
-  --color-primary: oklch(51.5% 0.192 23.2);
-  --color-primary-hover: oklch(44.2% 0.174 23.3);
-  --color-primary-light: oklch(51.5% 0.192 23.2 / 8%);
-  --sidebar-bg: oklch(18% 0.005 240); /* charcoal light black */
-  --sidebar-hover: oklch(100% 0 0 / 8%);
-  --sidebar-active: oklch(51.5% 0.192 23.2 / 90%);
+  /* Brand Specific (Primary Brand Red) */
+  --color-brand: #BD1D2D;
+  --color-brand-hover: #a31422;
+  --color-brand-light: rgba(189, 29, 45, 0.08);
+
+  /* Primary (Standardized to Brand Red for Main Brand Actions) */
+  --color-primary: #BD1D2D;
+  --color-primary-hover: #a31422;
+  --color-primary-light: rgba(189, 29, 45, 0.08);
+  --sidebar-bg: #1C1C1E; /* Charcoal dark gray sidebar */
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
+  --sidebar-active: #BD1D2D; /* Keep brand color on sidebar active item */
 
   /* Neutrals */
-  --color-bg: oklch(98.4% 0.007 247);
-  --color-surface: oklch(100% 0 0);
-  --color-border: oklch(92.5% 0.012 246);
-  --color-border-light: oklch(96.8% 0.009 246);
-  --color-text: oklch(15.9% 0.034 254);
-  --color-text-light: oklch(42.5% 0.039 249);
-  --color-text-muted: oklch(70% 0.034 247);
+  --color-bg: #F2F2F7; /* iOS system gray background */
+  --color-surface: #FFFFFF; /* Pure white */
+  --color-border: #E5E5EA; /* iOS separator line */
+  --color-border-light: #EFEFF4; /* Extremely soft divider */
+  --color-text: #1C1C1E; /* iOS text dark gray */
+  --color-text-light: #3A3A3C; /* Secondary label */
+  --color-text-muted: #8E8E93; /* Muted tertiary label */
 
   /* Semantics */
-  --color-success: oklch(70% 0.187 167);
-  --color-success-light: oklch(70% 0.187 167 / 10%);
-  --color-warning: oklch(73.1% 0.177 71.9);
-  --color-warning-light: oklch(73.1% 0.177 71.9 / 10%);
-  --color-danger: oklch(57.7% 0.228 27.4);
-  --color-danger-light: oklch(57.7% 0.228 27.4 / 10%);
-  --color-info: oklch(62.8% 0.198 253.9);
-  --color-info-light: oklch(62.8% 0.198 253.9 / 10%);
+  --color-success: #34C759; /* iOS system green */
+  --color-success-light: rgba(52, 199, 89, 0.08);
+  --color-warning: #FF9500; /* iOS system orange */
+  --color-warning-light: rgba(255, 149, 0, 0.08);
+  --color-danger: #FF3B30; /* iOS system red */
+  --color-danger-light: rgba(255, 59, 48, 0.08);
+  --color-info: #5856D6; /* iOS system purple */
+  --color-info-light: rgba(88, 86, 214, 0.08);
 
   /* Lead Score colors */
-  --score-hot: oklch(57.7% 0.228 27.4);
-  --score-warm: oklch(64.8% 0.2 46.5);
-  --score-neutral: oklch(73.1% 0.177 71.9);
-  --score-cool: oklch(62.8% 0.198 253.9);
-  --score-cold: oklch(53% 0.02 250);
+  --score-hot: #FF3B30;
+  --score-warm: #FF9500;
+  --score-neutral: #8E8E93;
+  --score-cool: #007AFF;
+  --score-cold: #AEAEB2;
 
-  /* Premium Shadows */
-  --shadow-xs: 0 1px 2px oklch(15.9% 0.034 254 / 4%);
-  --shadow-sm: 0 2px 4px oklch(15.9% 0.034 254 / 4%), 0 1px 2px oklch(15.9% 0.034 254 / 2%);
-  --shadow-md: 0 4px 12px -2px oklch(15.9% 0.034 254 / 5%), 0 2px 4px -2px oklch(15.9% 0.034 254 / 3%);
-  --shadow-lg: 0 12px 24px -4px oklch(15.9% 0.034 254 / 6%), 0 4px 12px -4px oklch(15.9% 0.034 254 / 4%);
-  --shadow-xl: 0 20px 32px -4px oklch(15.9% 0.034 254 / 8%), 0 8px 16px -8px oklch(15.9% 0.034 254 / 4%);
-  --shadow-primary: 0 8px 24px -4px oklch(51.5% 0.192 23.2 / 25%);
+  /* Premium Shadows (Sleek and flat/crisp iOS style) */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.06);
+  --shadow-primary: 0 4px 12px rgba(0, 0, 0, 0.08);
 
-  /* Shape */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 20px;
-  --radius-2xl: 32px;
-  --radius-full: 9999px;
+  /* Shape (High Bo-Tròn) */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px; /* Highly rounded cards */
+  --radius-2xl: 28px; /* Extra rounded items */
+  --radius-full: 999px; /* Pills/Circles */
 
   /* Transitions */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Skeleton loaders */
-  --skeleton-base: oklch(92.5% 0 0);
-  --skeleton-shine: oklch(96.8% 0 0);
+  --skeleton-base: #E5E5EA;
+  --skeleton-shine: #F2F2F7;
 }
 
 [data-theme="dark"] {
-  /* Brand & Layout Backgrounds */
-  --color-bg: oklch(7.2% 0.024 250);
-  /* Premium deep slate-navy background */
-  --color-surface: oklch(12.3% 0.024 254);
-  /* Luminous deep slate-navy card surface */
-  --sidebar-bg: oklch(14% 0.005 240); /* charcoal light black for dark mode */
-  /* Darker navy-slate sidebar for contrast hierarchy */
-  --sidebar-hover: oklch(100% 0 0 / 4%);
-  --sidebar-active: oklch(68.5% 0.15 23.2 / 15%);
-  /* Softer violet active theme state */
+  /* Brand Specific (for critical elements only) */
+  --color-brand: #FF453A;
+  --color-brand-hover: #FF3B30;
+  --color-brand-light: rgba(255, 69, 58, 0.12);
 
-  /* Soft and Premium Indigo/Navy Border Accents */
-  --color-border: oklch(60% 0.2 265 / 15%);
-  /* Slate-indigo border tint */
-  --color-border-light: oklch(60% 0.2 265 / 8%);
-  /* Subtle divider tint */
+  /* Primary (Standardized to Brand Red for Main Brand Actions in Dark Mode) */
+  --color-primary: #FF453A;
+  --color-primary-hover: #FF3B30;
+  --color-primary-light: rgba(255, 69, 58, 0.12);
+  --sidebar-bg: #000000;
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+  --sidebar-active: #FF453A;
 
-  --color-text: oklch(98.4% 0.007 247);
-  /* Slate-50 crisp readable text */
-  --color-text-light: oklch(86.3% 0.021 245);
-  /* Slate-300 secondary text */
-  --color-text-muted: oklch(54.1% 0.038 248);
-  /* Slate-500 muted text */
+  /* Background & Surfaces */
+  --color-bg: #000000; /* iOS pure system black */
+  --color-surface: #1C1C1E; /* iOS dark gray card surface */
+  --color-border: #2C2C2E; /* iOS thin dark divider */
+  --color-border-light: #3A3A3C;
+  --color-text: #FFFFFF; /* Pure white text */
+  --color-text-light: #E5E5EA;
+  --color-text-muted: #8E8E93;
 
-  /* Cohesive Red Brand Accent */
-  --color-primary: oklch(68.5% 0.15 23.2);
-  /* Softer red for text accents, badges, toggles */
-  --color-primary-hover: oklch(62% 0.17 23.2);
-  /* Red for interactive hover highlights */
-  --color-primary-light: oklch(68.5% 0.15 23.2 / 12%);
-  /* Subtle violet glow background */
+  /* Semantic Alerts */
+  --color-success: #30D158;
+  --color-success-light: rgba(48, 209, 88, 0.12);
+  --color-warning: #FF9F0A;
+  --color-warning-light: rgba(255, 159, 10, 0.12);
+  --color-danger: #FF453A;
+  --color-danger-light: rgba(255, 69, 58, 0.12);
+  --color-info: #BF5AF2;
+  --color-info-light: rgba(191, 90, 242, 0.12);
 
-  /* Optimized Semantic Badges/Alerts Contrast for eye-friendly reading */
-  --color-success: oklch(79.4% 0.17 166);
-  /* Emerald-400 for vibrant and highly legible success labels */
-  --color-success-light: oklch(79.4% 0.17 166 / 8%);
-  --color-warning: oklch(80.5% 0.187 75);
-  /* Amber-400 warm yellow for warning labels */
-  --color-warning-light: oklch(80.5% 0.187 75 / 8%);
-  --color-danger: oklch(68.5% 0.186 25);
-  /* Red-400 soft coral red for danger labels */
-  --color-danger-light: oklch(68.5% 0.186 25 / 8%);
-  --color-info: oklch(72.7% 0.15 250);
-  /* Blue-400 sky blue for info labels */
-  --color-info-light: oklch(72.7% 0.15 250 / 8%);
+  /* Lead Score colors dark theme */
+  --score-hot: #FF453A;
+  --score-warm: #FF9F0A;
+  --score-neutral: #8E8E93;
+  --score-cool: #0A84FF;
+  --score-cold: #48484A;
 
-  /* Temperature Score colors optimized for dark theme reading */
-  --score-hot: oklch(68.5% 0.186 25);
-  --score-warm: oklch(72.6% 0.17 50);
-  --score-neutral: oklch(80.5% 0.187 75);
-  --score-cool: oklch(72.7% 0.15 250);
-  --score-cold: oklch(54.1% 0.038 248);
-
-  /* Premium Elevated Dark Theme Shadows */
-  --shadow-xs: 0 1px 2px oklch(0% 0 0 / 60%);
-  --shadow-sm: 0 2px 4px oklch(0% 0 0 / 50%), 0 1px 2px oklch(0% 0 0 / 30%);
-  --shadow-md: 0 4px 12px -2px oklch(0% 0 0 / 60%), 0 2px 6px -2px oklch(0% 0 0 / 40%);
-  --shadow-lg: 0 12px 24px -4px oklch(0% 0 0 / 65%), 0 4px 12px -4px oklch(0% 0 0 / 45%);
-  --shadow-xl: 0 20px 32px -4px oklch(0% 0 0 / 70%), 0 8px 16px -8px oklch(0% 0 0 / 50%);
-  --shadow-primary: 0 8px 24px -4px oklch(68.5% 0.15 23.2 / 30%);
+  /* Elevated Dark Theme Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.7);
+  --shadow-primary: 0 4px 12px rgba(0, 0, 0, 0.5);
 
   /* Skeleton loaders */
-  --skeleton-base: oklch(15.9% 0 0);
-  --skeleton-shine: oklch(21% 0 0);
+  --skeleton-base: #2C2C2E;
+  --skeleton-shine: #3A3A3C;
 }
 
 [data-theme="dark"] th {
@@ -761,15 +751,13 @@ ul {
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 [data-theme="dark"] .glass {
-  background: rgba(15, 21, 36, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
 }
 
 .card-body {
@@ -795,14 +783,15 @@ ul {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: var(--radius-md);
-  font-weight: 700;
+  border-radius: var(--radius-full);
+  font-weight: 600;
   font-size: 0.875rem;
-  padding: 0 1.125rem;
+  padding: 0 1.25rem;
   height: 38px;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
   line-height: 1;
+  border: none;
 }
 
 .btn svg {
@@ -811,48 +800,62 @@ ul {
 
 .btn.sm {
   height: 32px;
-  padding: 0 0.75rem;
+  padding: 0 0.875rem;
   font-size: 0.75rem;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
 }
 
 .btn.lg {
   height: 52px;
-  padding: 0 2rem;
+  padding: 0 2.25rem;
   font-size: 1rem;
+  border-radius: var(--radius-full);
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, #BD1D2D 0%, #a31422 100%);
+  background: var(--color-primary);
   color: #fff;
   border: none;
-  box-shadow: 0 4px 12px rgba(163, 20, 34, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .btn.primary:hover {
-  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
-  transform: translateY(-1.5px);
-  box-shadow: 0 6px 16px rgba(163, 20, 34, 0.4);
+  background: var(--color-primary-hover);
+  transform: translateY(-0.5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .btn.primary:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
+}
+
+.btn.brand {
+  background: var(--color-brand);
+  color: #fff;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.btn.brand:hover {
+  background: var(--color-brand-hover);
+  transform: translateY(-0.5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .btn.secondary {
-  background: var(--color-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text-light);
+  border: none;
 }
 
 .btn.secondary:hover {
-  background: var(--color-bg);
-  transform: translateY(-1px);
-  border-color: var(--color-text-muted);
+  background: var(--color-border);
+  color: var(--color-text);
+  transform: translateY(-0.5px);
 }
 
 .btn.secondary:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
 .btn.outline {
@@ -863,12 +866,13 @@ ul {
 
 .btn.outline:hover {
   background: var(--color-primary-light);
-  transform: translateY(-1px);
+  transform: translateY(-0.5px);
 }
 
 .btn.ghost {
   color: var(--color-text-light);
-  border: 1px solid transparent;
+  border: none;
+  background: transparent;
 }
 
 .btn.ghost:hover {
@@ -879,24 +883,23 @@ ul {
 .btn.danger {
   background: var(--color-danger);
   color: #fff;
-  border: 1px solid var(--color-danger);
+  border: none;
 }
 
 .btn.danger:hover {
-  background: #dc2626;
-  transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+  background: #E03B30;
+  transform: translateY(-0.5px);
 }
 
 .btn.success {
   background: var(--color-success);
   color: #fff;
-  border: 1px solid var(--color-success);
+  border: none;
 }
 
 .btn.success:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+  background: #2EB050;
+  transform: translateY(-0.5px);
 }
 
 .btn:disabled {
@@ -982,19 +985,19 @@ table {
 
 th {
   text-align: left;
-  padding: 1rem;
-  font-size: 0.75rem;
-  font-weight: 700;
+  padding: 0.875rem 1.25rem;
+  font-size: 0.725rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--color-text-light);
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
   background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 0.5px solid var(--color-border);
 }
 
 td {
-  padding: 1rem;
-  border-bottom: 1px solid var(--color-border-light);
+  padding: 0.875rem 1.25rem;
+  border-bottom: 0.5px solid var(--color-border-light);
   font-size: 0.875rem;
   vertical-align: middle;
   color: var(--color-text);
@@ -1003,11 +1006,11 @@ td {
 tbody tr {
   transition: all 0.15s ease;
   cursor: pointer;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 0.5px solid var(--color-border-light);
 }
 
 tbody tr:hover {
-  background: var(--color-primary-light);
+  background: var(--color-bg);
 }
 
 tbody tr:last-child td {
@@ -1258,9 +1261,7 @@ select:focus {
 .overlay-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 11000;
   display: flex;
   align-items: center;
@@ -2079,7 +2080,7 @@ input[type="radio"]:hover:not(:checked) {
 .modal-sheet {
   background: var(--color-surface);
   border-radius: var(--radius-2xl);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--shadow-xl);
   border: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -2110,35 +2111,37 @@ input[type="radio"]:hover:not(:checked) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--color-border-light);
+  padding: 1.5rem;
+  border-bottom: 0.5px solid var(--color-border);
   background: var(--color-surface);
   border-top-left-radius: var(--radius-2xl);
   border-top-right-radius: var(--radius-2xl);
 }
 
 .modal-header h3 {
-  font-size: 1.25rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.010em;
+  color: var(--color-text);
 }
 
 .modal-body {
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem;
   max-height: calc(90vh - 140px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  background: var(--color-surface);
 }
 
 .modal-footer {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--color-border-light);
-  background: #fcfcfd;
+  padding: 1.25rem 1.5rem;
+  border-top: 0.5px solid var(--color-border);
+  background: var(--color-surface);
   border-bottom-left-radius: var(--radius-2xl);
   border-bottom-right-radius: var(--radius-2xl);
 }
@@ -3641,9 +3644,9 @@ table td {
 
 .btn {
   height: 34px !important; /* Slightly smaller button height */
-  padding: 0 0.875rem !important;
+  padding: 0 1rem !important;
   font-size: 0.8125rem !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-full) !important;
 }
 
 .btn.sm {
@@ -3662,8 +3665,6 @@ table td {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   z-index: 10500 !important;
 }
 
@@ -3703,4 +3704,73 @@ table td.wrap-cell, table th.wrap-cell {
   white-space: normal !important;
   word-break: break-word !important;
   max-width: none !important;
+}
+
+/* ================================================
+   MOBILE BOTTOM NAVIGATION BAR (Apple Minimalist Style)
+   ================================================ */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  background: var(--color-surface);
+  border-top: 0.5px solid var(--color-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  z-index: 10000 !important;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.mobile-bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+  outline: none;
+}
+
+.mobile-bottom-nav-item svg {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.2s;
+}
+
+.mobile-bottom-nav-item:active svg {
+  transform: scale(0.9);
+}
+
+.mobile-bottom-nav-item-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.mobile-bottom-nav-item.active {
+  color: var(--color-primary);
+}
+
+@media (min-width: 769px) {
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+}
+
+/* Adjust page padding on mobile to not be covered by sticky bottom nav */
+@media (max-width: 768px) {
+  .responsive-main {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)) !important;
+  }
 }

@@ -333,7 +333,7 @@ class DepositController {
 
             // Email owner about cancellation
             $stmtOwner = $this->db->prepare("
-                SELECT u.email, u.full_name, c.name as contact_name 
+                SELECT u.email, u.full_name, CONCAT(c.first_name, ' ', COALESCE(c.last_name, '')) as contact_name 
                 FROM contacts c
                 JOIN users u ON c.owner_id = u.id
                 WHERE c.id = ?

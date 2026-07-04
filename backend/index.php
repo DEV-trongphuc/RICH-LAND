@@ -105,6 +105,13 @@ function requireAuth(): array {
     if (!isset($payload['tenant_id']) || empty($payload['tenant_id'])) {
         $payload['tenant_id'] = 1;
     }
+    // Normalize name and full_name keys to prevent Undefined array key warnings
+    if (isset($payload['name']) && !isset($payload['full_name'])) {
+        $payload['full_name'] = $payload['name'];
+    }
+    if (isset($payload['full_name']) && !isset($payload['name'])) {
+        $payload['name'] = $payload['full_name'];
+    }
     return $payload;
 }
 

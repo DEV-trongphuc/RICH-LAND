@@ -562,7 +562,39 @@ class ContactController {
         }
         
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'contact', $id, json_encode(['first_name' => $currentContact['first_name'], 'last_name' => $currentContact['last_name'] ?? '']));
-        $this->show($auth, $id);
+        $sql = "SELECT c.*, 
+                    CASE 
+                        WHEN comp.deleted_at IS NOT NULL THEN CONCAT(comp.name, ' (Đã xóa)')
+                        ELSE comp.name 
+                    END as company_name, 
+                    u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
+                    (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as actual_revenue,
+                    (SELECT COUNT(*) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as paid_invoice_count,
+                    (SELECT COALESCE(SUM(ee.amount),0) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as total_spent,
+                    (SELECT COUNT(*) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as expense_count,
+                    (
+                        SELECT MAX(dt) FROM (
+                            SELECT contact_id as cid, paid_at as dt FROM invoices WHERE status='paid' AND deleted_at IS NULL
+                            UNION ALL
+                            SELECT ee.entity_id as cid, e.approved_at as dt FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND e.status = 'approved' AND e.deleted_at IS NULL
+                        ) as t WHERE t.cid = c.id
+                    ) as last_order_at
+            FROM contacts c
+            LEFT JOIN companies comp ON c.company_id = comp.id
+            LEFT JOIN users u ON c.owner_id = u.id
+            LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
+            WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $row = $stmt->fetch();
+        if ($row) {
+            $row['tags'] = json_decode($row['tags'] ?? '[]');
+            $row['custom_fields'] = getCustomFields($this->db, $auth['tenant_id'], $id, 'contact');
+            respond(200, $row);
+        } else {
+            respond(404, null, 'Không tìm thấy liên hệ', false);
+        }
     }
 
     public function moveStage(array $auth, int $id): void {

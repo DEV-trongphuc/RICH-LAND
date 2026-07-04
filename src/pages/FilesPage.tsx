@@ -315,29 +315,16 @@ export const FilesPage: React.FC = () => {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-           {/* Mobile Visibility Selector */}
-           <div className="mobile-only" style={{ width: '120px' }}>
-             <select
-               value={activeTab}
-               onChange={e => setActiveTab(e.target.value as any)}
-               className="form-select"
-               style={{ width: '100%', height: 40 }}
-             >
-               <option value="shared">Dùng chung</option>
-               <option value="personal">Cá nhân</option>
-             </select>
-           </div>
-
-           {/* Desktop Visibility Tab Switcher */}
-           <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
+           {/* Pill Tab Switcher */}
+           <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', padding: '3px' }}>
              <button 
-                style={{ padding: '6px 16px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'shared' ? 'var(--color-primary-light)' : 'transparent', color: activeTab === 'shared' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                style={{ padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeTab === 'shared' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'shared' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeTab === 'shared' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                 onClick={() => setActiveTab('shared')}
              >
                Dùng chung
              </button>
              <button 
-                style={{ padding: '6px 16px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'personal' ? 'var(--color-primary-light)' : 'transparent', color: activeTab === 'personal' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                style={{ padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeTab === 'personal' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'personal' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeTab === 'personal' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                 onClick={() => setActiveTab('personal')}
              >
                Cá nhân
