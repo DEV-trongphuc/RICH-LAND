@@ -872,14 +872,14 @@ export const DealsPage: React.FC = () => {
           ) : (
             <table className="table" style={{ width: '100%', minWidth: 800 }}>
               <thead>
-                <tr>
+                <tr style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                     <CustomCheckbox checked={pagedItems.every(item => selected.has(item.id)) && pagedItems.length > 0} onChange={togglePageAll} />
                   </th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Tên {pipelineView === 'deals' ? 'Cơ hội' : (pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp')}</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Giá trị</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Giai đoạn</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{pipelineView === 'deals' ? 'Tỉ lệ / Chốt' : 'Liên hệ'}</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tên {pipelineView === 'deals' ? 'Cơ hội' : (pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp')}</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Giá trị</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Giai đoạn</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>{pipelineView === 'deals' ? 'Tỉ lệ / Chốt' : 'Liên hệ'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -894,7 +894,8 @@ export const DealsPage: React.FC = () => {
                         if (pipelineView === 'contacts') { setSelectedContact(item); setShowContactDrawer(true); }
                         else { setSelectedCompany(item); setShowCompanyDrawer(true); }
                       }}
-                      style={{ cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)' }}
+                      className="table-row-hover"
+                      style={{ cursor: 'pointer', borderBottom: '1px solid var(--color-border)' }}
                     >
                       <td style={{ padding: '1rem' }} onClick={e => e.stopPropagation()}>
                         <CustomCheckbox checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} />
@@ -903,7 +904,7 @@ export const DealsPage: React.FC = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                            <Avatar name={itemName} src={item.avatar_url} size={32} />
                           <div>
-                            <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{itemName}</p>
+                            <p style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{itemName}</p>
                             {item.company_name && <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{item.company_name}</p>}
                           </div>
                         </div>

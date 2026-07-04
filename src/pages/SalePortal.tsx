@@ -3414,16 +3414,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   ))}
                 </div>
               ) : (
-                <table style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                <table style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
-                    <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('KHÁCH HÀNG')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('LIÊN HỆ')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('TRẠNG THÁI')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('PHÂN BỔ CHO')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('NGUỒN / PHÂN LOẠI')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{t('THỜI GIAN NHẬN')}</th>
-                      <th style={{ padding: '1rem 1.25rem', color: 'var(--color-text-light)', fontWeight: 700, textAlign: 'center' }}>{t('TICKET')}</th>
+                    <tr style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                      <th style={{ padding: '1rem', color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('KHÁCH HÀNG')}</th>
+                      <th style={{ padding: '1rem', color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('LIÊN HỆ')}</th>
+                      <th style={{ padding: '1rem', color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('TRẠNG THÁI')}</th>
+                      <th style={{ padding: '1rem', color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('PHÂN BỔ CHO')}</th>
+                      <th style={{ padding: '1rem', color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('NGUỒN / PHÂN LOẠI')}</th>
+                      <th style={{ padding: '1rem', color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('THỜI GIAN NHẬN')}</th>
+                      <th style={{ padding: '1rem', color: 'var(--color-text-light)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' }}>{t('TICKET')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3438,17 +3438,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             setDetailModalOpen(true);
                           }
                         }}
+                        className="table-row-hover"
                         style={{
-                          borderBottom: '1px solid var(--color-border-light)',
-                          background: 'var(--color-surface)',
+                          borderBottom: '1px solid var(--color-border)',
                           cursor: 'pointer'
                         }}
                       >
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', width: '100%' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <Avatar name={lead.lead_name || t('Khách hàng')} size={32} />
-                              <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>
+                              <span style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>
                                 {lead.lead_name || t('Chưa cập nhật')}
                               </span>
                             </div>
@@ -3499,18 +3499,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </div>
                         </td>
 
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                             <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{lead.phone}</span>
                             <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>{lead.lead_email || '—'}</span>
                           </div>
                         </td>
 
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '1rem' }}>
                           {getStatusBadge(lead.status, lead.report_status)}
                         </td>
 
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '1rem' }}>
                           {lead.sale_name ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <Avatar src={lead.sale_avatar} name={lead.sale_name} size={32} />
@@ -3526,14 +3526,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           )}
                         </td>
 
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <span style={{ color: 'var(--color-text-light)', fontSize: '0.8rem', fontWeight: 500 }}>{lead.source || 'N/A'}</span>
                             {lead.type && <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>{lead.type}</span>}
                           </div>
                         </td>
 
-                        <td style={{ padding: '1rem 1.25rem' }}>
+                        <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
                             <span>{lead.received_at ? new Date(lead.received_at).toLocaleString('vi-VN') : '—'}</span>
                             {lead.status === 'compensation' && (
@@ -3544,7 +3544,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </div>
                         </td>
 
-                        <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
+                        <td style={{ padding: '1rem', textAlign: 'center' }}>
                           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
                             {lead.report_status === 'pending' && (
                               <div style={{ display: 'inline-flex', padding: '6px', borderRadius: '50%', background: '#fef3c7', color: '#d97706' }} title={t("Ticket chờ duyệt")}>

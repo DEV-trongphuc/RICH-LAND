@@ -47,6 +47,12 @@ interface Project {
   code: string;
 }
 
+const formatMoney = (val: string | number) => {
+  const num = Number(val);
+  if (isNaN(num)) return '0 đ';
+  return num.toLocaleString('vi-VN') + ' đ';
+};
+
 export default function DepositsPage() {
   const { user } = useAuth();
   const [deposits, setDeposits] = useState<Deposit[]>([]);
@@ -318,155 +324,282 @@ export default function DepositsPage() {
           </button>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {deposits.map(dep => (
-            <div
-              key={dep.id}
-              className="card animate-fade"
-              style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
-            >
-              {/* Top Row: General info */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ padding: '10px', background: 'rgba(163, 20, 34, 0.1)', borderRadius: '12px', color: 'var(--color-primary)' }}>
-                    <CreditCard size={24} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 800 }}>
-                      Căn: <span style={{ color: 'var(--color-primary)' }}>{dep.unit_code}</span> | Dự án: {dep.project_name}
-                    </h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
-                      Khách hàng: <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</span> ({dep.phone}) • Người tạo: {dep.creator_name}
-                    </p>
-                  </div>
-                </div>
+        <div className="card" style={{ padding: 0, borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
+          <div className="table-wrap">
+            <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', width: '110px' }}>Căn hộ</th>
+                  <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dự án & Khách hàng</th>
+                  <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', width: '220px' }}>Giá trị / Hoa hồng</th>
+                  <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', width: '130px', textAlign: 'center' }}>Trạng thái</th>
+                  <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', width: '240px' }}>Tiến độ đợt tiền</th>
+                  <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', width: '240px', textAlign: 'right' }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {deposits.map(dep => {
+                  let statusText = 'Đang giao dịch';
+                  let statusBg = 'rgba(245, 158, 11, 0.08)';
+                  let statusColor = '#d97706';
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Giá bán / Hoa hồng</span>
-                    <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>
-                      {dep.price.toLocaleString()} VND / {dep.expected_commission.toLocaleString()} VND
-                    </span>
-                  </div>
-                  <span
-                    className="badge"
-                    style={{
-                      background: dep.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : dep.status === 'cancelled' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                      color: dep.status === 'approved' ? 'var(--color-success)' : dep.status === 'cancelled' ? 'var(--color-danger)' : 'var(--color-warning)',
-                      border: dep.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : dep.status === 'cancelled' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(245, 158, 11, 0.2)',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700
-                    }}
-                  >
-                    {dep.status === 'approved' ? 'Hoàn tất cọc' : dep.status === 'cancelled' ? 'Đã bể cọc' : 'Chờ duyệt UNC'}
-                  </span>
-                  {dep.status !== 'cancelled' && (
-                    <button
-                      onClick={() => handleOpenCancel(dep.id)}
-                      className="btn sm outline"
-                      style={{ padding: '6px', height: '30px', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
-                      title="Báo hủy / Bể cọc"
+                  if (dep.status === 'approved') {
+                    statusText = 'Hoàn tất cọc';
+                    statusBg = 'rgba(16, 185, 129, 0.08)';
+                    statusColor = '#059669';
+                  } else if (dep.status === 'cancelled') {
+                    statusText = 'Đã bể cọc';
+                    statusBg = 'rgba(239, 68, 68, 0.08)';
+                    statusColor = '#dc2626';
+                  }
+
+                  return (
+                    <tr 
+                      key={dep.id} 
+                      style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s' }}
+                      className="table-row-hover"
                     >
-                      <Ban size={14} />
-                    </button>
-                  )}
-                </div>
-              </div>
+                      {/* Unit code */}
+                      <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                        <span style={{ 
+                          padding: '5px 9px', 
+                          background: 'rgba(189, 29, 45, 0.06)', 
+                          color: 'var(--color-primary)', 
+                          borderRadius: '8px', 
+                          fontWeight: 800, 
+                          fontSize: '0.8rem',
+                          display: 'inline-block'
+                        }}>
+                          {dep.unit_code}
+                        </span>
+                      </td>
 
-              {/* Milestones Schedule */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
-                {dep.milestones.map(m => (
-                  <div
-                    key={m.id}
-                    className="card-panel"
-                    style={{
-                      padding: '1rem',
-                      borderRadius: '8px',
-                      background: 'var(--color-bg)',
-                      border: '1px solid var(--color-border)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      gap: '0.75rem'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.75rem', color: 'var(--color-text-light)' }} className="line-clamp-1">{m.milestone_name}</span>
+                      {/* Project & Client */}
+                      <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{dep.project_name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                          Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
+                        </div>
+                      </td>
+
+                      {/* Value / Commission */}
+                      <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>
+                          {formatMoney(dep.price)}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '2px', fontWeight: 600 }}>
+                          HH: {formatMoney(dep.expected_commission)}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td style={{ padding: '1rem', verticalAlign: 'middle', textAlign: 'center' }}>
                         <span
                           style={{
-                            fontSize: '10px',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
+                            background: statusBg,
+                            color: statusColor,
+                            border: `1px solid ${statusColor}18`,
+                            padding: '4px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '0.725rem',
                             fontWeight: 700,
-                            background: m.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' : m.status === 'paid' ? 'rgba(59, 130, 246, 0.1)' : m.status === 'failed' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                            color: m.status === 'approved' ? 'var(--color-success)' : m.status === 'paid' ? '#2563eb' : m.status === 'failed' ? 'var(--color-danger)' : 'var(--color-text-muted)'
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
                           }}
                         >
-                          {m.status === 'approved' ? 'Đã duyệt' : m.status === 'paid' ? 'Chờ duyệt' : m.status === 'failed' ? 'UNC sai' : 'Chờ nộp'}
+                          {statusText}
                         </span>
-                      </div>
-                      <span style={{ display: 'block', fontWeight: 800, fontSize: '0.875rem', marginTop: '4px', color: 'var(--color-text)' }}>{m.expected_amount.toLocaleString()} VND</span>
-                    </div>
+                      </td>
 
-                    {/* Actions / Attachments */}
-                    <div style={{ paddingTop: '8px', borderTop: '1px solid var(--color-border-light)', display: 'flex', gap: '8px', alignItems: 'center', justifyContent: 'space-between' }}>
-                      {m.unc_file_path ? (
-                        <a
-                          href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ fontSize: '0.75rem', color: 'var(--color-primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
-                          className="hover:underline"
-                        >
-                          <FileText size={12} />
-                          Xem ảnh UNC
-                        </a>
-                      ) : (
-                        <span style={{ fontSize: '10px', color: 'var(--color-text-muted)' }}>Chưa nộp UNC</span>
-                      )}
+                      {/* Milestones steps */}
+                      <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          {dep.milestones.map((m, idx) => {
+                            let dotColor = '#6b7280';
+                            let tooltipText = `${m.milestone_name}: Chờ nộp UNC (${formatMoney(m.expected_amount)})`;
+                            if (m.status === 'approved') {
+                              dotColor = '#10b981';
+                              tooltipText = `${m.milestone_name}: Đã duyệt (${formatMoney(m.expected_amount)})`;
+                            } else if (m.status === 'paid') {
+                              dotColor = '#2563eb';
+                              tooltipText = `${m.milestone_name}: Chờ duyệt UNC (${formatMoney(m.expected_amount)})`;
+                            } else if (m.status === 'failed') {
+                              dotColor = '#ef4444';
+                              tooltipText = `${m.milestone_name}: UNC sai (${formatMoney(m.expected_amount)})`;
+                            }
 
-                      {/* Action buttons */}
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {dep.status !== 'cancelled' && m.status !== 'approved' && (
-                          <label className="btn sm outline" style={{ padding: '4px 6px', height: '24px', cursor: 'pointer' }} title="Tải UNC lên">
-                            <Upload size={12} />
-                            <input
-                              type="file"
-                              className="hidden"
-                              onChange={e => handleUploadUnc(e, dep.id, m.id)}
-                            />
-                          </label>
-                        )}
-                        {isAdmin && m.status === 'paid' && (
-                          <>
+                            return (
+                              <div 
+                                key={m.id}
+                                style={{ 
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '3px 6px',
+                                  borderRadius: '6px',
+                                  background: `${dotColor}08`,
+                                  border: `1px solid ${dotColor}15`,
+                                  fontSize: '0.675rem',
+                                  fontWeight: 600,
+                                  color: dotColor
+                                }}
+                                title={tooltipText}
+                              >
+                                <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: dotColor }} />
+                                <span>Đ{idx + 1}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '1rem', verticalAlign: 'middle', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                          {dep.milestones.map((m, idx) => {
+                            if (m.status === 'approved') return null;
+
+                            return (
+                              <div key={m.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                {/* Upload button */}
+                                {dep.status !== 'cancelled' && (
+                                  <label
+                                    className="btn sm"
+                                    style={{
+                                      padding: '2px 6px',
+                                      height: '24px',
+                                      cursor: 'pointer',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      fontSize: '0.675rem',
+                                      fontWeight: 600,
+                                      borderRadius: '6px',
+                                      background: 'transparent',
+                                      border: '1px solid rgba(189, 29, 45, 0.25)',
+                                      color: 'var(--color-primary)'
+                                    }}
+                                    title={`Tải UNC Đợt ${idx + 1}`}
+                                  >
+                                    <Upload size={11} />
+                                    <span>Tải UNC Đ{idx + 1}</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      style={{ display: 'none' }}
+                                      onChange={e => handleUploadUnc(e, dep.id, m.id)}
+                                    />
+                                  </label>
+                                )}
+
+                                {/* View UNC link if uploaded */}
+                                {m.unc_file_path && (
+                                  <a
+                                    href={`${import.meta.env.VITE_API_URL || '/backend'}/uploads/${m.unc_file_path}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn sm"
+                                    style={{
+                                      padding: '2px 6px',
+                                      height: '24px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      fontSize: '0.675rem',
+                                      borderRadius: '6px',
+                                      background: 'rgba(59, 130, 246, 0.08)',
+                                      color: '#2563eb',
+                                      border: 'none',
+                                      fontWeight: 600
+                                    }}
+                                  >
+                                    <FileText size={11} />
+                                    <span>Xem UNC Đ{idx + 1}</span>
+                                  </a>
+                                )}
+
+                                {/* Admin approval / reject buttons */}
+                                {isAdmin && m.status === 'paid' && (
+                                  <div style={{ display: 'inline-flex', gap: '3px' }}>
+                                    <button
+                                      onClick={() => handleApproveMilestone(dep.id, m.id)}
+                                      style={{
+                                        padding: '0 6px',
+                                        height: '24px',
+                                        background: '#10b981',
+                                        color: 'white',
+                                        border: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        fontSize: '0.675rem',
+                                        fontWeight: 600,
+                                        borderRadius: '6px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <Check size={11} />
+                                      Duyệt Đ{idx + 1}
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectMilestone(dep.id, m.id)}
+                                      style={{
+                                        padding: '0 6px',
+                                        height: '24px',
+                                        background: '#ef4444',
+                                        color: 'white',
+                                        border: 'none',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                        fontSize: '0.675rem',
+                                        fontWeight: 600,
+                                        borderRadius: '6px',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <X size={11} />
+                                      Hủy Đ{idx + 1}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                          {/* Cancellation Button */}
+                          {dep.status !== 'cancelled' && (
                             <button
-                              onClick={() => handleApproveMilestone(dep.id, m.id)}
-                              className="btn sm"
-                              style={{ padding: '4px 6px', height: '24px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', border: 'none' }}
-                              title="Duyệt"
+                              onClick={() => handleOpenCancel(dep.id)}
+                              style={{
+                                padding: '2px 6px',
+                                height: '24px',
+                                color: '#ef4444',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                borderRadius: '6px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                background: 'transparent',
+                                fontSize: '0.675rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                              title="Báo bể cọc"
                             >
-                              <Check size={12} />
+                              <Ban size={11} />
+                              <span>Bể cọc</span>
                             </button>
-                            <button
-                              onClick={() => handleRejectMilestone(dep.id, m.id)}
-                              className="btn sm"
-                              style={{ padding: '4px 6px', height: '24px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', border: 'none' }}
-                              title="Từ chối"
-                            >
-                              <X size={12} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

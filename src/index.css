@@ -433,8 +433,8 @@
 }
 
 .responsive-main {
-  max-width: 1400px !important;
-  margin: 0 auto !important;
+  max-width: 100% !important;
+  margin: 0 !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -982,18 +982,18 @@ table {
 
 th {
   text-align: left;
-  padding: 1rem 1.25rem;
-  font-size: 0.7rem;
+  padding: 1rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
+  color: var(--color-text-light);
   background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border);
 }
 
 td {
-  padding: 1.5rem 1.25rem;
+  padding: 1rem;
   border-bottom: 1px solid var(--color-border-light);
   font-size: 0.875rem;
   vertical-align: middle;
@@ -1003,6 +1003,7 @@ td {
 tbody tr {
   transition: all 0.15s ease;
   cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
 }
 
 tbody tr:hover {
@@ -3659,6 +3660,11 @@ table td {
 
 /* Drawer overlays */
 .drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 10500 !important;
 }
 
