@@ -19,7 +19,7 @@
   padding: 0.625rem 0.875rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   font-size: 0.875rem;
   color: var(--color-text);
   cursor: pointer;
@@ -88,7 +88,7 @@
   min-width: max-content;
   background: white;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
   z-index: 1000;
   overflow: hidden;

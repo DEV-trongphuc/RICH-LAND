@@ -5207,7 +5207,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
 
         {/* 2-Column Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.45fr 1fr', gap: '2rem' }}>
 
           {/* LEFT COLUMN: Profile Card & Action Info */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

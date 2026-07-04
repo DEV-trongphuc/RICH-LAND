@@ -425,6 +425,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     window.addEventListener('open-activity-feed', handleOpenFeed);
     return () => {
       window.removeEventListener('open-activity-feed', handleOpenFeed);
+    };
   }, []);
 
   useEffect(() => {

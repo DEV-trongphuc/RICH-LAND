@@ -386,7 +386,8 @@ class ContactController {
             'mobile','job_title','department','source','status','notes',
             'birthday','address','city','ward',
             'expected_revenue','win_probability','last_contact','stage_id',
-            'pipeline_status', 'ttl1_completed', 'ttl1_data'
+            'pipeline_status', 'ttl1_completed', 'ttl1_data',
+            'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range'
         ];
         $sets = []; $params = [];
         

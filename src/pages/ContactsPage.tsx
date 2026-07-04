@@ -168,7 +168,6 @@ export const ContactsPage: React.FC = () => {
     { id: 'name', label: 'Tên liên hệ', visible: true },
     { id: 'email', label: 'Email', visible: true },
     { id: 'phone', label: 'SĐT', visible: true },
-    { id: 'score', label: 'Lead Score', visible: false },
     { id: 'company', label: 'Công ty', visible: false },
     { id: 'tags', label: 'Phân loại (Tags)', visible: false },
     { id: 'status', label: 'Trạng thái', visible: true },
@@ -177,6 +176,7 @@ export const ContactsPage: React.FC = () => {
     { id: 'owner', label: 'Sale phụ trách', visible: true },
     { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
     { id: 'created_at', label: 'Ngày tạo', visible: true },
+    { id: 'score', label: 'Lead Score', visible: true },
   ]);
   const [showColumns, setShowColumns] = useState(false);
 
@@ -786,7 +786,6 @@ export const ContactsPage: React.FC = () => {
                     {(columns.find(c => c.id === 'email')?.visible || columns.find(c => c.id === 'phone')?.visible) && (
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên lạc</th>
                     )}
-                    {columns.find(c => c.id === 'score')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Score</th>}
                     {columns.find(c => c.id === 'company')?.visible && !columns.find(c => c.id === 'name')?.visible && (
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Công ty</th>
                     )}
@@ -801,6 +800,7 @@ export const ContactsPage: React.FC = () => {
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
                     )}
                     {columns.find(c => c.id === 'created_at')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
+                    {columns.find(c => c.id === 'score')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Score</th>}
                     <th style={{ width: 120, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}></th>
                   </tr>
                 </thead>
@@ -847,13 +847,7 @@ export const ContactsPage: React.FC = () => {
                             </div>
                           </td>
                         )}
-                        {columns.find(col => col.id === 'score')?.visible && (
-                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
-                              {c.score}
-                            </span>
-                          </td>
-                        )}
+
                         {columns.find(col => col.id === 'company')?.visible && !columns.find(col => col.id === 'name')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>{c.company_name || '—'}</p>
@@ -936,6 +930,13 @@ export const ContactsPage: React.FC = () => {
                             </p>
                           </td>
                         )}
+                        {columns.find(col => col.id === 'score')?.visible && (
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
+                              {c.score}
+                            </span>
+                          </td>
+                        )}
                         <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', opacity: 0 }} className="row-actions">
                             <button className="btn ghost sm" title="Xem hồ sơ" onClick={() => setProfileContact(c)}><Eye size={13} /></button>
@@ -976,7 +977,7 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div style={{ padding: '1rem', background: 'var(--color-surface)' }}>
+            <div style={{ padding: '1rem', background: 'transparent' }}>
               <div className="grid-cards-responsive">
                 {paged.map(c => {
                   const days = AGO_DAYS(c.last_contact);
@@ -988,50 +989,115 @@ export const ContactsPage: React.FC = () => {
                       animate={{ opacity: 1, scale: 1 }}
                       onClick={() => setProfileContact(c)}
                       style={{ 
-                        background: 'var(--color-surface)', border: '1px solid var(--color-border)', 
-                        borderRadius: 'var(--radius-lg)', padding: '1rem', cursor: 'pointer',
-                        boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', position: 'relative'
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border-light)', 
+                        borderRadius: '16px',
+                        padding: '1.25rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        position: 'relative',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        overflow: 'hidden'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
-                      onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0, 0, 0, 0.08)';
+                        e.currentTarget.style.transform = 'translateY(-4px)';
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.03)';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                      }}
                     >
-                      <div style={{ position: 'absolute', top: '1rem', right: '1rem' }} onClick={e => e.stopPropagation()}>
-                        <CustomCheckbox 
-                          checked={selected.has(c.id)} 
-                          onChange={() => toggleSelect(c.id)} 
-                        />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem' }}>
-                          {(c.first_name?.[0] || '?').toUpperCase()}
+                      {/* Top Accent line colored by Status */}
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '4px',
+                        background: c.status === 'lead' ? 'var(--color-primary)' :
+                                    c.status === 'qualified' ? 'var(--color-warning)' :
+                                    c.status === 'customer' ? 'var(--color-success)' :
+                                    'var(--color-text-muted)'
+                      }} />
+
+                      {/* Header Section */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', width: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+                            <Avatar name={fullName} size={42} />
+                            <div>
+                              <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '2px', lineHeight: 1.2 }}>{fullName}</h3>
+                              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <Building2 size={11} /> {c.company_name || 'Khách hàng cá nhân'}
+                              </p>
+                            </div>
+                          </div>
+                          <div onClick={e => e.stopPropagation()} style={{ marginRight: '-4px', marginTop: '-4px' }}>
+                            <CustomCheckbox 
+                              checked={selected.has(c.id)} 
+                              onChange={() => toggleSelect(c.id)} 
+                            />
+                          </div>
                         </div>
-                        <div>
-                          <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{fullName}</h3>
-                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <Building2 size={12} /> {c.company_name || 'Cá nhân'}
-                          </p>
+
+                        {/* Contact Details Quick View */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '1rem', padding: '0.625rem', background: 'var(--color-bg)', borderRadius: '10px' }}>
+                          {c.phone && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-text)', fontWeight: 600 }}>
+                              <Phone size={12} style={{ color: 'var(--color-text-muted)' }} />
+                              <span>{c.phone}</span>
+                            </div>
+                          )}
+                          {c.email && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <Mail size={12} style={{ color: 'var(--color-text-muted)' }} />
+                              <span>{c.email}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-                        <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
-                        <span style={{ fontSize: '0.75rem', padding: '2px 8px', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', fontWeight: 600, color: c.score >= 80 ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                          Score: {c.score}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
-                        <div>
-                          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.25rem' }}>Liên lạc cuối</p>
-                          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: days > 30 ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                            {c.last_contact ? (days === 0 ? 'Hôm nay' : days === 1 ? 'Hôm qua' : `${days} ngày trước`) : '—'}
-                          </p>
+                      {/* Status Badges & Score */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                          <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`} style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+                            {STATUS_LABEL[c.status] || c.status}
+                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Đánh giá:</span>
+                            <span style={{ 
+                              fontSize: '0.75rem', 
+                              padding: '2px 8px', 
+                              background: c.score >= 80 ? 'rgba(16, 185, 129, 0.1)' : c.score >= 60 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(107, 114, 128, 0.1)', 
+                              color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)',
+                              borderRadius: '6px', 
+                              fontWeight: 700 
+                            }}>
+                              {c.score} pts
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <p style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.25rem' }}>Deal đang mở</p>
-                          <p style={{ fontSize: '0.875rem', fontWeight: 700, color: (c.open_deal_value || 0) > 0 ? 'var(--color-primary)' : 'var(--color-text)' }}>
-                            {FMT_VND(c.open_deal_value || 0)}
-                          </p>
+
+                        {/* Footer Grid */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingTop: '0.875rem', borderTop: '1px solid var(--color-border-light)' }}>
+                          <div>
+                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Liên lạc cuối</p>
+                            <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: days > 30 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                              {c.last_contact ? (days === 0 ? 'Hôm nay' : days === 1 ? 'Hôm qua' : `${days} ngày trước`) : '—'}
+                            </p>
+                          </div>
+                          <div>
+                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Deal đang mở</p>
+                            <p style={{ fontSize: '0.8125rem', fontWeight: 800, color: (c.open_deal_value || 0) > 0 ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                              {FMT_VND(c.open_deal_value || 0)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </motion.div>

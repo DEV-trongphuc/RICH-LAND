@@ -1050,7 +1050,7 @@ select {
   padding: 0 1rem;
   height: 44px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: 0.875rem;
@@ -3669,7 +3669,8 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
   z-index: 10500 !important;
 }
 
@@ -3783,5 +3784,24 @@ table td.wrap-cell, table th.wrap-cell {
 @media (max-width: 767px) {
   :root {
     --sidebar-width: 0px !important;
+  }
+}
+
+/* Grid layout for customer cards */
+.grid-cards-responsive {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .grid-cards-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .grid-cards-responsive {
+    grid-template-columns: repeat(3, 1fr);
   }
 }

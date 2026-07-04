@@ -50,6 +50,12 @@ try {
 try {
     $conn->query("ALTER TABLE activities ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL AFTER updated_at");
 } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE contacts ADD COLUMN gender VARCHAR(20) NULL"); } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE contacts ADD COLUMN zalo_link VARCHAR(255) NULL"); } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE contacts ADD COLUMN fb_link VARCHAR(255) NULL"); } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE contacts ADD COLUMN customer_type VARCHAR(50) NULL"); } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE contacts ADD COLUMN industry VARCHAR(100) NULL"); } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE contacts ADD COLUMN budget_range VARCHAR(100) NULL"); } catch (Exception $e) {}
 
 
 

@@ -185,9 +185,8 @@ const resolveAttachmentUrl = (url: string | null | undefined): string => {
 
 const TABS = [
   { id: 'info', label: 'Thông tin chung', icon: <User size={16} /> },
-  { id: 'tags', label: 'Tags', icon: <TagIcon size={16} /> },
+  { id: 'tags', label: 'Tags & Ghi chú', icon: <TagIcon size={16} /> },
   { id: 'cooperation', label: 'Hợp tác', icon: <Users size={16} /> },
-  { id: 'notes', label: 'Ghi chú', icon: <Pencil size={16} /> },
   { id: 'tasks', label: 'Công việc', icon: <CheckSquare size={16} /> },
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <Paperclip size={16} /> },
   { id: 'timeline', label: 'Lịch sử tương tác', icon: <History size={16} /> },
@@ -653,6 +652,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [isOpen, initialTab]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const [showScoringSystemModal, setShowScoringSystemModal] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [baseData, setBaseData] = useState<any>(contact || {});
   const [baseTags, setBaseTags] = useState<string[]>(contact?.tags || []);
@@ -847,6 +847,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
   const [users, setUsers] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
+  const [autoZaloLink, setAutoZaloLink] = useState(true);
   const [pipelineStages, setPipelineStages] = useState<any[]>(DEFAULT_PIPELINE_STAGES);
   const [contacts, setContacts] = useState<any[]>([]);
   const [ttl1Data, setTtl1Data] = useState<{
@@ -1678,18 +1681,58 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const { score, rules } = useMemo(() => {
     let s = 0;
     const r: any[] = [];
+    
+    // Base score
+    s += 10;
+    r.push({ rule: 'Điểm khởi tạo (Mặc định)', pts: 10, type: 'System' });
+
+    // Job Title
     const title = (formData.job_title || '').toLowerCase();
-    if (title.includes('giám đốc') || title.includes('ceo')) {
-      s += 30; r.push({ rule: 'Chức danh C-Level (Giám đốc/CEO)', pts: 30, type: 'Demographic' });
+    if (title.includes('giám đốc') || title.includes('ceo') || title.includes('sáng lập') || title.includes('founder') || title.includes('chủ tịch')) {
+      s += 20; r.push({ rule: 'Chức danh C-Level (Giám đốc/CEO/Founder/Chủ tịch)', pts: 20, type: 'Demographic' });
     } else if (title) {
-      s += 10; r.push({ rule: 'Có thông tin chức vụ', pts: 10, type: 'Demographic' });
+      s += 5; r.push({ rule: 'Có thông tin chức vụ', pts: 5, type: 'Demographic' });
     }
-    if (formData.phone) { s += 15; r.push({ rule: 'Cung cấp số điện thoại', pts: 15, type: 'Demographic' }); }
+
+    // Phone / Contact Info
+    if (formData.phone) { s += 15; r.push({ rule: 'Cung cấp số điện thoại chính', pts: 15, type: 'Demographic' }); }
+    if (formData.mobile) { s += 10; r.push({ rule: 'Cung cấp số điện thoại phụ', pts: 10, type: 'Demographic' }); }
+    if (formData.phone && formData.mobile) { s += 10; r.push({ rule: 'Có cả 2 số liên hệ (Độ tin cậy cao)', pts: 10, type: 'Demographic' }); }
     if (formData.email) { s += 10; r.push({ rule: 'Cung cấp Email', pts: 10, type: 'Demographic' }); }
-    if (formData.source === 'website') { s += 20; r.push({ rule: 'Nguồn Inbound (Website)', pts: 20, type: 'Behavioral' }); }
-    if (formData.source === 'referral') { s += 25; r.push({ rule: 'Khách hàng giới thiệu (Referral)', pts: 25, type: 'Behavioral' }); }
-    if (formData.expected_revenue > 100000000) { s += 30; r.push({ rule: 'Deal size tiềm năng > 100Tr', pts: 30, type: 'Behavioral' }); }
-    if (formData.status === 'qualified' || formData.status === 'customer') { s += 20; r.push({ rule: 'Sales đã verify chất lượng', pts: 20, type: 'Behavioral' }); }
+    if (formData.zalo_link || formData.fb_link) { s += 10; r.push({ rule: 'Có liên kết mạng xã hội (Zalo/Facebook)', pts: 10, type: 'Demographic' }); }
+    if (formData.birthday) { s += 10; r.push({ rule: 'Có thông tin ngày sinh (Hỗ trợ sinh nhật)', pts: 10, type: 'Demographic' }); }
+    if (formData.gender) { s += 5; r.push({ rule: 'Có thông tin giới tính', pts: 5, type: 'Demographic' }); }
+    if (formData.customer_type) { s += 5; r.push({ rule: 'Xác định loại khách hàng (Cá nhân/Doanh nghiệp)', pts: 5, type: 'Demographic' }); }
+
+    // Address
+    if (formData.address) { s += 15; r.push({ rule: 'Có thông tin địa chỉ đầy đủ', pts: 15, type: 'Demographic' }); }
+
+    // Source
+    if (formData.source === 'website') { s += 15; r.push({ rule: 'Nguồn khách từ Website', pts: 15, type: 'Behavioral' }); }
+    if (formData.source === 'referral') { s += 20; r.push({ rule: 'Khách được giới thiệu (Referral)', pts: 20, type: 'Behavioral' }); }
+
+    // Projects / Companies / Segmentations
+    if (formData.project_id) { s += 15; r.push({ rule: 'Liên kết dự án quan tâm', pts: 15, type: 'Behavioral' }); }
+    if (formData.company_id) { s += 5; r.push({ rule: 'Liên kết công ty đối tác', pts: 5, type: 'Behavioral' }); }
+    if (formData.industry) { s += 5; r.push({ rule: 'Xác định ngành nghề kinh doanh', pts: 5, type: 'Demographic' }); }
+    if (formData.budget_range) { s += 10; r.push({ rule: 'Xác định phân khúc ngân sách', pts: 10, type: 'Behavioral' }); }
+
+    // Revenue & Probability
+    const revenue = Number(formData.expected_revenue) || 0;
+    if (revenue > 500000000) {
+      s += 35; r.push({ rule: 'Kỳ vọng doanh thu lớn (> 500 Triệu)', pts: 35, type: 'Behavioral' });
+    } else if (revenue > 100000000) {
+      s += 20; r.push({ rule: 'Kỳ vọng doanh thu lớn (> 100 Triệu)', pts: 20, type: 'Behavioral' });
+    }
+    if (Number(formData.win_probability) > 70) { s += 10; r.push({ rule: 'Xác suất chốt giao dịch cao (>70%)', pts: 10, type: 'Behavioral' }); }
+
+    // State & TTL1
+    if (formData.status === 'qualified' || formData.status === 'customer') { s += 15; r.push({ rule: 'Xác nhận trạng thái chất lượng', pts: 15, type: 'Behavioral' }); }
+    if (formData.ttl1_completed === 1) { s += 25; r.push({ rule: 'Đã hoàn thành xác minh điều kiện gặp (TTL1)', pts: 25, type: 'Behavioral' }); }
+
+    // Content Enrichment
+    if (formData.notes && formData.notes.trim().length > 10) { s += 10; r.push({ rule: 'Có ghi chú chi tiết về nhu cầu', pts: 10, type: 'Behavioral' }); }
+    if (tags && tags.length > 0) { s += 10; r.push({ rule: 'Đã gắn thẻ phân loại (Tags)', pts: 10, type: 'Behavioral' }); }
 
     // Temperature Decay rule: -15 points after 5 days of inactivity
     let lastInteractionTime = contact?.last_contact || contact?.updated_at || formData.created_at;
@@ -1712,11 +1755,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       r.push({ rule: `Rớt nhiệt do quá ${decayDays} ngày không tương tác`, pts: -15, type: 'Decay' });
     }
 
-    if (r.length === 0) r.push({ rule: 'Điểm khởi tạo (Mặc định)', pts: 15, type: 'System' });
-
-    return { score: Math.min(100, Math.max(0, s || 15)), rules: r };
+    return { score: Math.min(100, Math.max(0, s)), rules: r };
   }, [
-    formData.job_title, formData.phone, formData.email, formData.source, formData.expected_revenue, formData.status,
+    formData.job_title, formData.phone, formData.mobile, formData.email, formData.customer_type, formData.gender,
+    formData.zalo_link, formData.fb_link, formData.birthday, formData.address, formData.source, formData.project_id,
+    formData.company_id, formData.industry, formData.budget_range, formData.expected_revenue, formData.win_probability,
+    formData.status, formData.ttl1_completed, formData.notes, tags,
     formData.created_at, contact?.last_contact, contact?.updated_at, drawerActivities, decayDays
   ]);
 
@@ -2748,7 +2792,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     const tabGroups = [
                       {
                         title: 'Thông tin & Nhật ký',
-                        tabs: ['info', 'tags', 'notes', 'tasks', 'timeline', 'scoring']
+                        tabs: ['info', 'tags', 'ttl1', 'tasks', 'timeline', 'scoring']
                       },
                       {
                         title: 'Giao dịch & Tài liệu',
@@ -2756,7 +2800,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       },
                       {
                         title: 'Nghiệp vụ & Hỗ trợ',
-                        tabs: ['ttl1', 'tickets']
+                        tabs: ['tickets']
                       }
                     ];
 
@@ -2784,7 +2828,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               key={tab.id}
                               className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
                               onClick={() => setActiveTab(tab.id)}
-                              style={{ padding: '8px 0.75rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
+                              style={{ padding: '11px 0.875rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {tab.icon}
@@ -2898,10 +2942,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             }} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Số điện thoại chính</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <label className="form-label" style={{ margin: 0 }}>Số điện thoại chính</label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: isViewer ? 'not-allowed' : 'pointer', fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={autoZaloLink} 
+                                  disabled={isViewer}
+                                  onChange={e => {
+                                    const checked = e.target.checked;
+                                    setAutoZaloLink(checked);
+                                    if (checked && formData.phone) {
+                                      const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
+                                      setFormData((prev: any) => ({ ...prev, zalo_link: cleanPhone ? `https://zalo.me/${cleanPhone}` : '' }));
+                                    }
+                                  }} 
+                                  style={{ width: '13px', height: '13px', cursor: isViewer ? 'not-allowed' : 'pointer', accentColor: 'var(--color-primary)' }}
+                                />
+                                <span>Liên kết Zalo</span>
+                              </label>
+                            </div>
                             <input className="form-input" type="tel" placeholder="09xx xxx xxx" value={formData.phone || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, phone: val }));
+                              setFormData((prev: any) => {
+                                const next = { ...prev, phone: val };
+                                if (autoZaloLink) {
+                                  const cleanPhone = val.replace(/[^0-9]/g, '');
+                                  next.zalo_link = cleanPhone ? `https://zalo.me/${cleanPhone}` : '';
+                                }
+                                return next;
+                              });
                             }} />
                           </div>
                           <div className="form-group">
@@ -2923,6 +2993,45 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <input className="form-input" placeholder="ví dụ: Giám đốc" value={formData.job_title || ''} onChange={e => {
                               const val = e.target.value;
                               setFormData((prev: any) => ({ ...prev, job_title: val }));
+                            }} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Loại khách hàng</label>
+                            <CustomSelect
+                              options={[
+                                { value: '', label: '— Chưa chọn —' },
+                                { value: 'individual', label: 'Cá nhân (Individual)' },
+                                { value: 'corporate', label: 'Doanh nghiệp (Corporate)' }
+                              ]}
+                              value={formData.customer_type || ''}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, customer_type: val as string }))}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Giới tính</label>
+                            <CustomSelect
+                              options={[
+                                { value: '', label: '— Chưa chọn —' },
+                                { value: 'male', label: 'Nam (Nam)' },
+                                { value: 'female', label: 'Nữ (Nữ)' },
+                                { value: 'other', label: 'Khác' }
+                              ]}
+                              value={formData.gender || ''}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, gender: val as string }))}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Liên kết Zalo</label>
+                            <input className="form-input" placeholder="https://zalo.me/..." value={formData.zalo_link || ''} onChange={e => {
+                              const val = e.target.value;
+                              setFormData((prev: any) => ({ ...prev, zalo_link: val }));
+                            }} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Liên kết Facebook</label>
+                            <input className="form-input" placeholder="https://facebook.com/..." value={formData.fb_link || ''} onChange={e => {
+                              const val = e.target.value;
+                              setFormData((prev: any) => ({ ...prev, fb_link: val }));
                             }} />
                           </div>
                           <div className="form-group">
@@ -3171,6 +3280,37 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             />
                           </div>
                           <div className="form-group">
+                            <label className="form-label">Ngành nghề kinh doanh</label>
+                            <CustomSelect
+                              options={[
+                                { value: '', label: '— Chưa chọn —' },
+                                { value: 'real_estate', label: 'Bất động sản' },
+                                { value: 'finance', label: 'Tài chính / Ngân hàng' },
+                                { value: 'tech', label: 'Công nghệ / IT' },
+                                { value: 'manufacturing', label: 'Sản xuất / Xây dựng' },
+                                { value: 'medical', label: 'Y tế / Dược phẩm' },
+                                { value: 'education', label: 'Giáo dục' },
+                                { value: 'other', label: 'Ngành nghề khác' }
+                              ]}
+                              value={formData.industry || ''}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, industry: val as string }))}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Phân khúc ngân sách</label>
+                            <CustomSelect
+                              options={[
+                                { value: '', label: '— Chưa chọn —' },
+                                { value: 'under_2b', label: 'Dưới 2 Tỷ' },
+                                { value: '2b_5b', label: '2 Tỷ - 5 Tỷ' },
+                                { value: '5b_10b', label: '5 Tỷ - 10 Tỷ' },
+                                { value: 'above_10b', label: 'Trên 10 Tỷ' }
+                              ]}
+                              value={formData.budget_range || ''}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, budget_range: val as string }))}
+                            />
+                          </div>
+                          <div className="form-group">
                             <label className="form-label">Dự kiến doanh thu</label>
                             <div style={{ position: 'relative' }}>
                               <input className="form-input" type="number" placeholder="0" style={{ paddingRight: '40px' }} value={formData.expected_revenue || ''} onChange={e => {
@@ -3220,40 +3360,238 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                   {/* TAGS TAB */}
                   {activeTab === 'tags' && (
-                    <div className="animate-fade">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-                        <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <TagIcon size={24} />
+                    <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                          <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <TagIcon size={24} />
+                          </div>
+                          <div>
+                            <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)', letterSpacing: '-0.01em' }}>Phân loại khách hàng</h3>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)' }}>Sử dụng các thẻ tag để phân nhóm và tối ưu hóa quy trình tìm kiếm.</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)', letterSpacing: '-0.01em' }}>Phân loại khách hàng</h3>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)' }}>Sử dụng các thẻ tag để phân nhóm và tối ưu hóa quy trình tìm kiếm.</p>
+
+                        <div className="card-panel" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), var(--color-bg))', border: '1px solid var(--color-border-light)' }}>
+                          <div>
+                            <label className="form-label" style={{ fontWeight: 700, marginBottom: '1rem', display: 'block', fontSize: '0.9375rem' }}>Gắn thẻ thông minh</label>
+                            <TagInput
+                              tags={tags}
+                              onChange={setTags}
+                              suggestions={allTags.map(t => t.name)}
+                              placeholder="Chọn thẻ tag..."
+                            />
+                            <div style={{ marginTop: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: '100%', marginBottom: '0.25rem' }}>Gợi ý hệ thống:</span>
+                              {allTags.slice(0, 8).map(t => (
+                                <button
+                                  key={t.id}
+                                  onClick={() => !tags.includes(t.name) && setTags([...tags, t.name])}
+                                  className="btn ghost sm"
+                                  style={{ borderRadius: '10px', fontSize: '0.75rem', padding: '4px 12px', border: '1px dashed var(--color-border)' }}
+                                >
+                                  + {t.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="card-panel" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), var(--color-bg))', border: '1px solid var(--color-border-light)' }}>
-                        <div>
-                          <label className="form-label" style={{ fontWeight: 700, marginBottom: '1rem', display: 'block', fontSize: '0.9375rem' }}>Gắn thẻ thông minh</label>
-                          <TagInput
-                            tags={tags}
-                            onChange={setTags}
-                            suggestions={allTags.map(t => t.name)}
-                            placeholder="Chọn thẻ tag..."
-                          />
-                          <div style={{ marginTop: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: '100%', marginBottom: '0.25rem' }}>Gợi ý hệ thống:</span>
-                            {allTags.slice(0, 8).map(t => (
-                              <button
-                                key={t.id}
-                                onClick={() => !tags.includes(t.name) && setTags([...tags, t.name])}
-                                className="btn ghost sm"
-                                style={{ borderRadius: '10px', fontSize: '0.75rem', padding: '4px 12px', border: '1px dashed var(--color-border)' }}
-                              >
-                                + {t.name}
-                              </button>
-                            ))}
+                      {/* Notes Section (Combined here!) */}
+                      <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '2rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                          <div>
+                            <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Ghi chú nội bộ</h3>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Các ghi chú dạng giấy Note đính kèm thông tin</p>
                           </div>
+                          <button className="btn primary sm" onClick={() => {
+                            setEditingNote(null);
+                            setNewNote('');
+                            setShowNoteModal(true);
+                          }} style={{ fontWeight: 600 }}><Plus size={14} /> Thêm ghi chú</button>
                         </div>
+
+                        {(() => {
+                          // Retrieve stored note IDs sorting order
+                          const storedOrder = localStorage.getItem(`notes_order_${contact?.id}`);
+                          let sortedNotes = [...notes];
+                          if (storedOrder) {
+                            try {
+                              const orderIds = JSON.parse(storedOrder);
+                              sortedNotes.sort((a, b) => {
+                                const idxA = orderIds.indexOf(a.id);
+                                const idxB = orderIds.indexOf(b.id);
+                                if (idxA === -1 && idxB === -1) return 0;
+                                if (idxA === -1) return 1;
+                                if (idxB === -1) return -1;
+                                return idxA - idxB;
+                              });
+                            } catch (e) {}
+                          }
+
+                          // Drag & Drop handlers
+                          const handleDragStart = (e: React.DragEvent, index: number) => {
+                            setDraggedIndex(index);
+                            e.dataTransfer.effectAllowed = 'move';
+                          };
+
+                          const handleDragOver = (e: React.DragEvent, index: number) => {
+                            e.preventDefault();
+                            if (draggedIndex === index) return;
+                            setDraggedOverIndex(index);
+                          };
+
+                          const handleDrop = (e: React.DragEvent, targetIndex: number) => {
+                            e.preventDefault();
+                            if (draggedIndex === null || draggedIndex === targetIndex) return;
+
+                            const newNotes = [...sortedNotes];
+                            const [removed] = newNotes.splice(draggedIndex, 1);
+                            newNotes.splice(targetIndex, 0, removed);
+
+                            // Save new order to state
+                            setNotes(newNotes);
+
+                            // Persist the order in LocalStorage
+                            const newOrderIds = newNotes.map(x => x.id);
+                            localStorage.setItem(`notes_order_${contact?.id}`, JSON.stringify(newOrderIds));
+                            
+                            setDraggedIndex(null);
+                            setDraggedOverIndex(null);
+                          };
+
+                          const handleDragEnd = () => {
+                            setDraggedIndex(null);
+                            setDraggedOverIndex(null);
+                          };
+
+                          if (notes.length === 0) {
+                            return (
+                              <EmptyCard
+                                icon={<FileText size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
+                                title="Chưa có ghi chú nội bộ"
+                                description="Các ghi chú dạng giấy Note đính kèm thông tin khách hàng sẽ xuất hiện tại đây."
+                                actionText="Thêm ghi chú"
+                                onAction={() => {
+                                  setEditingNote(null);
+                                  setNewNote('');
+                                  setShowNoteModal(true);
+                                }}
+                              />
+                            );
+                          }
+
+                          return (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                              {sortedNotes.map((n, idx) => {
+                                const cardBg = '#fefce8'; // pale yellow like note paper
+                                const leftBorder = '4px solid #eab308'; // golden yellow accent border
+                                const isDragging = idx === draggedIndex;
+                                const isDraggedOver = idx === draggedOverIndex;
+
+                                return (
+                                  <div 
+                                    key={n.id} 
+                                    draggable={!isViewer}
+                                    onDragStart={(e) => handleDragStart(e, idx)}
+                                    onDragOver={(e) => handleDragOver(e, idx)}
+                                    onDrop={(e) => handleDrop(e, idx)}
+                                    onDragEnd={handleDragEnd}
+                                    className="card-panel animate-fade" 
+                                    style={{ 
+                                      padding: '1.25rem', 
+                                      background: cardBg, 
+                                      border: '1px solid #fef08a', 
+                                      borderLeft: leftBorder, 
+                                      borderRadius: '12px', 
+                                      boxShadow: '0 4px 12px rgba(234, 179, 8, 0.05)', 
+                                      position: 'relative', 
+                                      display: 'flex', 
+                                      flexDirection: 'column', 
+                                      justifyContent: 'space-between', 
+                                      minHeight: '160px',
+                                      cursor: isViewer ? 'default' : 'grab',
+                                      opacity: isDragging ? 0.4 : 1,
+                                      transform: isDraggedOver ? 'scale(1.02)' : 'none',
+                                      transition: 'all 0.2s',
+                                      borderStyle: isDraggedOver ? 'dashed' : 'solid',
+                                      borderColor: isDraggedOver ? '#eab308' : '#fef08a'
+                                    }}
+                                  >
+                                    <div>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                        <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{formatNote(n.text)}</p>
+                                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                          {canDeleteNote(n.user_id) && (
+                                            <>
+                                              <button
+                                                className="btn ghost sm"
+                                                style={{ padding: '4px', height: '24px', width: '24px', color: 'var(--color-text-muted)', border: 'none', background: 'transparent' }}
+                                                onClick={() => {
+                                                  setEditingNote(n);
+                                                  setNewNote(n.text);
+                                                  setShowNoteModal(true);
+                                                }}
+                                              >
+                                                <Pencil size={12} />
+                                              </button>
+                                              <button
+                                                className="btn ghost sm text-danger"
+                                                style={{ padding: '4px', height: '24px', width: '24px', border: 'none', background: 'transparent' }}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  showConfirm(
+                                                    'Xóa ghi chú?',
+                                                    'Bạn có chắc chắn muốn xóa ghi chú này không?',
+                                                    async () => {
+                                                      try {
+                                                        await api.delete(`/notes/${n.id}`);
+                                                        setNotes(prev => prev.filter(x => x.id !== n.id));
+                                                        addToast('Đã xóa ghi chú', 'success');
+                                                      } catch (e: any) {
+                                                        addToast('Lỗi khi xóa ghi chú', 'error');
+                                                      }
+                                                    }
+                                                  );
+                                                }}
+                                              >
+                                                <Trash2 size={12} />
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {n.attachment_url && (
+                                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
+                                            <Camera size={12} style={{ color: '#10b981' }} />
+                                          ) : (
+                                            <FileText size={12} style={{ color: 'var(--color-primary)' }} />
+                                          )}
+                                          <a
+                                            href={resolveAttachmentUrl(n.attachment_url)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                          >
+                                            {n.attachment_url.split('/').pop()}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                                      <EditHistoryIndicator history={n.edit_history} />
+                                      <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                                        Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
@@ -3947,6 +4285,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Lead Scoring Engine</h3>
                           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Chi tiết hệ thống tự động chấm điểm khách hàng tiềm năng</p>
                         </div>
+                        <button
+                          className="btn primary sm"
+                          onClick={() => setShowScoringSystemModal(true)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontWeight: 700,
+                            borderRadius: '10px'
+                          }}
+                        >
+                          <HelpCircle size={14} />
+                          {t('Hệ thống tính điểm')}
+                        </button>
                       </div>
 
                       {(() => {
@@ -3968,18 +4320,130 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               {rules.map((r, i) => (
                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-md)' }}>
                                   <div>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: r.type === 'Demographic' ? '#3b82f6' : '#BD1D2D', background: r.type === 'Demographic' ? '#3b82f615' : '#BD1D2D15', padding: '2px 8px', borderRadius: '12px', marginRight: '8px' }}>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: r.type === 'Demographic' ? '#3b82f6' : r.type === 'Behavioral' ? '#10b981' : '#ef4444', background: r.type === 'Demographic' ? 'rgba(59,130,246,0.1)' : r.type === 'Behavioral' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', padding: '2px 8px', borderRadius: '12px', marginRight: '8px' }}>
                                       {r.type}
                                     </span>
                                     <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>{r.rule}</span>
                                   </div>
-                                  <span style={{ fontWeight: 700, color: '#10b981' }}>+{r.pts} pts</span>
+                                  <span style={{ fontWeight: 700, color: r.pts > 0 ? '#10b981' : '#ef4444' }}>
+                                    {r.pts > 0 ? `+${r.pts}` : r.pts} pts
+                                  </span>
                                 </div>
                               ))}
                             </div>
                           </div>
                         );
                       })()}
+
+                      {showScoringSystemModal && (
+                        <CustomModal
+                          isOpen={showScoringSystemModal}
+                          onClose={() => setShowScoringSystemModal(false)}
+                          title={t('Hệ thống quy tắc chấm điểm Lead Scoring')}
+                          width="600px"
+                        >
+                          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+                              {t('Hệ thống chấm điểm tự động phân tích hồ sơ và hành vi của Khách hàng tiềm năng để xếp hạng độ nóng/lạnh. Dưới đây là bảng quy tắc tính điểm chi tiết:')}
+                            </p>
+
+                            <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid var(--color-border-light)', borderRadius: '12px' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem', textAlign: 'left' }}>
+                                <thead>
+                                  <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)' }}>
+                                    <th style={{ padding: '10px 14px', fontWeight: 700 }}>{t('Tiêu chí')}</th>
+                                    <th style={{ padding: '10px 14px', fontWeight: 700 }}>{t('Phân loại')}</th>
+                                    <th style={{ padding: '10px 14px', fontWeight: 700, textAlign: 'right' }}>{t('Điểm số')}</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {[
+                                    { rule: 'Điểm khởi tạo', type: 'System', pts: 10, desc: 'Điểm cơ bản cho mỗi liên hệ mới' },
+                                    { rule: 'Chức danh C-Level (Giám đốc/CEO/Founder/Chủ tịch)', type: 'Demographic', pts: 20, desc: 'Giám đốc, CEO, Founder, Chủ tịch...' },
+                                    { rule: 'Có thông tin chức vụ', type: 'Demographic', pts: 5, desc: 'Có điền chức danh khác' },
+                                    { rule: 'Cung cấp số điện thoại chính', type: 'Demographic', pts: 15, desc: 'Có số điện thoại chính' },
+                                    { rule: 'Cung cấp số điện thoại phụ', type: 'Demographic', pts: 10, desc: 'Có số điện thoại phụ' },
+                                    { rule: 'Có cả 2 số liên hệ', type: 'Demographic', pts: 10, desc: 'Cung cấp cả số chính và số phụ' },
+                                    { rule: 'Cung cấp Email', type: 'Demographic', pts: 10, desc: 'Có trường Email' },
+                                    { rule: 'Xác định loại khách hàng', type: 'Demographic', pts: 5, desc: 'Cá nhân hoặc Doanh nghiệp' },
+                                    { rule: 'Có thông tin giới tính', type: 'Demographic', pts: 5, desc: 'Xác định giới tính khách hàng' },
+                                    { rule: 'Liên kết Zalo / Facebook', type: 'Demographic', pts: 10, desc: 'Có điền link Zalo hoặc Facebook' },
+                                    { rule: 'Có thông tin ngày sinh', type: 'Demographic', pts: 10, desc: 'Giúp lập kế hoạch chúc mừng sinh nhật' },
+                                    { rule: 'Có thông tin địa chỉ đầy đủ', type: 'Demographic', pts: 15, desc: 'Thuận tiện ký hợp đồng trực tiếp' },
+                                    { rule: 'Xác định ngành nghề kinh doanh', type: 'Demographic', pts: 5, desc: 'Có trường Ngành nghề kinh doanh' },
+                                    { rule: 'Nguồn khách từ Website', type: 'Behavioral', pts: 15, desc: 'Nguồn Inbound đăng ký qua web' },
+                                    { rule: 'Khách được giới thiệu (Referral)', type: 'Behavioral', pts: 20, desc: 'Được ghi nhận nguồn giới thiệu' },
+                                    { rule: 'Liên kết dự án quan tâm', type: 'Behavioral', pts: 15, desc: 'Chọn dự án bất động sản cụ thể' },
+                                    { rule: 'Liên kết công ty đối tác', type: 'Behavioral', pts: 5, desc: 'Gắn liên kết đối tác công ty' },
+                                    { rule: 'Xác định phân khúc ngân sách', type: 'Behavioral', pts: 10, desc: 'Có lựa chọn phân khúc ngân sách' },
+                                    { rule: 'Kỳ vọng doanh thu > 100 Triệu', type: 'Behavioral', pts: 20, desc: 'Kỳ vọng giao dịch từ 100Tr đến 500Tr VNĐ' },
+                                    { rule: 'Kỳ vọng doanh thu lớn (> 500 Triệu)', type: 'Behavioral', pts: 35, desc: 'Kỳ vọng giao dịch trên 500Tr VNĐ' },
+                                    { rule: 'Xác suất chốt giao dịch cao (>70%)', type: 'Behavioral', pts: 10, desc: 'Xác suất chốt deals trên 70%' },
+                                    { rule: 'Xác nhận trạng thái chất lượng', type: 'Behavioral', pts: 15, desc: 'Trạng thái Qualified hoặc Customer' },
+                                    { rule: 'Đã hoàn thành xác minh (TTL1)', type: 'Behavioral', pts: 25, desc: 'Đạt điều kiện gặp gỡ tư vấn trực tiếp' },
+                                    { rule: 'Có ghi chú chi tiết nhu cầu', type: 'Behavioral', pts: 10, desc: 'Nội dung ghi chú có độ dài trên 10 ký tự' },
+                                    { rule: 'Đã gắn thẻ phân loại (Tags)', type: 'Behavioral', pts: 10, desc: 'Sử dụng nhãn phân loại khách hàng' },
+                                    { rule: 'Rớt nhiệt (Inactivity Decay)', type: 'Decay', pts: -15, desc: 'Không có tương tác nào trong vòng 5 ngày' }
+                                  ].map((item, idx) => (
+                                    <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', background: idx % 2 === 0 ? 'transparent' : 'var(--color-bg-light)' }}>
+                                      <td style={{ padding: '10px 14px' }}>
+                                        <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{t(item.rule)}</div>
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{t(item.desc)}</div>
+                                      </td>
+                                      <td style={{ padding: '10px 14px' }}>
+                                        <span style={{
+                                          fontSize: '0.68rem',
+                                          fontWeight: 700,
+                                          padding: '2px 6px',
+                                          borderRadius: '6px',
+                                          background: item.type === 'Demographic' ? 'rgba(59, 130, 246, 0.08)' : item.type === 'Behavioral' ? 'rgba(16, 185, 129, 0.08)' : item.type === 'Decay' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                                          color: item.type === 'Demographic' ? '#2563eb' : item.type === 'Behavioral' ? '#059669' : item.type === 'Decay' ? '#dc2626' : '#4b5563',
+                                          border: `1px solid ${item.type === 'Demographic' ? 'rgba(59, 130, 246, 0.15)' : item.type === 'Behavioral' ? 'rgba(16, 185, 129, 0.15)' : item.type === 'Decay' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(107, 114, 128, 0.15)'}`
+                                        }}>{item.type}</span>
+                                      </td>
+                                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: item.pts > 0 ? '#10b981' : '#ef4444' }}>
+                                        {item.pts > 0 ? `+${item.pts}` : item.pts} {t('pts')}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            <div style={{
+                              background: 'var(--color-bg)',
+                              border: '1px solid var(--color-border-light)',
+                              borderRadius: '12px',
+                              padding: '0.875rem 1.125rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.375rem'
+                            }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Xếp hạng độ nhiệt')}</div>
+                              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
+                                  <span>{t('Rất Nóng:')} <strong>80 - 100 pts</strong></span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }} />
+                                  <span>{t('Tiềm Năng:')} <strong>50 - 79 pts</strong></span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem' }}>
+                                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#3b82f6' }} />
+                                  <span>{t('Lạnh:')} <strong>0 - 49 pts</strong></span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
+                              <button className="btn primary" onClick={() => setShowScoringSystemModal(false)} style={{ minWidth: '100px', fontWeight: 700 }}>
+                                {t('Đóng')}
+                              </button>
+                            </div>
+                          </div>
+                        </CustomModal>
+                      )}
                     </div>
                   )}
 
@@ -4270,15 +4734,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               return (
                                 <div
                                   key={t.id}
-                                  className="card-panel"
-                                  onClick={() => setSelectedTaskForDetails(t)}
+                                  onClick={() => {
+                                    if (t.done) return;
+                                    setSelectedTaskForDetails(t);
+                                  }}
                                   style={{
                                     display: 'flex',
                                     gap: '1rem',
                                     alignItems: 'center',
                                     padding: '1rem',
                                     opacity: t.done ? 0.6 : 1,
-                                    cursor: 'pointer',
+                                    cursor: t.done ? 'default' : 'pointer',
                                     transition: 'all 0.2s',
                                     border: isOverdue && !t.done ? '1.5px solid var(--color-danger)' : '1px solid transparent',
                                     boxShadow: isOverdue && !t.done ? '0 0 10px rgba(239, 68, 68, 0.12)' : 'none'
@@ -4365,115 +4831,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                 )}
 
-                  {/* NOTES TAB */}
-                  {activeTab === 'notes' && (
-                    <div className="animate-fade">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                        <div>
-                          <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Ghi chú nội bộ</h3>
-                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Các ghi chú dạng giấy Note đính kèm thông tin</p>
-                        </div>
-                        <button className="btn primary sm" onClick={() => {
-                          setEditingNote(null);
-                          setNewNote('');
-                          setShowNoteModal(true);
-                        }} style={{ fontWeight: 600 }}><Plus size={14} /> Thêm ghi chú</button>
-                      </div>
 
-                      {notes.length === 0 ? (
-                        <EmptyCard
-                          icon={<FileText size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
-                          title="Chưa có ghi chú nội bộ"
-                          description="Các ghi chú dạng giấy Note đính kèm thông tin khách hàng sẽ xuất hiện tại đây."
-                          actionText="Thêm ghi chú"
-                          onAction={() => {
-                            setEditingNote(null);
-                            setNewNote('');
-                            setShowNoteModal(true);
-                          }}
-                        />
-                      ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                          {notes.map(n => {
-                            const cardBg = '#fefce8'; // pale yellow like note paper
-                            const leftBorder = '4px solid #eab308'; // golden yellow accent border
-
-                            return (
-                              <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid #fef08a', borderLeft: leftBorder, borderRadius: '12px', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.05)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '160px' }}>
-                                <div>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                    <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{formatNote(n.text)}</p>
-                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                      {canDeleteNote(n.user_id) && (
-                                        <>
-                                          <button
-                                            className="btn ghost sm"
-                                            style={{ padding: '4px', height: '24px', width: '24px', color: 'var(--color-text-muted)', border: 'none', background: 'transparent' }}
-                                            onClick={() => {
-                                              setEditingNote(n);
-                                              setNewNote(n.text);
-                                              setShowNoteModal(true);
-                                            }}
-                                          >
-                                            <Pencil size={12} />
-                                          </button>
-                                          <button
-                                            className="btn ghost sm text-danger"
-                                            style={{ padding: '4px', height: '24px', width: '24px', border: 'none', background: 'transparent' }}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              showConfirm(
-                                                'Xóa ghi chú?',
-                                                'Bạn có chắc chắn muốn xóa ghi chú này không?',
-                                                async () => {
-                                                  try {
-                                                    await api.delete(`/notes/${n.id}`);
-                                                    setNotes(prev => prev.filter(x => x.id !== n.id));
-                                                    addToast('Đã xóa ghi chú', 'success');
-                                                  } catch (e: any) {
-                                                    addToast('Lỗi khi xóa ghi chú', 'error');
-                                                  }
-                                                }
-                                              );
-                                            }}
-                                          >
-                                            <Trash2 size={12} />
-                                          </button>
-                                        </>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {n.attachment_url && (
-                                    <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
-                                        <Camera size={12} style={{ color: '#10b981' }} />
-                                      ) : (
-                                        <FileText size={12} style={{ color: 'var(--color-primary)' }} />
-                                      )}
-                                      <a
-                                        href={resolveAttachmentUrl(n.attachment_url)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                                      >
-                                        {n.attachment_url.split('/').pop()}
-                                      </a>
-                                    </div>
-                                  )}
-                                </div>
-                                <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                                  <EditHistoryIndicator history={n.edit_history} />
-                                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                                    Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
-                                  </p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* RESTORED OLD TABS */}
                   {activeTab === 'docs' && (
@@ -6179,7 +6537,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 }}><X size={18} /></button>
               </div>
 
-              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '13fr 11fr', gap: '1.5rem', padding: '1.25rem 1.5rem', maxHeight: 'calc(85vh - 120px)', overflowY: 'auto', alignItems: 'start' }}>
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: '13fr 11fr', gap: '1.5rem', padding: '1.25rem 1.5rem 4.5rem 1.5rem', maxHeight: 'calc(85vh - 120px)', overflowY: 'auto', alignItems: 'start' }}>
                 
                 {/* Approval Banner if Progress is 100% and Approval is Required */}
                 {selectedTaskForDetails.require_approval === 1 && selectedTaskForDetails.progress === 100 && (

@@ -32,6 +32,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   onOpenContact
 }) => {
   const { t } = useLanguage();
+  const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState<any>({});
   const [erpMeta, setErpMeta] = useState<any>({
     description: '',
@@ -470,7 +471,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       return true;
     }
     if (isSale) {
-      return uRole === 'manager' && u.team_id && Number(u.team_id) === Number(currentUser?.team_id);
+      return uRole === 'manager' && u.team_id && Number(u.team_id) === Number((currentUser as any)?.team_id);
     }
     return uRole === 'manager';
   });
@@ -479,7 +480,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     const uRole = (u.role || '').toLowerCase();
     const isAllowed = 
       ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(uRole) ||
-      (currentUser && u.team_id && Number(u.team_id) === Number(currentUser.team_id));
+      (currentUser && u.team_id && Number(u.team_id) === Number((currentUser as any).team_id));
     
     if (!isAllowed) return false;
 
@@ -610,7 +611,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         </div>
 
         {/* Drawer Body - 2 Columns Layout */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'auto', padding: '1.5rem', gap: '1.5rem', background: 'var(--color-bg)' }} className="custom-scrollbar">
+        <div style={{ display: 'flex', flex: 1, overflow: 'auto', padding: '1.5rem 1.5rem 4.5rem 1.5rem', gap: '1.5rem', background: 'var(--color-bg)' }} className="custom-scrollbar">
           
           {/* Left Column (3/5) */}
           <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
@@ -928,7 +929,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   value={newCommentText}
                   onChange={setNewCommentText}
                   placeholder={t('Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)')}
-                  minHeight="55px"
+                  style={{ minHeight: '55px' }}
                 />
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '10px', marginTop: '4px' }}>
@@ -1030,9 +1031,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             
             {/* Khách hàng liên quan */}
             <div className="card" style={cardStyle}>
-              <label style={cardLabelStyle}>
-                {t('Khách hàng liên quan')}
-              </label>
               
               {/* Primary Contact (if any) */}
               {(formData.related_type === 'contact' || formData.contact_id) && (formData.related_id || formData.contact_id) && (
@@ -1075,6 +1073,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               {(() => {
                 const addContactIds = erpMeta.related_contact_ids || [];
                 const addContacts = allowedContacts.filter(c => addContactIds.includes(Number(c.id)));
+                const mainContactId = Number(formData.related_id || formData.contact_id || 0);
                 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1138,11 +1137,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         multiple
                         searchable
                         showAvatars
-                        options={allowedContacts.map(c => ({
-                          value: String(c.id),
-                          label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
-                          avatar: c.avatar_url || c.avatar
-                        }))}
+                        options={allowedContacts
+                          .filter(c => Number(c.id) !== mainContactId)
+                          .map(c => ({
+                            value: String(c.id),
+                            label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
+                            avatar: c.avatar_url || c.avatar
+                          }))}
                         value={addContactIds.map(String)}
                         onChange={(vals) => {
                           const nextIds = vals.map(Number);
