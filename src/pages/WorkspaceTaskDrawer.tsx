@@ -1416,6 +1416,32 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             </div>
 
+            {/* Lặp lại định kỳ */}
+            {erpMeta.recurrence && erpMeta.recurrence.pattern !== 'none' && (
+              <div className="card" style={{ ...cardStyle, background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>🔄</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {t('Tác vụ lặp định kỳ')}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                      {erpMeta.recurrence.pattern === 'daily' && t('Lặp lại hàng ngày')}
+                      {erpMeta.recurrence.pattern === 'weekly' && `${t('Hàng tuần vào:')} ${
+                        (erpMeta.recurrence.weekly_days || [])
+                          .map((d: number) => {
+                            const days = { 1: 'T2', 2: 'T3', 3: 'T4', 4: 'T5', 5: 'T6', 6: 'T7', 0: 'CN' } as any;
+                            return days[d] || '';
+                          })
+                          .join(', ')
+                      }`}
+                      {erpMeta.recurrence.pattern === 'monthly' && `${t('Hàng tháng vào ngày:')} ${erpMeta.recurrence.monthly_day}`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Độ ưu tiên & Hạn hoàn thành */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div className="card" style={cardStyle}>

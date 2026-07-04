@@ -1221,7 +1221,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       approver_id: '',
       participant_ids: [] as string[],
       related_contact_ids: [] as string[],
-      checklist: [] as any[]
+      checklist: [] as any[],
+      recurrence_pattern: 'none',
+      recurrence_weekly_days: [] as number[],
+      recurrence_monthly_day: 1
     };
   });
 
@@ -2202,9 +2205,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         internal_type: 'task',
         scope: 'personal',
         recurrence: {
-          pattern: 'none',
-          weekly_days: [],
-          monthly_day: 1,
+          pattern: taskForm.recurrence_pattern || 'none',
+          weekly_days: taskForm.recurrence_weekly_days || [],
+          monthly_day: Number(taskForm.recurrence_monthly_day || 1),
           last_generated: ''
         },
         checklist: taskForm.checklist || [],
@@ -2247,7 +2250,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         approver_id: '',
         participant_ids: [] as string[],
         related_contact_ids: [] as string[],
-        checklist: [] as any[]
+        checklist: [] as any[],
+        recurrence_pattern: 'none',
+        recurrence_weekly_days: [] as number[],
+        recurrence_monthly_day: 1
       });
       fetchData();
       addToast('Đã thêm công việc mới', 'success');
@@ -4941,7 +4947,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 user_id: String(contact?.owner_id || currentUser?.id || ''),
                                 progress: 0,
                                 require_approval: 0,
-                                approver_id: ''
+                                approver_id: '',
+                                participant_ids: [] as string[],
+                                related_contact_ids: [] as string[],
+                                checklist: [] as any[],
+                                recurrence_pattern: 'none',
+                                recurrence_weekly_days: [] as number[],
+                                recurrence_monthly_day: 1
                               });
                               setShowTaskModal(true);
                             }}><Plus size={14} /> Thêm công việc</button>
@@ -6911,7 +6923,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       className="btn primary"
                       onClick={() => {
                         if (!subTaskTitle.trim()) {
-                          toast.error(t('Vui lòng nhập tên công việc con'));
+                          addToast(t('Vui lòng nhập tên công việc con'), 'error');
                           return;
                         }
                         const newItem = {
@@ -6926,7 +6938,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         }));
                         setSubTaskTitle('');
                         setSubTaskAssignee('');
-                        toast.success(t('Đã thêm việc con'));
+                        addToast(t('Đã thêm việc con'), 'success');
                       }}
                       style={{ height: '38px', width: '38px', minWidth: '38px', padding: 0, border: 'none', margin: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}
                     >
@@ -7153,6 +7165,79 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     value={taskForm.due_date}
                     onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
                   />
+                </div>
+              </div>
+
+              {/* Recurrence Settings Block */}
+              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, marginBottom: '6px' }}>🔄 {t('Lặp lại định kỳ')}</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem', alignItems: 'center' }}>
+                  <CustomSelect
+                    direction="up"
+                    options={[
+                      { value: 'none', label: t('Không lặp lại') },
+                      { value: 'daily', label: t('Hàng ngày') },
+                      { value: 'weekly', label: t('Hàng tuần') },
+                      { value: 'monthly', label: t('Hàng tháng') }
+                    ]}
+                    value={taskForm.recurrence_pattern}
+                    onChange={val => setTaskForm({ ...taskForm, recurrence_pattern: val.toString() })}
+                  />
+
+                  {taskForm.recurrence_pattern === 'weekly' && (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {[
+                        { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
+                        { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
+                        { key: 0, label: 'CN' }
+                      ].map(day => {
+                        const isSelected = taskForm.recurrence_weekly_days.includes(day.key);
+                        return (
+                          <button
+                            key={day.key}
+                            type="button"
+                            onClick={() => {
+                              let newDays = [...taskForm.recurrence_weekly_days];
+                              if (newDays.includes(day.key)) {
+                                newDays = newDays.filter(d => d !== day.key);
+                              } else {
+                                newDays.push(day.key);
+                              }
+                              setTaskForm({ ...taskForm, recurrence_weekly_days: newDays });
+                            }}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '6px',
+                              border: '1px solid var(--color-border)',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                              color: isSelected ? 'white' : 'var(--color-text)'
+                            }}
+                          >
+                            {day.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {taskForm.recurrence_pattern === 'monthly' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t('Vào ngày:')}</span>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={1}
+                        max={31}
+                        value={taskForm.recurrence_monthly_day}
+                        onChange={e => setTaskForm({ ...taskForm, recurrence_monthly_day: Math.min(31, Math.max(1, Number(e.target.value))) })}
+                        style={{ width: '60px', height: '32px', textAlign: 'center', padding: 0 }}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

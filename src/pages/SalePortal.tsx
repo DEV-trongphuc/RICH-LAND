@@ -2761,7 +2761,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 scope: 'team',
                 recurrence_pattern: 'none',
                 recurrence_weekly_days: [],
-                recurrence_monthly_day: 1
+                recurrence_monthly_day: 1,
+                participant_ids: [] as string[],
+                related_contact_ids: [] as string[],
+                checklist: [] as any[]
               });
               setTaskTypeTab(wsSubTab);
               setShowTaskModal(true);
