@@ -74,19 +74,24 @@ class CheckInController {
         $b = getBody();
         $selfieUrl = trim($b['selfie_url'] ?? '');
         $reason = trim($b['reason'] ?? '');
+        $today = trim($b['check_in_date'] ?? date('Y-m-d'));
+        $currentTime = trim($b['check_in_time'] ?? date('H:i:s'));
+        
+        $isSupplementary = ($today !== date('Y-m-d'));
 
-        if (empty($selfieUrl)) {
+        if (empty($selfieUrl) && !$isSupplementary) {
             respond(422, null, 'Ảnh selfie check-in là bắt buộc', false);
         }
 
-        $today = date('Y-m-d');
-        $currentTime = date('H:i:s');
+        if ($isSupplementary && empty($reason)) {
+            respond(422, null, 'Vui lòng cung cấp lý do/ghi chú cập nhật bổ sung chấm công', false);
+        }
 
-        // Check if already checked in today
+        // Check if already checked in on that date
         $stmt = $this->db->prepare("SELECT id FROM check_ins WHERE user_id = ? AND check_in_date = ?");
         $stmt->execute([$auth['user_id'], $today]);
         if ($stmt->fetch()) {
-            respond(409, null, 'Bạn đã thực hiện check-in hôm nay rồi', false);
+            respond(409, null, 'Bạn đã thực hiện check-in hoặc gửi yêu cầu cho ngày này rồi', false);
         }
 
         // Fetch user work_start_time
@@ -94,17 +99,21 @@ class CheckInController {
         $stmtUser->execute([$auth['user_id']]);
         $workStartTime = $stmtUser->fetchColumn() ?: '08:00';
 
-        // Check if late (compare HH:ii format)
-        $currentHM = date('H:i');
-        $workStartHM = substr($workStartTime, 0, 5);
-        $isLate = ($currentHM > $workStartHM);
-
         $status = 'approved';
-        if ($isLate) {
-            if (empty($reason)) {
-                respond(422, null, 'Bạn đi làm trễ giờ làm việc (' . $workStartHM . '). Vui lòng gửi lý do "Xin nhận lead hôm nay" để quản lý phê duyệt.', false);
-            }
+        $isLate = false;
+        if ($isSupplementary) {
             $status = 'pending_approval';
+        } else {
+            // Check if late (compare HH:ii format)
+            $currentHM = substr($currentTime, 0, 5);
+            $workStartHM = substr($workStartTime, 0, 5);
+            $isLate = ($currentHM > $workStartHM);
+            if ($isLate) {
+                if (empty($reason)) {
+                    respond(422, null, 'Bạn đi làm trễ giờ làm việc (' . $workStartHM . '). Vui lòng gửi lý do để quản lý phê duyệt.', false);
+                }
+                $status = 'pending_approval';
+            }
         }
 
         // Insert check-in log
@@ -112,7 +121,7 @@ class CheckInController {
             INSERT INTO check_ins (user_id, check_in_date, check_in_time, selfie_url, status, reason)
             VALUES (?, ?, ?, ?, ?, ?)
         ");
-        $insert->execute([$auth['user_id'], $today, $currentTime, $selfieUrl, $status, $reason ?: null]);
+        $insert->execute([$auth['user_id'], $today, $currentTime, $selfieUrl ?: null, $status, $reason ?: null]);
         
         $newId = (int)$this->db->lastInsertId();
 

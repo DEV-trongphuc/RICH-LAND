@@ -5457,77 +5457,79 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
 
             {/* Check-in Button */}
-            <div style={{ marginRight: '0.75rem', display: 'flex', alignItems: 'center' }}>
-              {todayCheckIn ? (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: todayCheckIn.status === 'rejected' ? 'pointer' : 'default',
-                    border: '1px solid',
-                    backgroundColor: 
-                      todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' :
-                      todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.1)' :
-                      'rgba(239, 68, 68, 0.1)',
-                    color: 
-                      todayCheckIn.status === 'approved' ? 'var(--color-success)' :
-                      todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
-                      'var(--color-danger)',
-                    borderColor: 
-                      todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' :
-                      todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.2)' :
-                      'rgba(239, 68, 68, 0.2)',
-                  }}
-                  onClick={() => {
-                    if (todayCheckIn.status === 'rejected') {
-                      setCheckInModalOpen(true);
+            {displayUser?.role === 'sale' && (
+              <div style={{ marginRight: '0.75rem', display: 'flex', alignItems: 'center' }}>
+                {todayCheckIn ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: todayCheckIn.status === 'rejected' ? 'pointer' : 'default',
+                      border: '1px solid',
+                      backgroundColor: 
+                        todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.1)' :
+                        todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.1)' :
+                        'rgba(239, 68, 68, 0.1)',
+                      color: 
+                        todayCheckIn.status === 'approved' ? 'var(--color-success)' :
+                        todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
+                        'var(--color-danger)',
+                      borderColor: 
+                        todayCheckIn.status === 'approved' ? 'rgba(16, 185, 129, 0.2)' :
+                        todayCheckIn.status === 'pending_approval' ? 'rgba(245, 158, 11, 0.2)' :
+                        'rgba(239, 68, 68, 0.2)',
+                    }}
+                    onClick={() => {
+                      if (todayCheckIn.status === 'rejected') {
+                        setCheckInModalOpen(true);
+                      }
+                    }}
+                    title={
+                      todayCheckIn.status === 'approved' ? t('Đã chấm công thành công') :
+                      todayCheckIn.status === 'pending_approval' ? t('Đang chờ quản lý phê duyệt đi trễ') :
+                      t('Bị từ chối chấm công. Click để thử lại.')
                     }
-                  }}
-                  title={
-                    todayCheckIn.status === 'approved' ? t('Đã chấm công thành công') :
-                    todayCheckIn.status === 'pending_approval' ? t('Đang chờ quản lý phê duyệt đi trễ') :
-                    t('Bị từ chối chấm công. Click để thử lại.')
-                  }
-                >
-                  <span style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: 
-                      todayCheckIn.status === 'approved' ? 'var(--color-success)' :
-                      todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
-                      'var(--color-danger)',
-                  }} />
-                  {todayCheckIn.status === 'approved' && `${t('Đã Check-in')} (${todayCheckIn.check_in_time.substring(0, 5)})`}
-                  {todayCheckIn.status === 'pending_approval' && `${t('Chờ duyệt trễ')} (${todayCheckIn.check_in_time.substring(0, 5)})`}
-                  {todayCheckIn.status === 'rejected' && t('Chấm công bị từ chối')}
-                </div>
-              ) : (
-                <button
-                  className="btn primary sm"
-                  style={{
-                    borderRadius: '20px',
-                    padding: '6px 12px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    height: 'auto',
-                    backgroundColor: '#BD1D2D',
-                  }}
-                  onClick={() => setCheckInModalOpen(true)}
-                >
-                  <Camera size={14} />
-                  {t('Chấm công')}
-                </button>
-              )}
-            </div>
+                  >
+                    <span style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: 
+                        todayCheckIn.status === 'approved' ? 'var(--color-success)' :
+                        todayCheckIn.status === 'pending_approval' ? 'var(--color-warning)' :
+                        'var(--color-danger)',
+                    }} />
+                    {todayCheckIn.status === 'approved' && `${t('Đã Check-in')} (${todayCheckIn.check_in_time.substring(0, 5)})`}
+                    {todayCheckIn.status === 'pending_approval' && `${t('Chờ duyệt trễ')} (${todayCheckIn.check_in_time.substring(0, 5)})`}
+                    {todayCheckIn.status === 'rejected' && t('Chấm công bị từ chối')}
+                  </div>
+                ) : (
+                  <button
+                    className="btn primary sm"
+                    style={{
+                      borderRadius: '20px',
+                      padding: '6px 12px',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      height: 'auto',
+                      backgroundColor: '#BD1D2D',
+                    }}
+                    onClick={() => setCheckInModalOpen(true)}
+                  >
+                    <Camera size={14} />
+                    {t('Chấm công')}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Hoverable Profile Dropdown */}
             <div

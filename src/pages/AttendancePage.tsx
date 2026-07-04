@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { fetchAPI } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -14,6 +15,9 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 
 const AttendancePageInner = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const isSales = user?.role === 'sale' || user?.role === 'sales';
+  
   const [loading, setLoading] = useState(true);
   const [checkIns, setCheckIns] = useState<any[]>([]);
   const [consultants, setConsultants] = useState<any[]>([]);
@@ -45,11 +49,16 @@ const AttendancePageInner = () => {
     // Default range (last 7 days from July 1, 2026 for demo integrity)
     return { from: '2026-06-25', to: '2026-07-01' };
   });
-  const [filterUser, setFilterUser] = useState<string>('all');
+  const [filterUser, setFilterUser] = useState<string>(isSales ? String(user?.id) : 'all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   // Selected date for detail modal
   const [selectedDateForDetail, setSelectedDateForDetail] = useState<string | null>(null);
+
+  // Supplementary check-in states
+  const [suppTime, setSuppTime] = useState('08:00');
+  const [suppReason, setSuppReason] = useState('');
+  const [suppSubmitting, setSuppSubmitting] = useState(false);
 
   // Preview Image Modal state
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -196,6 +205,36 @@ const AttendancePageInner = () => {
     } finally {
       setIsDeleting(false);
       setDeleteId(null);
+    }
+  };
+
+  const handleSubSupplementary = async () => {
+    if (!suppReason.trim()) {
+      toast.error(t('Vui lòng điền lý do/ghi chú bổ sung'));
+      return;
+    }
+    setSuppSubmitting(true);
+    try {
+      const res = await fetchAPI('check-ins', {
+        method: 'POST',
+        body: JSON.stringify({
+          check_in_date: selectedDateForDetail,
+          check_in_time: `${suppTime}:00`,
+          reason: suppReason
+        })
+      });
+      if (res.success) {
+        toast.success(t('Đã gửi yêu cầu chấm công bổ sung thành công! Đang chờ admin duyệt.'));
+        setSuppReason('');
+        fetchCalendarCheckIns();
+        fetchCheckInsList();
+      } else {
+        toast.error(res.message || t('Gửi yêu cầu thất bại'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi: ') + err.message);
+    } finally {
+      setSuppSubmitting(false);
     }
   };
 
@@ -483,7 +522,7 @@ const AttendancePageInner = () => {
                               alignItems: 'center',
                               justifyContent: 'space-between'
                             }}>
-                              <span>{c.user_name}</span>
+                              <span>{isSales ? t('Check-in:') : c.user_name}</span>
                               <span style={{ fontSize: '0.65rem', opacity: 0.8 }}>{c.check_in_time.substring(0, 5)}</span>
                             </div>
                             {c.selfie_url && (
@@ -754,18 +793,20 @@ const AttendancePageInner = () => {
           )}
 
           {/* User Select */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
-            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
-            <CustomSelect
-              options={[
-                { value: 'all', label: t('Tất cả nhân viên') },
-                ...consultants.map(c => ({ value: String(c.id), label: c.name }))
-              ]}
-              value={filterUser}
-              onChange={(val) => setFilterUser(String(val))}
-              width="100%"
-            />
-          </div>
+          {!isSales && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả nhân viên') },
+                  ...consultants.map(c => ({ value: String(c.id), label: c.name }))
+                ]}
+                value={filterUser}
+                onChange={(val) => setFilterUser(String(val))}
+                width="100%"
+              />
+            </div>
+          )}
 
           {/* Status Select */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
@@ -789,7 +830,7 @@ const AttendancePageInner = () => {
               setCustomRange({ from: '2026-06-25', to: '2026-07-01' });
               setCurrentMonth(7);
               setCurrentYear(2026);
-              setFilterUser('all');
+              setFilterUser(isSales ? String(user?.id) : 'all');
               setFilterStatus('all');
             }}
             className="btn outline sm"
@@ -1106,108 +1147,181 @@ const AttendancePageInner = () => {
               </div>
             </div>
 
-            {/* Right Panel: Official Attendance File Preview & Export */}
+            {/* Right Panel: Official Attendance File Preview & Export / Supplementary Check-in Form */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
-                  📄 {t('File Chấm Công')}
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => downloadDayExcel(selectedDateForDetail)}
-                  disabled={calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length === 0}
-                  className="btn success sm"
-                  style={{
+              {isSales ? (
+                // Sales supplementary request form
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', padding: '1.25rem', borderRadius: '12px' }}>
+                  <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
+                    📝 {t('Yêu Cầu Chấm Công Bổ Sung')}
+                  </h4>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                    {t('Gửi yêu cầu chấm công bổ sung cho ngày ')}{selectedDateForDetail}{t('. Quản trị viên sẽ phê duyệt yêu cầu này.')}
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Giờ check-in bổ sung')}</label>
+                    <input
+                      type="time"
+                      className="input"
+                      value={suppTime}
+                      onChange={(e) => setSuppTime(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        fontSize: '0.8125rem'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Lý do bổ sung (Quên check-in, đi gặp khách...)')}</label>
+                    <textarea
+                      className="input"
+                      value={suppReason}
+                      onChange={(e) => setSuppReason(e.target.value)}
+                      rows={3}
+                      placeholder={t('Ví dụ: Quên check-in do đi gặp khách hàng sớm tại dự án...')}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        fontSize: '0.8125rem',
+                        resize: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSubSupplementary}
+                    disabled={suppSubmitting}
+                    className="btn primary"
+                    style={{
+                      width: '100%',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      fontSize: '0.8125rem',
+                      fontWeight: 700,
+                      marginTop: '6px'
+                    }}
+                  >
+                    {suppSubmitting ? t('Đang gửi yêu cầu...') : t('Gửi yêu cầu chấm công')}
+                  </button>
+                </div>
+              ) : (
+                // Admin/Manager official log upload & sheet preview
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
+                      📄 {t('File Chấm Công')}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => downloadDayExcel(selectedDateForDetail)}
+                      disabled={calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length === 0}
+                      className="btn success sm"
+                      style={{
+                        fontSize: '0.75rem',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Download size={12} />
+                      <span>{t('Xuất file Excel')}</span>
+                    </button>
+                  </div>
+
+                  {/* Simulated Spreadsheet File Sheet Grid */}
+                  <div style={{
+                    background: 'var(--color-bg-light)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '10px',
+                    padding: '0.75rem',
                     fontSize: '0.75rem',
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}
-                >
-                  <Download size={12} />
-                  <span>{t('Xuất file Excel')}</span>
-                </button>
-              </div>
+                    color: 'var(--color-text-muted)',
+                    boxShadow: 'var(--shadow-sm)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--color-text)', fontWeight: 600 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderRadius: '50%', width: '18px', height: '18px' }}>✓</span>
+                      <span>{t('Bản xem trước File Excel sẽ xuất')}</span>
+                    </div>
 
-              {/* Simulated Spreadsheet File Sheet Grid */}
-              <div style={{
-                background: 'var(--color-bg-light)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '10px',
-                padding: '0.75rem',
-                fontSize: '0.75rem',
-                color: 'var(--color-text-muted)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', color: 'var(--color-text)', fontWeight: 600 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', borderRadius: '50%', width: '18px', height: '18px' }}>✓</span>
-                  <span>{t('Bản xem trước File Excel sẽ xuất')}</span>
-                </div>
-
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.6875rem' }}>
-                    <thead>
-                      <tr style={{ background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', color: 'var(--color-text-muted)' }}>
-                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('STT')}</th>
-                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nhân viên')}</th>
-                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Giờ Check-in')}</th>
-                        <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Trạng thái')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length === 0 ? (
-                        <tr>
-                          <td colSpan={4} style={{ textAlign: 'center', padding: '12px', fontStyle: 'italic', fontSize: '0.65rem' }}>
-                            {t('Trống')}
-                          </td>
-                        </tr>
-                      ) : (
-                        calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).map((c, i) => (
-                          <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                            <td style={{ padding: '6px 8px', fontSize: '0.625rem' }}>{i + 1}</td>
-                            <td style={{ padding: '6px 8px', fontSize: '0.625rem', color: 'var(--color-text)', fontWeight: 500 }}>{c.user_name}</td>
-                            <td style={{ padding: '6px 8px', fontSize: '0.625rem', fontFamily: 'monospace' }}>{c.check_in_time}</td>
-                            <td style={{ padding: '6px 8px', fontSize: '0.625rem' }}>
-                              <span style={{
-                                color: c.status === 'approved' ? 'var(--color-success)' : (c.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)'),
-                                fontWeight: 600
-                              }}>{c.status === 'approved' ? t('Hợp lệ') : (c.status === 'pending_approval' ? t('Chờ duyệt') : t('Từ chối'))}</span>
-                            </td>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.6875rem' }}>
+                        <thead>
+                          <tr style={{ background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)', color: 'var(--color-text-muted)' }}>
+                            <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('STT')}</th>
+                            <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Nhân viên')}</th>
+                            <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Giờ Check-in')}</th>
+                            <th style={{ padding: '6px 8px', fontWeight: 600, borderBottom: '1px solid var(--color-border)', fontSize: '0.625rem' }}>{t('Trạng thái')}</th>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                        </thead>
+                        <tbody>
+                          {calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).length === 0 ? (
+                            <tr>
+                              <td colSpan={4} style={{ textAlign: 'center', padding: '12px', fontStyle: 'italic', fontSize: '0.65rem' }}>
+                                {t('Trống')}
+                              </td>
+                            </tr>
+                          ) : (
+                            calendarCheckIns.filter(c => c.check_in_date === selectedDateForDetail).map((c, i) => (
+                              <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                <td style={{ padding: '6px 8px', fontSize: '0.625rem' }}>{i + 1}</td>
+                                <td style={{ padding: '6px 8px', fontSize: '0.625rem', color: 'var(--color-text)', fontWeight: 500 }}>{c.user_name}</td>
+                                <td style={{ padding: '6px 8px', fontSize: '0.625rem', fontFamily: 'monospace' }}>{c.check_in_time}</td>
+                                <td style={{ padding: '6px 8px', fontSize: '0.625rem' }}>
+                                  <span style={{
+                                    color: c.status === 'approved' ? 'var(--color-success)' : (c.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)'),
+                                    fontWeight: 600
+                                  }}>{c.status === 'approved' ? t('Hợp lệ') : (c.status === 'pending_approval' ? t('Chờ duyệt') : t('Từ chối'))}</span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
 
-              {/* Upload finger-print official log zone */}
-              <div style={{
-                border: '2px dashed var(--color-border)',
-                borderRadius: '10px',
-                padding: '1rem',
-                textAlign: 'center',
-                cursor: 'pointer',
-                background: 'var(--color-surface)',
-                transition: 'all 0.2s'
-              }}
-              onClick={() => {
-                toast.success(t('Đã đồng bộ file chấm công vân tay / Excel của CĐT thành công!'));
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-              >
-                <Upload size={24} style={{ color: 'var(--color-text-muted)', margin: '0 auto 8px', opacity: 0.6 }} />
-                <h5 style={{ fontWeight: 600, fontSize: '0.8125rem', margin: '0 0 4px', color: 'var(--color-text)' }}>
-                  {t('Đồng bộ File Chấm Công Vân Tay')}
-                </h5>
-                <p style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', margin: 0 }}>
-                  {t('Click để chọn hoặc kéo thả file Excel kết quả chấm công từ CĐT')}
-                </p>
-              </div>
+                  {/* Upload finger-print official log zone */}
+                  <div style={{
+                    border: '2px dashed var(--color-border)',
+                    borderRadius: '10px',
+                    padding: '1rem',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    background: 'var(--color-surface)',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => {
+                    toast.success(t('Đã đồng bộ file chấm công vân tay / Excel của CĐT thành công!'));
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  >
+                    <Upload size={24} style={{ color: 'var(--color-text-muted)', margin: '0 auto 8px', opacity: 0.6 }} />
+                    <h5 style={{ fontWeight: 600, fontSize: '0.8125rem', margin: '0 0 4px', color: 'var(--color-text)' }}>
+                      {t('Đồng bộ File Chấm Công Vân Tay')}
+                    </h5>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', margin: 0 }}>
+                      {t('Click để chọn hoặc kéo thả file Excel kết quả chấm công từ CĐT')}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
+          </div>
           </div>
         </CustomModal>
       )}
