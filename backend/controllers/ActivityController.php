@@ -468,7 +468,7 @@ class ActivityController {
         // Parse mentions in comment content
         $content = $b['content'] ?? '';
         $mentions = [];
-        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}]+)/u', $content, $matches);
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $content, $matches);
         if (!empty($matches[1])) {
             foreach ($matches[1] as $nameWithUnderscores) {
                 $fullName = str_replace('_', ' ', $nameWithUnderscores);

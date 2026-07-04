@@ -688,6 +688,12 @@ class FinanceController
             }
         }
 
+        // Force pending status if created by sales/sale role (Security Gate)
+        $statusVal = $data['status'] ?? 'pending';
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            $statusVal = 'pending';
+        }
+
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
@@ -703,7 +709,7 @@ class FinanceController
                 $totalAmount,
                 $data['vat_amount'] ?? 0,
                 $data['date'] ?? date('Y-m-d'),
-                $data['status'] ?? 'pending',
+                $statusVal,
                 $data['notes'] ?? null,
                 $data['vendor_name'] ?? null,
                 $data['has_vat_invoice'] ?? 0,
