@@ -44,6 +44,36 @@ class ActivityController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager' && !$relType && !$relId) {
+            $where[] = '(a.user_id = ? 
+                OR (a.related_type = \'contact\' AND EXISTS (
+                    SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR ct.owner_id IN (
+                        SELECT id FROM users WHERE team_id IN (
+                            SELECT id FROM teams WHERE leader_id = ?
+                        )
+                    ))
+                )) 
+                OR (a.related_type = \'deal\' AND EXISTS (
+                    SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (
+                        d.owner_id = ? OR ct.owner_id = ? OR d.owner_id IN (
+                            SELECT id FROM users WHERE team_id IN (
+                                SELECT id FROM teams WHERE leader_id = ?
+                            )
+                        ) OR ct.owner_id IN (
+                            SELECT id FROM users WHERE team_id IN (
+                                SELECT id FROM teams WHERE leader_id = ?
+                            )
+                        )
+                    )
+                ))
+            )';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
         }
         if ($type)     { $where[]='a.type=?';    $params[]=$type; }
         if ($status)   { $where[]='a.status=?';  $params[]=$status; }
@@ -186,8 +216,8 @@ class ActivityController {
         $stmt->execute([$id, $auth['tenant_id']]);
         $row=$stmt->fetch(); if(!$row) respond(404,null,'Không tìm thấy',false);
 
-        // Access check for sales role
-        if ($auth['role'] === 'sales') {
+        // Access check for sales/manager role
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $allowed = false;
             if ((int)$row['user_id'] === (int)$auth['user_id']) {
                 $allowed = true;
@@ -195,6 +225,23 @@ class ActivityController {
                 $table = $row['related_type'] === 'contact' ? 'contacts' : ($row['related_type'] === 'company' ? 'companies' : 'deals');
                 $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
                 $checkOwner->execute([(int)$row['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            }
+            if (!$allowed) respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
+        } else if ($auth['role'] === 'manager') {
+            $allowed = false;
+            if ((int)$row['user_id'] === (int)$auth['user_id']) {
+                $allowed = true;
+            } elseif ($row['related_type'] && $row['related_id']) {
+                $table = $row['related_type'] === 'contact' ? 'contacts' : ($row['related_type'] === 'company' ? 'companies' : 'deals');
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ))");
+                $checkOwner->execute([(int)$row['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
                 if ($checkOwner->fetch()) {
                     $allowed = true;
                 }
@@ -253,7 +300,7 @@ class ActivityController {
         $activity = $check->fetch();
         if (!$activity) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $allowed = false;
             if ((int)$activity['user_id'] === (int)$auth['user_id']) {
                 $allowed = true;
@@ -261,6 +308,23 @@ class ActivityController {
                 $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
                 $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
                 $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            }
+            if (!$allowed) respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
+        } else if ($auth['role'] === 'manager') {
+            $allowed = false;
+            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
+                $allowed = true;
+            } elseif ($activity['related_type'] && $activity['related_id']) {
+                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ))");
+                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
                 if ($checkOwner->fetch()) {
                     $allowed = true;
                 }
@@ -409,8 +473,16 @@ class ActivityController {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa hoạt động', false);
         $sql = "UPDATE activities SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND user_id=?";
+            $p[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (user_id = ? OR user_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt=$this->db->prepare($sql);

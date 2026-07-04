@@ -37,6 +37,14 @@ class ContactController {
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $where[] = 'c.owner_id = ?';
             $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $where[] = '(c.owner_id = ? OR c.owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
         }
 
         if ($search) {
@@ -241,8 +249,16 @@ class ContactController {
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND c.owner_id=?";
+            $p[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (c.owner_id=? OR c.owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         
@@ -407,9 +423,21 @@ class ContactController {
         }
 
         // Check permission first
-        $check = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
+        $permissionSql = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') $cp[] = $auth['user_id'];
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            $permissionSql .= " AND owner_id=?";
+            $cp[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $permissionSql .= " AND (owner_id=? OR owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $cp[] = $auth['user_id'];
+            $cp[] = $auth['user_id'];
+        }
+        $check = $this->db->prepare($permissionSql);
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
@@ -526,11 +554,21 @@ class ContactController {
 
     public function destroy(array $auth, int $id): void {
         if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
+        
         $sql = "UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'manager') {
+            $sql .= " AND (owner_id=? OR owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
-        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ', false);
+        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ hoặc không có quyền xóa', false);
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
         respond(200, null, 'Đã xóa liên hệ (vào thùng rác)');
     }

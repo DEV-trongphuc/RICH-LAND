@@ -7,21 +7,31 @@ class DealController {
 
     public function stages(array $auth): void {
         $tid = $auth['tenant_id'];
+        
+        $roleFilter = "";
+        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid];
+        if (in_array($auth['role'], ['sales', 'sale'], true)) {
+            $roleFilter = " AND owner_id = :uid";
+            $p['uid'] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $roleFilter = " AND (owner_id = :uid OR owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = :uid
+                )
+            ))";
+            $p['uid'] = $auth['user_id'];
+        }
+
         $sql = "
             SELECT ps.*, 
                    (
-                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid1 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid1" : "").") +
-                     (SELECT COUNT(*) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid2 ".(($auth['role'] === 'sales') ? " AND comp.owner_id = :uid2" : "").")
+                     (SELECT COUNT(*) FROM contacts WHERE stage_id = ps.id AND deleted_at IS NULL AND tenant_id = :tid1 $roleFilter) +
+                     (SELECT COUNT(*) FROM companies WHERE stage_id = ps.id AND deleted_at IS NULL AND tenant_id = :tid2 $roleFilter)
                    ) as deals
             FROM pipeline_stages ps
             WHERE ps.tenant_id = :tid3
             ORDER BY ps.order_index
         ";
-        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid];
-        if ($auth['role'] === 'sales') {
-            $p['uid1'] = $auth['user_id'];
-            $p['uid2'] = $auth['user_id'];
-        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
@@ -77,6 +87,14 @@ class DealController {
         $where=['d.tenant_id=?', 'd.deleted_at IS NULL']; $params=[$tid];
         if (in_array($auth['role'], ['sales', 'sale'], true) && !$contactId && !$companyId) {
             $where[] = 'd.owner_id = ?';
+            $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager' && !$contactId && !$companyId) {
+            $where[] = '(d.owner_id = ? OR d.owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
         if ($stage) { $where[]='d.stage_id=?'; $params[]=(int)$stage; }
@@ -183,8 +201,16 @@ class DealController {
             WHERE d.id=? AND d.tenant_id=? AND d.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND d.owner_id=?";
+            $p[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (d.owner_id=? OR d.owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -203,9 +229,21 @@ class DealController {
         $this->db->beginTransaction();
         try {
             // Get old stage for history
-            $stmt = $this->db->prepare("SELECT stage_id FROM deals WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND owner_id=?" : "") . " FOR UPDATE");
+            $permissionSql = "SELECT stage_id FROM deals WHERE id=? AND tenant_id=?";
             $cp = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sales') $cp[] = $auth['user_id'];
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $permissionSql .= " AND owner_id=?";
+                $cp[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $permissionSql .= " AND (owner_id=? OR owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ))";
+                $cp[] = $auth['user_id'];
+                $cp[] = $auth['user_id'];
+            }
+            $stmt = $this->db->prepare($permissionSql . " FOR UPDATE");
             $stmt->execute($cp);
             $old = $stmt->fetchColumn();
             if ($old === false) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
@@ -219,10 +257,6 @@ class DealController {
 
             $sql = "UPDATE deals SET stage_id=? $setActualDate WHERE id=? AND tenant_id=?";
             $p = [$b['stage_id'], $id, $auth['tenant_id']];
-            if ($auth['role'] === 'sales') {
-                $sql .= " AND owner_id=?";
-                $p[] = $auth['user_id'];
-            }
             $update = $this->db->prepare($sql);
             $update->execute($p);
 
@@ -281,9 +315,21 @@ class DealController {
         }
 
         // Check permission first and get old stage
-        $check = $this->db->prepare("SELECT id, stage_id FROM deals WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
+        $permissionSql = "SELECT id, stage_id FROM deals WHERE id=? AND tenant_id=?";
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') $cp[] = $auth['user_id'];
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            $permissionSql .= " AND owner_id=?";
+            $cp[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $permissionSql .= " AND (owner_id=? OR owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $cp[] = $auth['user_id'];
+            $cp[] = $auth['user_id'];
+        }
+        $check = $this->db->prepare($permissionSql);
         $check->execute($cp);
         $oldDeal = $check->fetch();
         if (!$oldDeal) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
@@ -319,11 +365,21 @@ class DealController {
 
     public function destroy(array $auth, int $id): void {
         if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa deal', false);
+        
         $sql = "UPDATE deals SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'manager') {
+            $sql .= " AND (owner_id=? OR owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
-        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy deal', false);
+        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy deal hoặc không có quyền xóa', false);
         
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Deal', "Một cơ hội bán hàng đã bị xóa.", 'deal', $id);
         respond(200, null, 'Đã xóa deal (vào thùng rác)');
