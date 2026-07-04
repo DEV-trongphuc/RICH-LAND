@@ -294,6 +294,28 @@ class DepositController {
             $stmtCancel = $this->db->prepare("UPDATE deposits SET status = 'cancelled', cancelled_reason = ? WHERE id = ?");
             $stmtCancel->execute([$reason, $id]);
 
+            // Email owner about cancellation
+            $stmtOwner = $this->db->prepare("
+                SELECT u.email, u.full_name, c.name as contact_name 
+                FROM contacts c
+                JOIN users u ON c.owner_id = u.id
+                WHERE c.id = ?
+            ");
+            $stmtOwner->execute([$contactId]);
+            $ownerRow = $stmtOwner->fetch();
+            
+            require_once __DIR__ . '/../mailer.php';
+            if ($ownerRow && !empty($ownerRow['email'])) {
+                $emailSubject = "[RICH LAND] Báo cáo hủy cọc / Bể cọc khách hàng: " . $ownerRow['contact_name'];
+                $emailTitle = "BÁO CÁO HỦY CỌC / BỂ CỌC";
+                $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
+                                "Phiếu đặt cọc của khách hàng <strong>" . htmlspecialchars($ownerRow['contact_name']) . "</strong> (Phiếu cọc #" . $id . ") đã bị hủy.<br/>" .
+                                "Lý do: <em>" . htmlspecialchars($reason) . "</em>.<br/>" .
+                                "Trạng thái khách hàng đã được " . ($approvedCount === 0 ? "hạ về <strong>Đặt chỗ (Booking)</strong>" : "giữ nguyên <strong>Đặt cọc (Customer)</strong> do đã phát sinh doanh thu thực tế") . ".<br/>" .
+                                "Vui lòng kiểm tra trên RICH LAND CRM.";
+                sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+            }
+
             $this->db->commit();
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CANCEL_DEPOSIT', 'deposit', $id, "Hủy cọc/Bể cọc. Lý do: $reason");
             respond(200, null, 'Báo cáo hủy cọc và cập nhật trạng thái khách hàng thành công');
