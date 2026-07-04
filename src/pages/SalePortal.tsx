@@ -1003,17 +1003,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       // Fetch completed calls count
       let callsUrl = '/activities?type=call&status=done&limit=1';
-      let callsStart = start;
-      let callsEnd = end;
-      if (wsDatePreset === 'all') {
-        const p7 = getPresetDates('7_days');
-        callsStart = p7.start;
-        callsEnd = p7.end;
-      }
+      let callsStart = wsDatePreset === 'all' ? '' : start;
+      let callsEnd = wsDatePreset === 'all' ? '' : end;
       if (callsStart) callsUrl += `&start_date=${callsStart}`;
       if (callsEnd) callsUrl += `&end_date=${callsEnd}`;
-      if (wsUserId) callsUrl += `&user_id=${wsUserId}`;
-      else callsUrl += `&user_id=${user?.id}`;
+      
+      if (wsUserId) {
+        callsUrl += `&user_id=${wsUserId}`;
+      } else if (currentUser?.role === 'sale') {
+        callsUrl += `&user_id=${currentUser?.id}`;
+      }
 
       const callsRes = await api.get(callsUrl);
       if (callsRes.data && callsRes.data.data) {
@@ -2777,12 +2776,31 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         {/* Main Subtabs Selection (iOS Segmented Control style) */}
         <div style={{
           display: 'flex',
-          background: 'var(--color-border-light)',
+          background: 'rgba(15, 23, 42, 0.05)',
           padding: '4px',
           borderRadius: '12px',
           gap: '4px',
-          width: 'fit-content'
+          width: 'fit-content',
+          position: 'relative',
+          border: '1px solid var(--color-border-light)'
         }}>
+          {/* Sliding Pill Background Indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '4px',
+            bottom: '4px',
+            width: '210px',
+            borderRadius: '10px',
+            background: 'var(--color-surface)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `translateX(${
+              wsSubTab === 'customer' ? '0px' : 
+              wsSubTab === 'team' ? '214px' : '428px'
+            })`,
+            zIndex: 1
+          }} />
+
           {[
             { id: 'customer', label: t('Công việc khách hàng'), count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
             { id: 'team', label: t('Công việc nội bộ team'), count: wsTasks.filter(task => {
@@ -2806,19 +2824,22 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   setWsTeamSubFilter('all');
                 }}
                 style={{
-                  padding: '8px 20px',
+                  width: '210px',
+                  height: '38px',
                   borderRadius: '10px',
                   border: 'none',
                   fontSize: '0.85rem',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  background: isSelected ? 'var(--color-surface)' : 'transparent',
+                  background: 'transparent',
                   color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
-                  boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  justifyContent: 'center',
+                  gap: '6px',
+                  position: 'relative',
+                  zIndex: 2,
+                  transition: 'color 0.25s ease'
                 }}
                 className={isSelected ? "" : "hover-lift"}
               >
@@ -2827,9 +2848,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   fontSize: '0.75rem',
                   padding: '2px 6px',
                   borderRadius: '10px',
-                  background: isSelected ? 'var(--color-primary-light)' : 'var(--color-border-light)',
+                  background: isSelected ? 'var(--color-primary-light)' : 'rgba(15, 23, 42, 0.05)',
                   color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  fontWeight: 800
+                  fontWeight: 800,
+                  transition: 'background 0.25s ease, color 0.25s ease'
                 }}>
                   {tab.count}
                 </span>
@@ -3127,22 +3149,37 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               >
                 <Phone size={13} style={{ flexShrink: 0 }} />
                 <span>
-                  {t('Đã gọi:')} <strong>{completedCallsCount}</strong> {
-                    wsDatePreset === 'today' ? t('hôm nay') :
-                    wsDatePreset === 'yesterday' ? t('hôm qua') :
-                    wsDatePreset === 'week' ? t('tuần này') :
-                    wsDatePreset === '7_days' ? t('7 ngày qua') :
-                    wsDatePreset === '30_days' ? t('30 ngày qua') :
-                    wsDatePreset === 'this_month' ? t('tháng này') :
-                    wsDatePreset === 'last_month' ? t('tháng trước') :
-                    wsDatePreset === 'tomorrow' ? t('ngày mai') :
-                    wsDatePreset === 'overdue' ? t('quá hạn') :
-                    t('từ trước tới nay')
-                  }
+                  {t('Đã gọi:')} <strong>{completedCallsCount}</strong> {t('cuộc')}
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '4px', background: 'var(--color-border-light)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
+              <div style={{ display: 'flex', gap: '4px', background: 'rgba(15, 23, 42, 0.05)', padding: '4px', borderRadius: '10px', width: 'fit-content', position: 'relative', border: '1px solid var(--color-border-light)' }}>
+                {/* Sliding Pill Background Indicator */}
+                {(() => {
+                  const tabs = [
+                    { value: 'all', label: t('Tất cả') },
+                    { value: 'assigned_to_me', label: t('Tôi thực hiện') },
+                    currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
+                    { value: 'collaborator', label: t('Tôi liên quan') }
+                  ].filter(Boolean) as any[];
+                  const activeIndex = tabs.findIndex(t => t.value === wsTaskFilter);
+                  const safeIndex = activeIndex === -1 ? 0 : activeIndex;
+                  return (
+                    <div style={{
+                      position: 'absolute',
+                      top: '4px',
+                      bottom: '4px',
+                      width: '110px',
+                      borderRadius: '7px',
+                      background: 'var(--color-surface)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                      transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                      transform: `translateX(${safeIndex * 114}px)`,
+                      zIndex: 1
+                    }} />
+                  );
+                })()}
+
                 {[
                   { value: 'all', label: t('Tất cả') },
                   { value: 'assigned_to_me', label: t('Tôi thực hiện') },
@@ -3155,17 +3192,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       key={tab.value}
                       onClick={() => setWsTaskFilter(tab.value as any)}
                       style={{
-                        padding: '6px 14px',
+                        width: '110px',
+                        height: '28px',
                         borderRadius: '7px',
                         border: 'none',
                         fontSize: '0.78rem',
                         fontWeight: 700,
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        background: isSelected ? 'var(--color-surface)' : 'transparent',
+                        background: 'transparent',
                         color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        boxShadow: isSelected ? '0 2px 6px rgba(0, 0, 0, 0.05)' : 'none'
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                        zIndex: 2,
+                        transition: 'color 0.25s ease'
                       }}
+                      className={isSelected ? "" : "hover-lift"}
                     >
                       {tab.label}
                     </button>
@@ -3182,12 +3225,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               }}>
                 <button
                   onClick={() => setWsViewMode('grid')}
+                  title={t('Dạng lưới')}
                   style={{
-                    padding: '6px 12px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '7px',
                     border: 'none',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     background: wsViewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
@@ -3195,20 +3238,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     boxShadow: wsViewMode === 'grid' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    justifyContent: 'center',
+                    padding: 0,
+                    transform: 'none'
                   }}
                 >
-                  <LayoutGrid size={13} />
-                  <span>{t('Dạng lưới')}</span>
+                  <LayoutGrid size={16} />
                 </button>
                 <button
                   onClick={() => setWsViewMode('kanban')}
+                  title={t('Dạng Kanban')}
                   style={{
-                    padding: '6px 12px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '7px',
                     border: 'none',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     background: wsViewMode === 'kanban' ? 'var(--color-surface)' : 'transparent',
@@ -3216,20 +3260,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     boxShadow: wsViewMode === 'kanban' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    justifyContent: 'center',
+                    padding: 0,
+                    transform: 'none'
                   }}
                 >
-                  <Layers size={13} />
-                  <span>{t('Dạng Kanban')}</span>
+                  <Layers size={16} />
                 </button>
                 <button
                   onClick={() => setWsViewMode('focus')}
+                  title={t('Chế độ Focus')}
                   style={{
-                    padding: '6px 12px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '7px',
                     border: 'none',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     background: (wsViewMode as string) === 'focus' ? 'var(--color-surface)' : 'transparent',
@@ -3237,11 +3282,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     boxShadow: (wsViewMode as string) === 'focus' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    justifyContent: 'center',
+                    padding: 0,
+                    transform: 'none'
                   }}
                 >
-                  <Monitor size={13} />
-                  <span>{t('Chế độ Focus')}</span>
+                  <Monitor size={16} />
                 </button>
               </div>
             </div>
@@ -8788,12 +8834,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       <CustomerProfileDrawer
         isOpen={!!profileContact}
-        onClose={() => setProfileContact(null)}
+        onClose={() => {
+          setProfileContact(null);
+          loadPortalData();
+          fetchWorkspaceTasks();
+        }}
         contact={profileContact}
         initialTab={profileDrawerTab}
         onUpdate={updated => {
           setProfileContact(updated);
           loadPortalData();
+          fetchWorkspaceTasks();
         }}
       />
 

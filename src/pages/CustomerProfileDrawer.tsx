@@ -2905,7 +2905,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                           <div style={{
                             position: 'relative', zIndex: 2, flex: 1,
-                            background: isCurrent ? stColor : 'var(--color-bg-light)',
+                            background: isCurrent ? stColor : 'var(--color-surface)',
                             color: isCurrent ? '#fff' : 'var(--color-text-muted)',
                             border: isCurrent ? `2px solid ${stColor}` : '1px solid var(--color-border-light)',
                             padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
@@ -4336,7 +4336,44 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       {/* Timeline Type Filters */}
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.25rem', background: 'white', padding: '4px', borderRadius: '10px', width: 'fit-content', border: '1px solid var(--color-border)' }}>
+                      <div style={{
+                        display: 'flex',
+                        gap: '4px',
+                        marginBottom: '1.25rem',
+                        background: 'rgba(15, 23, 42, 0.05)',
+                        padding: '4px',
+                        borderRadius: '10px',
+                        width: 'fit-content',
+                        position: 'relative',
+                        border: '1px solid var(--color-border-light)'
+                      }}>
+                        {/* Sliding Pill Background Indicator */}
+                        {(() => {
+                          const tabs = [
+                            { value: 'all', label: 'Tất cả', icon: null },
+                            { value: 'call', label: 'Cuộc gọi', icon: null },
+                            { value: 'email', label: 'Email', icon: null },
+                            { value: 'meeting', label: 'Gặp gỡ', icon: null },
+                            { value: 'task', label: 'Công việc', icon: null }
+                          ];
+                          const activeIndex = tabs.findIndex(t => t.value === timelineFilter);
+                          const safeIndex = activeIndex === -1 ? 0 : activeIndex;
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              top: '4px',
+                              bottom: '4px',
+                              width: '90px',
+                              borderRadius: '7px',
+                              background: 'var(--color-surface)',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: `translateX(${safeIndex * 94}px)`,
+                              zIndex: 1
+                            }} />
+                          );
+                        })()}
+
                         {[
                           { value: 'all', label: 'Tất cả', icon: null },
                           { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
@@ -4350,19 +4387,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               key={tab.value}
                               onClick={() => setTimelineFilter(tab.value as any)}
                               style={{
-                                padding: '6px 12px',
-                                borderRadius: '6px',
+                                width: '90px',
+                                height: '26px',
+                                borderRadius: '7px',
                                 border: 'none',
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                background: isSelected ? 'var(--color-primary)' : 'transparent',
-                                color: isSelected ? 'white' : 'var(--color-text-muted)',
-                                boxShadow: isSelected ? '0 2px 8px rgba(189, 29, 45, 0.15)' : 'none',
+                                background: 'transparent',
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '6px'
+                                justifyContent: 'center',
+                                gap: '6px',
+                                position: 'relative',
+                                zIndex: 2,
+                                transition: 'color 0.25s ease'
                               }}
                             >
                               {tab.icon}
@@ -4962,7 +5002,43 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       {/* Quick Task Role Filters */}
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1rem', background: 'white', padding: '4px', borderRadius: '10px', width: 'fit-content', border: '1px solid var(--color-border)' }}>
+                      <div style={{
+                        display: 'flex',
+                        gap: '4px',
+                        marginBottom: '1rem',
+                        background: 'rgba(15, 23, 42, 0.05)',
+                        padding: '4px',
+                        borderRadius: '10px',
+                        width: 'fit-content',
+                        position: 'relative',
+                        border: '1px solid var(--color-border-light)'
+                      }}>
+                        {/* Sliding Pill Background Indicator */}
+                        {(() => {
+                          const tabs = [
+                            { value: 'all', label: 'Tất cả' },
+                            { value: 'assigned_to_me', label: 'Tôi thực hiện' },
+                            currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: 'Tôi duyệt' },
+                            { value: 'collaborator', label: 'Tôi liên quan' }
+                          ].filter(Boolean) as any[];
+                          const activeIndex = tabs.findIndex(t => t.value === drawerTaskFilter);
+                          const safeIndex = activeIndex === -1 ? 0 : activeIndex;
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              top: '4px',
+                              bottom: '4px',
+                              width: '110px',
+                              borderRadius: '7px',
+                              background: 'var(--color-surface)',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: `translateX(${safeIndex * 114}px)`,
+                              zIndex: 1
+                            }} />
+                          );
+                        })()}
+
                         {[
                           { value: 'all', label: 'Tất cả' },
                           { value: 'assigned_to_me', label: 'Tôi thực hiện' },
@@ -4975,16 +5051,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               key={tab.value}
                               onClick={() => setDrawerTaskFilter(tab.value as any)}
                               style={{
-                                padding: '4px 12px',
-                                borderRadius: '6px',
+                                width: '110px',
+                                height: '26px',
+                                borderRadius: '7px',
                                 border: 'none',
                                 fontSize: '0.75rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                background: isSelected ? 'var(--color-primary)' : 'transparent',
-                                color: isSelected ? 'white' : 'var(--color-text-muted)',
-                                boxShadow: isSelected ? '0 2px 8px rgba(189, 29, 45, 0.15)' : 'none'
+                                background: 'transparent',
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative',
+                                zIndex: 2,
+                                transition: 'color 0.25s ease'
                               }}
                             >
                               {tab.label}
@@ -6590,7 +6671,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       <AnimatePresence>
         {pipelineModal.isOpen && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}
@@ -6687,7 +6768,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE DEPOSIT MODAL */}
       <AnimatePresence>
         {showDealModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowDealModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 20000 }} onClick={() => setShowDealModal(false)}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 540 }}
@@ -7267,7 +7348,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* TASK DETAILS MODAL */}
       <AnimatePresence>
         {selectedTaskForDetails && (
-          <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => {
+          <div className="overlay-backdrop" style={{ zIndex: 20000 }} onClick={() => {
             setSelectedTaskForDetails(null);
             setShowAssigneeDropdown(false);
             setShowParticipantDropdown(false);
@@ -7917,7 +7998,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE TICKET MODAL */}
       <AnimatePresence>
         {showTicketModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowTicketModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 20000 }} onClick={() => setShowTicketModal(false)}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 540 }}
@@ -8174,7 +8255,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       {/* Quick View Expense Modal */}
       {viewExpense && createPortal(
-        <div className="overlay-backdrop" onClick={() => setViewExpense(null)} style={{ zIndex: 10000, position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+        <div className="overlay-backdrop" onClick={() => setViewExpense(null)} style={{ zIndex: 20000, position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <motion.div 
             className="modal-sheet shadow-2xl"
             initial={{ opacity: 0, scale: 0.96, y: 20 }} 
