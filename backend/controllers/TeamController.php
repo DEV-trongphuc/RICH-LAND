@@ -15,10 +15,10 @@ class TeamController
         }
 
         $stmt = $this->db->prepare("
-            SELECT t.*, c.name as leader_name, 
-                   (SELECT COUNT(*) FROM consultants WHERE team_id = t.id) as member_count 
+            SELECT t.*, u.full_name as leader_name, 
+                   (SELECT COUNT(*) FROM users WHERE team_id = t.id AND role = 'sales') as member_count 
             FROM teams t 
-            LEFT JOIN consultants c ON t.leader_id = c.id 
+            LEFT JOIN users u ON t.leader_id = u.id 
             ORDER BY t.name ASC
         ");
         $stmt->execute();
@@ -64,9 +64,9 @@ class TeamController
         }
 
         $stmt = $this->db->prepare("
-            SELECT t.*, c.name as leader_name 
+            SELECT t.*, u.full_name as leader_name 
             FROM teams t 
-            LEFT JOIN consultants c ON t.leader_id = c.id 
+            LEFT JOIN users u ON t.leader_id = u.id 
             WHERE t.id = ?
         ");
         $stmt->execute([$id]);
