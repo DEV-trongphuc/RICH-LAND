@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import {
   Users, AlertTriangle, RefreshCw,
   GitBranch, UserPlus, Zap, Calendar, BarChart2, Scale,
-  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink, Clock, CheckCircle, Cpu
+  FileSpreadsheet, MessageCircle, Database, Server, ExternalLink, Clock, CheckCircle, Cpu,
+  ShieldAlert, Filter, Ticket as TicketIcon
 } from 'lucide-react';
 import {
   Bar, XAxis, YAxis, CartesianGrid,
