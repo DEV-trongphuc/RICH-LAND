@@ -489,6 +489,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [leaveHistory, setLeaveHistory] = useState<any[]>([]);
   const [loadingLeaves, setLoadingLeaves] = useState(false);
 
+  // Enterprise ERP Profile Extra Fields
+  const [editEmployeeId, setEditEmployeeId] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editJobTitle, setEditJobTitle] = useState('');
+  const [editContractType, setEditContractType] = useState('official');
+  const [editDateJoined, setEditDateJoined] = useState('');
+  const [editDirectManager, setEditDirectManager] = useState('');
+  const [editWorkplace, setEditWorkplace] = useState('');
+  const [editPersonalPhone, setEditPersonalPhone] = useState('');
+  const [editExtNumber, setEditExtNumber] = useState('');
+  const [editEmergencyName, setEditEmergencyName] = useState('');
+  const [editEmergencyRelation, setEditEmergencyRelation] = useState('');
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState('');
+  const [editTaxId, setEditTaxId] = useState('');
+  const [editInsuranceId, setEditInsuranceId] = useState('');
+  const [editBrokerLicense, setEditBrokerLicense] = useState('');
+  const [editDegree, setEditDegree] = useState('');
+
   // Impersonation role calculation for admin viewing sale
   const impersonatedSale = ((user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter)
     ? data.consultants?.find((c: any) => String(c.id) === String(saleIdFilter))
@@ -1539,7 +1557,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setEditDob(data.consultant_profile.dob || '');
       setEditGender(data.consultant_profile.gender || '');
       setEditCitizenId(data.consultant_profile.citizen_id || '');
-      setEditAddress(data.consultant_profile.address || '');
+      
+      const rawAddress = data.consultant_profile.address || '';
+      if (rawAddress.startsWith('{"erp_profile":')) {
+        try {
+          const parsed = JSON.parse(rawAddress);
+          const erp = parsed.erp_profile || {};
+          setEditAddress(erp.address_text || '');
+          setEditEmployeeId(erp.employee_id || '');
+          setEditDepartment(erp.department || '');
+          setEditJobTitle(erp.job_title || '');
+          setEditContractType(erp.contract_type || 'official');
+          setEditDateJoined(erp.date_joined || '');
+          setEditDirectManager(erp.direct_manager || '');
+          setEditWorkplace(erp.workplace || '');
+          setEditPersonalPhone(erp.personal_phone || '');
+          setEditExtNumber(erp.ext_number || '');
+          setEditEmergencyName(erp.emergency_contact_name || '');
+          setEditEmergencyRelation(erp.emergency_contact_relationship || '');
+          setEditEmergencyPhone(erp.emergency_contact_phone || '');
+          setEditTaxId(erp.tax_id || '');
+          setEditInsuranceId(erp.insurance_id || '');
+          setEditBrokerLicense(erp.broker_license || '');
+          setEditDegree(erp.degree || '');
+        } catch (e) {
+          setEditAddress(rawAddress);
+        }
+      } else {
+        setEditAddress(rawAddress);
+        setEditEmployeeId('');
+        setEditDepartment('');
+        setEditJobTitle('');
+        setEditContractType('official');
+        setEditDateJoined('');
+        setEditDirectManager('');
+        setEditWorkplace('');
+        setEditPersonalPhone('');
+        setEditExtNumber('');
+        setEditEmergencyName('');
+        setEditEmergencyRelation('');
+        setEditEmergencyPhone('');
+        setEditTaxId('');
+        setEditInsuranceId('');
+        setEditBrokerLicense('');
+        setEditDegree('');
+      }
+
       setEditBankName(data.consultant_profile.bank_name || '');
       setEditBankAccount(data.consultant_profile.bank_account || '');
       setEditLeaveStart(data.consultant_profile.leave_start || '');
@@ -1594,6 +1657,28 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
     setSavingProfile(true);
     try {
+      const addressPayload = JSON.stringify({
+        erp_profile: {
+          address_text: editAddress,
+          employee_id: editEmployeeId,
+          department: editDepartment,
+          job_title: editJobTitle,
+          contract_type: editContractType,
+          date_joined: editDateJoined,
+          direct_manager: editDirectManager,
+          workplace: editWorkplace,
+          personal_phone: editPersonalPhone,
+          ext_number: editExtNumber,
+          emergency_contact_name: editEmergencyName,
+          emergency_contact_relationship: editEmergencyRelation,
+          emergency_contact_phone: editEmergencyPhone,
+          tax_id: editTaxId,
+          insurance_id: editInsuranceId,
+          broker_license: editBrokerLicense,
+          degree: editDegree
+        }
+      });
+
       const payload = {
         consultant_id: displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null),
         name: editName.trim(),
@@ -1604,7 +1689,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         dob: editDob,
         gender: editGender,
         citizen_id: editCitizenId,
-        address: editAddress,
+        address: addressPayload,
         bank_name: editBankName,
         bank_account: editBankAccount,
         leave_start: editLeaveStart || null,
@@ -4710,104 +4795,337 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </span>
 
               {/* Form Input fields */}
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Họ và tên')}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    placeholder={t('Nhập tên đầy đủ')}
-                    style={{ fontWeight: 600 }}
-                  />
-                </div>
+              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                
+                {/* SECTION 1: PERSONAL INFO */}
+                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Info size={14} /> {t('Thông tin cá nhân')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Họ và tên')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder={t('Nhập tên đầy đủ')}
+                        style={{ fontWeight: 600 }}
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email đăng nhập')}</label>
-                  <input
-                    type="email"
-                    className="form-input"
-                    value={profile.email || ''}
-                    disabled
-                    style={{
-                      opacity: 0.7,
-                      cursor: 'not-allowed',
-                      background: 'var(--color-bg)',
-                      borderColor: 'var(--color-border-light)'
-                    }}
-                  />
-                </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày sinh')}</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={editDob}
+                          onChange={(e) => setEditDob(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Giới tính')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: '', label: `-- ${t('Chọn giới tính')} --` },
+                            { value: 'male', label: t('Nam') },
+                            { value: 'female', label: t('Nữ') },
+                            { value: 'other', label: t('Khác') }
+                          ]}
+                          value={editGender}
+                          onChange={val => setEditGender(String(val))}
+                          placeholder={t('Chọn giới tính...')}
+                        />
+                      </div>
+                    </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày sinh')}</label>
-                    <input
-                      type="date"
-                      className="form-input"
-                      value={editDob}
-                      onChange={(e) => setEditDob(e.target.value)}
-                    />
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Số CMND/CCCD')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editCitizenId}
+                        onChange={(e) => setEditCitizenId(e.target.value)}
+                        placeholder={t('Nhập số CMND hoặc CCCD')}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Giới tính')}</label>
-                    <CustomSelect
-                      options={[
-                        { value: '', label: `-- ${t('Chọn giới tính')} --` },
-                        { value: 'male', label: t('Nam') },
-                        { value: 'female', label: t('Nữ') },
-                        { value: 'other', label: t('Khác') }
-                      ]}
-                      value={editGender}
-                      onChange={val => setEditGender(String(val))}
-                      placeholder={t('Chọn giới tính...')}
-                    />
+                </div>
+
+                {/* SECTION 2: WORKPLACE & ERP */}
+                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Layers size={14} /> {t('Thông tin nhân sự & ERP')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Mã nhân viên')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editEmployeeId}
+                          onChange={(e) => setEditEmployeeId(e.target.value)}
+                          placeholder="VD: RL-2026-089"
+                          style={{ fontWeight: 600, color: 'var(--color-primary)' }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Bộ phận / Phòng ban')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editDepartment}
+                          onChange={(e) => setEditDepartment(e.target.value)}
+                          placeholder="VD: Phòng Kinh doanh 1"
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Chức danh / Vị trí')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editJobTitle}
+                          onChange={(e) => setEditJobTitle(e.target.value)}
+                          placeholder="VD: Chuyên viên Tư vấn"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Loại hợp đồng')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: 'official', label: t('Chính thức') },
+                            { value: 'probation', label: t('Thử việc') },
+                            { value: 'internship', label: t('Học việc / Thực tập') },
+                            { value: 'collaborator', label: t('Cộng tác viên') },
+                            { value: 'other', label: t('Khác') }
+                          ]}
+                          value={editContractType}
+                          onChange={val => setEditContractType(String(val))}
+                          placeholder={t('Chọn loại hợp đồng...')}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày vào làm')}</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={editDateJoined}
+                          onChange={(e) => setEditDateJoined(e.target.value)}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Người quản lý trực tiếp')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editDirectManager}
+                          onChange={(e) => setEditDirectManager(e.target.value)}
+                          placeholder="Họ tên người quản lý"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Địa điểm làm việc')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editWorkplace}
+                        onChange={(e) => setEditWorkplace(e.target.value)}
+                        placeholder="VD: Trụ sở chính TP.HCM"
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Chứng chỉ môi giới')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editBrokerLicense}
+                          onChange={(e) => setEditBrokerLicense(e.target.value)}
+                          placeholder="Mã số chứng chỉ (nếu có)"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Trình độ học vấn')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: 'undergraduate', label: t('Trung cấp / Cao đẳng') },
+                            { value: 'graduate', label: t('Đại học') },
+                            { value: 'postgraduate', label: t('Thạc sĩ / Tiến sĩ') },
+                            { value: 'other', label: t('Khác') }
+                          ]}
+                          value={editDegree}
+                          onChange={val => setEditDegree(String(val))}
+                          placeholder={t('Chọn trình độ...')}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Số CMND/CCCD')}</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editCitizenId}
-                    onChange={(e) => setEditCitizenId(e.target.value)}
-                    placeholder={t('Nhập số CMND hoặc CCCD')}
-                  />
-                </div>
+                {/* SECTION 3: CONTACT & ACCOUNT */}
+                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Server size={14} /> {t('Liên hệ & Tài khoản')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email đăng nhập')}</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={profile.email || ''}
+                        disabled
+                        style={{
+                          opacity: 0.7,
+                          cursor: 'not-allowed',
+                          background: 'var(--color-bg)',
+                          borderColor: 'var(--color-border-light)'
+                        }}
+                      />
+                    </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Địa chỉ thường trú')}</label>
-                  <textarea
-                    className="form-input"
-                    rows={2}
-                    value={editAddress}
-                    onChange={(e) => setEditAddress(e.target.value)}
-                    placeholder={t('Nhập địa chỉ của bạn')}
-                    style={{ minHeight: '60px', padding: '10px 14px' }}
-                  />
-                </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại cá nhân')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editPersonalPhone}
+                          onChange={(e) => setEditPersonalPhone(e.target.value)}
+                          placeholder="Nhập SĐT cá nhân"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại nội bộ')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editExtNumber}
+                          onChange={(e) => setEditExtNumber(e.target.value)}
+                          placeholder="VD: 104"
+                        />
+                      </div>
+                    </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên ngân hàng')}</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={editBankName}
-                      onChange={(e) => setEditBankName(e.target.value)}
-                      placeholder={t('VD: Vietcombank')}
-                    />
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Địa chỉ thường trú')}</label>
+                      <textarea
+                        className="form-input"
+                        rows={2}
+                        value={editAddress}
+                        onChange={(e) => setEditAddress(e.target.value)}
+                        placeholder={t('Nhập địa chỉ của bạn')}
+                        style={{ minHeight: '60px', padding: '10px 14px' }}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>{t('Số tài khoản')}</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={editBankAccount}
-                      onChange={(e) => setEditBankAccount(e.target.value)}
-                      placeholder={t('Nhập số tài khoản')}
-                    />
+                </div>
+
+                {/* SECTION 4: PAYMENT & TAXES */}
+                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Receipt size={14} /> {t('Thanh toán & Thuế')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên ngân hàng')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editBankName}
+                          onChange={(e) => setEditBankName(e.target.value)}
+                          placeholder={t('VD: Vietcombank')}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số tài khoản')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editBankAccount}
+                          onChange={(e) => setEditBankAccount(e.target.value)}
+                          placeholder={t('Nhập số tài khoản')}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Mã số thuế cá nhân')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editTaxId}
+                          onChange={(e) => setEditTaxId(e.target.value)}
+                          placeholder="Mã số thuế"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số sổ BHXH')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editInsuranceId}
+                          onChange={(e) => setEditInsuranceId(e.target.value)}
+                          placeholder="Mã số BHXH"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION 5: EMERGENCY CONTACT */}
+                <div style={{ paddingBottom: '0.5rem' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Scale size={14} /> {t('Liên hệ khẩn cấp')}
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Người liên hệ')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editEmergencyName}
+                          onChange={(e) => setEditEmergencyName(e.target.value)}
+                          placeholder="Họ tên người liên hệ"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Mối quan hệ')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editEmergencyRelation}
+                          onChange={(e) => setEditEmergencyRelation(e.target.value)}
+                          placeholder="VD: Bố, Mẹ, Vợ, Chồng..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại khẩn cấp')}</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={editEmergencyPhone}
+                        onChange={(e) => setEditEmergencyPhone(e.target.value)}
+                        placeholder="SĐT người liên hệ"
+                      />
+                    </div>
                   </div>
                 </div>
 

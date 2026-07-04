@@ -2210,7 +2210,7 @@ switch ($action) {
         $consultantProfile = null;
         $profileSaleId = $isSale ? $saleId : $saleFilterId;
         if ($profileSaleId !== null) {
-            $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode FROM consultants WHERE id = ?");
+            $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = ?");
             $stmtP->bind_param("i", $profileSaleId);
             $stmtP->execute();
             $consultantProfile = $stmtP->get_result()->fetch_assoc();
