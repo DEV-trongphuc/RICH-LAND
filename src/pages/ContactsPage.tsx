@@ -528,6 +528,10 @@ export const ContactsPage: React.FC = () => {
               <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
             </button>
           )}
+          <button className="btn outline" onClick={bulkExport} title="Xuất dữ liệu theo bộ lọc">
+            <Download size={14}/>
+            <span> Xuất theo bộ lọc</span>
+          </button>
           <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
             <Plus size={15}/>
             <span className="hide-on-mobile"> Thêm liên hệ</span>

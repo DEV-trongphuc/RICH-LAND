@@ -13,6 +13,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { fetchAPI } from '../../utils/api';
 import { useUIStore } from '../../store/uiStore';
 import { POSModal } from '../ui/POSModal';
+import { AlertToast } from '../ui/AlertToast';
 import { 
   Ticket as TicketIcon, 
   Activity, 
@@ -621,6 +622,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </main>
       </div>
+      <AlertToast />
       <QuickAddLeadModal />
       <ProfileModal />
       {showPOS && (

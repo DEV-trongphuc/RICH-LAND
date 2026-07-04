@@ -1261,7 +1261,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         <button
           onClick={() => {
             localStorage.setItem('trigger_checkin', '1');
-            navigate('/sale-portal');
             window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
           }}
           style={{

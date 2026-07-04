@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 
-export const AttendancePageInner = () => {
+export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const isSales = user?.role === 'sale';
@@ -22,8 +22,10 @@ export const AttendancePageInner = () => {
   const [checkIns, setCheckIns] = useState<any[]>([]);
   const [consultants, setConsultants] = useState<any[]>([]);
 
-  // View mode switcher: list or calendar (default to calendar for quick overview)
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
+  // View mode switcher: list or calendar (default to calendar for quick overview, list for embed mode)
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>(() => {
+    return embedMode ? 'list' : 'calendar';
+  });
   const [currentMonth, setCurrentMonth] = useState<number>(7); // July 2026 default
   const [currentYear, setCurrentYear] = useState<number>(2026);
   const [calendarCheckIns, setCalendarCheckIns] = useState<any[]>([]);
@@ -559,64 +561,66 @@ export const AttendancePageInner = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 className="page-title">
-            {t('Quản lý Chấm công')}
-          </h1>
-          <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-            {t('Kiểm duyệt ảnh selfie chấm công hàng ngày và phê duyệt đi trễ của tư vấn viên.')}
-          </p>
-        </div>
+      {!embedMode && (
+        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 className="page-title">
+              {t('Quản lý Chấm công')}
+            </h1>
+            <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+              {t('Kiểm duyệt ảnh selfie chấm công hàng ngày và phê duyệt đi trễ của tư vấn viên.')}
+            </p>
+          </div>
 
-        {/* View Mode Switcher */}
-        <div style={{ display: 'flex', backgroundColor: 'var(--color-border-light)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              padding: '8px 20px',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              borderRadius: '10px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
-              color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-light)',
-              boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 0.2s'
-            }}
-            className={viewMode === 'list' ? '' : 'hover-lift'}
-          >
-            <Clock size={14} />
-            {t('Danh sách')}
-          </button>
-          <button
-            onClick={() => setViewMode('calendar')}
-            style={{
-              padding: '8px 20px',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              borderRadius: '10px',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              backgroundColor: viewMode === 'calendar' ? 'var(--color-surface)' : 'transparent',
-              color: viewMode === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)',
-              boxShadow: viewMode === 'calendar' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 0.2s'
-            }}
-            className={viewMode === 'calendar' ? '' : 'hover-lift'}
-          >
-            <Calendar size={14} />
-            {t('Lịch biểu')}
-          </button>
+          {/* View Mode Switcher */}
+          <div style={{ display: 'flex', backgroundColor: 'var(--color-border-light)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                padding: '8px 20px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                borderRadius: '10px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
+                color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                transition: 'all 0.2s'
+              }}
+              className={viewMode === 'list' ? '' : 'hover-lift'}
+            >
+              <Clock size={14} />
+              {t('Danh sách')}
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              style={{
+                padding: '8px 20px',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                borderRadius: '10px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                backgroundColor: viewMode === 'calendar' ? 'var(--color-surface)' : 'transparent',
+                color: viewMode === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                boxShadow: viewMode === 'calendar' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                transition: 'all 0.2s'
+              }}
+              className={viewMode === 'calendar' ? '' : 'hover-lift'}
+            >
+              <Calendar size={14} />
+              {t('Lịch biểu')}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Stats row */}
       <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem' }}>

@@ -39,6 +39,7 @@ import { InvoicesPage } from './InvoicesPage';
 import ProjectsPage from './ProjectsPage';
 import { FilesPage } from './FilesPage';
 import { Consultants } from './Consultants';
+import AttendancePage from './AttendancePage';
 import api from '../api/axios';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
@@ -276,6 +277,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   });
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [databankPage, setDatabankPage] = useState(1);
+  const [calendarSubTab, setCalendarSubTab] = useState<'calendar' | 'attendance'>('calendar');
   const [wsTaskFilter, setWsTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [wsSubTab, setWsSubTab] = useState<'customer' | 'team' | 'personal'>('customer');
@@ -572,12 +575,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   // Tickets states & loading logic
   const [tickets, setTickets] = useState<any[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
-  const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
+  const [ticketStatusFilter, setTicketStatusFilter] = useState(() => {
+    const params = new URLSearchParams(loc.search);
+    return params.get('status') || 'all';
+  });
   const [ticketDateFilter, setTicketDateFilter] = useState('Tất cả');
   const [ticketPage, setTicketPage] = useState(1);
   const [ticketTotalCount, setTicketTotalCount] = useState(0);
   const TICKET_ITEMS_PER_PAGE = 10;
   const ticketTotalPages = Math.ceil(ticketTotalCount / TICKET_ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    const params = new URLSearchParams(loc.search);
+    const statusParam = params.get('status');
+    if (activeTab === 'tickets' && statusParam) {
+      setTicketStatusFilter(statusParam);
+    }
+  }, [loc.search, activeTab]);
 
   const loadTicketsData = async () => {
     if (!token) return;
@@ -1511,6 +1525,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const fetchPublicLeads = async () => {
     setPublicLoading(true);
+    setDatabankPage(1);
     try {
       const res = await fetchAPI('get_public_leads');
       if (res.success) {
@@ -3885,11 +3900,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 }}
                 onClick={() => {
                   if (kpi.key === 'data') {
-                    setStatusFilter(kpi.status);
-                    setActiveTab('data');
+                    navigate('/data?status=' + kpi.status);
                   } else if (kpi.key === 'tickets') {
-                    setTicketStatusFilter(kpi.status);
-                    setActiveTab('tickets');
+                    navigate('/tickets?status=' + kpi.status);
                   }
                 }}
               >
@@ -4895,6 +4908,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   const renderDatabankView = () => {
+    const DATABANK_ITEMS_PER_PAGE = 10;
+    const databankTotalPages = Math.ceil(publicLeads.length / DATABANK_ITEMS_PER_PAGE);
+    const paginatedPublicLeads = publicLeads.slice((databankPage - 1) * DATABANK_ITEMS_PER_PAGE, databankPage * DATABANK_ITEMS_PER_PAGE);
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {/* Header Block */}
@@ -5033,7 +5050,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             overflow: 'hidden',
             boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
           }}>
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{
+              overflowX: isMobile ? 'visible' : 'auto',
+              maxHeight: isMobile ? 'none' : '520px',
+              overflowY: isMobile ? 'visible' : 'auto'
+            }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
@@ -5045,7 +5066,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </tr>
                 </thead>
                 <tbody>
-                  {publicLeads.map((lead) => (
+                  {paginatedPublicLeads.map((lead) => (
                     <tr key={lead.id} className="table-row-hover" style={{ borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text)', transition: 'background 0.2s' }}>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -5102,6 +5123,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {databankTotalPages > 1 && (
+              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)' }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(databankPage - 1) * DATABANK_ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(databankPage * DATABANK_ITEMS_PER_PAGE, publicLeads.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{publicLeads.length}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button onClick={() => setDatabankPage(prev => Math.max(prev - 1, 1))} disabled={databankPage === 1} className="btn sm secondary" style={{ height: 32, width: 32, padding: 0 }}>
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {Array.from({ length: Math.min(5, databankTotalPages) }, (_, i) => {
+                      let startPage = 1;
+                      if (databankTotalPages > 5) {
+                        if (databankPage > 3) {
+                          startPage = databankPage - 2;
+                          if (startPage + 4 > databankTotalPages) {
+                            startPage = databankTotalPages - 4;
+                          }
+                        }
+                      }
+                      const pageNum = startPage + i;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setDatabankPage(pageNum)}
+                          style={{
+                            width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                            border: databankPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                            background: databankPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                            color: databankPage === pageNum ? 'white' : 'var(--color-text)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => setDatabankPage(prev => Math.min(prev + 1, databankTotalPages))} disabled={databankPage === databankTotalPages || databankTotalPages === 0} className="btn sm secondary" style={{ height: 32, width: 32, padding: 0 }}>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -7234,7 +7301,78 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {activeTab === 'workspace' && renderWorkspaceView()}
               {activeTab === 'data' && renderDataView()}
               {activeTab === 'databank' && renderDatabankView()}
-              {activeTab === 'calendar' && renderCalendarView()}
+              {activeTab === 'calendar' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Title & Sub-tabs header row */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '0.5rem',
+                    flexWrap: 'wrap',
+                    gap: '1rem',
+                    width: '100%'
+                  }}>
+                    <div>
+                      <h1 className="page-title" style={{ margin: 0 }}>{t('Lịch biểu & Chấm công')}</h1>
+                    </div>
+                    <div style={{
+                      display: 'inline-flex',
+                      background: 'var(--color-bg)',
+                      padding: '4px',
+                      borderRadius: '8px'
+                    }}>
+                      <button
+                        onClick={() => setCalendarSubTab('calendar')}
+                        style={{
+                          padding: '6px 16px',
+                          borderRadius: '6px',
+                          fontSize: '0.8125rem',
+                          fontWeight: 700,
+                          background: calendarSubTab === 'calendar' ? 'var(--color-surface)' : 'transparent',
+                          color: calendarSubTab === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                          boxShadow: calendarSubTab === 'calendar' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Calendar size={14} style={{ color: calendarSubTab === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)' }} />
+                        {t('Lịch biểu')}
+                      </button>
+                      <button
+                        onClick={() => setCalendarSubTab('attendance')}
+                        style={{
+                          padding: '6px 16px',
+                          borderRadius: '6px',
+                          fontSize: '0.8125rem',
+                          fontWeight: 700,
+                          background: calendarSubTab === 'attendance' ? 'var(--color-surface)' : 'transparent',
+                          color: calendarSubTab === 'attendance' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                          boxShadow: calendarSubTab === 'attendance' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <Clock size={14} style={{ color: calendarSubTab === 'attendance' ? 'var(--color-primary)' : 'var(--color-text-light)' }} />
+                        {t('Chấm công')}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* View body */}
+                  <div style={{ flex: 1 }}>
+                    {calendarSubTab === 'calendar' ? renderCalendarView() : <AttendancePage embedMode={true} />}
+                  </div>
+                </div>
+              )}
               {activeTab === 'fair-share' && <FairShareAudit forceActive={true} />}
               {activeTab === 'tickets' && renderTicketsView()}
               {activeTab === 'schedule' && renderScheduleView()}
