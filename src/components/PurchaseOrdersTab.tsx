@@ -260,17 +260,17 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
               </div>
 
               {/* Body: 2 Columns */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', flex: 1, minHeight: 0, backgroundColor: 'var(--color-bg)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', flex: 1, minHeight: 0, backgroundColor: 'var(--color-bg)' }}>
                 
                 {/* Left Column: Form & Selected Items */}
                 <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', borderRight: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
-                  <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     
                     {/* Settings Form */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Truck size={14} /> Nhà cung cấp <span className="text-danger">*</span>
+                        <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                          <Truck size={13} /> Nhà cung cấp <span className="text-danger">*</span>
                         </label>
                         <CustomSelect 
                           options={suppliers.map(s => ({ value: String(s.id), label: s.name }))}
@@ -281,13 +281,13 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                         />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Calendar size={14} /> Ngày dự kiến
+                        <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                          <Calendar size={13} /> Ngày dự kiến
                         </label>
                         <input 
                           type="date" 
                           className="form-input"
-                          style={{ height: '3rem', fontWeight: 600, borderRadius: '12px' }}
+                          style={{ height: '2.5rem', fontSize: '0.85rem', fontWeight: 600, borderRadius: '10px' }}
                           value={formData.order_date} 
                           onChange={e => setFormData({...formData, order_date: e.target.value})} 
                         />
@@ -295,45 +295,45 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                     </div>
 
                     {/* Selected Products */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <div className="flex items-center justify-between">
-                        <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', margin: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', margin: 0 }}>
                           Danh sách sản phẩm ({formData.items.length})
                         </label>
                       </div>
                       
                       {formData.items.length === 0 ? (
-                        <div style={{ padding: '3rem', border: '2px dashed var(--color-border)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
-                          <Package size={48} style={{ color: 'var(--color-text-muted)', opacity: 0.3, marginBottom: '1rem' }} />
-                          <p style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>Chưa có sản phẩm nào</p>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Chọn sản phẩm từ danh mục bên phải để thêm vào đơn hàng</p>
+                        <div style={{ padding: '2rem', border: '2px dashed var(--color-border)', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
+                          <Package size={36} style={{ color: 'var(--color-text-muted)', opacity: 0.3, marginBottom: '0.75rem' }} />
+                          <p style={{ fontWeight: 700, color: 'var(--color-text-light)', fontSize: '0.85rem', margin: 0 }}>Chưa có sản phẩm nào</p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0', textAlign: 'center' }}>Chọn sản phẩm từ danh mục bên phải để thêm vào đơn hàng</p>
                         </div>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           {formData.items.map((item, idx) => (
                             <motion.div 
                               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                               key={idx} 
-                              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'var(--color-bg)', borderRadius: '16px', border: '1px solid var(--color-border)' }}
+                              style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.625rem 0.875rem', backgroundColor: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border)' }}
                             >
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
-                                <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '4px' }}>{new Intl.NumberFormat('vi-VN').format(item.unit_cost)} đ</p>
+                                <p style={{ fontWeight: 650, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+                                <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)', margin: '2px 0 0' }}>{new Intl.NumberFormat('vi-VN').format(item.unit_cost)} đ</p>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--color-surface)', padding: '0.25rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                                <button type="button" className="btn-icon sm" style={{ border: 'none', background: 'transparent' }} onClick={() => handleQtyChange(idx, item.quantity - 1)}>
-                                  <MinusCircle size={16} />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', backgroundColor: 'var(--color-surface)', padding: '0.125rem 0.25rem', borderRadius: '8px', border: '1px solid var(--color-border)' }}>
+                                <button type="button" className="btn-icon sm" style={{ border: 'none', background: 'transparent', width: '20px', height: '20px' }} onClick={() => handleQtyChange(idx, item.quantity - 1)}>
+                                  <MinusCircle size={14} />
                                 </button>
-                                <span style={{ width: '24px', textAlign: 'center', fontWeight: 700, fontSize: '0.875rem' }}>{item.quantity}</span>
-                                <button type="button" className="btn-icon sm" style={{ border: 'none', background: 'transparent' }} onClick={() => handleQtyChange(idx, item.quantity + 1)}>
-                                  <PlusCircle size={16} />
+                                <span style={{ width: '20px', textAlign: 'center', fontWeight: 700, fontSize: '0.8rem' }}>{item.quantity}</span>
+                                <button type="button" className="btn-icon sm" style={{ border: 'none', background: 'transparent', width: '20px', height: '20px' }} onClick={() => handleQtyChange(idx, item.quantity + 1)}>
+                                  <PlusCircle size={14} />
                                 </button>
                               </div>
-                              <div style={{ width: '120px', textAlign: 'right', fontWeight: 800, color: 'var(--color-text)' }}>
+                              <div style={{ width: '100px', textAlign: 'right', fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text)' }}>
                                 {new Intl.NumberFormat('vi-VN').format(item.subtotal)} đ
                               </div>
-                              <button type="button" className="btn-icon" style={{ color: 'var(--color-danger)', border: 'none', background: 'transparent' }} onClick={() => handleRemoveItem(idx)}>
-                                <Trash2 size={18} />
+                              <button type="button" className="btn-icon" style={{ color: 'var(--color-danger)', border: 'none', background: 'transparent', width: '28px', height: '28px' }} onClick={() => handleRemoveItem(idx)}>
+                                <Trash2 size={16} />
                               </button>
                             </motion.div>
                           ))}
@@ -343,21 +343,20 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                   </div>
                   
                   {/* Summary Box */}
-                  <div style={{ marginTop: 'auto', padding: '2rem', borderTop: '1px solid var(--color-border)' }}>
-                    <div style={{ padding: '1.5rem 2rem', backgroundColor: '#0f172a', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff', boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.3)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <DollarSign size={24} style={{ color: '#38bdf8' }} />
+                  <div style={{ marginTop: 'auto', padding: '1.25rem 1.5rem', borderTop: '1px solid var(--color-border)' }}>
+                    <div style={{ padding: '1rem 1.5rem', backgroundColor: '#0f172a', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff', boxShadow: '0 8px 20px -5px rgba(15, 23, 42, 0.25)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <DollarSign size={20} style={{ color: '#38bdf8' }} />
                         </div>
                         <div>
-                          <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tổng thanh toán</p>
-                          <p style={{ fontSize: '1.5rem', fontWeight: 900 }}>{new Intl.NumberFormat('vi-VN').format(calculateTotal())} đ</p>
+                          <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Tổng thanh toán</p>
+                          <p style={{ fontSize: '1.25rem', fontWeight: 900, margin: '2px 0 0' }}>{new Intl.NumberFormat('vi-VN').format(calculateTotal())} đ</p>
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                         <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Hình thức</p>
-                         <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#38bdf8' }}>Công nợ / Tiền mặt</p>
-                         <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)' }}>Công nợ / Tiền mặt</p>
+                         <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Hình thức</p>
+                         <p style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8', margin: '2px 0 0' }}>Công nợ / Tiền mặt</p>
                       </div>
                     </div>
                   </div>
@@ -365,43 +364,43 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
 
                 {/* Right Column: Search & Add Products */}
                 <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
-                  <div style={{ padding: '2rem 1.5rem', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
-                    <div className="filter-search w-full" style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '0.75rem 1rem' }}>
-                      <Search size={18} className="text-muted" />
+                  <div style={{ padding: '1.25rem 1rem', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+                    <div className="filter-search w-full" style={{ background: 'var(--color-bg)', borderRadius: '10px', padding: '0.5rem 0.75rem' }}>
+                      <Search size={16} className="text-muted" />
                       <input 
                         placeholder="Tìm theo tên hoặc SKU..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{ fontSize: '0.875rem', fontWeight: 600 }}
+                        style={{ fontSize: '0.8rem', fontWeight: 600 }}
                       />
                     </div>
                   </div>
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '1rem' }}>
-                    <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', marginBottom: '1rem', paddingLeft: '0.5rem' }}>
+                  <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem' }}>
+                    <p style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', marginBottom: '0.75rem', paddingLeft: '0.25rem', margin: 0 }}>
                       Danh mục ({filteredProducts.length})
                     </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                       {filteredProducts.map(p => (
                         <button 
                           key={p.id} 
                           onClick={() => handleAddItem(p)} 
                           style={{ 
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                            padding: '1rem', borderRadius: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)',
+                            padding: '0.625rem 0.75rem', borderRadius: '10px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)',
                             cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.04)'; }}
                           onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; e.currentTarget.style.boxShadow = 'none'; }}
                         >
-                          <div style={{ flex: 1, minWidth: 0, paddingRight: '1rem' }}>
-                            <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px' }}>
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', backgroundColor: 'var(--color-bg)', color: 'var(--color-text-light)', borderRadius: '4px' }}>{p.sku || 'N/A'}</span>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tồn: {p.stock_quantity}</span>
+                          <div style={{ flex: 1, minWidth: 0, paddingRight: '0.5rem' }}>
+                            <p style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</p>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginTop: '3px' }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '1px 4px', backgroundColor: 'var(--color-bg)', color: 'var(--color-text-light)', borderRadius: '3px' }}>{p.sku || 'N/A'}</span>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tồn: {p.stock_quantity}</span>
                             </div>
                           </div>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-light)', transition: 'all 0.2s' }}>
-                            <Plus size={16} />
+                          <div style={{ width: '26px', height: '26px', borderRadius: '8px', backgroundColor: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-light)', flexShrink: 0 }}>
+                            <Plus size={14} />
                           </div>
                         </button>
                       ))}

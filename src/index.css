@@ -1022,7 +1022,10 @@ tbody tr:hover .row-actions {
 }
 
 .table-row-hover:hover {
-  background: var(--color-primary-light) !important;
+  background: rgba(189, 29, 45, 0.03) !important;
+}
+[data-theme="dark"] .table-row-hover:hover {
+  background: rgba(255, 69, 58, 0.04) !important;
 }
 
 

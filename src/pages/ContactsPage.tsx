@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,6 +72,27 @@ export const ContactsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300); // 300ms debounce
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openContactId = searchParams.get('open_contact_id');
+
+  useEffect(() => {
+    if (openContactId) {
+      const cid = Number(openContactId);
+      if (cid) {
+        api.get(`/contacts/${cid}`).then(res => {
+          if (res.data.success && res.data.data) {
+            setProfileContact(res.data.data);
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('open_contact_id');
+            setSearchParams(newParams, { replace: true });
+          }
+        }).catch(err => {
+          console.error("Error loading auto-open contact:", err);
+        });
+      }
+    }
+  }, [openContactId]);
   const [segment, setSegment] = useState('all');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);

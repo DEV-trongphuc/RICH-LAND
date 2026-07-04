@@ -451,10 +451,41 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const participantIds = (formData.participant_ids || '').split(',').filter(Boolean).map(Number);
   const participants = users.filter(u => participantIds.includes(Number(u.id)));
 
-  const filteredUsersForParticipants = users.filter(u => 
-    (u.full_name || '').toLowerCase().includes(participantsSearch.toLowerCase()) ||
-    (u.role || '').toLowerCase().includes(participantsSearch.toLowerCase())
-  );
+  const isSale = currentUser && ['sales', 'sale'].includes(currentUser.role?.toLowerCase());
+
+  const getContactFullName = (c: any) => {
+    return `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.name || t('Khách hàng');
+  };
+
+  const allowedContacts = contacts.filter(c => {
+    if (isSale) {
+      return Number(c.owner_id) === Number(currentUser?.id);
+    }
+    return true;
+  });
+
+  const approverOptions = users.filter(u => {
+    const uRole = (u.role || '').toLowerCase();
+    if (['admin', 'superadmin', 'super_admin', 'director'].includes(uRole)) {
+      return true;
+    }
+    if (isSale) {
+      return uRole === 'manager' && u.team_id && Number(u.team_id) === Number(currentUser?.team_id);
+    }
+    return uRole === 'manager';
+  });
+
+  const filteredUsersForParticipants = users.filter(u => {
+    const uRole = (u.role || '').toLowerCase();
+    const isAllowed = 
+      ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(uRole) ||
+      (currentUser && u.team_id && Number(u.team_id) === Number(currentUser.team_id));
+    
+    if (!isAllowed) return false;
+
+    return (u.full_name || '').toLowerCase().includes(participantsSearch.toLowerCase()) ||
+           (u.role || '').toLowerCase().includes(participantsSearch.toLowerCase());
+  });
 
   return createPortal(
     <>
@@ -1043,7 +1074,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               {/* Additional Contacts list */}
               {(() => {
                 const addContactIds = erpMeta.related_contact_ids || [];
-                const addContacts = contacts.filter(c => addContactIds.includes(Number(c.id)));
+                const addContacts = allowedContacts.filter(c => addContactIds.includes(Number(c.id)));
                 
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1074,9 +1105,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                                   }
                                 }}
                               >
-                                <Avatar name={c.full_name || c.name || t('Khách hàng')} src={c.avatar_url || c.avatar} size={22} />
+                                <Avatar name={getContactFullName(c)} src={c.avatar_url || c.avatar} size={22} />
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>{c.full_name || c.name}</span>
+                                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text)' }}>{getContactFullName(c)}</span>
                                   <span style={{ fontSize: '0.625rem', color: 'var(--color-text-muted)' }}>{c.phone || c.email || t('Xem hồ sơ')}</span>
                                 </div>
                               </div>
@@ -1107,9 +1138,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         multiple
                         searchable
                         showAvatars
-                        options={contacts.map(c => ({
+                        options={allowedContacts.map(c => ({
                           value: String(c.id),
-                          label: `${c.full_name || c.name} ${c.phone ? `(${c.phone})` : ''}`,
+                          label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
                           avatar: c.avatar_url || c.avatar
                         }))}
                         value={addContactIds.map(String)}
@@ -1276,7 +1307,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px' }}>
                   <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Người phê duyệt')}</label>
                   <CustomSelect
-                    options={users.filter(u => ['admin', 'superadmin', 'manager', 'director'].includes(u.role?.toLowerCase())).map(u => ({
+                    options={approverOptions.map(u => ({
                       value: String(u.id),
                       label: `${u.full_name} (${u.role})`,
                       avatar: u.avatar || u.avatar_url
@@ -1470,19 +1501,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding: '1rem 1.5rem',
-          borderTop: '1px solid var(--color-border-light)',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          background: 'var(--color-surface)',
-          zIndex: 10
-        }}>
-          <button className="btn outline" onClick={onClose} style={{ borderRadius: '20px', padding: '6px 20px' }}>
-            {t('Đóng')}
-          </button>
-        </div>
+
 
         {/* PARTICIPANTS & SUBTASKS MODAL */}
         {showParticipantsModal && (

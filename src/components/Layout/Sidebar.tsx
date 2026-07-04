@@ -141,9 +141,12 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
         // Fetch undone tasks for all roles
         const resTasks = await fetchAPI('activities&type=task&limit=100');
-        if (resTasks && resTasks.success && Array.isArray(resTasks.data)) {
-          const count = resTasks.data.filter((task: any) => task.status !== 'done').length;
-          setUndoneTasksCount(count);
+        if (resTasks && resTasks.success) {
+          const rawTasks = resTasks.data?.items || resTasks.data || [];
+          if (Array.isArray(rawTasks)) {
+            const count = rawTasks.filter((task: any) => task.status !== 'done').length;
+            setUndoneTasksCount(count);
+          }
         }
 
         if (isAdminOrManager) {

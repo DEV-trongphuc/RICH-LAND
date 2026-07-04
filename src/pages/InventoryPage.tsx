@@ -317,10 +317,10 @@ export default function InventoryPage() {
           {/* Stats Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
             {[
-              { label: 'Tổng số căn / lô', value: String(stats.totalBatches), icon: Layers, color: 'var(--color-primary)', sub: 'căn hộ / lô đất đang quản lý' },
-              { label: 'Căn còn trống (Available)', value: String(batches.filter(b => b.current_qty > 0).length), icon: CheckCircle, color: '#10b981', sub: 'sẵn sàng giao dịch' },
-              { label: 'Đã đặt chỗ / cọc (Booking)', value: String(stats.lowStock), icon: Clock, color: 'var(--color-warning)', sub: 'đang giữ chỗ/cọc tạm' },
-              { label: 'Đã bán (Sold)', value: String(stats.expiringSoon), icon: DollarSign, color: 'var(--color-danger)', sub: 'đã ký hợp đồng mua bán' },
+              { label: 'Tổng số căn / lô', value: String(batches.length), icon: Layers, color: 'var(--color-primary)', sub: 'căn hộ / lô đất đang quản lý' },
+              { label: 'Căn còn trống (Available)', value: String(batches.filter(b => b.current_qty > 5).length), icon: CheckCircle, color: '#10b981', sub: 'sẵn sàng giao dịch' },
+              { label: 'Đã đặt chỗ / cọc (Booking)', value: String(batches.filter(b => b.current_qty > 0 && b.current_qty <= 5).length), icon: Clock, color: 'var(--color-warning)', sub: 'đang giữ chỗ/cọc tạm' },
+              { label: 'Đã bán (Sold)', value: String(batches.filter(b => b.current_qty <= 0).length), icon: DollarSign, color: 'var(--color-danger)', sub: 'đã ký hợp đồng mua bán' },
             ].map((k, i) => (
               <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
                 <div className="stat-kpi__header">

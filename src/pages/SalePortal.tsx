@@ -455,6 +455,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [publicLoading, setPublicLoading] = useState(false);
   const [isClaimingLeadId, setIsClaimingLeadId] = useState<number | null>(null);
   const [publicQuota, setPublicQuota] = useState<any>(null);
+  const [claimLeadConfirmOpen, setClaimLeadConfirmOpen] = useState(false);
+  const [claimLeadPerson, setClaimLeadPerson] = useState<{ id: number; name: string } | null>(null);
 
   // Check-in state variables
   const [checkInModalOpen, setCheckInModalOpen] = useState(false);
@@ -1482,36 +1484,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
 
   const handleClaimLead = (personId: number, personName?: string) => {
-    const displayName = personName || t('Khách hàng này');
-    showConfirm({
-      title: t('Nhận Khách hàng'),
-      message: t(`Bạn có chắc chắn muốn nhận khách hàng "${displayName}" từ Kho Databank về danh sách quản lý của mình không?`),
-      confirmText: t('Nhận Khách'),
-      cancelText: t('Hủy'),
-      onConfirm: async () => {
-        setIsClaimingLeadId(personId);
-        try {
-          const json = await fetchAPI('claim_public_lead', {
-            method: 'POST',
-            body: JSON.stringify({ person_id: personId })
-          });
-          if (json.success) {
-            toast.success(json.message || t('Nhận data thành công!'));
-            fetchPublicLeads();
-            loadPortalData();
-            if (json.contact_id) {
-              handleOpenContactProfile(Number(json.contact_id));
-            }
-          } else {
-            toast.error(json.message || t('Nhận data thất bại'));
-          }
-        } catch (e: any) {
-          toast.error(t('Lỗi: ') + e.message);
-        } finally {
-          setIsClaimingLeadId(null);
+    setClaimLeadPerson({ id: personId, name: personName || t('Khách hàng này') });
+    setClaimLeadConfirmOpen(true);
+  };
+
+  const handleExecuteClaimLead = async () => {
+    if (!claimLeadPerson) return;
+    const personId = claimLeadPerson.id;
+    setIsClaimingLeadId(personId);
+    try {
+      const json = await fetchAPI('claim_public_lead', {
+        method: 'POST',
+        body: JSON.stringify({ person_id: personId })
+      });
+      if (json.success) {
+        toast.success(json.message || t('Nhận data thành công!'));
+        setClaimLeadConfirmOpen(false);
+        fetchPublicLeads();
+        loadPortalData();
+        if (json.contact_id) {
+          navigate('/contacts?open_contact_id=' + json.contact_id);
         }
+      } else {
+        toast.error(json.message || t('Nhận data thất bại'));
       }
-    });
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    } finally {
+      setIsClaimingLeadId(null);
+    }
   };
 
 
@@ -2260,46 +2261,46 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const getStatusBadge = (status: string, reportStatus?: string, aiScreenerStatus?: string, createdAt?: string, takers?: any[]) => {
     if (status === 'assigned' && reportStatus === 'pending') {
-      return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Ticket Review')}</span>;
+      return <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#4338ca', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{t('Ticket Review')}</span>;
     }
     if (reportStatus === 'approved_no_comp') {
-      return <span className="badge" style={{ background: '#dbeafe', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)' }}>{t('Lỗi không bù')}</span>;
+      return <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{t('Lỗi không bù')}</span>;
     }
     if (status === 'error' && reportStatus === 'approved') {
-      return <span className="badge warning">{t('Ticket')}</span>;
+      return <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#b91c1c', border: '1px solid rgba(239, 68, 68, 0.2)' }}>{t('Ticket')}</span>;
     }
     if (status === 'pending_approval' && aiScreenerStatus === 'pending') {
       const nowTime = new Date();
       const created = createdAt ? parseServerDate(createdAt) : nowTime;
       const diffMins = (nowTime.getTime() - created.getTime()) / 60000;
       if (diffMins >= -2 && diffMins < 5) {
-        return <span className="badge" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-border-light)' }}>{t('Chờ AI đánh giá')}</span>;
+        return <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#be185d', border: '1px solid rgba(236, 72, 153, 0.2)' }}>{t('Chờ AI đánh giá')}</span>;
       }
     }
     switch (status) {
-      case 'assigned': return <span className="badge success">{t('Đã chia')}</span>;
-      case 'compensation': return <span className="badge purple">{t('Data Bù')}</span>;
-      case 'pending_work_hours': return <span className="badge warm">{t('Chờ giờ làm')}</span>;
-      case 'error': return <span className="badge danger">{t('Ticket')}</span>;
-      case 'pending': return <span className="badge warning">{t('Chờ chia')}</span>;
-      case 'reminder': return <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.12)', color: '#ec4899' }}>{t('Nhắc lại')}</span>;
-      case 'duplicate': return <span className="badge danger">{t('Trùng lặp')}</span>;
-      case 'rule_6_month': return <span className="badge cold">{t('Quy định 6 tháng')}</span>;
-      case 'silent': return <span className="badge cold">{t('Chỉ đồng bộ')}</span>;
-      case 'blacklisted': return <span className="badge danger">{t('Blacklist')}</span>;
-      case 'pending_approval': return <span className="badge warning">{t('Tạm giữ')}</span>;
-      case 'rejected': return <span className="badge danger">{t('Dưới chuẩn')}</span>;
-      case 'fallback': return <span className="badge" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)', border: '1px solid var(--color-border-light)' }}>{t('Fallback')}</span>;
-      case 'databank_claim': return <span className="badge success">{t('Đã nhận (Kho)')}</span>;
+      case 'assigned': return <span className="badge" style={{ background: 'rgba(13, 148, 136, 0.1)', color: '#0f766e', border: '1px solid rgba(13, 148, 136, 0.2)' }}>{t('Đã chia')}</span>;
+      case 'compensation': return <span className="badge" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#6d28d9', border: '1px solid rgba(139, 92, 246, 0.2)' }}>{t('Data Bù')}</span>;
+      case 'pending_work_hours': return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#b45309', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t('Chờ giờ làm')}</span>;
+      case 'error': return <span className="badge" style={{ background: 'rgba(244, 63, 94, 0.1)', color: '#be123c', border: '1px solid rgba(244, 63, 94, 0.2)' }}>{t('Ticket')}</span>;
+      case 'pending': return <span className="badge" style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#a16207', border: '1px solid rgba(234, 179, 8, 0.2)' }}>{t('Chờ chia')}</span>;
+      case 'reminder': return <span className="badge" style={{ background: 'rgba(236, 72, 153, 0.1)', color: '#be185d', border: '1px solid rgba(236, 72, 153, 0.2)' }}>{t('Nhắc lại')}</span>;
+      case 'duplicate': return <span className="badge" style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#991b1b', border: '1px solid rgba(220, 38, 38, 0.2)' }}>{t('Trùng lặp')}</span>;
+      case 'rule_6_month': return <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#1d4ed8', border: '1px solid rgba(59, 130, 246, 0.2)' }}>{t('Quy định 6 tháng')}</span>;
+      case 'silent': return <span className="badge" style={{ background: 'rgba(79, 70, 229, 0.1)', color: '#3730a3', border: '1px solid rgba(79, 70, 229, 0.2)' }}>{t('Chỉ đồng bộ')}</span>;
+      case 'blacklisted': return <span className="badge" style={{ background: 'rgba(31, 41, 55, 0.1)', color: '#111827', border: '1px solid rgba(31, 41, 55, 0.2)' }}>{t('Blacklist')}</span>;
+      case 'pending_approval': return <span className="badge" style={{ background: 'rgba(234, 88, 12, 0.1)', color: '#c2410c', border: '1px solid rgba(234, 88, 12, 0.2)' }}>{t('Tạm giữ')}</span>;
+      case 'rejected': return <span className="badge" style={{ background: 'rgba(120, 53, 4, 0.1)', color: '#78350f', border: '1px solid rgba(120, 53, 4, 0.2)' }}>{t('Dưới chuẩn')}</span>;
+      case 'fallback': return <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#b45309', border: '1px solid rgba(245, 158, 11, 0.2)' }}>{t('Fallback')}</span>;
+      case 'databank_claim': return <span className="badge" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#047857', border: '1px solid rgba(16, 185, 129, 0.2)' }}>{t('Đã nhận (Kho)')}</span>;
       case 'released_to_kho':
       case 'databank': {
         const cnt = takers && takers.length ? takers.length : 0;
         if (cnt === 0) {
-          return <span className="badge" style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public (2/2)')}</span>;
+          return <span className="badge" style={{ background: 'rgba(16,185,129,0.1)', color: '#047857', border: '1px solid rgba(16,185,129,0.2)' }}>{t('Public (2/2)')}</span>;
         } else if (cnt >= 2) {
-          return <span className="badge" style={{ background: 'rgba(156,163,175,0.12)', color: '#9ca3af', border: '1px solid rgba(156,163,175,0.2)' }}>{t('Giới hạn (0/2)')}</span>;
+          return <span className="badge" style={{ background: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: '1px solid rgba(107, 114, 128, 0.2)' }}>{t('Giới hạn (0/2)')}</span>;
         } else {
-          return <span className="badge" style={{ background: 'rgba(59,130,246,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (1/2)`)}</span>;
+          return <span className="badge" style={{ background: 'rgba(59,130,246,0.1)', color: '#1d4ed8', border: '1px solid rgba(59,130,246,0.2)' }}>{t(`Public (1/2)`)}</span>;
         }
       }
       default: return null;
@@ -4493,23 +4494,91 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         {publicQuota && (
           <div style={{
-            display: 'flex', gap: '1.25rem', flexWrap: 'wrap',
-            background: theme === 'dark' ? 'rgba(189,29,45,0.1)' : 'rgba(189,29,45,0.05)',
-            border: '1px solid rgba(189,29,45,0.2)',
-            borderRadius: '12px', padding: '0.75rem 1.25rem', fontSize: '0.8125rem', color: '#bd1d2d',
-            alignItems: 'center', width: 'fit-content'
+            display: 'flex',
+            gap: '1rem',
+            flexWrap: 'wrap',
+            marginBottom: '1rem',
+            width: '100%'
           }}>
-            <span>
-              <strong>Hạn mức giờ:</strong> {publicQuota.claims_hour}/{publicQuota.limit_hour} lead
-            </span>
-            <div style={{ width: '1px', height: '12px', background: 'rgba(189,29,45,0.2)' }} />
-            <span>
-              <strong>Hạn mức ngày:</strong> {publicQuota.claims_day}/{publicQuota.limit_day} lead
-            </span>
-            <div style={{ width: '1px', height: '12px', background: 'rgba(189,29,45,0.2)' }} />
-            <span>
-              <strong>Hạn mức tháng:</strong> {publicQuota.claims_month}/{publicQuota.limit_month} lead
-            </span>
+            {[
+              {
+                label: t('Hạn mức giờ'),
+                value: publicQuota.claims_hour,
+                limit: publicQuota.limit_hour,
+                icon: <Clock size={14} />,
+                color: 'var(--color-primary)',
+                bg: 'rgba(189, 29, 45, 0.05)',
+                border: 'rgba(189, 29, 45, 0.15)'
+              },
+              {
+                label: t('Hạn mức ngày'),
+                value: publicQuota.claims_day,
+                limit: publicQuota.limit_day,
+                icon: <Calendar size={14} />,
+                color: '#d97706',
+                bg: 'rgba(245, 158, 11, 0.06)',
+                border: 'rgba(245, 158, 11, 0.15)'
+              },
+              {
+                label: t('Hạn mức tháng'),
+                value: publicQuota.claims_month,
+                limit: publicQuota.limit_month,
+                icon: <Layers size={14} />,
+                color: '#2563eb',
+                bg: 'rgba(37, 99, 235, 0.06)',
+                border: 'rgba(37, 99, 235, 0.15)'
+              }
+            ].map((q, idx) => {
+              const percent = Math.min(100, (q.value / q.limit) * 100);
+              return (
+                <div key={idx} style={{
+                  flex: '1 1 200px',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1rem 1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  boxShadow: 'var(--shadow-sm)',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    height: '3px',
+                    width: `${percent}%`,
+                    background: q.color,
+                    transition: 'width 0.4s ease'
+                  }} />
+
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '12px',
+                    background: q.bg,
+                    border: `1px solid ${q.border}`,
+                    color: q.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    {q.icon}
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{q.label}</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '2px' }}>
+                      <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)' }}>{q.value}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>/ {q.limit} lead</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -4540,7 +4609,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Khách hàng')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Liên hệ')}</th>
-                    <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Dự Án')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Trạng thái')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
                     <th style={{ padding: '1rem', width: 140 }}></th>
@@ -4560,20 +4628,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {lead.phone || '-'}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{lead.email || '-'}</div>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          background: 'rgba(189,29,45,0.06)',
-                          color: '#BD1D2D',
-                          border: '1px solid rgba(189,29,45,0.15)'
-                        }}>
-                          {lead.project_name || lead.project_id || t('Không xác định')}
-                        </span>
                       </td>
                       <td style={{ padding: '1rem' }}>
                         {getStatusBadge('databank', undefined, undefined, undefined, lead.takers)}
@@ -8049,6 +8103,91 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
               <button className="btn primary" onClick={() => setParticipantsModalOpen(false)}>{t('Đóng')}</button>
+            </div>
+          </div>
+        </CustomModal>
+      )}
+
+      {claimLeadConfirmOpen && (
+        <CustomModal
+          isOpen={claimLeadConfirmOpen}
+          onClose={() => !isClaimingLeadId && setClaimLeadConfirmOpen(false)}
+          title={t('Nhận Khách hàng từ Databank')}
+          width="460px"
+        >
+          <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', alignItems: 'center', textAlign: 'center' }}>
+            <div style={{
+              width: '68px',
+              height: '68px',
+              borderRadius: '24px',
+              background: 'var(--color-primary-light)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--color-primary)',
+              boxShadow: '0 8px 20px rgba(189, 29, 45, 0.15)',
+              marginBottom: '0.5rem'
+            }}>
+              <Database size={32} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.01em', margin: 0 }}>
+                {t('Xác nhận nhận khách hàng')}
+              </h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>
+                {t('Bạn có chắc chắn muốn nhận khách hàng')} <strong style={{ color: 'var(--color-primary)', fontSize: '0.95rem' }}>{claimLeadPerson?.name}</strong> {t('từ Kho Databank về danh sách quản lý cá nhân của mình?')}
+              </p>
+            </div>
+
+            <div style={{
+              width: '100%',
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '14px',
+              padding: '1rem',
+              textAlign: 'left',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.5rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Nguồn dữ liệu:')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>Kho chung Databank</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Người nhận:')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{currentUser?.name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('Mức trừ hạn mức:')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>1 lượt nhận</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', width: '100%', marginTop: '0.5rem' }}>
+              <button
+                className="btn outline"
+                onClick={() => setClaimLeadConfirmOpen(false)}
+                disabled={!!isClaimingLeadId}
+                style={{ flex: 1, height: '42px', fontWeight: 700 }}
+              >
+                {t('Hủy bỏ')}
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleExecuteClaimLead}
+                disabled={!!isClaimingLeadId}
+                style={{
+                  flex: 1,
+                  height: '42px',
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, var(--color-primary) 0%, #d32f2f 100%)',
+                  boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)'
+                }}
+              >
+                {isClaimingLeadId ? t('Đang xử lý...') : t('Nhận Khách')}
+              </button>
             </div>
           </div>
         </CustomModal>
