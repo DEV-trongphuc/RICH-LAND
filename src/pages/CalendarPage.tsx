@@ -6,9 +6,13 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
+import { useAuth } from '../contexts/AuthContext';
+import { AttendancePageInner } from './AttendancePage';
 
 export const CalendarPage: React.FC = () => {
   const { addToast } = useUIStore();
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<'calendar' | 'attendance'>('calendar');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,33 +96,83 @@ export const CalendarPage: React.FC = () => {
     <div className="page-container flex flex-col h-full overflow-hidden">
       <div className="page-header flex-shrink-0">
         <div>
-          <h1 className="page-title">Lịch biểu & Công việc</h1>
-          <p className="page-subtitle">Theo dõi các cuộc hẹn, cuộc gọi và nhiệm vụ của bạn</p>
-        </div>
-        <div className="flex gap-3">
-          <div className="flex items-center bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-1 shadow-sm">
-             <button className="btn-icon sm" onClick={prevMonth}><ChevronLeft size={18} /></button>
-             <span className="px-4 font-black capitalize" style={{ minWidth: '140px', textAlign: 'center', color: 'var(--color-text)' }}>
-               {monthName} {year}
-             </span>
-             <button className="btn-icon sm" onClick={nextMonth}><ChevronRight size={18} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <h1 className="page-title" style={{ margin: 0 }}>Lịch biểu &amp; Chấm công</h1>
+            
+            {/* Tabs for Calendar vs Attendance */}
+            <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+              <button 
+                onClick={() => setActiveTab('calendar')}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: activeTab === 'calendar' ? 'var(--color-surface)' : 'transparent',
+                  color: activeTab === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  boxShadow: activeTab === 'calendar' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                🗓️ Lịch biểu công việc
+              </button>
+              <button 
+                onClick={() => setActiveTab('attendance')}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: activeTab === 'attendance' ? 'var(--color-surface)' : 'transparent',
+                  color: activeTab === 'attendance' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  boxShadow: activeTab === 'attendance' ? 'var(--shadow-sm)' : 'none',
+                  transition: 'all 0.2s'
+                }}
+              >
+                ⏰ Chấm công &amp; Nghỉ phép
+              </button>
+            </div>
           </div>
-          <button className="btn primary"><Plus size={18} /> Thêm công việc</button>
+          <p className="page-subtitle" style={{ marginTop: '0.25rem' }}>
+            {activeTab === 'calendar' ? 'Theo dõi các cuộc hẹn, cuộc gọi và nhiệm vụ của bạn' : 'Quản lý thông tin giờ làm, bổ sung công và đăng ký nghỉ phép của bạn'}
+          </p>
         </div>
+        {activeTab === 'calendar' && (
+          <div className="flex gap-3">
+            <div className="flex items-center bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-1 shadow-sm">
+               <button className="btn-icon sm" onClick={prevMonth}><ChevronLeft size={18} /></button>
+               <span className="px-4 font-black capitalize" style={{ minWidth: '140px', textAlign: 'center', color: 'var(--color-text)' }}>
+                 {monthName} {year}
+               </span>
+               <button className="btn-icon sm" onClick={nextMonth}><ChevronRight size={18} /></button>
+            </div>
+            <button className="btn primary"><Plus size={18} /> Thêm công việc</button>
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col card-panel p-0 bg-[var(--color-surface)] border border-[var(--color-border)]">
-        <div className="grid grid-cols-7 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
-          {weekDays.map(wd => (
-            <div key={wd} className="py-3 text-center text-xs font-black uppercase tracking-widest" style={{ color: 'var(--color-text-light)' }}>
-              {wd}
-            </div>
-          ))}
+      {activeTab === 'calendar' ? (
+        <div className="flex-1 overflow-hidden flex flex-col card-panel p-0 bg-[var(--color-surface)] border border-[var(--color-border)] animate-fade">
+          <div className="grid grid-cols-7 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
+            {weekDays.map(wd => (
+              <div key={wd} className="py-3 text-center text-xs font-black uppercase tracking-widest" style={{ color: 'var(--color-text-light)' }}>
+                {wd}
+              </div>
+            ))}
+          </div>
+          <div className="flex-1 grid grid-cols-7 auto-rows-fr overflow-y-auto">
+            {days}
+          </div>
         </div>
-        <div className="flex-1 grid grid-cols-7 auto-rows-fr overflow-y-auto">
-          {days}
+      ) : (
+        <div className="flex-1 overflow-auto bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] p-0 animate-fade">
+          <AttendancePageInner />
         </div>
-      </div>
+      )}
 
       <style>{`
         .calendar-day {

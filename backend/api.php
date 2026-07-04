@@ -3189,10 +3189,30 @@ switch ($action) {
         break;
 
     case 'get_consultants':
+        $role = $decodedUser['role'] ?? '';
+        $currentUserId = (int)($decodedUser['id'] ?? 0);
+        $where = "";
+
+        if ($role === 'sale' || $role === 'sales') {
+            $tStmt = $conn->prepare("SELECT team_id FROM users WHERE id = ?");
+            $tStmt->bind_param("i", $currentUserId);
+            $tStmt->execute();
+            $tRes = $tStmt->get_result()->fetch_assoc();
+            $teamId = $tRes ? $tRes['team_id'] : null;
+            $tStmt->close();
+
+            if ($teamId) {
+                $where = " WHERE c.team_id = " . (int)$teamId;
+            } else {
+                $where = " WHERE c.id = " . $currentUserId;
+            }
+        }
+
         $res = $conn->query("
             SELECT c.*, t.name as team_name, t.branch as team_branch 
             FROM consultants c 
             LEFT JOIN teams t ON c.team_id = t.id 
+            $where
             ORDER BY c.created_at DESC
         ");
         $data = [];

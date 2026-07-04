@@ -35,7 +35,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Kho Data', href: '/data', icon: Database },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] },
-      { name: 'Lịch biểu', href: '/calendar', icon: Calendar },
+      { name: 'Lịch biểu & Chấm công', href: '/calendar', icon: Calendar },
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
@@ -58,6 +58,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Team', href: '/consultants?tab=teams', icon: Users, adminOnly: true },
       { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, adminOnly: true },
       { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, adminOnly: true },
+      { name: 'Chấm công', href: '/attendance', icon: Clock, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] },
       { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, adminOnly: true, badgeKey: 'coopSlips' }
     ]
   },

@@ -14,14 +14,34 @@ class TeamController
             respond(403, null, 'Quyền truy cập bị từ chối', false);
         }
 
+        $role = $auth['role'];
+        $uid = (int)$auth['user_id'];
+        $where = "";
+        $params = [];
+
+        if (in_array($role, ['sale', 'sales'], true)) {
+            $uStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+            $uStmt->execute([$uid]);
+            $uRow = $uStmt->fetch();
+            $teamId = $uRow ? $uRow['team_id'] : null;
+
+            if ($teamId) {
+                $where = " WHERE t.id = ?";
+                $params[] = $teamId;
+            } else {
+                $where = " WHERE 1=0";
+            }
+        }
+
         $stmt = $this->db->prepare("
             SELECT t.*, u.full_name as leader_name, 
                    (SELECT COUNT(*) FROM users WHERE team_id = t.id AND role = 'sales') as member_count 
             FROM teams t 
             LEFT JOIN users u ON t.leader_id = u.id 
+            $where
             ORDER BY t.name ASC
         ");
-        $stmt->execute();
+        $stmt->execute($params);
         respond(200, $stmt->fetchAll());
     }
 

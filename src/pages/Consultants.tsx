@@ -109,7 +109,9 @@ const ConsultantsInner = () => {
 
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const activeTab = queryParams.get('tab') || 'consultants';
+  const showAllTabs = ['admin', 'superadmin', 'super_admin', 'manager'].includes(userRole || '');
+  const activeTabRaw = queryParams.get('tab') || 'consultants';
+  const activeTab = showAllTabs ? activeTabRaw : 'consultants';
 
   const [teams, setTeams] = useState<any[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(false);
@@ -550,56 +552,58 @@ const ConsultantsInner = () => {
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '1.5rem', paddingBottom: '0.25rem' }}>
-        <button
-          onClick={() => navigate('/consultants?tab=consultants')}
-          style={{
-            padding: '0.5rem 1rem', border: 'none', background: 'transparent',
-            fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
-            color: activeTab === 'consultants' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            borderBottom: activeTab === 'consultants' ? '2px solid var(--color-primary)' : 'none',
-            transition: 'all 0.18s',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <User size={15} />
-          {t('Tư vấn viên')}
-        </button>
-        <button
-          onClick={() => navigate('/consultants?tab=teams')}
-          style={{
-            padding: '0.5rem 1rem', border: 'none', background: 'transparent',
-            fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
-            color: activeTab === 'teams' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            borderBottom: activeTab === 'teams' ? '2px solid var(--color-primary)' : 'none',
-            transition: 'all 0.18s',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <Users size={15} />
-          {t('Nhóm (Team)')}
-        </button>
-        <button
-          onClick={() => navigate('/consultants?tab=branches')}
-          style={{
-            padding: '0.5rem 1rem', border: 'none', background: 'transparent',
-            fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
-            color: activeTab === 'branches' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-            borderBottom: activeTab === 'branches' ? '2px solid var(--color-primary)' : 'none',
-            transition: 'all 0.18s',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          <Building2 size={15} />
-          {t('Chi nhánh')}
-        </button>
-      </div>
+      {showAllTabs && (
+        <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '1.5rem', paddingBottom: '0.25rem' }}>
+          <button
+            onClick={() => navigate('/consultants?tab=consultants')}
+            style={{
+              padding: '0.5rem 1rem', border: 'none', background: 'transparent',
+              fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+              color: activeTab === 'consultants' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              borderBottom: activeTab === 'consultants' ? '2px solid var(--color-primary)' : 'none',
+              transition: 'all 0.18s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <User size={15} />
+            {t('Tư vấn viên')}
+          </button>
+          <button
+            onClick={() => navigate('/consultants?tab=teams')}
+            style={{
+              padding: '0.5rem 1rem', border: 'none', background: 'transparent',
+              fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+              color: activeTab === 'teams' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              borderBottom: activeTab === 'teams' ? '2px solid var(--color-primary)' : 'none',
+              transition: 'all 0.18s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Users size={15} />
+            {t('Nhóm (Team)')}
+          </button>
+          <button
+            onClick={() => navigate('/consultants?tab=branches')}
+            style={{
+              padding: '0.5rem 1rem', border: 'none', background: 'transparent',
+              fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+              color: activeTab === 'branches' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              borderBottom: activeTab === 'branches' ? '2px solid var(--color-primary)' : 'none',
+              transition: 'all 0.18s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <Building2 size={15} />
+            {t('Chi nhánh')}
+          </button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       {activeTab === 'consultants' && (

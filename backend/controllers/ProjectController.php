@@ -28,15 +28,26 @@ class ProjectController {
     }
 
     public function index(array $auth): void {
+        $role = $auth['role'];
+        $uid = (int)$auth['user_id'];
+        
+        $where = "WHERE p.tenant_id = ?";
+        $params = [$auth['tenant_id']];
+        
+        if (in_array($role, ['sale', 'sales'], true)) {
+            $where .= " AND p.id IN (SELECT project_id FROM project_roster WHERE user_id = ?)";
+            $params[] = $uid;
+        }
+
         $stmt = $this->db->prepare("
             SELECT p.*,
                    (SELECT COUNT(*) FROM project_roster WHERE project_id = p.id) as roster_count,
                    (SELECT COUNT(*) FROM project_documents WHERE project_id = p.id) as doc_count
             FROM projects p
-            WHERE p.tenant_id = ? 
+            $where
             ORDER BY p.created_at DESC
         ");
-        $stmt->execute([$auth['tenant_id']]);
+        $stmt->execute($params);
         $projects = $stmt->fetchAll();
         respond(200, $projects, 'Lấy danh sách dự án thành công');
     }

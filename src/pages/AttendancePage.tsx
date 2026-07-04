@@ -13,7 +13,7 @@ import toast from 'react-hot-toast';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 
-const AttendancePageInner = () => {
+export const AttendancePageInner = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const isSales = user?.role === 'sale';

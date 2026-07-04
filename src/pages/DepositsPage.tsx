@@ -98,26 +98,7 @@ export default function DepositsPage() {
         setContacts(filteredContacts);
       }
       if (resProj.success) {
-        const allProjects = resProj.data || [];
-        if (user?.role === 'sale') {
-          const filteredProjs = [];
-          for (const p of allProjects) {
-            try {
-              const rosterRes = await fetchAPI(`projects/${p.id}/roster`);
-              if (rosterRes.success && Array.isArray(rosterRes.data)) {
-                const isMember = rosterRes.data.some((m: any) => String(m.user_id) === String(user.id));
-                if (isMember) {
-                  filteredProjs.push(p);
-                }
-              }
-            } catch (err) {
-              filteredProjs.push(p);
-            }
-          }
-          setProjects(filteredProjs);
-        } else {
-          setProjects(allProjects);
-        }
+        setProjects(resProj.data || []);
       }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');

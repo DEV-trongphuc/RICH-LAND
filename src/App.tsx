@@ -86,8 +86,8 @@ const AppTabs = () => {
   }, [currentPath, visitedPaths]);
 
   // Route protection mapping
-  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi', '/attendance'];
-  const userPaths = ['/', '/workspace', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share', '/support-tickets'];
+  const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi'];
+  const userPaths = ['/', '/workspace', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share', '/support-tickets', '/attendance'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
