@@ -752,6 +752,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     { name: 'Đợt 1 - Cọc giữ chỗ', amount: '' }
   ]);
   const [projectsList, setProjectsList] = useState<any[]>([]);
+  const [companiesList, setCompaniesList] = useState<any[]>([]);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
@@ -1413,6 +1414,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       try {
         const projectsRes = await api.get('/projects');
         setProjectsList(projectsRes.data.data || projectsRes.data || []);
+      } catch (err) {}
+
+      // Fetch Companies
+      try {
+        const companiesRes = await api.get('/companies?limit=2000');
+        setCompaniesList(companiesRes.data.data?.items || companiesRes.data.data || []);
       } catch (err) {}
 
       // Fetch Deposits instead of Deals
@@ -2787,11 +2794,40 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             }} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Công ty</label>
-                            <input className="form-input" placeholder="Tên công ty" value={formData.company_name || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, company_name: val }));
-                            }} />
+                            <label className="form-label">Công ty (Liên kết)</label>
+                            <CustomSelect
+                              options={[
+                                { value: '', label: '— Không chọn —' },
+                                ...companiesList.map(c => ({ value: String(c.id), label: c.name }))
+                              ]}
+                              value={String(formData.company_id || '')}
+                              onChange={val => {
+                                const selectedId = val ? Number(val) : null;
+                                const selectedComp = companiesList.find(c => Number(c.id) === selectedId);
+                                setFormData((prev: any) => ({
+                                  ...prev,
+                                  company_id: selectedId,
+                                  company_name: selectedComp ? selectedComp.name : ''
+                                }));
+                              }}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Dự án Quan tâm (Liên kết)</label>
+                            <CustomSelect
+                              options={[
+                                { value: '', label: '— Không chọn —' },
+                                ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
+                              ]}
+                              value={String(formData.project_id || '')}
+                              onChange={val => {
+                                const selectedId = val ? Number(val) : null;
+                                setFormData((prev: any) => ({
+                                  ...prev,
+                                  project_id: selectedId
+                                }));
+                              }}
+                            />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Phòng ban</label>

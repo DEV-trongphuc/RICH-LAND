@@ -356,7 +356,7 @@ class ContactController {
         }
 
         $fields = [
-            'company_id','owner_id','first_name','last_name','email','phone',
+            'company_id','project_id','owner_id','first_name','last_name','email','phone',
             'mobile','job_title','department','source','status','notes',
             'birthday','address','city','ward',
             'expected_revenue','win_probability','last_contact','stage_id',
