@@ -1668,8 +1668,9 @@ try {
     // TEST 63: Roster checkin status restriction on client claims
     // ─────────────────────────────────────────────────────────────────
     // Temporarily delete check-in for sales to test block
+    require_once __DIR__ . '/db_connect.php';
     $db->prepare("DELETE FROM check_ins WHERE user_id = ? AND check_in_date = ?")->execute([$saleUserId, date('Y-m-d')]);
-    $checkInResult = checkConsultantGates($db, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
+    $checkInResult = checkConsultantGates($conn, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
     $gateFailedNoCheckin = (strpos($checkInResult, 'Failed Gate 2') !== false);
     // Restore checkin
     $db->prepare("INSERT INTO check_ins (user_id, check_in_date, status) VALUES (?, ?, 'approved')")->execute([$saleUserId, date('Y-m-d')]);
@@ -1685,7 +1686,7 @@ try {
     // TEST 65: Vacation Mode backpressure logic
     // ─────────────────────────────────────────────────────────────────
     $db->prepare("UPDATE users SET vacation_mode = 1 WHERE id = ?")->execute([$saleUserId]);
-    $gateResVacation = checkConsultantGates($db, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
+    $gateResVacation = checkConsultantGates($conn, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
     $gateFailedVacation = (strpos($gateResVacation, 'Failed Gate 3') !== false);
     $db->prepare("UPDATE users SET vacation_mode = 0 WHERE id = ?")->execute([$saleUserId]);
     assertTest("TEST 65: Vacation Mode backpressure logic", $gateFailedVacation, "Vacation mode check blocked: " . ($gateFailedVacation ? 'Yes' : 'No'));
@@ -1694,7 +1695,7 @@ try {
     // TEST 66: Leave period validation logic
     // ─────────────────────────────────────────────────────────────────
     $db->prepare("UPDATE users SET status = 'leave' WHERE id = ?")->execute([$saleUserId]);
-    $gateResLeave = checkConsultantGates($db, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
+    $gateResLeave = checkConsultantGates($conn, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
     $gateFailedLeave = (strpos($gateResLeave, 'Failed Gate 3') !== false);
     $db->prepare("UPDATE users SET status = 'active' WHERE id = ?")->execute([$saleUserId]);
     assertTest("TEST 66: Leave period validation logic", $gateFailedLeave, "Leave period check blocked: " . ($gateFailedLeave ? 'Yes' : 'No'));
@@ -1702,7 +1703,7 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // TEST 67: Roster Campaign matching logic
     // ─────────────────────────────────────────────────────────────────
-    $gateResRoster = checkConsultantGates($db, $saleUserId, ['campaign_name' => 'INVALID_CAMPAIGN_CODE']);
+    $gateResRoster = checkConsultantGates($conn, $saleUserId, ['campaign_name' => 'INVALID_CAMPAIGN_CODE']);
     // Should fail Gate 1 because campaign isn't matched
     $gateFailedRoster = (strpos($gateResRoster, 'Failed Gate 1') !== false);
     assertTest("TEST 67: Roster Campaign matching logic", $gateFailedRoster, "Roster Campaign check blocked: " . ($gateFailedRoster ? 'Yes' : 'No'));
