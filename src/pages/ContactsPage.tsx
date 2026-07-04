@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -129,6 +129,21 @@ export const ContactsPage: React.FC = () => {
   const { user } = useAuth();
   const isSale = user?.role === 'sale';
   const { addToast, showConfirm, closeConfirm } = useUIStore();
+  const [uncontactedCount, setUncontactedCount] = useState(() => {
+    return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
+  });
+
+  useEffect(() => {
+    const handleUncontactedCountChanged = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setUncontactedCount(Number(detail) || 0);
+    };
+
+    window.addEventListener('uncontacted-count-changed', handleUncontactedCountChanged);
+    return () => {
+      window.removeEventListener('uncontacted-count-changed', handleUncontactedCountChanged);
+    };
+  }, []);
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -518,8 +533,34 @@ export const ContactsPage: React.FC = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Liên hệ & Khách hàng</h1>
-          <p className="page-subtitle">{loading ? '...' : `${total} liên hệ`}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h1 className="page-title" style={{ margin: 0 }}>Liên hệ & Khách hàng</h1>
+            {user?.role === 'sale' && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: uncontactedCount >= 5 
+                  ? 'rgba(239, 68, 68, 0.1)' 
+                  : 'var(--color-bg-light)',
+                border: uncontactedCount >= 5 
+                  ? '1px solid rgba(239, 68, 68, 0.25)' 
+                  : '1px solid var(--color-border)',
+                color: uncontactedCount >= 5 
+                  ? 'var(--color-danger)' 
+                  : 'var(--color-text)',
+                borderRadius: '20px',
+                padding: '4px 12px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+              }}>
+                <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
+                <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
+              </div>
+            )}
+          </div>
+          <p className="page-subtitle" style={{ marginTop: '4px' }}>{loading ? '...' : `${total} liên hệ`}</p>
         </div>
         <div className="flex gap-2">
           {!isSale && (

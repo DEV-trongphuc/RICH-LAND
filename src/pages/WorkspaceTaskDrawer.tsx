@@ -1656,6 +1656,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             </div>
           </div>
+        )}
       </div>
   );
 

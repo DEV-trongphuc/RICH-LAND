@@ -477,27 +477,23 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
               alignItems: 'center',
               gap: '6px',
               background: uncontactedCount >= 5 
-                ? 'rgba(239, 68, 68, 0.12)' 
-                : uncontactedCount >= 4 
-                  ? 'rgba(245, 158, 11, 0.12)' 
-                  : 'rgba(16, 185, 129, 0.08)',
+                ? 'rgba(239, 68, 68, 0.1)' 
+                : 'var(--color-bg-light)',
               border: uncontactedCount >= 5 
-                ? '1px solid rgba(239, 68, 68, 0.3)' 
-                : uncontactedCount >= 4 
-                  ? '1px solid rgba(245, 158, 11, 0.3)' 
-                  : '1px solid rgba(16, 185, 129, 0.2)',
+                ? '1px solid rgba(239, 68, 68, 0.25)' 
+                : '1px solid var(--color-border)',
               color: uncontactedCount >= 5 
                 ? 'var(--color-danger)' 
-                : uncontactedCount >= 4 
-                  ? 'var(--color-warning)' 
-                  : 'var(--color-success)',
-              borderRadius: '8px',
-              padding: '4px 10px',
-              height: '36px',
-              fontSize: '0.72rem',
-              fontWeight: 700
+                : 'var(--color-text)',
+              borderRadius: '20px',
+              padding: '4px 12px',
+              height: '32px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
             }}>
-              <span>Hạn mức: {uncontactedCount}/5 lead Chưa XĐ</span>
+              <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
+              <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
             </div>
 
             {/* Receiving Data Toggle */}

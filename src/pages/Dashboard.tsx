@@ -1508,7 +1508,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Lead nhận')}</th>
                     <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Tỷ lệ nhận')}</th>
                     <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Quá hạn/Thu hồi')}</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Chưa XĐ (Van ôm)')}</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Chưa tương tác (Van ôm)')}</th>
                     <th style={{ padding: '8px 12px' }}>{t('Dòng chảy (Flow)')}</th>
                   </tr>
                 </thead>
