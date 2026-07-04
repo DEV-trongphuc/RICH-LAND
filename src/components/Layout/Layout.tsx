@@ -26,6 +26,7 @@ import {
   RefreshCw, 
   ChevronDown, 
   ChevronUp, 
+  ChevronRight, 
   Copy, 
   HelpCircle, 
   CheckCircle2, 
@@ -431,46 +432,117 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         isOpen={isUnifiedInboxOpen}
         onClose={() => setIsUnifiedInboxOpen(false)}
         title={t("Hộp thư Phê duyệt & Tồn đọng")}
-        width={480}
+        width={500}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', padding: '0.5rem 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0.25rem 0' }}>
+          <style>{`
+            .unified-inbox-card {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 14px 18px;
+              background: var(--color-surface);
+              border: 1px solid var(--color-border-light);
+              border-radius: 14px;
+              cursor: pointer;
+              transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.015);
+            }
+            .unified-inbox-card:hover {
+              transform: translateY(-2px);
+              border-color: var(--hover-color) !important;
+              background: var(--hover-bg) !important;
+              box-shadow: 0 10px 25px -8px var(--hover-shadow) !important;
+            }
+            .unified-inbox-icon {
+              width: 38px;
+              height: 38px;
+              border-radius: 10px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: all 0.25s ease;
+            }
+            .unified-inbox-card:hover .unified-inbox-icon {
+              transform: scale(1.1) rotate(2deg);
+            }
+            .unified-inbox-card:hover .chevron-arrow {
+              transform: translateX(4px);
+              color: var(--hover-color) !important;
+            }
+          `}</style>
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '14px', 
+            marginBottom: '1.5rem', 
+            background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(244, 63, 94, 0.05) 100%)', 
+            padding: '16px', 
+            borderRadius: '16px', 
+            border: '1px solid rgba(189, 29, 45, 0.08)' 
+          }}>
             <div style={{ 
               width: 48, 
               height: 48, 
-              borderRadius: '50%', 
-              background: 'rgba(189, 29, 45, 0.08)', 
+              borderRadius: '12px', 
+              background: 'linear-gradient(135deg, #BD1D2D 0%, #ef4444 100%)', 
               display: 'flex', 
               justifyContent: 'center', 
               alignItems: 'center', 
-              color: 'var(--color-primary)'
+              color: '#fff',
+              boxShadow: '0 8px 20px -6px rgba(189, 29, 45, 0.5)'
             }}>
               <ShieldAlert size={24} className="animate-pulse" />
             </div>
             <div>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>
                 {t("Yêu cầu cần phê duyệt!")}
               </h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                {t("Bạn có các nhiệm vụ phê duyệt đang tồn đọng:")}
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0', fontWeight: 500 }}>
+                {t("Bạn đang có các nhiệm vụ phê duyệt tồn đọng:")}
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '1.5rem' }}>
             {/* 1. Ticket báo lỗi */}
             {pendingTicketsCount > 0 && (
               <div 
                 onClick={() => { setIsUnifiedInboxOpen(false); navigate('/tickets'); }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-danger)'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.02)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+                className="unified-inbox-card"
+                style={{ 
+                  '--hover-color': '#ef4444',
+                  '--hover-bg': 'rgba(239, 68, 68, 0.03)',
+                  '--hover-shadow': 'rgba(239, 68, 68, 0.15)'
+                } as any}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <TicketIcon size={16} style={{ color: 'var(--color-danger)' }} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Ticket báo lỗi data")}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="unified-inbox-icon" style={{ background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444' }}>
+                    <TicketIcon size={18} />
+                  </div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Ticket báo lỗi data")}</span>
                 </div>
-                <span className="badge danger" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700 }}>{pendingTicketsCount} {t('chờ duyệt')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="badge danger" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', boxShadow: '0 2px 6px rgba(239, 68, 68, 0.12)' }}>{pendingTicketsCount} {t('chờ duyệt')}</span>
+                  
+                  <div style={{
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    color: '#fff',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s'
+                  }}>
+                    <span>{t('Duyệt ngay')}</span>
+                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -478,15 +550,39 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             {heldLeadsCount > 0 && (
               <div 
                 onClick={() => { setIsUnifiedInboxOpen(false); navigate('/gatekeeper'); }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-warning)'; e.currentTarget.style.background = 'rgba(245, 158, 11, 0.02)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+                className="unified-inbox-card"
+                style={{ 
+                  '--hover-color': '#f59e0b',
+                  '--hover-bg': 'rgba(245, 158, 11, 0.03)',
+                  '--hover-shadow': 'rgba(245, 158, 11, 0.15)'
+                } as any}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <AlertTriangle size={16} style={{ color: '#d97706' }} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Data tạm giữ (AI Lọc)")}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="unified-inbox-icon" style={{ background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b' }}>
+                    <AlertTriangle size={18} />
+                  </div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Data tạm giữ (AI Lọc)")}</span>
                 </div>
-                <span className="badge warning" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>{heldLeadsCount} {t('chờ duyệt')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="badge warning" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', boxShadow: '0 2px 6px rgba(245, 158, 11, 0.12)' }}>{heldLeadsCount} {t('chờ duyệt')}</span>
+                  
+                  <div style={{
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    color: '#fff',
+                    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                    boxShadow: '0 4px 12px rgba(245, 158, 11, 0.25)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s'
+                  }}>
+                    <span>{t('Duyệt ngay')}</span>
+                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -494,15 +590,39 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             {pendingCheckInsCount > 0 && (
               <div 
                 onClick={() => { setIsUnifiedInboxOpen(false); navigate('/attendance'); }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'rgba(189, 29, 45, 0.02)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+                className="unified-inbox-card"
+                style={{ 
+                  '--hover-color': '#BD1D2D',
+                  '--hover-bg': 'rgba(189, 29, 45, 0.03)',
+                  '--hover-shadow': 'rgba(189, 29, 45, 0.15)'
+                } as any}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Clock size={16} style={{ color: 'var(--color-primary)' }} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Yêu cầu chấm công bổ sung")}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="unified-inbox-icon" style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D' }}>
+                    <Clock size={18} />
+                  </div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Yêu cầu chấm công bổ sung")}</span>
                 </div>
-                <span className="badge" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700, background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)' }}>{pendingCheckInsCount} {t('chờ duyệt')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', boxShadow: '0 2px 6px rgba(189, 29, 45, 0.12)' }}>{pendingCheckInsCount} {t('chờ duyệt')}</span>
+                  
+                  <div style={{
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    color: '#fff',
+                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                    boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s'
+                  }}>
+                    <span>{t('Duyệt ngay')}</span>
+                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -510,15 +630,39 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             {pendingCoopsCount > 0 && (
               <div 
                 onClick={() => { setIsUnifiedInboxOpen(false); navigate('/cooperation-slips'); }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-success)'; e.currentTarget.style.background = 'rgba(16, 185, 129, 0.02)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+                className="unified-inbox-card"
+                style={{ 
+                  '--hover-color': '#10b981',
+                  '--hover-bg': 'rgba(16, 185, 129, 0.03)',
+                  '--hover-shadow': 'rgba(16, 185, 129, 0.15)'
+                } as any}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Scale size={16} style={{ color: 'var(--color-success)' }} />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Phê duyệt ký hợp tác chia hoa hồng")}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="unified-inbox-icon" style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
+                    <Scale size={18} />
+                  </div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Phê duyệt ký hợp tác chia hoa hồng")}</span>
                 </div>
-                <span className="badge success" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700 }}>{pendingCoopsCount} {t('chờ duyệt')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="badge success" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', boxShadow: '0 2px 6px rgba(16, 185, 129, 0.12)' }}>{pendingCoopsCount} {t('chờ duyệt')}</span>
+                  
+                  <div style={{
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    fontWeight: 700,
+                    fontSize: '0.72rem',
+                    color: '#fff',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    transition: 'all 0.2s'
+                  }}>
+                    <span>{t('Duyệt ngay')}</span>
+                    <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -527,7 +671,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <button 
               onClick={() => setIsUnifiedInboxOpen(false)}
               className="btn outline sm"
-              style={{ borderRadius: '8px', padding: '8px 16px', fontWeight: 600 }}
+              style={{ borderRadius: '8px', padding: '8px 18px', fontWeight: 600, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
             >
               {t("Đóng")}
             </button>
