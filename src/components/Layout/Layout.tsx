@@ -20,6 +20,7 @@ import {
   Clock, 
   ShieldAlert, 
   AlertTriangle, 
+  Scale,
   Settings, 
   LogIn, 
   RefreshCw, 
@@ -46,9 +47,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(0);
-  const [isTicketModalOpen, setIsTicketModalOpen] = useState<boolean>(false);
   const [heldLeadsCount, setHeldLeadsCount] = useState<number>(0);
-  const [isHeldModalOpen, setIsHeldModalOpen] = useState<boolean>(false);
+  const [pendingCheckInsCount, setPendingCheckInsCount] = useState<number>(0);
+  const [pendingCoopsCount, setPendingCoopsCount] = useState<number>(0);
+  const [isUnifiedInboxOpen, setIsUnifiedInboxOpen] = useState<boolean>(false);
+  
+  // Sales pending signatures state
+  const [salesPendingSignCount, setSalesPendingSignCount] = useState<number>(0);
+  const [isSalesSignModalOpen, setIsSalesSignModalOpen] = useState<boolean>(false);
 
   // Hover states for notification buttons
   const [isTicketViewHovered, setIsTicketViewHovered] = useState(false);
@@ -248,37 +254,51 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'superadmin') {
-      fetchAPI('get_reports&status=pending&date=all&pageSize=1')
-        .then(res => {
-          if (res.success) {
-            const count = res.total_count ?? 0;
-            if (count > 0) {
-              setPendingTicketsCount(count);
-              setIsTicketModalOpen(true);
-            }
-          }
-        })
-        .catch(err => console.error('Error loading ticket notification:', err));
+      let ticketsCount = 0;
+      let heldCount = 0;
+      let checkinsCount = 0;
+      let coopsCount = 0;
 
-      fetchAPI('get_held_leads&pageSize=1&date=all')
+      const p1 = fetchAPI('get_reports&status=pending&date=all&pageSize=1')
+        .then(res => { if (res.success) ticketsCount = res.total_count ?? 0; });
+      const p2 = fetchAPI('get_held_leads&pageSize=1&date=all')
+        .then(res => { if (res.success) heldCount = res.total_count ?? 0; });
+      const p3 = fetchAPI('check-ins&status=pending_approval')
+        .then(res => { if (res.success && Array.isArray(res.data)) checkinsCount = res.data.length; });
+      const p4 = fetchAPI('cooperation-slips')
         .then(res => {
-          if (res.success) {
-            const total = res.total_count ?? 0;
-            if (total > 0) {
-              setHeldLeadsCount(total);
-              setIsHeldModalOpen(true);
+          if (res.success && Array.isArray(res.data)) {
+            coopsCount = res.data.filter((c: any) => c.status === 'pending_manager_approval').length;
+          }
+        });
+
+      Promise.all([p1, p2, p3, p4]).then(() => {
+        setPendingTicketsCount(ticketsCount);
+        setHeldLeadsCount(heldCount);
+        setPendingCheckInsCount(checkinsCount);
+        setPendingCoopsCount(coopsCount);
+        
+        if (ticketsCount > 0 || heldCount > 0 || checkinsCount > 0 || coopsCount > 0) {
+          setIsUnifiedInboxOpen(true);
+        }
+      }).catch(err => console.error('Error loading unified approvals:', err));
+    } else if (user?.role === 'sale' || user?.role === 'sales') {
+      fetchAPI('cooperation-slips')
+        .then(res => {
+          if (res.success && Array.isArray(res.data)) {
+            const pendingSign = res.data.filter((c: any) => 
+              (c.status === 'pending_signatures' || c.status === 'approved_pending_signatures') &&
+              c.shareholders?.some((sh: any) => sh.user_id === user?.id && !sh.signed)
+            );
+            setSalesPendingSignCount(pendingSign.length);
+            if (pendingSign.length > 0) {
+              setIsSalesSignModalOpen(true);
             }
           }
         })
-        .catch(err => console.error('Error loading held leads notification:', err));
+        .catch(err => console.error('Error loading sales coops:', err));
     }
   }, [user]);
-
-  const handleViewTickets = () => {
-    setIsTicketModalOpen(false);
-    setIsHeldModalOpen(false);
-    navigate('/tickets');
-  };
 
   const getActivityIcon = (item: any) => {
     const size = 18;
@@ -406,96 +426,120 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         />
       )}
 
-      {/* Ticket Notification Modal */}
+      {/* Unified Approvals Inbox Modal */}
       <CustomModal
-        isOpen={isTicketModalOpen}
-        onClose={() => setIsTicketModalOpen(false)}
-        title={t("Thông báo Ticket mới")}
-        width={420}
+        isOpen={isUnifiedInboxOpen}
+        onClose={() => setIsUnifiedInboxOpen(false)}
+        title={t("Hộp thư Phê duyệt & Tồn đọng")}
+        width={480}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1rem 0.5rem' }}>
-          <div style={{ 
-            width: 56, 
-            height: 56, 
-            borderRadius: '50%', 
-            background: 'rgba(239, 68, 68, 0.08)', 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            marginBottom: '1rem',
-            color: 'var(--color-danger)'
-          }}>
-            <TicketIcon size={28} />
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '0.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem' }}>
+            <div style={{ 
+              width: 48, 
+              height: 48, 
+              borderRadius: '50%', 
+              background: 'rgba(189, 29, 45, 0.08)', 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              color: 'var(--color-primary)'
+            }}>
+              <ShieldAlert size={24} className="animate-pulse" />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                {t("Yêu cầu cần phê duyệt!")}
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                {t("Bạn có các nhiệm vụ phê duyệt đang tồn đọng:")}
+              </p>
+            </div>
           </div>
-          
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-            {t("Yêu cầu cần xử lý!")}
-          </h3>
-          
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5', marginBottom: '1.5rem' }}>
-            {t("Hệ thống ghi nhận đang có")} <strong style={{ color: 'var(--color-danger)', fontSize: '1rem', fontWeight: 'bold' }}>{pendingTicketsCount}</strong> {t("ticket báo lỗi dữ liệu từ các Tư vấn viên đang chờ bạn phê duyệt đền bù.")}
-          </p>
 
-          <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
+            {/* 1. Ticket báo lỗi */}
+            {pendingTicketsCount > 0 && (
+              <div 
+                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/tickets'); }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-danger)'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <TicketIcon size={16} style={{ color: 'var(--color-danger)' }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Ticket báo lỗi data")}</span>
+                </div>
+                <span className="badge danger" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700 }}>{pendingTicketsCount} {t('chờ duyệt')}</span>
+              </div>
+            )}
+
+            {/* 2. AI Pre-screener */}
+            {heldLeadsCount > 0 && (
+              <div 
+                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/gatekeeper'); }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-warning)'; e.currentTarget.style.background = 'rgba(245, 158, 11, 0.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <AlertTriangle size={16} style={{ color: '#d97706' }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Data tạm giữ (AI Lọc)")}</span>
+                </div>
+                <span className="badge warning" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700, background: 'rgba(245, 158, 11, 0.1)', color: '#d97706' }}>{heldLeadsCount} {t('chờ duyệt')}</span>
+              </div>
+            )}
+
+            {/* 3. Chấm công */}
+            {pendingCheckInsCount > 0 && (
+              <div 
+                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/attendance'); }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.background = 'rgba(189, 29, 45, 0.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Clock size={16} style={{ color: 'var(--color-primary)' }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Yêu cầu chấm công bổ sung")}</span>
+                </div>
+                <span className="badge" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700, background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)' }}>{pendingCheckInsCount} {t('chờ duyệt')}</span>
+              </div>
+            )}
+
+            {/* 4. Ký hợp tác */}
+            {pendingCoopsCount > 0 && (
+              <div 
+                onClick={() => { setIsUnifiedInboxOpen(false); navigate('/cooperation-slips'); }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-success)'; e.currentTarget.style.background = 'rgba(16, 185, 129, 0.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.background = 'var(--color-bg)'; }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Scale size={16} style={{ color: 'var(--color-success)' }} />
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{t("Phê duyệt ký hợp tác chia hoa hồng")}</span>
+                </div>
+                <span className="badge success" style={{ borderRadius: '12px', padding: '2px 8px', fontWeight: 700 }}>{pendingCoopsCount} {t('chờ duyệt')}</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
             <button 
-              onClick={() => setIsTicketModalOpen(false)}
-              onMouseEnter={() => setIsTicketLaterHovered(true)}
-              onMouseLeave={() => setIsTicketLaterHovered(false)}
-              style={{ 
-                flex: 1, 
-                height: 42, 
-                fontWeight: 600, 
-                borderRadius: '9999px', 
-                border: isTicketLaterHovered ? '1.5px solid var(--color-primary-hover)' : '1.5px solid var(--color-primary)', 
-                color: isTicketLaterHovered ? 'var(--color-primary-hover)' : 'var(--color-primary)', 
-                background: isTicketLaterHovered ? 'var(--color-primary-light)' : 'transparent',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                transform: isTicketLaterHovered ? 'translateY(-1px)' : 'none'
-              }}
+              onClick={() => setIsUnifiedInboxOpen(false)}
+              className="btn outline sm"
+              style={{ borderRadius: '8px', padding: '8px 16px', fontWeight: 600 }}
             >
-              {t("Để sau")}
-            </button>
-            <button 
-              onClick={handleViewTickets}
-              onMouseEnter={() => setIsTicketViewHovered(true)}
-              onMouseLeave={() => setIsTicketViewHovered(false)}
-              style={{ 
-                flex: 1, 
-                height: 42, 
-                fontWeight: 600, 
-                borderRadius: '9999px',
-                background: isTicketViewHovered 
-                  ? 'linear-gradient(135deg, #b59dfb 0%, #8a0f1b 100%)' 
-                  : 'linear-gradient(135deg, #a78bfa 0%, #a31422 100%)',
-                border: 'none',
-                color: '#fff',
-                boxShadow: isTicketViewHovered 
-                  ? '0 6px 20px rgba(163, 20, 34, 0.4)' 
-                  : '0 4px 12px rgba(163, 20, 34, 0.25)',
-                display: 'inline-flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                gap: 6,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                transform: isTicketViewHovered ? 'translateY(-1px)' : 'none'
-              }}
-            >
-              {t("Xem ngay")}
+              {t("Đóng")}
             </button>
           </div>
         </div>
       </CustomModal>
 
-      {/* Held Leads Notification Modal */}
+      {/* Sales Pending Signatures Modal */}
       <CustomModal
-        isOpen={isHeldModalOpen}
-        onClose={() => setIsHeldModalOpen(false)}
-        title={getTranslation("Thông báo Data tạm giữ", "Thông báo Data tạm giữ")}
+        isOpen={isSalesSignModalOpen}
+        onClose={() => setIsSalesSignModalOpen(false)}
+        title={t("Hợp đồng / Phiếu hợp tác chờ ký")}
         width={420}
       >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '1rem 0.5rem' }}>
@@ -503,78 +547,50 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             width: 56, 
             height: 56, 
             borderRadius: '50%', 
-            background: 'rgba(163, 20, 34, 0.08)', 
+            background: 'rgba(16, 185, 129, 0.08)', 
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center', 
             marginBottom: '1rem',
-            color: 'var(--color-primary)'
+            color: 'var(--color-success)'
           }}>
-            <ShieldAlert size={28} />
+            <Scale size={28} />
           </div>
           
           <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-            {t("Yêu cầu cần xử lý!")}
+            {t("Bạn có hợp đồng chờ ký!")}
           </h3>
           
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: '1.5', marginBottom: '1.5rem' }}>
-            {t("Hệ thống ghi nhận đang có")} <strong style={{ color: 'var(--color-primary)', fontSize: '1rem', fontWeight: 'bold' }}>{heldLeadsCount}</strong> {getTranslation("dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.", "dữ liệu bị tạm giữ bởi AI Pre-screener đang chờ bạn phê duyệt.")}
+            {t("Hệ thống ghi nhận bạn đang có")} <strong style={{ color: 'var(--color-success)', fontSize: '1.05rem', fontWeight: 'bold' }}>{salesPendingSignCount}</strong> {t("phiếu hợp tác phân chia hoa hồng dự án đang chờ bạn ký xác nhận.")}
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
             <button 
-              onClick={() => setIsHeldModalOpen(false)}
-              onMouseEnter={() => setIsHeldLaterHovered(true)}
-              onMouseLeave={() => setIsHeldLaterHovered(false)}
-              style={{ 
-                flex: 1, 
-                height: 42, 
-                fontWeight: 600, 
-                borderRadius: '9999px', 
-                border: isHeldLaterHovered ? '1.5px solid var(--color-primary-hover)' : '1.5px solid var(--color-primary)', 
-                color: isHeldLaterHovered ? 'var(--color-primary-hover)' : 'var(--color-primary)', 
-                background: isHeldLaterHovered ? 'var(--color-primary-light)' : 'transparent',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                transform: isHeldLaterHovered ? 'translateY(-1px)' : 'none'
-              }}
+              onClick={() => setIsSalesSignModalOpen(false)}
+              className="btn outline"
+              style={{ flex: 1, borderRadius: '9999px', height: 42, fontWeight: 600 }}
             >
               {t("Để sau")}
             </button>
             <button 
               onClick={() => {
-                setIsHeldModalOpen(false);
-                setIsTicketModalOpen(false);
-                navigate('/gatekeeper');
+                setIsSalesSignModalOpen(false);
+                navigate('/cooperation-slips');
               }}
-              onMouseEnter={() => setIsHeldViewHovered(true)}
-              onMouseLeave={() => setIsHeldViewHovered(false)}
+              className="btn primary"
               style={{ 
                 flex: 1, 
+                borderRadius: '9999px', 
                 height: 42, 
-                fontWeight: 600, 
-                borderRadius: '9999px',
-                background: isHeldViewHovered 
-                  ? 'linear-gradient(135deg, #b59dfb 0%, #8a0f1b 100%)' 
-                  : 'linear-gradient(135deg, #a78bfa 0%, #a31422 100%)',
-                border: 'none',
-                color: '#fff',
-                boxShadow: isHeldViewHovered 
-                  ? '0 6px 20px rgba(163, 20, 34, 0.4)' 
-                  : '0 4px 12px rgba(163, 20, 34, 0.25)',
-                display: 'inline-flex', 
-                justifyContent: 'center', 
-                alignItems: 'center', 
-                gap: 6,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease-in-out',
-                transform: isHeldViewHovered ? 'translateY(-1px)' : 'none'
+                fontWeight: 600,
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                borderColor: '#10b981',
+                color: 'white',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
               }}
             >
-              {t("Xem ngay")}
+              {t("Ký ngay")}
             </button>
           </div>
         </div>

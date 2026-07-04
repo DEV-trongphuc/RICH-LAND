@@ -206,6 +206,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const isAllowedToReport = data.is_allowed_to_report !== false;
 
   const [portalVacationMode, setPortalVacationMode] = useState(false);
+  const [pendingCoopsCount, setPendingCoopsCount] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [isMobile, setIsMobile] = useState(false);
 
@@ -1088,12 +1089,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
+  const loadCoopsPendingSign = async () => {
+    if (!token) return;
+    try {
+      const res = await fetchAPI('cooperation-slips');
+      if (res.success && Array.isArray(res.data)) {
+        const pending = res.data.filter((c: any) => 
+          (c.status === 'pending_signatures' || c.status === 'approved_pending_signatures') &&
+          c.shareholders?.some((sh: any) => sh.user_id === user?.id && !sh.signed)
+        );
+        setPendingCoopsCount(pending.length);
+      }
+    } catch (e) {
+      console.error("Error loading pending coops for signing:", e);
+    }
+  };
+
   // Fetch portal data when token is valid
   const loadPortalData = async () => {
     if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
     setLoading(true);
     fetchPortalTasks();
     fetchPortalCoops();
+    loadCoopsPendingSign();
 
 
     loadCheckInStatus();
@@ -2258,6 +2276,75 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               transition: 'background 0.2s'
             }}>
               <span>Xem ngay</span>
+              <ChevronRight size={16} />
+            </div>
+          </motion.div>
+        )}
+
+        {pendingCoopsCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: 'rgba(16, 185, 129, 0.05)',
+              border: '1px solid rgba(16, 185, 129, 0.25)',
+              borderRadius: '16px',
+              padding: '1.25rem 1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 20px -6px rgba(16, 185, 129, 0.08)',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              marginBottom: '0.75rem'
+            }}
+            whileHover={{ 
+              scale: 1.005, 
+              borderColor: 'rgba(16, 185, 129, 0.45)',
+              boxShadow: '0 8px 30px -6px rgba(16, 185, 129, 0.15)'
+            }}
+            onClick={() => {
+              navigate('/cooperation-slips');
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.12)',
+                color: '#10b981',
+                width: 44,
+                height: 44,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: 'inset 0 2px 4px rgba(16, 185, 129, 0.06)'
+              }}>
+                <Scale size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', display: 'block', letterSpacing: '-0.01em' }}>
+                  Yêu cầu ký phiếu hợp tác chia hoa hồng
+                </span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4, display: 'block' }}>
+                  Bạn đang có <strong style={{ color: '#10b981', fontSize: '0.95rem', fontWeight: 800 }}>{pendingCoopsCount}</strong> phiếu hợp tác hoa hồng đang chờ ký xác nhận. Vui lòng ký ngay.
+                </span>
+              </div>
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              color: '#10b981', 
+              fontWeight: 800, 
+              fontSize: '0.875rem',
+              background: 'rgba(16, 185, 129, 0.08)',
+              padding: '8px 16px',
+              borderRadius: '10px',
+              transition: 'background 0.2s'
+            }}>
+              <span>Ký ngay</span>
               <ChevronRight size={16} />
             </div>
           </motion.div>

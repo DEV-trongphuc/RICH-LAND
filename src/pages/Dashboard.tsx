@@ -56,6 +56,10 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [stats, setStats] = useState<any>(null);
   const [recentLogs, setRecentLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingTicketsCount, setPendingTicketsCount] = useState(0);
+  const [heldLeadsCount, setHeldLeadsCount] = useState(0);
+  const [pendingCheckInsCount, setPendingCheckInsCount] = useState(0);
+  const [pendingCoopsCount, setPendingCoopsCount] = useState(0);
   const [showWarRoom, setShowWarRoom] = useState(false);
   const [aiScreenerEnabled, setAiScreenerEnabled] = useState<boolean>(() => {
     const cached = localStorage.getItem('ai_screener_enabled');
@@ -256,6 +260,31 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       return () => abortController.abort(); // Cleanup: hủy khi component unmount hoặc dateFilter đổi
     }
   }, [dateFilter, isActive]);
+
+  useEffect(() => {
+    if (isActive) {
+      fetchAPI('get_reports&status=pending&date=all&pageSize=1')
+        .then(res => { if (res.success) setPendingTicketsCount(res.total_count ?? 0); })
+        .catch(e => console.error(e));
+        
+      fetchAPI('get_held_leads&pageSize=1&date=all')
+        .then(res => { if (res.success) setHeldLeadsCount(res.total_count ?? 0); })
+        .catch(e => console.error(e));
+
+      fetchAPI('check-ins&status=pending_approval')
+        .then(res => { if (res.success && Array.isArray(res.data)) setPendingCheckInsCount(res.data.length); })
+        .catch(e => console.error(e));
+
+      fetchAPI('cooperation-slips')
+        .then(res => {
+          if (res.success && Array.isArray(res.data)) {
+            const pending = res.data.filter((c: any) => c.status === 'pending_manager_approval');
+            setPendingCoopsCount(pending.length);
+          }
+        })
+        .catch(e => console.error(e));
+    }
+  }, [isActive]);
 
   useEffect(() => {
     if (isActive) {
@@ -636,6 +665,82 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           </button>
         </div>
       </div>
+
+      {/* Visual Pending Approvals Center */}
+      {(pendingTicketsCount > 0 || heldLeadsCount > 0 || pendingCheckInsCount > 0 || pendingCoopsCount > 0) && (
+        <div
+          className="card"
+          style={{
+            padding: '1.25rem 1.5rem',
+            marginBottom: '1.25rem',
+            background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.04) 0%, rgba(244, 63, 94, 0.04) 100%)',
+            border: '1.5px solid rgba(189, 29, 45, 0.15)',
+            borderRadius: '16px',
+            animation: 'slideUp 0.4s ease-out both',
+            boxShadow: 'var(--shadow-sm)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <ShieldAlert size={22} className="animate-pulse" />
+              </div>
+              <div>
+                <h4 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', margin: 0 }}>
+                  {t('Hộp thư Phê duyệt & Tồn đọng')}
+                </h4>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                  {t('Hệ thống phát hiện đang có các yêu cầu chờ bạn xem xét và phê duyệt:')}
+                </p>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+              {pendingTicketsCount > 0 && (
+                <button
+                  onClick={() => navigate('/tickets')}
+                  className="btn outline sm"
+                  style={{ borderRadius: '20px', borderColor: 'var(--color-danger)', color: 'var(--color-danger)', background: 'rgba(239, 68, 68, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                >
+                  <TicketIcon size={12} />
+                  <span>{pendingTicketsCount} {t('Ticket lỗi')}</span>
+                </button>
+              )}
+              {heldLeadsCount > 0 && (
+                <button
+                  onClick={() => navigate('/gatekeeper')}
+                  className="btn outline sm"
+                  style={{ borderRadius: '20px', borderColor: 'var(--color-warning)', color: '#d97706', background: 'rgba(245, 158, 11, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                >
+                  <Filter size={12} />
+                  <span>{heldLeadsCount} {t('Lọc AI')}</span>
+                </button>
+              )}
+              {pendingCheckInsCount > 0 && (
+                <button
+                  onClick={() => navigate('/attendance')}
+                  className="btn outline sm"
+                  style={{ borderRadius: '20px', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'rgba(189, 29, 45, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                >
+                  <Clock size={12} />
+                  <span>{pendingCheckInsCount} {t('Chấm công')}</span>
+                </button>
+              )}
+              {pendingCoopsCount > 0 && (
+                <button
+                  onClick={() => navigate('/cooperation-slips')}
+                  className="btn outline sm"
+                  style={{ borderRadius: '20px', borderColor: 'var(--color-success)', color: 'var(--color-success)', background: 'rgba(16, 185, 129, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                >
+                  <Scale size={12} />
+                  <span>{pendingCoopsCount} {t('Hợp tác')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* AI Pre-screener evaluation strip */}
       {aiScreenerEnabled && (
         loading && !stats ? (
