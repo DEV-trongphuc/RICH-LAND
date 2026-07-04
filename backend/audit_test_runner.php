@@ -1669,12 +1669,12 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // Temporarily delete check-in for sales to test block
     require_once __DIR__ . '/db_connect.php';
-    $db->prepare("DELETE FROM check_ins WHERE user_id = ? AND check_in_date = ?")->execute([$saleUserId, date('Y-m-d')]);
+    $db->prepare("DELETE FROM check_ins WHERE user_id = ?")->execute([$saleUserId]);
     $checkInResult = checkConsultantGates($conn, $saleUserId, ['campaign_name' => 'RLR_' . $suffix]);
     $gateFailedNoCheckin = (strpos($checkInResult, 'Failed Gate 2') !== false);
     // Restore checkin
     $db->prepare("INSERT INTO check_ins (user_id, check_in_date, status) VALUES (?, ?, 'approved')")->execute([$saleUserId, date('Y-m-d')]);
-    assertTest("TEST 63: Roster checkin status restriction on client claims", $gateFailedNoCheckin, "Check-in check blocked: " . ($gateFailedNoCheckin ? 'Yes' : 'No'));
+    assertTest("TEST 63: Roster checkin status restriction on client claims", $gateFailedNoCheckin, "Check-in check blocked: " . ($gateFailedNoCheckin ? 'Yes' : 'No') . ", Resp: " . json_encode($checkInResult));
 
     // ─────────────────────────────────────────────────────────────────
     // TEST 64: Daily checkin boundary logic (Sunday checkin check)
@@ -1729,14 +1729,18 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // TEST 71: Close lead check gate logic (blocked if 0 activities)
     // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id = ?")->execute([$personalContactId]);
     $resClose = $callApi("contacts/$personalContactId", 'PUT', ['pipeline_status' => 'dong_deal'], $salesToken);
     $closeBlocked = isset($resClose['success']) && $resClose['success'] === false;
-    assertTest("TEST 71: Close lead check gate logic (blocked if 0 activities)", $closeBlocked, "Close deal blocked: " . ($closeBlocked ? 'Yes' : 'No'));
+    // Revert stage
+    $db->prepare("UPDATE contacts SET pipeline_status = 'chua_xac_dinh', status = 'lead' WHERE id = ?")->execute([$personalContactId]);
+    assertTest("TEST 71: Close lead check gate logic (blocked if 0 activities)", $closeBlocked, "Close deal blocked: " . ($closeBlocked ? 'Yes' : 'No') . ", Resp: " . json_encode($resClose));
 
     // ─────────────────────────────────────────────────────────────────
     // TEST 72: Close lead check gate bypass logic (succeeds if >= 1 call)
     // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("INSERT INTO activities (tenant_id, user_id, type, subject, status, related_type, related_id) VALUES (?, ?, 'call', 'Cuộc gọi kiểm thử', 'done', 'contact', ?)")
        ->execute([$tenantId, $saleUserId, $personalContactId]);
     $callActId = $db->lastInsertId();
@@ -1745,11 +1749,12 @@ try {
     // Revert stage
     $db->prepare("UPDATE contacts SET pipeline_status = 'chua_xac_dinh', status = 'lead' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$callActId]);
-    assertTest("TEST 72: Close lead check gate bypass logic (succeeds if >= 1 call)", $closeSucceededCall, "Close deal succeeded with call: " . ($closeSucceededCall ? 'Yes' : 'No'));
+    assertTest("TEST 72: Close lead check gate bypass logic (succeeds if >= 1 call)", $closeSucceededCall, "Close deal succeeded with call: " . ($closeSucceededCall ? 'Yes' : 'No') . ", Resp: " . json_encode($resCloseCall));
 
     // ─────────────────────────────────────────────────────────────────
     // TEST 73: Close lead check gate bypass logic (succeeds if >= 1 meeting)
     // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("INSERT INTO activities (tenant_id, user_id, type, subject, status, related_type, related_id) VALUES (?, ?, 'meeting', 'Họp kiểm thử', 'done', 'contact', ?)")
        ->execute([$tenantId, $saleUserId, $personalContactId]);
     $meetActId = $db->lastInsertId();
@@ -1758,11 +1763,12 @@ try {
     // Revert stage
     $db->prepare("UPDATE contacts SET pipeline_status = 'chua_xac_dinh', status = 'lead' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$meetActId]);
-    assertTest("TEST 73: Close lead check gate bypass logic (succeeds if >= 1 meeting)", $closeSucceededMeet, "Close deal succeeded with meeting: " . ($closeSucceededMeet ? 'Yes' : 'No'));
+    assertTest("TEST 73: Close lead check gate bypass logic (succeeds if >= 1 meeting)", $closeSucceededMeet, "Close deal succeeded with meeting: " . ($closeSucceededMeet ? 'Yes' : 'No') . ", Resp: " . json_encode($resCloseMeet));
 
     // ─────────────────────────────────────────────────────────────────
     // TEST 74: Close lead check gate bypass logic (succeeds if >= 1 email)
     // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("INSERT INTO activities (tenant_id, user_id, type, subject, status, related_type, related_id) VALUES (?, ?, 'email', 'Email kiểm thử', 'done', 'contact', ?)")
        ->execute([$tenantId, $saleUserId, $personalContactId]);
     $emailActId = $db->lastInsertId();
@@ -1771,11 +1777,12 @@ try {
     // Revert stage
     $db->prepare("UPDATE contacts SET pipeline_status = 'chua_xac_dinh', status = 'lead' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$emailActId]);
-    assertTest("TEST 74: Close lead check gate bypass logic (succeeds if >= 1 email)", $closeSucceededEmail, "Close deal succeeded with email: " . ($closeSucceededEmail ? 'Yes' : 'No'));
+    assertTest("TEST 74: Close lead check gate bypass logic (succeeds if >= 1 email)", $closeSucceededEmail, "Close deal succeeded with email: " . ($closeSucceededEmail ? 'Yes' : 'No') . ", Resp: " . json_encode($resCloseEmail));
 
     // ─────────────────────────────────────────────────────────────────
     // TEST 75: Close lead check gate bypass logic (succeeds if >= 1 note)
     // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("INSERT INTO activities (tenant_id, user_id, type, subject, status, related_type, related_id) VALUES (?, ?, 'note', 'Ghi chú kiểm thử', 'done', 'contact', ?)")
        ->execute([$tenantId, $saleUserId, $personalContactId]);
     $noteActId = $db->lastInsertId();
@@ -1784,7 +1791,7 @@ try {
     // Revert stage
     $db->prepare("UPDATE contacts SET pipeline_status = 'chua_xac_dinh', status = 'lead' WHERE id = ?")->execute([$personalContactId]);
     $db->prepare("DELETE FROM activities WHERE id = ?")->execute([$noteActId]);
-    assertTest("TEST 75: Close lead check gate bypass logic (succeeds if >= 1 note)", $closeSucceededNote, "Close deal succeeded with note: " . ($closeSucceededNote ? 'Yes' : 'No'));
+    assertTest("TEST 75: Close lead check gate bypass logic (succeeds if >= 1 note)", $closeSucceededNote, "Close deal succeeded with note: " . ($closeSucceededNote ? 'Yes' : 'No') . ", Resp: " . json_encode($resCloseNote));
 
     // ─────────────────────────────────────────────────────────────────
     // TEST 76: Unit switching old deal stage change
