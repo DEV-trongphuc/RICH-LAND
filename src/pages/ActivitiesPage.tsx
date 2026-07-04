@@ -252,22 +252,24 @@ export const ActivitiesPage: React.FC = () => {
         <div className="filter-search" style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
           <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
           <input placeholder="Tìm nội dung hoạt động..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingRight: '2rem' }} />
-          <AnimatePresence>
-            {search && (
-              <motion.button 
-                initial={{ opacity: 0, scale: 0.8 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.15 }}
-                className="btn-icon-bare" 
-                onClick={() => setSearch('')} 
-                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', padding: 4 }}
-                title="Xóa tìm kiếm"
-              >
-                <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+            <AnimatePresence>
+              {search && (
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0.8 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  exit={{ opacity: 0, scale: 0.8 }}
+                  transition={{ duration: 0.15 }}
+                  className="btn-icon-bare" 
+                  onClick={() => setSearch('')} 
+                  style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Xóa tìm kiếm"
+                >
+                  <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Quick filter chips */}

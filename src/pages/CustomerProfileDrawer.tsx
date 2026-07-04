@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -822,6 +822,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false);
   const [showApproverDropdown, setShowApproverDropdown] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
   const [newNote, setNewNote] = useState('');
@@ -2487,11 +2488,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     const tabGroups = [
                       {
                         title: 'Thông tin & Nhật ký',
-                        tabs: ['info', 'tags', 'scoring', 'notes', 'timeline']
+                        tabs: ['info', 'tags', 'notes', 'tasks', 'timeline', 'scoring']
                       },
                       {
-                        title: 'Giao dịch & Công việc',
-                        tabs: ['cooperation', 'tasks', 'docs', 'deals', 'quotes', 'invoices', 'expenses']
+                        title: 'Giao dịch & Tài liệu',
+                        tabs: ['cooperation', 'docs', 'deals', 'quotes', 'invoices', 'expenses']
                       },
                       {
                         title: 'Nghiệp vụ & Hỗ trợ',
@@ -2500,7 +2501,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     ];
 
                     return tabGroups.map((group, groupIdx) => {
-                      const allowedTabs = TABS.filter(tab => group.tabs.includes(tab.id) && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
+                      const allowedTabs = group.tabs
+                        .map(id => TABS.find(tab => tab.id === id))
+                        .filter((tab): tab is any => !!tab && (isOwnerOrAdmin || (tab.id !== 'quotes' && tab.id !== 'expenses')));
                       if (allowedTabs.length === 0) return null;
 
                       return (
@@ -2521,7 +2524,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               key={tab.id}
                               className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
                               onClick={() => setActiveTab(tab.id)}
-                              style={{ padding: '0.5rem 0.75rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
+                              style={{ padding: '2px 0.75rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {tab.icon}
@@ -2547,7 +2550,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               )}
                               {tab.id === 'cooperation' && coopSlip && (coopSlip.status === 'pending_manager_approval' || coopSlip.shareholders?.some((sh: any) => !sh.signed)) && (
                                 <span style={{
-                                  background: 'var(--color-danger)',
+                                  background: '#f59e0b',
                                   color: 'white',
                                   fontSize: '0.675rem',
                                   fontWeight: 700,
@@ -3012,6 +3015,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             let statusTitle = 'Chưa xác định';
                             let statusDesc = 'Phiếu hợp tác đang trong quá trình xử lý.';
                             let badgeClass = 'warning';
+                            let iconBg = 'var(--color-bg-light)';
+                            let iconBorder = '1px solid var(--color-border-light)';
 
                             if (isPendingSignatures) {
                               bg = 'linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, rgba(245, 158, 11, 0.08) 100%)';
@@ -3021,6 +3026,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               statusTitle = 'Đang chờ ký';
                               statusDesc = 'Đang chờ các thành viên liên quan ký xác nhận tỷ lệ phân chia.';
                               badgeClass = 'warning';
+                              iconBg = 'rgba(245, 158, 11, 0.08)';
+                              iconBorder = '1px solid rgba(245, 158, 11, 0.25)';
                             } else if (status === 'approved') {
                               bg = 'linear-gradient(135deg, rgba(16, 185, 129, 0.04) 0%, rgba(16, 185, 129, 0.08) 100%)';
                               border = '1px solid rgba(16, 185, 129, 0.15)';
@@ -3029,6 +3036,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               statusTitle = 'Đã phê duyệt';
                               statusDesc = 'Phiếu hợp tác đã được xác nhận hiệu lực & hoa hồng.';
                               badgeClass = 'success';
+                              iconBg = 'rgba(16, 185, 129, 0.08)';
+                              iconBorder = '1px solid rgba(16, 185, 129, 0.25)';
                             } else if (status === 'pending_manager_approval') {
                               bg = 'linear-gradient(135deg, rgba(245, 158, 11, 0.04) 0%, rgba(245, 158, 11, 0.08) 100%)';
                               border = '1px solid rgba(245, 158, 11, 0.2)';
@@ -3037,6 +3046,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               statusTitle = 'Chờ phê duyệt';
                               statusDesc = 'Đang chờ Quản lý hoặc Giám đốc kinh doanh duyệt.';
                               badgeClass = 'warning';
+                              iconBg = 'rgba(245, 158, 11, 0.08)';
+                              iconBorder = '1px solid rgba(245, 158, 11, 0.25)';
                             } else if (status === 'rejected') {
                               bg = 'linear-gradient(135deg, rgba(239, 68, 68, 0.04) 0%, rgba(239, 68, 68, 0.08) 100%)';
                               border = '1px solid rgba(239, 68, 68, 0.15)';
@@ -3045,6 +3056,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               statusTitle = 'Bị từ chối';
                               statusDesc = 'Phiếu hợp tác bị từ chối phê duyệt.';
                               badgeClass = 'danger';
+                              iconBg = 'rgba(239, 68, 68, 0.08)';
+                              iconBorder = '1px solid rgba(239, 68, 68, 0.25)';
                             } else {
                               bg = 'linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(99, 102, 241, 0.08) 100%)';
                               border = '1px solid rgba(99, 102, 241, 0.15)';
@@ -3053,6 +3066,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               statusTitle = 'Chờ ký xác nhận';
                               statusDesc = 'Đang chờ các thành viên liên quan ký xác nhận.';
                               badgeClass = 'info';
+                              iconBg = 'rgba(99, 102, 241, 0.08)';
+                              iconBorder = '1px solid rgba(99, 102, 241, 0.25)';
                             }
 
                             return (
@@ -3076,8 +3091,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     width: '36px',
                                     height: '36px',
                                     borderRadius: '10px',
-                                    background: 'var(--color-bg-light)',
-                                    border: '1px solid var(--color-border-light)',
+                                    background: iconBg,
+                                    border: iconBorder,
                                     boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)'
                                   }}>
                                     {statusIcon}
@@ -3427,11 +3442,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {activeTab === 'timeline' && (
                     <div className="animate-fade">
                       <div className="flex-col-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)', gap: '12px' }}>
-                        <div>
+                        <div style={{ flexShrink: 0 }}>
                           <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Nhật ký tương tác</h3>
                           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Lưu vết toàn bộ quá trình chăm sóc khách hàng</p>
                         </div>
-                        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: '100%', width: '100%', paddingBottom: '2px', flexShrink: 0 }}>
+                        <div className="no-scrollbar" style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: '100%', width: 'auto', paddingBottom: '2px', flexShrink: 0 }}>
                           <button className="btn outline sm" onClick={() => setShowCallLogger(true)} style={{ color: '#3b82f6', borderColor: '#3b82f630', background: '#3b82f608', fontWeight: 600 }}><Phone size={14} /> Log Call</button>
                           <button className="btn outline sm" onClick={() => setShowActivityModal(true)} style={{ color: '#BD1D2D', borderColor: '#BD1D2D30', background: '#BD1D2D08', fontWeight: 600 }}><Mail size={14} /> Email</button>
                           <button className="btn outline sm" onClick={() => {
@@ -5060,6 +5075,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <label className="form-label">Người thực hiện</label>
                   <CustomSelect
                     showAvatars={true}
+                    searchable={true}
                     options={[
                       { value: '', label: 'Chưa giao cho ai' },
                       ...users.map(u => ({
@@ -5498,6 +5514,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 setShowApproverDropdown(!showApproverDropdown);
                                 setShowAssigneeDropdown(false);
                                 setShowParticipantDropdown(false);
+                                setUserSearch('');
                               }}
                             >
                               <Avatar src={approver?.avatar_url} name={approver?.full_name || 'Chọn người duyệt...'} size={22} />
@@ -5506,21 +5523,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </span>
                             </div>
                             {showApproverDropdown && (
-                              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
-                                {users.map((u: any) => (
-                                  <div 
-                                    key={u.id} 
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
-                                    className="hover:bg-bg"
-                                    onClick={() => {
-                                      handleUpdateTaskDetail({ approver_id: Number(u.id) });
-                                      setShowApproverDropdown(false);
-                                    }}
-                                  >
-                                    <Avatar src={u.avatar_url} name={u.full_name} size={20} />
-                                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text)' }}>{u.full_name}</span>
-                                  </div>
-                                ))}
+                              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 220, display: 'flex', flexDirection: 'column', marginTop: 4 }}>
+                                <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-bg-light)', flexShrink: 0, borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
+                                  <Search size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                  <input 
+                                    type="text" 
+                                    placeholder="Tìm kiếm..." 
+                                    value={userSearch} 
+                                    onChange={e => setUserSearch(e.target.value)} 
+                                    style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.75rem', width: '100%', padding: 0 }} 
+                                  />
+                                  {userSearch && (
+                                    <X size={12} style={{ color: 'var(--color-text-muted)', cursor: 'pointer' }} onClick={() => setUserSearch('')} />
+                                  )}
+                                </div>
+                                <div style={{ overflowY: 'auto', flex: 1, maxHeight: 180 }}>
+                                  {users.filter((u: any) => u.full_name.toLowerCase().includes(userSearch.toLowerCase())).map((u: any) => (
+                                    <div 
+                                      key={u.id} 
+                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
+                                      className="hover:bg-bg"
+                                      onClick={() => {
+                                        handleUpdateTaskDetail({ approver_id: Number(u.id) });
+                                        setShowApproverDropdown(false);
+                                      }}
+                                    >
+                                      <Avatar src={u.avatar_url} name={u.full_name} size={20} />
+                                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text)' }}>{u.full_name}</span>
+                                    </div>
+                                  ))}
+                                  {users.filter((u: any) => u.full_name.toLowerCase().includes(userSearch.toLowerCase())).length === 0 && (
+                                    <div style={{ padding: '12px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Không tìm thấy nhân sự</div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -5542,6 +5577,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               setShowAssigneeDropdown(!showAssigneeDropdown);
                               setShowParticipantDropdown(false);
                               setShowApproverDropdown(false);
+                              setUserSearch('');
                             }}
                           >
                             <Avatar src={assignee?.avatar_url} name={assignee?.full_name || 'Chọn người thực hiện...'} size={22} />
@@ -5550,21 +5586,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </span>
                           </div>
                           {showAssigneeDropdown && (
-                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
-                              {users.map((u: any) => (
-                                <div 
-                                  key={u.id} 
-                                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
-                                  className="hover:bg-bg"
-                                  onClick={() => {
-                                    handleUpdateTaskDetail({ user_id: Number(u.id) });
-                                    setShowAssigneeDropdown(false);
-                                  }}
-                                >
-                                  <Avatar src={u.avatar_url} name={u.full_name} size={20} />
-                                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text)' }}>{u.full_name}</span>
-                                </div>
-                              ))}
+                            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 220, display: 'flex', flexDirection: 'column', marginTop: 4 }}>
+                              <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-bg-light)', flexShrink: 0, borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
+                                <Search size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                <input 
+                                  type="text" 
+                                  placeholder="Tìm kiếm..." 
+                                  value={userSearch} 
+                                  onChange={e => setUserSearch(e.target.value)} 
+                                  style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.75rem', width: '100%', padding: 0 }} 
+                                />
+                                {userSearch && (
+                                  <X size={12} style={{ color: 'var(--color-text-muted)', cursor: 'pointer' }} onClick={() => setUserSearch('')} />
+                                )}
+                              </div>
+                              <div style={{ overflowY: 'auto', flex: 1, maxHeight: 180 }}>
+                                {users.filter((u: any) => u.full_name.toLowerCase().includes(userSearch.toLowerCase())).map((u: any) => (
+                                  <div 
+                                    key={u.id} 
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
+                                    className="hover:bg-bg"
+                                    onClick={() => {
+                                      handleUpdateTaskDetail({ user_id: Number(u.id) });
+                                      setShowAssigneeDropdown(false);
+                                    }}
+                                  >
+                                    <Avatar src={u.avatar_url} name={u.full_name} size={20} />
+                                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text)' }}>{u.full_name}</span>
+                                  </div>
+                                ))}
+                                {users.filter((u: any) => u.full_name.toLowerCase().includes(userSearch.toLowerCase())).length === 0 && (
+                                  <div style={{ padding: '12px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Không tìm thấy nhân sự</div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -5621,28 +5675,47 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   setShowParticipantDropdown(!showParticipantDropdown);
                                   setShowAssigneeDropdown(false);
                                   setShowApproverDropdown(false);
+                                  setUserSearch('');
                                 }}
                               >
                                 <Plus size={14} style={{ color: 'var(--color-primary)' }} />
                                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-primary)' }}>Thêm người liên quan</span>
                               </div>
                               {showParticipantDropdown && (
-                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 180, overflowY: 'auto', marginTop: 4 }}>
-                                  {availableUsersToAdd.map((u: any) => (
-                                    <div 
-                                      key={u.id} 
-                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
-                                      className="hover:bg-bg"
-                                      onClick={() => {
-                                        const current = [...currentParticipantIds, String(u.id)];
-                                        handleUpdateTaskDetail({ participant_ids: current.join(',') });
-                                        setShowParticipantDropdown(false);
-                                      }}
-                                    >
-                                      <Avatar src={u.avatar_url} name={u.full_name} size={18} />
-                                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{u.full_name}</span>
-                                    </div>
-                                  ))}
+                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 1200, maxHeight: 220, display: 'flex', flexDirection: 'column', marginTop: 4 }}>
+                                  <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-bg-light)', flexShrink: 0, borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
+                                    <Search size={12} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                                    <input 
+                                      type="text" 
+                                      placeholder="Tìm kiếm..." 
+                                      value={userSearch} 
+                                      onChange={e => setUserSearch(e.target.value)} 
+                                      style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.75rem', width: '100%', padding: 0 }} 
+                                    />
+                                    {userSearch && (
+                                      <X size={12} style={{ color: 'var(--color-text-muted)', cursor: 'pointer' }} onClick={() => setUserSearch('')} />
+                                    )}
+                                  </div>
+                                  <div style={{ overflowY: 'auto', flex: 1, maxHeight: 180 }}>
+                                    {availableUsersToAdd.filter((u: any) => u.full_name.toLowerCase().includes(userSearch.toLowerCase())).map((u: any) => (
+                                      <div 
+                                        key={u.id} 
+                                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', cursor: 'pointer', transition: 'background 0.2s' }}
+                                        className="hover:bg-bg"
+                                        onClick={() => {
+                                          const current = [...currentParticipantIds, String(u.id)];
+                                          handleUpdateTaskDetail({ participant_ids: current.join(',') });
+                                          setShowParticipantDropdown(false);
+                                        }}
+                                      >
+                                        <Avatar src={u.avatar_url} name={u.full_name} size={18} />
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--color-text)' }}>{u.full_name}</span>
+                                      </div>
+                                    ))}
+                                    {availableUsersToAdd.filter((u: any) => u.full_name.toLowerCase().includes(userSearch.toLowerCase())).length === 0 && (
+                                      <div style={{ padding: '12px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>Không tìm thấy nhân sự</div>
+                                    )}
+                                  </div>
                                 </div>
                               )}
                             </div>

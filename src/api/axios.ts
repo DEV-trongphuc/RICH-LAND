@@ -21,22 +21,59 @@ const mockAdapter = (config: any): Promise<any> => {
       ];
     } else if (url.includes('/contacts')) {
       const companyId = config.params?.company_id;
+      const search = config.params?.search;
+      const status = config.params?.status;
+      const source = config.params?.source;
+      const ownerId = config.params?.owner_id;
+      const projectId = config.params?.project_id;
+      const tag = config.params?.tag;
+
       let items = state.contacts;
       if (companyId) items = items.filter((c: any) => String(c.company_id) === String(companyId));
+      if (status) items = items.filter((c: any) => c.status === status);
+      if (source) items = items.filter((c: any) => c.source === source);
+      if (ownerId) items = items.filter((c: any) => String(c.owner_id) === String(ownerId));
+      if (projectId) items = items.filter((c: any) => String(c.project_id) === String(projectId));
+      if (tag) items = items.filter((c: any) => (c.tags || '').split(',').includes(tag));
+      if (search) {
+        const s = search.toLowerCase();
+        items = items.filter((c: any) => 
+          (c.first_name && c.first_name.toLowerCase().includes(s)) ||
+          (c.last_name && c.last_name.toLowerCase().includes(s)) ||
+          (c.phone && c.phone.toLowerCase().includes(s)) ||
+          (c.email && c.email.toLowerCase().includes(s))
+        );
+      }
       responseData = { items, total: items.length };
     } else if (url.includes('/users')) {
       responseData = state.users;
     } else if (url.includes('/deals')) {
       const contactId = config.params?.contact_id;
       const companyId = config.params?.company_id;
+      const search = config.params?.search;
       let items = state.deals;
       if (contactId) items = items.filter((d: any) => String(d.contact_id) === String(contactId));
       if (companyId) items = items.filter((d: any) => String(d.company_id) === String(companyId));
+      if (search) {
+        const s = search.toLowerCase();
+        items = items.filter((d: any) => 
+          (d.title && d.title.toLowerCase().includes(s)) ||
+          (d.customer_name && d.customer_name.toLowerCase().includes(s))
+        );
+      }
       responseData = { items, total: items.length };
     } else if (url.includes('/activities')) {
       const contactId = config.params?.related_id || config.params?.contact_id;
+      const search = config.params?.search;
       let items = state.activities;
       if (contactId) items = items.filter((a: any) => String(a.contact_id) === String(contactId));
+      if (search) {
+        const s = search.toLowerCase();
+        items = items.filter((a: any) => 
+          (a.subject && a.subject.toLowerCase().includes(s)) ||
+          (a.body && a.body.toLowerCase().includes(s))
+        );
+      }
       responseData = { items, total: items.length };
     } else if (url.includes('/expenses')) {
       const contactId = config.params?.contact_id;
@@ -54,7 +91,16 @@ const mockAdapter = (config: any): Promise<any> => {
       if (contactId) items = items.filter((t: any) => String(t.contact_id) === String(contactId));
       responseData = { items, total: items.length };
     } else if (url.includes('/products')) {
-      responseData = { items: state.products, total: state.products.length };
+      const search = config.params?.search;
+      let items = state.products;
+      if (search) {
+        const s = search.toLowerCase();
+        items = items.filter((p: any) => 
+          (p.name && p.name.toLowerCase().includes(s)) ||
+          (p.sku && p.sku.toLowerCase().includes(s))
+        );
+      }
+      responseData = { items, total: items.length };
     } else if (url.includes('/inventory') && !url.includes('logs')) {
       responseData = { 
         items: state.batches, 
@@ -80,7 +126,16 @@ const mockAdapter = (config: any): Promise<any> => {
       const batchId = parseInt(url.split('/').pop() || '0', 10);
       responseData = state.inventory_logs.filter((l: any) => l.batch_id === batchId);
     } else if (url.includes('/companies')) {
-      responseData = { items: state.companies, total: state.companies.length };
+      const search = config.params?.search;
+      let items = state.companies;
+      if (search) {
+        const s = search.toLowerCase();
+        items = items.filter((c: any) => 
+          (c.name && c.name.toLowerCase().includes(s)) ||
+          (c.industry && c.industry.toLowerCase().includes(s))
+        );
+      }
+      responseData = { items, total: items.length };
     } else if (url.includes('/suppliers')) {
       responseData = { items: state.suppliers, total: state.suppliers.length };
     } else if (url.includes('/files')) {
