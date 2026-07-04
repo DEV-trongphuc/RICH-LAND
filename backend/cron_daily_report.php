@@ -26,6 +26,61 @@ function runDailyReportCron($conn)
         WHERE status = 'leave' AND leave_end IS NOT NULL AND leave_end < CURDATE()
     ");
 
+    // 0b. Lead Temperature Decay (Rule 3.6 in 04-Luong-3-Cham-Soc-Nhiet-Do.md)
+    $decayDays = 5;
+    $decayRes = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'temperature_decay_days'");
+    if ($decayRes && $row = $decayRes->fetch_assoc()) {
+        $decayDays = (int)$row['setting_value'];
+    }
+    if ($decayDays <= 0) $decayDays = 5;
+
+    $contactsToDecay = $conn->query("
+        SELECT id, tenant_id, temperature, pipeline_status 
+        FROM contacts 
+        WHERE deleted_at IS NULL
+          AND pipeline_status IN ('chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap')
+          AND (
+              (last_contact IS NOT NULL AND last_contact < DATE_SUB(CURDATE(), INTERVAL $decayDays DAY))
+              OR (last_contact IS NULL AND created_at < DATE_SUB(NOW(), INTERVAL $decayDays DAY))
+          )
+          AND temperature != 'cold'
+    ");
+
+    $tempDecayMap = [
+        'hot' => 'warm',
+        'warm' => 'neutral',
+        'neutral' => 'cool',
+        'cool' => 'cold'
+    ];
+
+    if ($contactsToDecay) {
+        $stmtUpdateDecay = $conn->prepare("
+            UPDATE contacts 
+            SET temperature = ?, 
+                temperature_updated_at = NOW() 
+            WHERE id = ?
+        ");
+        
+        $stmtLog = $conn->prepare("
+            INSERT INTO audit_logs (tenant_id, user_id, action, related_type, related_id, description, ip_address) 
+            VALUES (?, 0, 'TEMPERATURE_DECAY', 'contact', ?, ?, '127.0.0.1')
+        ");
+
+        while ($c = $contactsToDecay->fetch_assoc()) {
+            $currTemp = $c['temperature'];
+            $nextTemp = $tempDecayMap[$currTemp] ?? 'cold';
+            
+            $stmtUpdateDecay->bind_param("si", $nextTemp, $c['id']);
+            $stmtUpdateDecay->execute();
+            
+            $logMsg = "Nhiệt độ khách hàng tự động giảm từ '$currTemp' về '$nextTemp' do quá $decayDays ngày không có tương tác.";
+            $stmtLog->bind_param("iiss", $c['tenant_id'], $c['id'], $logMsg);
+            $stmtLog->execute();
+        }
+        $stmtUpdateDecay->close();
+        $stmtLog->close();
+    }
+
     $settingRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('zalo_daily_report_time', 'last_daily_report_date', 'zalo_bot_token', 'daily_report_admins', 'last_daily_report_timestamp')");
     $settings = [];
     if ($settingRes) {

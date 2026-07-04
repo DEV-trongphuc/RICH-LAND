@@ -174,8 +174,8 @@ class CooperationController {
             $sum += (int)$percent;
         }
 
-        if ($sum > 100) {
-            respond(422, null, 'Tổng tỷ lệ chia sẻ hoa hồng không được vượt quá 100% (Hiện tại là ' . $sum . '%)', false);
+        if ($sum !== 100) {
+            respond(422, null, 'Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ' . $sum . '%)', false);
         }
 
         // Verify slip exists & status is pending_signatures
