@@ -1199,6 +1199,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [drawerTaskFilter, setDrawerTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<'all' | 'call' | 'email' | 'meeting' | 'task'>('all');
+  const [viewExpense, setViewExpense] = useState<any>(null);
 
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -4639,7 +4640,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       {drawerExpenses.length > 0 ? (
                         <div style={{ display: 'grid', gap: '1rem' }}>
                           {drawerExpenses.map((exp: any) => (
-                            <div key={exp.id} className="card-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div 
+                              key={exp.id} 
+                              className="card-panel" 
+                              onClick={() => setViewExpense(exp)} 
+                              style={{ 
+                                padding: '1rem', 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                cursor: 'pointer', 
+                                transition: 'all 0.2s',
+                                border: '1px solid transparent'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+                            >
                               <div>
                                 <h4 style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '4px' }}>{exp.title}</h4>
                                 <div style={{ display: 'flex', gap: '8px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
@@ -6431,6 +6447,103 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </button>
             </div>
           </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Quick View Expense Modal */}
+      {viewExpense && createPortal(
+        <div className="overlay-backdrop" onClick={() => setViewExpense(null)} style={{ zIndex: 10000, position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <motion.div 
+            className="modal-sheet shadow-2xl"
+            initial={{ opacity: 0, scale: 0.96, y: 20 }} 
+            animate={{ opacity: 1, scale: 1, y: 0 }} 
+            exit={{ opacity: 0, scale: 0.96, y: 20 }}
+            onClick={e => e.stopPropagation()}
+            style={{ padding: '2rem', maxWidth: '480px', width: '100%', background: 'var(--color-surface)', borderRadius: '24px', boxShadow: 'var(--shadow-2xl)' }}
+          >
+            {/* Close Button & Badge Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`badge ${viewExpense.status === 'approved' ? 'success' : viewExpense.status === 'rejected' ? 'danger' : 'warning'}`} style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '8px' }}>
+                  {viewExpense.status === 'approved' ? 'Đã duyệt' : viewExpense.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+                </span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                  {viewExpense.date ? new Date(viewExpense.date).toLocaleDateString('vi-VN') : '—'}
+                </span>
+              </div>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-light)' }} onClick={() => setViewExpense(null)}><X size={20} /></button>
+            </div>
+
+            {/* Invoice Layout */}
+            <div className="card-panel" style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1.5rem', boxShadow: 'var(--shadow-sm)', marginBottom: '1.5rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1.25rem', borderBottom: '2px dashed var(--color-border-light)', paddingBottom: '1.25rem' }}>
+                <h4 style={{ textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '0.25rem' }}>Richland Data Automation</h4>
+                <h2 style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 800, fontSize: '1.2rem', color: 'var(--color-text)', margin: 0 }}>HÓA ĐƠN CHI PHÍ</h2>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', margin: 0 }}>Mã số: #EXP-{viewExpense.id}</p>
+              </div>
+
+              <div style={{ textAlign: 'center', padding: '1.25rem', background: 'var(--color-bg)', borderRadius: '12px', marginBottom: '1.25rem', border: '1px solid var(--color-border-light)' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem', letterSpacing: '0.05em' }}>SỐ TIỀN CHI</span>
+                <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#BD1D2D', margin: 0, letterSpacing: '-0.02em' }}>
+                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(viewExpense.split_amount || viewExpense.amount)}
+                </h1>
+                <p style={{ fontSize: '0.775rem', fontWeight: 700, fontStyle: 'italic', color: '#8a0f1b', marginTop: '0.5rem', marginBottom: 0 }}>
+                  Bằng chữ: {numberToText(viewExpense.split_amount || viewExpense.amount)}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Nội dung chi</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{viewExpense.title}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Danh mục</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{viewExpense.category}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người tạo</span>
+                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>
+                    {viewExpense.creator_name || 'Hệ thống'}
+                  </span>
+                </div>
+                {viewExpense.status === 'approved' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem', fontSize: '0.8125rem', alignItems: 'center' }}>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Người duyệt</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-success)' }}>
+                      {viewExpense.approver_name || 'Admin'}
+                    </span>
+                  </div>
+                )}
+                {viewExpense.image_url && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem', alignItems: 'center', paddingTop: '0.25rem' }}>
+                    <span style={{ color: 'var(--color-text-muted)', fontWeight: 600 }}>Đính kèm</span>
+                    <a 
+                      href={viewExpense.image_url.startsWith('http') ? viewExpense.image_url : `${import.meta.env.VITE_API_URL || '/backend'}${viewExpense.image_url}`} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-primary)', fontWeight: 700, textDecoration: 'underline' }}
+                    >
+                      <Paperclip size={13} />
+                      Xem ảnh hóa đơn
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {viewExpense.notes && (
+              <div style={{ padding: '0.75rem 1rem', background: '#fffbeb', borderLeft: '4px solid #f59e0b', borderRadius: '8px', fontSize: '0.8125rem', color: '#b45309', marginBottom: '1.5rem' }}>
+                <span style={{ fontWeight: 700, display: 'block', marginBottom: '0.25rem', fontSize: '0.75rem', letterSpacing: '0.05em' }}>GHI CHÚ / THÔNG TIN THÊM:</span>
+                {viewExpense.notes}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn outline" style={{ flex: 1 }} onClick={() => setViewExpense(null)}>Đóng</button>
+            </div>
+          </motion.div>
         </div>,
         document.body
       )}
