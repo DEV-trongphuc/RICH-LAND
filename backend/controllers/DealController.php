@@ -184,6 +184,7 @@ class DealController {
         $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,NULL,?,?)")
             ->execute([$id, $stageId, $auth['user_id']]);
         
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'deal', $id, json_encode(['title' => $b['title']]));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Tạo Deal mới', "Deal \"{$b['title']}\" được tạo thành công.", 'deal', $id);
         $this->show($auth, $id);
     }
@@ -360,6 +361,7 @@ class DealController {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'deal', $b['custom_fields']);
         }
         
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'deal', $id, json_encode(['title' => $oldDeal['title']]));
         $this->show($auth, $id);
     }
 
@@ -381,6 +383,7 @@ class DealController {
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy deal hoặc không có quyền xóa', false);
         
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'deal', $id, json_encode(['id' => $id]));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Deal', "Một cơ hội bán hàng đã bị xóa.", 'deal', $id);
         respond(200, null, 'Đã xóa deal (vào thùng rác)');
     }
@@ -397,6 +400,7 @@ class DealController {
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'BULK_DELETE', 'deal', null, json_encode(['ids' => $ids]));
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " deal");
     }
 

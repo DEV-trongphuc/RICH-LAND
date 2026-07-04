@@ -101,6 +101,7 @@ class CompanyController {
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'company', $b['custom_fields']);
         }
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'company', $id, json_encode(['name' => $b['name']]));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Thêm Công ty mới', "Công ty \"{$b['name']}\" đã được tạo.", 'company', $id);
         $this->show($auth, $id);
     }
@@ -180,6 +181,7 @@ class CompanyController {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'company', $b['custom_fields']);
         }
         
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'company', $id, json_encode(['name' => $oldCompany['name']]));
         $this->show($auth, $id);
     }
 
@@ -214,6 +216,7 @@ class CompanyController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy công ty', false);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'company', $id, json_encode(['id' => $id]));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Công ty', "Một công ty đã bị đưa vào thùng rác.", 'company', $id);
         respond(200, null, 'Đã xóa công ty (vào thùng rác)');
     }
@@ -230,6 +233,7 @@ class CompanyController {
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'BULK_DELETE', 'company', null, json_encode(['ids' => $ids]));
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " công ty");
     }
 }

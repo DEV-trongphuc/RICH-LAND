@@ -3020,12 +3020,20 @@ switch ($action) {
             $stmt->bind_param("is", $userId, $shiftDate);
             $stmt->execute();
             $stmt->close();
+            logAdminAction($conn, $userId, 'REGISTER_NIGHT_SHIFT', json_encode([
+                'user_id' => $userId,
+                'shift_date' => $shiftDate
+            ]));
             echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công.']);
         } else {
             $stmt = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
             $stmt->bind_param("is", $userId, $shiftDate);
             $stmt->execute();
             $stmt->close();
+            logAdminAction($conn, $userId, 'CANCEL_NIGHT_SHIFT', json_encode([
+                'user_id' => $userId,
+                'shift_date' => $shiftDate
+            ]));
             echo json_encode(['success' => true, 'message' => 'Hủy đăng ký trực đêm thành công.']);
         }
         break;
@@ -3120,6 +3128,11 @@ switch ($action) {
             $upStmt->execute();
             $upStmt->close();
 
+            logAdminAction($conn, $decodedUser['id'], 'ADD_CONSULTANT_LEAVE', json_encode([
+                'consultant_id' => $targetConsultantId,
+                'start_date' => $startDate,
+                'end_date' => $endDate
+            ]));
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi đăng ký nghỉ phép.']);
@@ -3181,6 +3194,10 @@ switch ($action) {
             $upStmt->execute();
             $upStmt->close();
 
+            logAdminAction($conn, $decodedUser['id'], 'DELETE_CONSULTANT_LEAVE', json_encode([
+                'id' => $leaveId,
+                'consultant_id' => $targetConsultantId
+            ]));
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi xóa đăng ký nghỉ phép.']);

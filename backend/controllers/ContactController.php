@@ -220,6 +220,7 @@ class ContactController {
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
         }
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'contact', $id, json_encode(['first_name' => $b['first_name'], 'last_name' => $b['last_name'] ?? '']));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Tạo Khách hàng mới', "Khách hàng \"{$b['first_name']} " . ($b['last_name'] ?? '') . "\" đã được thêm vào hệ thống.", 'contact', $id);
         $this->show($auth, $id);
     }
@@ -528,6 +529,7 @@ class ContactController {
             }
         }
         
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'contact', $id, json_encode(['first_name' => $currentContact['first_name'], 'last_name' => $currentContact['last_name'] ?? '']));
         $this->show($auth, $id);
     }
 
@@ -644,6 +646,7 @@ class ContactController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ hoặc không có quyền xóa', false);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'contact', $id, json_encode(['id' => $id]));
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
         respond(200, null, 'Đã xóa liên hệ (vào thùng rác)');
     }
@@ -661,6 +664,7 @@ class ContactController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'BULK_DELETE', 'contact', null, json_encode(['ids' => $ids]));
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " liên hệ");
     }
 
