@@ -2222,7 +2222,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 due_date: new Date().toISOString().slice(0, 10),
                 description: '',
                 link: '',
-                related_id: ''
+                related_id: '',
+                user_id: '',
+                progress: 0,
+                require_approval: 0,
+                approver_id: ''
               });
               setShowTaskModal(true);
             }}

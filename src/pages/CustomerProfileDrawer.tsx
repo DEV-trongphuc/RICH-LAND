@@ -3492,7 +3492,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               due_date: today,
                               description: '',
                               link: '',
-                              user_id: String(contact?.owner_id || currentUser?.id || '')
+                              user_id: String(contact?.owner_id || currentUser?.id || ''),
+                              progress: 0,
+                              require_approval: 0,
+                              approver_id: ''
                             });
                             setShowTaskModal(true);
                           }} style={{ color: '#f59e0b', borderColor: '#f59e0b30', background: '#f59e0b08', fontWeight: 600 }}><CheckSquare size={14} /> Task</button>
@@ -3906,7 +3909,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               due_date: today,
                               description: '',
                               link: '',
-                              user_id: String(contact?.owner_id || currentUser?.id || '')
+                              user_id: String(contact?.owner_id || currentUser?.id || ''),
+                              progress: 0,
+                              require_approval: 0,
+                              approver_id: ''
                             });
                             setShowTaskModal(true);
                           }}><Plus size={14} /> Thêm công việc</button>

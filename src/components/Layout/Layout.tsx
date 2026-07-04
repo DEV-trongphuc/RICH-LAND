@@ -283,7 +283,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           setIsUnifiedInboxOpen(true);
         }
       }).catch(err => console.error('Error loading unified approvals:', err));
-    } else if (user?.role === 'sale' || user?.role === 'sales') {
+    } else if (user?.role === 'sale') {
       fetchAPI('cooperation-slips')
         .then(res => {
           if (res.success && Array.isArray(res.data)) {

@@ -16,7 +16,7 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 const AttendancePageInner = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const isSales = user?.role === 'sale' || user?.role === 'sales';
+  const isSales = user?.role === 'sale';
   
   const [loading, setLoading] = useState(true);
   const [checkIns, setCheckIns] = useState<any[]>([]);
