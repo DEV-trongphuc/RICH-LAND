@@ -3,7 +3,18 @@
 
 class ContactController {
     private PDO $db;
-    public function __construct(PDO $db) { $this->db = $db; }
+    public function __construct(PDO $db) { 
+        $this->db = $db; 
+        try {
+            $this->db->exec("ALTER TABLE contacts ADD COLUMN not_lead_proposed TINYINT(1) DEFAULT 0");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE contacts ADD COLUMN not_lead_proposed_by INT(11) NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE contacts ADD COLUMN not_lead_proposed_at TIMESTAMP NULL");
+        } catch (Exception $e) {}
+    }
 
     public function index(array $auth): void {
         $tid    = $auth['tenant_id'];
@@ -320,6 +331,21 @@ class ContactController {
 
         $newStatus = $b['pipeline_status'] ?? null;
 
+        if ($newStatus === 'not_lead') {
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $stmtProp = $this->db->prepare("
+                    UPDATE contacts 
+                    SET not_lead_proposed = 1, 
+                        not_lead_proposed_by = ?, 
+                        not_lead_proposed_at = NOW() 
+                    WHERE id = ? AND tenant_id = ?
+                ");
+                $stmtProp->execute([$auth['user_id'], $id, $auth['tenant_id']]);
+                
+                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PROPOSE_NOT_LEAD', 'contact', $id, "Đề xuất loại khỏi phễu (Not Lead) cho khách hàng ID: $id");
+                respond(200, null, 'Đề xuất loại khỏi phễu (Not Lead) đã được gửi đến Marketing để phê duyệt.');
+            }
+        }
 
         if ($newStatus && $newStatus !== $currStatus) {
             // Exceptions: not_lead can be set from any state
@@ -363,6 +389,12 @@ class ContactController {
             'pipeline_status', 'ttl1_completed', 'ttl1_data'
         ];
         $sets = []; $params = [];
+        
+        if ($newStatus === 'not_lead') {
+            $sets[] = "not_lead_proposed = 0";
+            $sets[] = "not_lead_proposed_by = NULL";
+            $sets[] = "not_lead_proposed_at = NULL";
+        }
         
         // Handle company_id specially to allow clearing and name resolution
         if (array_key_exists('company_name', $b)) {

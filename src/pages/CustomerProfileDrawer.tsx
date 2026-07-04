@@ -2382,6 +2382,68 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   <X size={20} />
                 </button>
 
+              {/* Not Lead Proposal Banner */}
+              {formData.not_lead_proposed === 1 && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  borderBottom: '1px solid rgba(239, 68, 68, 0.2)',
+                  padding: '10px 1.5rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '12px',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-danger)', fontSize: '0.8rem', fontWeight: 600 }}>
+                    <ShieldAlert size={16} />
+                    <span>Khách hàng này được đề xuất loại khỏi phễu (Not Lead) và đang chờ phê duyệt.</span>
+                  </div>
+                  {((currentUser?.role as string) === 'admin' || (currentUser?.role as string) === 'superadmin' || (currentUser?.role as string) === 'ads' || (currentUser?.role as string) === 'content') && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className="btn success sm"
+                        style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px', color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={async () => {
+                          try {
+                            const res = await api.put(`/contacts/${contact.id}`, { pipeline_status: 'not_lead' });
+                            if (res.data.success) {
+                              setFormData((prev: any) => ({ ...prev, pipeline_status: 'not_lead', not_lead_proposed: 0 }));
+                              addToast('Đã phê duyệt Not Lead thành công!', 'success');
+                              onUpdate?.({ ...formData, pipeline_status: 'not_lead', not_lead_proposed: 0 });
+                            }
+                          } catch (err: any) {
+                            addToast(err.response?.data?.message || 'Lỗi khi phê duyệt', 'error');
+                          }
+                        }}
+                      >
+                        <Check size={12} /> Duyệt
+                      </button>
+                      <button
+                        type="button"
+                        className="btn outline sm"
+                        style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px' }}
+                        onClick={async () => {
+                          try {
+                            const res = await api.put(`/contacts/${contact.id}`, { not_lead_proposed: 0 });
+                            if (res.data.success) {
+                              setFormData((prev: any) => ({ ...prev, not_lead_proposed: 0 }));
+                              addToast('Đã từ chối đề xuất Not Lead!', 'success');
+                              onUpdate?.({ ...formData, not_lead_proposed: 0 });
+                            }
+                          } catch (err: any) {
+                            addToast(err.response?.data?.message || 'Lỗi khi từ chối', 'error');
+                          }
+                        }}
+                      >
+                        Từ chối
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
                 <div className={styles.profileHeaderContent}>
                   {/* Avatar Section */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
