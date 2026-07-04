@@ -854,7 +854,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
   const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
-  const [autoZaloLink, setAutoZaloLink] = useState(true);
+  const [zaloSource, setZaloSource] = useState<'primary' | 'secondary' | 'none'>('none');
   const [pipelineStages, setPipelineStages] = useState<any[]>(DEFAULT_PIPELINE_STAGES);
   const [contacts, setContacts] = useState<any[]>([]);
   const [ttl1Data, setTtl1Data] = useState<{
@@ -1587,6 +1587,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (contact) {
       const isNewContact = contact.id !== prevContactId;
       
+      const cleanPhone = (contact.phone || '').replace(/[^0-9]/g, '');
+      const cleanMobile = (contact.mobile || '').replace(/[^0-9]/g, '');
+      const cleanZalo = (contact.zalo_link || '').replace(/[^0-9]/g, '');
+      if (cleanZalo && cleanMobile && cleanZalo === cleanMobile) {
+        setZaloSource('secondary');
+      } else {
+        setZaloSource('primary');
+      }
+
       setFormData(contact);
       setTags(contact.tags || []);
       setBaseData(contact);
@@ -3008,41 +3017,129 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div className="form-group">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                               <label className="form-label" style={{ margin: 0 }}>Số điện thoại chính</label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: isViewer ? 'not-allowed' : 'pointer', fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-                                <input 
-                                  type="checkbox" 
-                                  checked={autoZaloLink} 
-                                  disabled={isViewer}
-                                  onChange={e => {
-                                    const checked = e.target.checked;
-                                    setAutoZaloLink(checked);
-                                    if (checked && formData.phone) {
-                                      const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
-                                      setFormData((prev: any) => ({ ...prev, zalo_link: cleanPhone ? `https://zalo.me/${cleanPhone}` : '' }));
-                                    }
-                                  }} 
-                                  style={{ width: '13px', height: '13px', cursor: isViewer ? 'not-allowed' : 'pointer', accentColor: 'var(--color-primary)' }}
-                                />
+                              <span 
+                                onClick={() => {
+                                  if (isViewer || !formData.phone?.trim()) return;
+                                  if (zaloSource === 'primary') {
+                                    setZaloSource('none');
+                                  } else {
+                                    setZaloSource('primary');
+                                    const cleanPhone = (formData.phone || '').replace(/[^0-9]/g, '');
+                                    setFormData((prev: any) => ({ ...prev, zalo_link: cleanPhone ? `https://zalo.me/${cleanPhone}` : '' }));
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  cursor: isViewer || !formData.phone?.trim() ? 'not-allowed' : 'pointer',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  color: zaloSource === 'primary' && formData.phone?.trim() ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                  userSelect: 'none'
+                                }}
+                              >
+                                <div style={{
+                                  width: '32px',
+                                  height: '18px',
+                                  borderRadius: '9px',
+                                  background: zaloSource === 'primary' && formData.phone?.trim() ? 'var(--color-primary)' : 'var(--color-border)',
+                                  position: 'relative',
+                                  transition: 'background-color 0.2s',
+                                  opacity: isViewer || !formData.phone?.trim() ? 0.5 : 1
+                                }}>
+                                  <div style={{
+                                    width: '14px',
+                                    height: '14px',
+                                    borderRadius: '50%',
+                                    background: 'white',
+                                    position: 'absolute',
+                                    top: '2px',
+                                    left: zaloSource === 'primary' && formData.phone?.trim() ? '16px' : '2px',
+                                    transition: 'left 0.2s',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                                  }} />
+                                </div>
                                 <span>Liên kết Zalo</span>
-                              </label>
+                              </span>
                             </div>
                             <input className="form-input" type="tel" placeholder="09xx xxx xxx" value={formData.phone || ''} onChange={e => {
                               const val = e.target.value;
                               setFormData((prev: any) => {
                                 const next = { ...prev, phone: val };
-                                if (autoZaloLink) {
+                                if (zaloSource === 'primary' && val.trim()) {
                                   const cleanPhone = val.replace(/[^0-9]/g, '');
                                   next.zalo_link = cleanPhone ? `https://zalo.me/${cleanPhone}` : '';
                                 }
                                 return next;
                               });
+                              if (!val.trim() && zaloSource === 'primary') {
+                                setZaloSource('none');
+                              }
                             }} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Số điện thoại phụ</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <label className="form-label" style={{ margin: 0 }}>Số điện thoại phụ</label>
+                              <span 
+                                onClick={() => {
+                                  if (isViewer || !formData.mobile?.trim()) return;
+                                  if (zaloSource === 'secondary') {
+                                    setZaloSource('none');
+                                  } else {
+                                    setZaloSource('secondary');
+                                    const cleanPhone = (formData.mobile || '').replace(/[^0-9]/g, '');
+                                    setFormData((prev: any) => ({ ...prev, zalo_link: cleanPhone ? `https://zalo.me/${cleanPhone}` : '' }));
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  cursor: isViewer || !formData.mobile?.trim() ? 'not-allowed' : 'pointer',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  color: zaloSource === 'secondary' && formData.mobile?.trim() ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                  userSelect: 'none'
+                                }}
+                              >
+                                <div style={{
+                                  width: '32px',
+                                  height: '18px',
+                                  borderRadius: '9px',
+                                  background: zaloSource === 'secondary' && formData.mobile?.trim() ? 'var(--color-primary)' : 'var(--color-border)',
+                                  position: 'relative',
+                                  transition: 'background-color 0.2s',
+                                  opacity: isViewer || !formData.mobile?.trim() ? 0.5 : 1
+                                }}>
+                                  <div style={{
+                                    width: '14px',
+                                    height: '14px',
+                                    borderRadius: '50%',
+                                    background: 'white',
+                                    position: 'absolute',
+                                    top: '2px',
+                                    left: zaloSource === 'secondary' && formData.mobile?.trim() ? '16px' : '2px',
+                                    transition: 'left 0.2s',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                                  }} />
+                                </div>
+                                <span>Liên kết Zalo</span>
+                              </span>
+                            </div>
                             <input className="form-input" type="tel" placeholder="08xx xxx xxx" value={formData.mobile || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, mobile: val }));
+                              setFormData((prev: any) => {
+                                const next = { ...prev, mobile: val };
+                                if (zaloSource === 'secondary' && val.trim()) {
+                                  const cleanPhone = val.replace(/[^0-9]/g, '');
+                                  next.zalo_link = cleanPhone ? `https://zalo.me/${cleanPhone}` : '';
+                                }
+                                return next;
+                              });
+                              if (!val.trim() && zaloSource === 'secondary') {
+                                setZaloSource('none');
+                              }
                             }} />
                           </div>
                           <div className="form-group">
