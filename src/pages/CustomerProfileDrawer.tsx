@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -642,6 +642,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
   const [activeTab, setActiveTab] = useState<string>('info');
+  const [taskViewMode, setTaskViewMode] = useState<'kanban' | 'list'>('kanban');
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -691,6 +692,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const payload: Record<string, any> = {};
     allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
     payload.tags = tags;
+    payload.lead_score = score;
     if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
       for (const f of formData.custom_fields) {
         const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
@@ -849,6 +851,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [allTags, setAllTags] = useState<any[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [draggedOverIndex, setDraggedOverIndex] = useState<number | null>(null);
+  const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
+  const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
   const [autoZaloLink, setAutoZaloLink] = useState(true);
   const [pipelineStages, setPipelineStages] = useState<any[]>(DEFAULT_PIPELINE_STAGES);
   const [contacts, setContacts] = useState<any[]>([]);
@@ -2200,6 +2204,46 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     } catch (err: any) {
       setTasks(p => p.map(x => x.id === taskId ? { ...x, done: currentDone } : x));
       addToast(err.response?.data?.message || 'Lỗi khi cập nhật trạng thái công việc', 'error');
+    }
+  };
+
+  const handleTaskDrop = async (taskId: number, targetCol: 'todo' | 'in_progress' | 'done') => {
+    let nextDone = false;
+    let nextProgress = 0;
+    let nextStatus = 'planned';
+
+    if (targetCol === 'todo') {
+      nextDone = false;
+      nextProgress = 0;
+      nextStatus = 'planned';
+    } else if (targetCol === 'in_progress') {
+      nextDone = false;
+      nextProgress = 50;
+      nextStatus = 'planned';
+    } else if (targetCol === 'done') {
+      nextDone = true;
+      nextProgress = 100;
+      nextStatus = 'done';
+    }
+
+    // Optimistic local state update
+    setTasks(prev => prev.map(x => x.id === taskId ? { ...x, done: nextDone, progress: nextProgress, status: nextStatus } : x));
+    
+    try {
+      await api.put(`/activities/${taskId}`, { 
+        progress: nextProgress,
+        status: nextStatus
+      });
+      const colLabel = targetCol === 'todo' ? 'Cần làm' : targetCol === 'in_progress' ? 'Đang làm' : 'Đã xong';
+      addToast(`Đã chuyển công việc sang cột ${colLabel}`, 'success');
+      if (nextStatus === 'done') {
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+      }
+      setDrawerActivities(prev => prev.map(a => a.id === taskId ? { ...a, progress: nextProgress, status: nextStatus } : a));
+    } catch (err: any) {
+      // Revert if error
+      fetchData();
+      addToast(err.response?.data?.message || 'Lỗi khi cập nhật tiến độ công việc', 'error');
     }
   };
 
@@ -4651,24 +4695,58 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {activeTab === 'tasks' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Công việc cần làm</h3>
-                        {!isViewer && (
-                          <button className="btn primary" style={{ padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => {
-                            const today = new Date().toISOString().slice(0, 10);
-                            setTaskForm({
-                              title: '',
-                              priority: 'medium',
-                              due_date: today,
-                              description: '',
-                              link: '',
-                              user_id: String(contact?.owner_id || currentUser?.id || ''),
-                              progress: 0,
-                              require_approval: 0,
-                              approver_id: ''
-                            });
-                            setShowTaskModal(true);
-                          }}><Plus size={14} /> Thêm công việc</button>
-                        )}
+                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem', margin: 0 }}>Công việc cần làm</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                            <button
+                              type="button"
+                              onClick={() => setTaskViewMode('kanban')}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', border: 'none',
+                                background: taskViewMode === 'kanban' ? 'var(--color-surface)' : 'transparent',
+                                color: taskViewMode === 'kanban' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.15s',
+                                boxShadow: taskViewMode === 'kanban' ? 'var(--shadow-sm)' : 'none'
+                              }}
+                              title="Dạng bảng (Kanban)"
+                            >
+                              <LayoutGrid size={14} />
+                              <span className="responsive-hide-mobile">Bảng</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTaskViewMode('list')}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px', border: 'none',
+                                background: taskViewMode === 'list' ? 'var(--color-surface)' : 'transparent',
+                                color: taskViewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                                cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.15s',
+                                boxShadow: taskViewMode === 'list' ? 'var(--shadow-sm)' : 'none'
+                              }}
+                              title="Dạng danh sách (List)"
+                            >
+                              <List size={14} />
+                              <span className="responsive-hide-mobile">Danh sách</span>
+                            </button>
+                          </div>
+                          {!isViewer && (
+                            <button className="btn primary" style={{ padding: '8px 16px', fontSize: '0.875rem', height: '34px' }} onClick={() => {
+                              const today = new Date().toISOString().slice(0, 10);
+                              setTaskForm({
+                                title: '',
+                                priority: 'medium',
+                                due_date: today,
+                                description: '',
+                                link: '',
+                                user_id: String(contact?.owner_id || currentUser?.id || ''),
+                                progress: 0,
+                                require_approval: 0,
+                                approver_id: ''
+                              });
+                              setShowTaskModal(true);
+                            }}><Plus size={14} /> Thêm công việc</button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Quick Task Role Filters */}
@@ -4727,107 +4805,318 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           );
                         }
 
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            {filteredTasks.map(t => {
-                              const isOverdue = t.due_date && new Date(t.due_date) < new Date(new Date().setHours(0,0,0,0));
-                              return (
-                                <div
-                                  key={t.id}
-                                  onClick={() => {
-                                    if (t.done) return;
-                                    setSelectedTaskForDetails(t);
-                                  }}
-                                  style={{
-                                    display: 'flex',
-                                    gap: '1rem',
-                                    alignItems: 'center',
-                                    padding: '1rem',
-                                    opacity: t.done ? 0.6 : 1,
-                                    cursor: t.done ? 'default' : 'pointer',
-                                    transition: 'all 0.2s',
-                                    border: isOverdue && !t.done ? '1.5px solid var(--color-danger)' : '1px solid transparent',
-                                    boxShadow: isOverdue && !t.done ? '0 0 10px rgba(239, 68, 68, 0.12)' : 'none'
-                                  }}
-                                  onMouseEnter={e => e.currentTarget.style.borderColor = isOverdue && !t.done ? 'var(--color-danger)' : 'var(--color-primary-light)'}
-                                  onMouseLeave={e => e.currentTarget.style.borderColor = isOverdue && !t.done ? 'var(--color-danger)' : 'transparent'}
-                                >
-                              <div
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (isViewer) {
-                                    addToast('Bạn không có quyền thay đổi trạng thái công việc', 'error');
-                                    return;
-                                  }
-                                  toggleTaskDone(t.id, t.done);
-                                }}
-                                style={{ width: 24, height: 24, borderRadius: '6px', border: `2px solid ${t.done ? 'var(--color-success)' : 'var(--color-border)'}`, background: t.done ? 'var(--color-success)' : 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s', cursor: 'pointer' }}
-                              >
-                                {t.done && <CheckSquare size={14} />}
-                              </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                  <p style={{ fontSize: '0.9375rem', fontWeight: 600, textDecoration: t.done ? 'line-through' : 'none', color: 'var(--color-text)', margin: 0 }}>{t.title}</p>
-                                  {(t.tags || '').split(',').filter(Boolean).map((tag: string) => (
-                                    <span key={tag} style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '8px', background: 'rgba(16,185,129,0.08)', color: '#059669', fontWeight: 600 }}>
-                                      {tag}
-                                    </span>
-                                  ))}
+                        const todoTasks = filteredTasks.filter(t => !t.done && (!t.progress || t.progress === 0));
+                        const inProgressTasks = filteredTasks.filter(t => !t.done && t.progress > 0 && t.progress < 100);
+                        const doneTasks = filteredTasks.filter(t => t.done || t.progress === 100);
+
+                        const renderKanbanColumn = (
+                          colId: 'todo' | 'in_progress' | 'done',
+                          title: string,
+                          columnTasks: any[],
+                          headerColor: string,
+                          bgColor: string
+                        ) => {
+                          const isOver = activeOverCol === colId;
+                          return (
+                            <div
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                if (activeOverCol !== colId) setActiveOverCol(colId);
+                              }}
+                              onDragLeave={() => setActiveOverCol(null)}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setActiveOverCol(null);
+                                if (draggedTaskId !== null) {
+                                  handleTaskDrop(draggedTaskId, colId);
+                                }
+                              }}
+                              style={{
+                                background: '#f8fafc',
+                                border: isOver ? '2px dashed var(--color-primary)' : '1px solid #e2e8f0',
+                                borderRadius: '16px',
+                                padding: '0.75rem',
+                                minHeight: '380px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '0.75rem',
+                                transition: 'all 0.2s',
+                                boxShadow: isOver ? '0 4px 12px rgba(189, 29, 45, 0.08)' : 'none',
+                                width: '100%'
+                              }}
+                            >
+                              {/* Column Header */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.375rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.25rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: headerColor }}></span>
+                                  <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{title}</h4>
                                 </div>
-                                {t.description && (
-                                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '0.25rem', marginBottom: 0 }}>{t.description}</p>
-                                )}
-                                {t.link && (
-                                  <div style={{ marginTop: '0.375rem', display: 'flex', alignItems: 'center', gap: '0.375rem' }} onClick={e => e.stopPropagation()}>
-                                    <Paperclip size={13} style={{ color: 'var(--color-primary)' }} />
-                                    <a 
-                                      href={resolveAttachmentUrl(t.link)} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer" 
-                                      style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 500, textDecoration: 'underline' }}
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: bgColor, color: headerColor }}>
+                                  {columnTasks.length}
+                                </span>
+                              </div>
+
+                              {/* Tasks List */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', flex: 1, overflowY: 'auto', maxHeight: '500px' }}>
+                                {columnTasks.map(t => {
+                                  const isOverdue = t.due_date && new Date(t.due_date) < new Date(new Date().setHours(0,0,0,0));
+                                  return (
+                                    <div
+                                      key={t.id}
+                                      draggable
+                                      onDragStart={() => setDraggedTaskId(t.id)}
+                                      onDragEnd={() => setDraggedTaskId(null)}
+                                      onClick={() => {
+                                        if (t.done) return;
+                                        setSelectedTaskForDetails(t);
+                                      }}
+                                      style={{
+                                        background: 'var(--color-surface)',
+                                        border: isOverdue && !t.done ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
+                                        borderRadius: '12px',
+                                        padding: '0.875rem',
+                                        cursor: 'grab',
+                                        opacity: t.done ? 0.7 : 1,
+                                        boxShadow: 'var(--shadow-sm)',
+                                        transition: 'all 0.2s',
+                                        position: 'relative'
+                                      }}
+                                      onMouseEnter={e => {
+                                        e.currentTarget.style.borderColor = isOverdue && !t.done ? 'var(--color-danger)' : 'var(--color-primary)';
+                                        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                                      }}
+                                      onMouseLeave={e => {
+                                        e.currentTarget.style.borderColor = isOverdue && !t.done ? 'var(--color-danger)' : 'var(--color-border-light)';
+                                        e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                                      }}
                                     >
-                                      {t.link.includes('uploads/') ? t.link.split('/').pop().replace(/^\d+_/, '') : t.link}
-                                    </a>
-                                  </div>
-                                )}
-                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.375rem' }}>
-                                  <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem' }}>{t.priority === 'high' ? 'Ưu tiên cao' : 'Trung bình'}</span>
-                                  <span style={{ fontSize: '0.8125rem', color: isOverdue && !t.done ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: isOverdue && !t.done ? 600 : 'normal' }}>
-                                    {isOverdue && !t.done && <ShieldAlert size={12} />}
-                                    {getDueDateLabel(t.due_date, t.done)}
-                                  </span>
-                                </div>
-                              </div>
-                              <button
-                                className="btn-icon sm text-danger"
-                                style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  showConfirm(
-                                    'Xóa công việc?',
-                                    `Bạn có chắc chắn muốn xóa công việc "${t.title}"?`,
-                                    async () => {
-                                      try {
-                                        await api.delete(`/activities/${t.id}`);
-                                        setTasks(prev => prev.filter(x => x.id !== t.id));
-                                        addToast('Đã xóa công việc thành công', 'success');
-                                      } catch (err: any) {
-                                        addToast(err.response?.data?.message || 'Lỗi khi xóa công việc', 'error');
-                                      }
-                                    }
+                                      {/* Drag handle & header info */}
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', marginBottom: '4px' }}>
+                                        <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.625rem', padding: '1px 5px' }}>
+                                          {t.priority === 'high' ? 'Cao' : 'Trung bình'}
+                                        </span>
+                                        <button
+                                          className="btn-icon sm text-danger"
+                                          style={{ opacity: 0.3, padding: '2px' }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            showConfirm(
+                                              'Xóa công việc?',
+                                              `Bạn có chắc chắn muốn xóa công việc "${t.title}"?`,
+                                              async () => {
+                                                try {
+                                                  await api.delete(`/activities/${t.id}`);
+                                                  setTasks(prev => prev.filter(x => x.id !== t.id));
+                                                  addToast('Đã xóa công việc thành công', 'success');
+                                                } catch (err: any) {
+                                                  addToast(err.response?.data?.message || 'Lỗi khi xóa công việc', 'error');
+                                                }
+                                              }
+                                            );
+                                          }}
+                                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                          onMouseLeave={e => e.currentTarget.style.opacity = '0.3'}
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+
+                                      {/* Task Title */}
+                                      <p style={{ 
+                                        fontSize: '0.8125rem', 
+                                        fontWeight: 600, 
+                                        color: 'var(--color-text)', 
+                                        margin: '0 0 6px 0', 
+                                        textDecoration: t.done ? 'line-through' : 'none',
+                                        lineHeight: '1.25'
+                                      }}>
+                                        {t.title}
+                                      </p>
+
+                                      {/* Task Description */}
+                                      {t.description && (
+                                        <p style={{ 
+                                          fontSize: '0.75rem', 
+                                          color: 'var(--color-text-muted)', 
+                                          margin: '0 0 6px 0',
+                                          display: '-webkit-box',
+                                          WebkitLineClamp: 2,
+                                          WebkitBoxOrient: 'vertical',
+                                          overflow: 'hidden',
+                                          lineHeight: '1.3'
+                                        }}>
+                                          {t.description}
+                                        </p>
+                                      )}
+
+                                      {/* Attachment Link */}
+                                      {t.link && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '6px' }} onClick={e => e.stopPropagation()}>
+                                          <Paperclip size={11} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                                          <a 
+                                            href={resolveAttachmentUrl(t.link)} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer" 
+                                            style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 500, textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                          >
+                                            {t.link.includes('uploads/') ? t.link.split('/').pop().replace(/^\d+_/, '') : t.link}
+                                          </a>
+                                        </div>
+                                      )}
+
+                                      {/* Tags */}
+                                      {(t.tags || '').split(',').filter(Boolean).length > 0 && (
+                                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                                          {(t.tags || '').split(',').filter(Boolean).map((tag: string) => (
+                                            <span key={tag} style={{ fontSize: '0.6rem', padding: '0px 4px', borderRadius: '4px', background: 'rgba(16,185,129,0.06)', color: '#059669', fontWeight: 600 }}>
+                                              {tag}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Footer info (Due Date & Progress) */}
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem', paddingTop: '0.375rem', borderTop: '1px solid var(--color-border-light)' }}>
+                                        <span style={{ 
+                                          fontSize: '0.7rem', 
+                                          color: isOverdue && !t.done ? 'var(--color-danger)' : 'var(--color-text-muted)', 
+                                          display: 'flex', 
+                                          alignItems: 'center', 
+                                          gap: '3px',
+                                          fontWeight: isOverdue && !t.done ? 600 : 'normal'
+                                        }}>
+                                          <Clock size={10} />
+                                          {getDueDateLabel(t.due_date, t.done)}
+                                        </span>
+                                        
+                                        {colId === 'in_progress' && (
+                                          <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)' }}>
+                                            {t.progress || 50}%
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                   );
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                                })}
+                              </div>
                             </div>
                           );
-                        })}
-                      </div>
-                    );
-                  })()}
+                        };
+
+                        const renderTasksListView = () => {
+                          return (
+                            <div style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'hidden', marginTop: '0.5rem', width: '100%' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
+                                <thead>
+                                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text-muted)' }}>Tên công việc</th>
+                                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text-muted)', width: '120px' }}>Trạng thái</th>
+                                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text-muted)', width: '100px' }}>Độ ưu tiên</th>
+                                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text-muted)', width: '130px' }}>Hạn hoàn thành</th>
+                                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text-muted)', width: '140px' }}>Tiến độ</th>
+                                    <th style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text-muted)', width: '80px', textAlign: 'right' }}>Thao tác</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {filteredTasks.map(t => {
+                                    const isOverdue = t.due_date && new Date(t.due_date) < new Date(new Date().setHours(0,0,0,0)) && !t.done;
+                                    const statusLabel = t.done || t.progress === 100 ? 'Đã xong' : (t.progress > 0 ? 'Đang làm' : 'Cần làm');
+                                    const statusColor = t.done || t.progress === 100 ? 'var(--color-success)' : (t.progress > 0 ? 'var(--color-warning)' : 'var(--color-text-muted)');
+                                    const statusBg = t.done || t.progress === 100 ? 'rgba(16, 185, 129, 0.08)' : (t.progress > 0 ? 'rgba(245, 158, 11, 0.08)' : '#f1f5f9');
+                                    
+                                    return (
+                                      <tr 
+                                        key={t.id}
+                                        onClick={() => { if (!t.done) setSelectedTaskForDetails(t); }}
+                                        style={{ 
+                                          borderBottom: '1px solid var(--color-border-light)', 
+                                          cursor: t.done ? 'default' : 'pointer', 
+                                          transition: 'background 0.15s'
+                                        }}
+                                        onMouseEnter={e => { if (!t.done) e.currentTarget.style.backgroundColor = 'var(--color-bg)'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                      >
+                                        <td style={{ padding: '14px 16px' }}>
+                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                            <span style={{ fontWeight: 600, color: 'var(--color-text)', textDecoration: t.done ? 'line-through' : 'none' }}>{t.title}</span>
+                                            {t.description && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.description}</span>}
+                                            {t.tags && (
+                                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                                                {t.tags.split(',').filter(Boolean).map((tag: string) => (
+                                                  <span key={tag} style={{ fontSize: '0.6rem', padding: '0px 4px', borderRadius: '4px', background: 'rgba(16,185,129,0.06)', color: '#059669', fontWeight: 600 }}>#{tag}</span>
+                                                ))}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td style={{ padding: '14px 16px' }}>
+                                          <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: '12px', color: statusColor, background: statusBg }}>
+                                            {statusLabel}
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '14px 16px' }}>
+                                          <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
+                                            {t.priority === 'high' ? 'Cao' : 'Trung bình'}
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '14px 16px', color: isOverdue ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: isOverdue ? 600 : 'normal' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <Clock size={12} />
+                                            {getDueDateLabel(t.due_date, t.done)}
+                                          </div>
+                                        </td>
+                                        <td style={{ padding: '14px 16px' }}>
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100px' }}>
+                                            <div style={{ flex: 1, height: '6px', background: '#f3f4f6', borderRadius: '3px', overflow: 'hidden' }}>
+                                              <div style={{ width: `${t.done ? 100 : (t.progress || 0)}%`, height: '100%', background: t.done ? 'var(--color-success)' : 'var(--color-primary)' }} />
+                                            </div>
+                                            <span style={{ fontSize: '0.72rem', fontWeight: 700, minWidth: '24px', textAlign: 'right' }}>{t.done ? 100 : (t.progress || 0)}%</span>
+                                          </div>
+                                        </td>
+                                        <td style={{ padding: '14px 16px', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                                          <button
+                                            className="btn-icon sm text-danger"
+                                            style={{ padding: '4px' }}
+                                            onClick={() => {
+                                              showConfirm(
+                                                'Xóa công việc?',
+                                                `Bạn có chắc chắn muốn xóa công việc "${t.title}"?`,
+                                                async () => {
+                                                  try {
+                                                    await api.delete(`/activities/${t.id}`);
+                                                    setTasks(prev => prev.filter(x => x.id !== t.id));
+                                                    addToast('Đã xóa công việc thành công', 'success');
+                                                  } catch (err: any) {
+                                                    addToast(err.response?.data?.message || 'Lỗi khi xóa công việc', 'error');
+                                                  }
+                                                }
+                                              );
+                                            }}
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        };
+
+                        if (taskViewMode === 'list') {
+                          return renderTasksListView();
+                        }
+
+                        return (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', alignItems: 'start', marginTop: '0.5rem', width: '100%' }}>
+                            {renderKanbanColumn('todo', 'Cần làm', todoTasks, 'var(--color-text-muted)', '#e2e8f0')}
+                            {renderKanbanColumn('in_progress', 'Đang làm', inProgressTasks, 'var(--color-warning)', 'rgba(245, 158, 11, 0.12)')}
+                            {renderKanbanColumn('done', 'Đã xong', doneTasks, 'var(--color-success)', 'rgba(16, 185, 129, 0.12)')}
+                          </div>
+                        );
+                      })()}
                   </div>
                 )}
 

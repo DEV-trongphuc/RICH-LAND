@@ -31,13 +31,74 @@ const STATUS_CLASS: Record<string,string> = { lead:'info', qualified:'warning', 
 
 const calcScore = (c: any) => {
   if (!c) return 0;
-  let s = 50;
-  if (c.status==='customer')  s+=30;
-  if (c.status==='qualified') s+=15;
-  if (c.status==='churned')   s-=20;
-  if (c.source==='referral')  s+=10;
-  if (c.has_called)           s+=15;
-  return Math.min(100, Math.max(0,s));
+  let s = 0;
+  
+  // 1. Điểm khởi tạo (Mặc định)
+  s += 10;
+
+  // 2. Chức danh
+  const title = (c.job_title || '').toLowerCase();
+  if (title.includes('giám đốc') || title.includes('ceo') || title.includes('sáng lập') || title.includes('founder') || title.includes('chủ tịch')) {
+    s += 20;
+  } else if (title) {
+    s += 5;
+  }
+
+  // 3. Số điện thoại & Thông tin liên hệ
+  if (c.phone) s += 15;
+  if (c.mobile) s += 10;
+  if (c.phone && c.mobile) s += 10;
+  if (c.email) s += 10;
+  if (c.zalo_link || c.fb_link) s += 10;
+  if (c.birthday) s += 10;
+  if (c.gender) s += 5;
+  if (c.customer_type) s += 5;
+
+  // 4. Địa chỉ
+  if (c.address) s += 15;
+
+  // 5. Nguồn
+  if (c.source === 'website') s += 15;
+  if (c.source === 'referral') s += 20;
+
+  // 6. Liên kết dự án/công ty/phân khúc
+  if (c.project_id) s += 15;
+  if (c.company_id) s += 5;
+  if (c.industry) s += 5;
+  if (c.budget_range) s += 10;
+
+  // 7. Kỳ vọng doanh thu & Xác suất
+  const revenue = Number(c.expected_revenue) || 0;
+  if (revenue > 500000000) {
+    s += 35;
+  } else if (revenue > 100000000) {
+    s += 20;
+  }
+  if (Number(c.win_probability) > 70) s += 10;
+
+  // 8. Trạng thái & TTL1
+  if (c.status === 'qualified' || c.status === 'customer') s += 15;
+  if (Number(c.ttl1_completed) === 1) s += 25;
+
+  // 9. Ghi chú & Thẻ
+  if (c.notes && c.notes.trim().length > 10) s += 10;
+  
+  const tagList = typeof c.tags === 'string' 
+    ? c.tags.split(',').filter(Boolean) 
+    : (Array.isArray(c.tags) ? c.tags : []);
+  if (tagList.length > 0) s += 10;
+
+  // 10. Rớt nhiệt do quá 5 ngày không tương tác
+  const lastInteractionTime = c.last_contact || c.updated_at || c.created_at;
+  if (lastInteractionTime) {
+    const fiveDaysInMs = 5 * 24 * 60 * 60 * 1000;
+    const isDecayed = (new Date().getTime() - new Date(lastInteractionTime).getTime()) > fiveDaysInMs;
+    if (isDecayed) {
+      s -= 15;
+    }
+  }
+
+  return Math.min(100, Math.max(0, s));
 };
 
 const SEGMENTS = [];
@@ -225,7 +286,7 @@ export const ContactsPage: React.FC = () => {
         }
       }
 
-      setContacts(list.map(c => ({ ...c, score: c.lead_score || calcScore(c) })));
+      setContacts(list.map(c => ({ ...c, score: calcScore(c) })));
       setTotal(list.length);
       setLoading(false);
       return;
@@ -261,7 +322,7 @@ export const ContactsPage: React.FC = () => {
 
       const r = await api.get('/contacts', { params });
       const data = r.data.data;
-      setContacts((data.items || []).map((c: any) => ({ ...c, score: c.lead_score || calcScore(c) })));
+      setContacts((data.items || []).map((c: any) => ({ ...c, score: calcScore(c) })));
       setTotal(data.total || 0);
     } catch (e: any) {
       setContacts([]);
@@ -1124,7 +1185,7 @@ export const ContactsPage: React.FC = () => {
         onClose={() => setProfileContact(null)}
         contact={profileContact}
         onUpdate={updated => {
-          setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated}:c));
+          setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated,score:calcScore(updated)}:c));
           setProfileContact(prev => prev && prev.id === updated?.id ? { ...prev, ...updated } : prev);
         }}
       />

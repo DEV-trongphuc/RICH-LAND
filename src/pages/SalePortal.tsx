@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -277,6 +277,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [currentPage, setCurrentPage] = useState(1);
   const [wsTaskFilter, setWsTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [wsSubTab, setWsSubTab] = useState<'customer' | 'team' | 'personal'>('customer');
   const [wsTeamSubFilter, setWsTeamSubFilter] = useState<'all' | 'task' | 'announcement' | 'campaign' | 'policy'>('all');
   
@@ -316,6 +317,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsSearch, setWsSearch] = useState('');
   const [wsPriority, setWsPriority] = useState('');
   const [wsStatus, setWsStatus] = useState('planned'); // Default: hide completed
+  const [wsViewMode, setWsViewMode] = useState<'grid' | 'kanban'>('grid');
+  const [draggedTaskId, setDraggedTaskId] = useState<number | null>(null);
+  const [activeOverCol, setActiveOverCol] = useState<'todo' | 'in_progress' | 'done' | null>(null);
   const [wsDatePreset, setWsDatePreset] = useState('all');
   const [wsStartDate, setWsStartDate] = useState('');
   const [wsEndDate, setWsEndDate] = useState('');
@@ -885,6 +889,45 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       console.error(e);
     } finally {
       setLoadingWsTasks(false);
+    }
+  };
+
+  const handleTaskDrop = async (taskId: number, targetCol: 'todo' | 'in_progress' | 'done') => {
+    let nextDone = false;
+    let nextProgress = 0;
+    let nextStatus = 'planned';
+
+    if (targetCol === 'todo') {
+      nextDone = false;
+      nextProgress = 0;
+      nextStatus = 'planned';
+    } else if (targetCol === 'in_progress') {
+      nextDone = false;
+      nextProgress = 50;
+      nextStatus = 'planned';
+    } else if (targetCol === 'done') {
+      nextDone = true;
+      nextProgress = 100;
+      nextStatus = 'done';
+    }
+
+    // Optimistic local state update
+    setWsTasks(prev => prev.map(x => x.id === taskId ? { ...x, status: nextStatus, progress: nextProgress } : x));
+    
+    try {
+      await api.put(`/activities/${taskId}`, { 
+        progress: nextProgress,
+        status: nextStatus
+      });
+      const colLabel = targetCol === 'todo' ? 'Cần làm' : targetCol === 'in_progress' ? 'Đang làm' : 'Đã xong';
+      toast.success(`Đã chuyển công việc sang cột ${colLabel}`);
+      if (nextStatus === 'done') {
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+      }
+      fetchWorkspaceTasks();
+    } catch (err: any) {
+      fetchWorkspaceTasks();
+      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật tiến độ công việc');
     }
   };
 
@@ -2821,177 +2864,306 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         )}
 
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1.8fr 1fr 1fr 1fr',
-          gap: '12px',
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border-light)',
           borderRadius: '16px',
-          padding: '1.25rem',
-          boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)'
+          padding: '0.75rem 1rem',
+          boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          marginBottom: '1rem'
         }}>
-          {/* Search Input */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Tìm kiếm</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Tìm theo tên, mô tả..."
-              value={wsSearch}
-              onChange={e => setWsSearch(e.target.value)}
-              style={{ height: '38px', fontSize: '0.8rem', padding: '8px 12px' }}
-            />
-          </div>
-
-          {/* Priority Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Độ ưu tiên</label>
-            <CustomSelect
-              options={[
-                { value: '', label: 'Tất cả độ ưu tiên' },
-                { value: 'high', label: 'Cao' },
-                { value: 'medium', label: 'Trung bình' },
-                { value: 'low', label: 'Thấp' }
-              ]}
-              value={wsPriority}
-              onChange={val => setWsPriority(String(val))}
-            />
-          </div>
-
-          {/* Status Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Trạng thái</label>
-            <CustomSelect
-              options={[
-                { value: 'planned', label: 'Chưa hoàn thành' },
-                { value: '', label: 'Tất cả trạng thái' },
-                { value: 'done', label: 'Đã hoàn thành' }
-              ]}
-              value={wsStatus}
-              onChange={val => setWsStatus(String(val))}
-            />
-          </div>
-
-          {/* Date Preset Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thời gian hạn</label>
-            <CustomSelect
-              options={[
-                { value: 'all', label: 'Tất cả thời gian' },
-                { value: 'today', label: 'Hôm nay' },
-                { value: 'tomorrow', label: 'Ngày mai' },
-                { value: 'week', label: 'Tuần này' },
-                { value: 'overdue', label: 'Quá hạn' },
-                { value: 'custom', label: 'Tùy chỉnh ngày...' }
-              ]}
-              value={wsDatePreset}
-              onChange={val => setWsDatePreset(String(val))}
-            />
-          </div>
-        </div>
-
-        {/* Custom Date Pickers if custom preset is selected */}
-        {wsDatePreset === 'custom' && (
+          {/* Main Controls Row */}
           <div style={{
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '12px',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: '16px',
-            padding: '1rem 1.25rem',
-            marginTop: '-0.5rem',
-            boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)'
+            gap: '1rem',
+            flexWrap: 'wrap',
+            width: '100%'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Từ ngày:</span>
-              <input
-                type="date"
-                className="form-input"
-                value={wsStartDate}
-                onChange={e => setWsStartDate(e.target.value)}
-                style={{ height: '36px', width: '150px', padding: '4px 8px', fontSize: '0.8rem' }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Đến ngày:</span>
-              <input
-                type="date"
-                className="form-input"
-                value={wsEndDate}
-                onChange={e => setWsEndDate(e.target.value)}
-                style={{ height: '36px', width: '150px', padding: '4px 8px', fontSize: '0.8rem' }}
-              />
-            </div>
-          </div>
-        )}
-
-        {['admin', 'superadmin', 'super_admin', 'manager'].includes(currentUser?.role || '') && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border-light)',
-            borderRadius: '16px',
-            padding: '0.875rem 1.25rem',
-            marginTop: '-0.5rem',
-            boxShadow: '0 4px 20px -8px rgba(0,0,0,0.05)',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nhóm:</span>
-              <div style={{ width: '180px' }}>
-                <CustomSelect
-                  options={teamOptions}
-                  value={wsTeamId}
-                  onChange={val => { setWsTeamId(String(val)); setWsUserId(''); }}
+            {/* Left side: Search & Advanced Filters Trigger */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '280px', maxWidth: isMobile ? '100%' : '500px' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Tìm theo tên, mô tả..."
+                  value={wsSearch}
+                  onChange={e => setWsSearch(e.target.value)}
+                  style={{ height: '38px', fontSize: '0.85rem', padding: '8px 12px 8px 36px', borderRadius: '10px', width: '100%' }}
                 />
               </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nhân viên:</span>
-              <div style={{ width: '180px' }}>
-                <CustomSelect
-                  options={consultantOptions}
-                  value={wsUserId}
-                  onChange={val => setWsUserId(String(val))}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Quick Task Role Filters */}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '0.25rem', background: 'white', padding: '6px', borderRadius: '12px', width: 'fit-content', border: '1px solid var(--color-border)' }}>
-          {[
-            { value: 'all', label: t('Tất cả') },
-            { value: 'assigned_to_me', label: t('Tôi thực hiện') },
-            currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
-            { value: 'collaborator', label: t('Tôi liên quan') }
-          ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
-            const isSelected = wsTaskFilter === tab.value;
-            return (
               <button
-                key={tab.value}
-                onClick={() => setWsTaskFilter(tab.value as any)}
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 style={{
-                  padding: '6px 16px',
-                  borderRadius: '8px',
-                  border: 'none',
+                  height: '38px',
+                  padding: '0 12px',
+                  borderRadius: '10px',
+                  border: showAdvancedFilters ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                  background: showAdvancedFilters ? 'var(--color-primary-light)' : 'transparent',
+                  color: showAdvancedFilters ? 'var(--color-primary)' : 'var(--color-text)',
                   fontSize: '0.8rem',
                   fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  background: isSelected ? 'var(--color-primary)' : 'transparent',
-                  color: isSelected ? 'white' : 'var(--color-text-muted)',
-                  boxShadow: isSelected ? '0 4px 12px rgba(189, 29, 45, 0.15)' : 'none'
+                  whiteSpace: 'nowrap'
                 }}
               >
-                {tab.label}
+                <Filter size={14} />
+                <span>{t('Bộ lọc')}</span>
+                {(() => {
+                  let count = 0;
+                  if (wsPriority) count++;
+                  if (wsStatus && wsStatus !== 'planned') count++;
+                  if (wsDatePreset && wsDatePreset !== 'all') count++;
+                  if (wsTeamId) count++;
+                  if (wsUserId) count++;
+                  return count > 0 ? (
+                    <span style={{
+                      background: 'var(--color-primary)',
+                      color: 'white',
+                      fontSize: '0.65rem',
+                      fontWeight: 800,
+                      borderRadius: '50%',
+                      width: '16px',
+                      height: '16px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: '2px'
+                    }}>
+                      {count}
+                    </span>
+                  ) : null;
+                })()}
               </button>
-            );
-          })}
+            </div>
+
+            {/* Right side: Role filters & View Mode switcher */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '4px', background: 'var(--color-border-light)', padding: '4px', borderRadius: '10px', width: 'fit-content' }}>
+                {[
+                  { value: 'all', label: t('Tất cả') },
+                  { value: 'assigned_to_me', label: t('Tôi thực hiện') },
+                  currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
+                  { value: 'collaborator', label: t('Tôi liên quan') }
+                ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
+                  const isSelected = wsTaskFilter === tab.value;
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setWsTaskFilter(tab.value as any)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '7px',
+                        border: 'none',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        background: isSelected ? 'var(--color-surface)' : 'transparent',
+                        color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        boxShadow: isSelected ? '0 2px 6px rgba(0, 0, 0, 0.05)' : 'none'
+                      }}
+                    >
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{
+                display: 'flex',
+                background: 'var(--color-border-light)',
+                padding: '4px',
+                borderRadius: '10px',
+                gap: '4px'
+              }}>
+                <button
+                  onClick={() => setWsViewMode('grid')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: wsViewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
+                    color: wsViewMode === 'grid' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: wsViewMode === 'grid' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <LayoutGrid size={13} />
+                  <span>{t('Dạng lưới')}</span>
+                </button>
+                <button
+                  onClick={() => setWsViewMode('kanban')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '7px',
+                    border: 'none',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: wsViewMode === 'kanban' ? 'var(--color-surface)' : 'transparent',
+                    color: wsViewMode === 'kanban' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: wsViewMode === 'kanban' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Layers size={13} />
+                  <span>{t('Dạng Kanban')}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Advanced Dropdown Filters (Collapsible) */}
+          <AnimatePresence>
+            {showAdvancedFilters && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+                  gap: '12px',
+                  paddingTop: '0.5rem',
+                  borderTop: '1px solid var(--color-border-light)'
+                }}>
+                  {/* Priority Filter */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Độ ưu tiên</label>
+                    <CustomSelect
+                      options={[
+                        { value: '', label: 'Tất cả độ ưu tiên' },
+                        { value: 'high', label: 'Cao' },
+                        { value: 'medium', label: 'Trung bình' },
+                        { value: 'low', label: 'Thấp' }
+                      ]}
+                      value={wsPriority}
+                      onChange={val => setWsPriority(String(val))}
+                    />
+                  </div>
+
+                  {/* Status Filter */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Trạng thái</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'planned', label: 'Chưa hoàn thành' },
+                        { value: '', label: 'Tất cả trạng thái' },
+                        { value: 'done', label: 'Đã hoàn thành' }
+                      ]}
+                      value={wsStatus}
+                      onChange={val => setWsStatus(String(val))}
+                    />
+                  </div>
+
+                  {/* Date Preset Filter */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thời gian hạn</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'all', label: 'Tất cả thời gian' },
+                        { value: 'today', label: 'Hôm nay' },
+                        { value: 'tomorrow', label: 'Ngày mai' },
+                        { value: 'week', label: 'Tuần này' },
+                        { value: 'overdue', label: 'Quá hạn' },
+                        { value: 'custom', label: 'Tùy chỉnh ngày...' }
+                      ]}
+                      value={wsDatePreset}
+                      onChange={val => setWsDatePreset(String(val))}
+                    />
+                  </div>
+                </div>
+
+                {/* Custom Date Pickers inside Advanced Filters */}
+                {wsDatePreset === 'custom' && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '0.75rem 0 0 0',
+                    marginTop: '0.5rem',
+                    borderTop: '1px dashed var(--color-border-light)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Từ ngày:</span>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={wsStartDate}
+                        onChange={e => setWsStartDate(e.target.value)}
+                        style={{ height: '36px', width: '140px', padding: '4px 8px', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Đến ngày:</span>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={wsEndDate}
+                        onChange={e => setWsEndDate(e.target.value)}
+                        style={{ height: '36px', width: '140px', padding: '4px 8px', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Team / Consultant filters inside Advanced Filters */}
+                {['admin', 'superadmin', 'super_admin', 'manager'].includes(currentUser?.role || '') && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    padding: '0.75rem 0 0 0',
+                    marginTop: '0.5rem',
+                    borderTop: '1px dashed var(--color-border-light)',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nhóm:</span>
+                      <div style={{ width: '180px' }}>
+                        <CustomSelect
+                          options={teamOptions}
+                          value={wsTeamId}
+                          onChange={val => { setWsTeamId(String(val)); setWsUserId(''); }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nhân viên:</span>
+                      <div style={{ width: '180px' }}>
+                        <CustomSelect
+                          options={consultantOptions}
+                          value={wsUserId}
+                          onChange={val => setWsUserId(String(val))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Task Grid */}
@@ -3005,7 +3177,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <CheckSquare size={36} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
             <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Không tìm thấy công việc nào phù hợp với bộ lọc.</p>
           </div>
-        ) : (
+        ) : wsViewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
             {filteredWsTasks.map(task => {
               const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
@@ -3039,7 +3211,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 }
               }
               
-              const participantCount = task.participant_ids ? task.participant_ids.split(',').filter(Boolean).length : 0;
               const progressVal = task.progress || 0;
 
               return (
@@ -3120,7 +3291,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>{progressVal}%</span>
                     </div>
-                    <div style={{ width: '100%', height: '4px', background: '#f3f4f6', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '8px', background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${progressVal}%`, height: '100%', background: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)', transition: 'width 0.3s' }} />
                     </div>
                   </div>
@@ -3246,6 +3417,265 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               );
             })}
           </div>
+        ) : (
+          /* Kanban View */
+          <>
+            {(() => {
+              const todoTasks = filteredWsTasks.filter(t => t.status !== 'done' && (!t.progress || t.progress === 0));
+              const inProgressTasks = filteredWsTasks.filter(t => t.status !== 'done' && t.progress > 0 && t.progress < 100);
+              const doneTasks = filteredWsTasks.filter(t => t.status === 'done' || t.progress === 100);
+
+              const renderKanbanColumn = (
+                colId: 'todo' | 'in_progress' | 'done',
+                title: string,
+                columnTasks: any[],
+                headerColor: string,
+                bgColor: string
+              ) => {
+                const isOver = activeOverCol === colId;
+                return (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      if (activeOverCol !== colId) setActiveOverCol(colId);
+                    }}
+                    onDragLeave={() => setActiveOverCol(null)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setActiveOverCol(null);
+                      if (draggedTaskId !== null) {
+                        handleTaskDrop(draggedTaskId, colId);
+                      }
+                    }}
+                    style={{
+                      background: '#f8fafc',
+                      border: isOver ? '2px dashed var(--color-primary)' : '1px solid #e2e8f0',
+                      borderRadius: '16px',
+                      padding: '0.75rem',
+                      minHeight: '450px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      transition: 'all 0.2s',
+                      boxShadow: isOver ? '0 4px 12px rgba(189, 29, 45, 0.08)' : 'none',
+                      width: '100%'
+                    }}
+                  >
+                    {/* Column Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '0.375rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.25rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: headerColor }}></span>
+                        <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{title}</h4>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: bgColor, color: headerColor }}>
+                        {columnTasks.length}
+                      </span>
+                    </div>
+
+                    {/* Tasks List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', flex: 1, overflowY: 'auto', maxHeight: '600px' }}>
+                      {columnTasks.map(task => {
+                        const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
+                        const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
+                        
+                        let dateBadgeColor = 'var(--color-text-muted)';
+                        let dateBadgeBg = 'var(--color-bg)';
+                        if (isOverdue) {
+                          dateBadgeColor = 'var(--color-danger)';
+                          dateBadgeBg = 'rgba(239, 68, 68, 0.08)';
+                        } else if (isToday) {
+                          dateBadgeColor = 'var(--color-warning)';
+                          dateBadgeBg = 'rgba(245, 158, 11, 0.08)';
+                        }
+
+                        const link = task.body && !task.body.startsWith('{"erp_task":') 
+                          ? (task.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
+                          : '';
+                        
+                        let description = '';
+                        if (task.body) {
+                          if (task.body.startsWith('{"erp_task":')) {
+                            try {
+                              const parsed = JSON.parse(task.body);
+                              description = parsed.erp_task?.description || '';
+                            } catch (e) {
+                              description = task.body;
+                            }
+                          } else {
+                            description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+                          }
+                        }
+                        
+                        const progressVal = task.progress || 0;
+
+                        return (
+                          <div
+                            key={task.id}
+                            draggable
+                            onDragStart={() => setDraggedTaskId(task.id)}
+                            onDragEnd={() => setDraggedTaskId(null)}
+                            onClick={() => {
+                              const parsed = parseDescriptionAndChecklist(description);
+                              const parsedTask = {
+                                id: task.id,
+                                title: task.subject,
+                                done: task.status === 'done',
+                                priority: task.priority,
+                                due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+                                link,
+                                description: parsed.pureDescription,
+                                user_id: task.user_id,
+                                user_name: task.user_name || 'Hệ thống',
+                                tags: task.tags || '',
+                                participant_ids: task.participant_ids || '',
+                                progress: task.progress || 0,
+                                require_approval: task.require_approval || 0,
+                                approver_id: task.approver_id,
+                                approval_status: task.approval_status,
+                                contact_id: task.contact_id,
+                                contact_name: task.contact_name,
+                                contact_avatar: task.contact_avatar,
+                                related_type: task.related_type,
+                                related_id: task.related_id
+                              };
+                              setChecklist(parsed.checklist);
+                              setSelectedTaskForDetails(parsedTask);
+                            }}
+                            style={{
+                              background: 'var(--color-surface)',
+                              border: isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
+                              borderRadius: '12px',
+                              padding: '0.875rem',
+                              cursor: 'grab',
+                              opacity: task.status === 'done' ? 0.7 : 1,
+                              boxShadow: 'var(--shadow-sm)',
+                              transition: 'all 0.2s',
+                              position: 'relative'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-primary)';
+                              e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-border-light)';
+                              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+                            }}
+                          >
+                            {/* Drag handle & header info */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', marginBottom: '4px' }}>
+                              <span className={`badge ${task.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.625rem', padding: '1px 5px' }}>
+                                {task.priority === 'high' ? 'Cao' : 'Trung bình'}
+                              </span>
+                            </div>
+
+                            {/* Task Title */}
+                            <p style={{ 
+                              fontSize: '0.8125rem', 
+                              fontWeight: 600, 
+                              color: 'var(--color-text)', 
+                              margin: '0 0 6px 0', 
+                              textDecoration: task.status === 'done' ? 'line-through' : 'none',
+                              lineHeight: '1.25'
+                            }}>
+                              {task.subject}
+                            </p>
+
+                            {/* Task Description */}
+                            {description && (
+                              <p style={{ 
+                                fontSize: '0.75rem', 
+                                color: 'var(--color-text-muted)', 
+                                margin: '0 0 6px 0',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                lineHeight: '1.3'
+                              }}>
+                                {description}
+                              </p>
+                            )}
+
+                            {/* Attachment Link */}
+                            {link && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', marginBottom: '6px' }} onClick={e => e.stopPropagation()}>
+                                <Paperclip size={11} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                                <a 
+                                  href={link} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 500, textDecoration: 'underline', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                >
+                                  {link.includes('uploads/') ? link.split('/').pop().replace(/^\d+_/, '') : link}
+                                </a>
+                              </div>
+                            )}
+
+                            {/* Related Entity Badge */}
+                            {task.related_type === 'contact' && task.related_id && (
+                              <div style={{ marginBottom: '6px' }} onClick={e => e.stopPropagation()}>
+                                <span
+                                  style={{
+                                    fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
+                                    color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    cursor: 'pointer'
+                                  }}
+                                  onClick={() => handleOpenContactProfile(Number(task.related_id))}
+                                >
+                                  <Avatar name={task.contact_name || t('Khách hàng')} size={12} />
+                                  {task.contact_name || t('Khách hàng')}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Tags */}
+                            {task.tags && (
+                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px' }}>
+                                {task.tags.split(',').filter(Boolean).map((tag: string) => (
+                                  <span key={tag} style={{ fontSize: '0.6rem', padding: '0px 4px', borderRadius: '4px', background: 'rgba(16,185,129,0.06)', color: '#059669', fontWeight: 600 }}>
+                                    #{tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Footer info (Due Date & Progress) */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem', paddingTop: '0.375rem', borderTop: '1px solid var(--color-border-light)' }}>
+                              <span style={{ 
+                                fontSize: '0.7rem', 
+                                color: isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '3px',
+                                fontWeight: isOverdue && task.status !== 'done' ? 600 : 'normal'
+                              }}>
+                                <Clock size={10} />
+                                {getDueDateLabel(task.due_date, task.status === 'done', t)}
+                              </span>
+                              
+                              {colId === 'in_progress' && (
+                                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)' }}>
+                                  {progressVal}%
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              };
+
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: '1rem', alignItems: 'start', width: '100%' }}>
+                  {renderKanbanColumn('todo', t('Cần làm'), todoTasks, 'var(--color-text-muted)', '#e2e8f0')}
+                  {renderKanbanColumn('in_progress', t('Đang làm'), inProgressTasks, 'var(--color-warning)', 'rgba(245, 158, 11, 0.12)')}
+                  {renderKanbanColumn('done', t('Đã xong'), doneTasks, 'var(--color-success)', 'rgba(16, 185, 129, 0.12)')}
+                </div>
+              );
+            })()}
+          </>
         )}
 
         {/* Task Details Modal moved to root level */}
@@ -4222,7 +4652,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   {t('Từ chối')}
                                 </span>
                               )}
-                              {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport && lead.status !== 'reminder' &&
+                              {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport && lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
                                 (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                                 (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
                                   <button onClick={() => handleOpenReportModal(lead)} className="btn sm danger" style={{ height: 30, padding: '0 10px' }}>
@@ -4388,7 +4818,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 <XCircle size={16} />
                               </div>
                             )}
-                            {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport && lead.status !== 'reminder' &&
+                            {(!lead.report_status || lead.report_status === 'rejected') && isAllowedToReport && lead.status !== 'reminder' && lead.status !== 'databank_claim' &&
                               (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                               (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)) && (
                                 <button
@@ -6169,14 +6599,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   title: 'TỔNG QUAN',
                   items: [
                     { name: 'Tổng quan', key: 'dashboard', icon: LayoutDashboard },
-                    { name: 'Bàn làm việc', key: 'workspace', icon: CheckSquare }
+                    { name: 'Bàn làm việc', key: 'workspace', icon: CheckSquare },
+                    { name: 'Kho Databank', key: 'databank', icon: Layers }
                   ]
                 },
                 {
                   title: 'KHÁCH HÀNG',
                   items: [
                     { name: 'Nhật ký Data', key: 'data', icon: Database },
-                    { name: 'Kho Databank', key: 'databank', icon: Layers },
                     { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
                     { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
                     { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },

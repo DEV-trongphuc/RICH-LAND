@@ -387,7 +387,7 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
-    if (($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') && !in_array($action, ['get_settings', 'get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 'expenses', 'tickets', 'activities', 'users', 'notes', 'cooperation-slips', 'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave'])) {
+    if (($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') && !in_array($action, ['get_settings', 'get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'consultant-profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 'expenses', 'tickets', 'activities', 'users', 'notes', 'cooperation-slips', 'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave'])) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -10128,6 +10128,24 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật hồ sơ']);
         }
         break;
+
+    case 'consultant-profile':
+        if (!$currentSaleConsultantId) {
+            echo json_encode(['success' => false, 'message' => 'Consultant profile not found']);
+            exit;
+        }
+        $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = ?");
+        $stmtP->bind_param("i", $currentSaleConsultantId);
+        $stmtP->execute();
+        $consultantProfile = $stmtP->get_result()->fetch_assoc();
+        if ($consultantProfile) {
+            if (!empty($consultantProfile['work_schedule'])) {
+                $consultantProfile['work_schedule'] = json_decode($consultantProfile['work_schedule'], true);
+            }
+        }
+        $stmtP->close();
+        echo json_encode(['success' => true, 'data' => $consultantProfile]);
+        exit;
 
     case 'update_consultant_self_profile':
         $input = json_decode(file_get_contents('php://input'), true);

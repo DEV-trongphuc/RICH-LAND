@@ -578,8 +578,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 height: '34px',
-                background: 'var(--color-success)',
-                borderColor: 'var(--color-success)',
+                background: 'var(--color-primary)',
+                borderColor: 'var(--color-primary)',
                 color: 'white',
                 cursor: 'pointer'
               }}
@@ -1023,7 +1023,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 )}
               </div>
             </div>
-
+            {/* Bottom Spacer to prevent content from being flush against the bottom */}
+            <div style={{ height: '5rem', flexShrink: 0 }} />
           </div>
 
           {/* Right Column (2/5) */}
@@ -1497,7 +1498,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 }}
               />
             </div>
-
+            {/* Bottom Spacer to prevent content from being flush against the bottom */}
+            <div style={{ height: '5rem', flexShrink: 0 }} />
           </div>
 
         </div>

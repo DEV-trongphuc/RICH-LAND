@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Pagination } from '../components/ui/Pagination';
-import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import confetti from 'canvas-confetti';
@@ -49,7 +49,15 @@ export const DealsPage: React.FC = () => {
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   
   const [dragging, setDragging] = useState<{ id: number, fromStage: number } | null>(null);
-  const [transitionModal, setTransitionModal] = useState<{ isOpen: boolean; itemId: number; toStage: number; fromStage: number; note: string } | null>(null);
+  const [transitionModal, setTransitionModal] = useState<{ 
+    isOpen: boolean; 
+    itemId: number; 
+    toStage: number; 
+    fromStage: number; 
+    note: string;
+    isCancellation?: boolean;
+    hasRevenue?: 'yes' | 'no' | null;
+  } | null>(null);
   const [stagePickerItem, setStagePickerItem] = useState<{ id: number, fromStageId: number } | null>(null);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -334,27 +342,53 @@ export const DealsPage: React.FC = () => {
     });
   };
 
-  const handleDrop = (toStage: number) => {
-    if (!dragging || dragging.fromStage === toStage) return;
+  const openStageTransitionModal = (itemId: number, fromStage: number, toStage: number) => {
+    const fromStageObj = stages.find(s => s.id === fromStage);
+    const toStageObj = stages.find(s => s.id === toStage);
+    const isFromDeposit = fromStageObj?.name?.toLowerCase()?.includes('cọc') || fromStageObj?.name?.toLowerCase()?.includes('deposit');
+    const isToSuccess = toStageObj?.name?.toLowerCase()?.includes('hợp đồng') || toStageObj?.name?.toLowerCase()?.includes('won') || toStageObj?.name?.toLowerCase()?.includes('thành công') || toStageObj?.is_won;
+    const isCancellation = isFromDeposit && !isToSuccess;
+
     setTransitionModal({
       isOpen: true,
-      itemId: dragging.id,
-      fromStage: dragging.fromStage,
-      toStage: toStage,
-      note: ''
+      itemId,
+      fromStage,
+      toStage,
+      note: '',
+      isCancellation,
+      hasRevenue: null
     });
+  };
+
+  const handleDrop = (toStage: number) => {
+    if (!dragging || dragging.fromStage === toStage) return;
+    openStageTransitionModal(dragging.id, dragging.fromStage, toStage);
     setDragging(null);
   };
 
   const handleConfirmTransition = async () => {
     if (!transitionModal) return;
+
+    if (transitionModal.isCancellation) {
+      if (!transitionModal.hasRevenue) {
+        addToast('Vui lòng xác nhận trạng thái doanh thu thực tế.', 'warning');
+        return;
+      }
+      if (transitionModal.hasRevenue === 'yes') {
+        addToast('Không thể chuyển trạng thái. Quy định yêu cầu giữ nguyên Đặt cọc do đã có doanh thu.', 'error');
+        return;
+      }
+    }
+
     if (!transitionModal.note.trim()) { addToast('Vui lòng nhập ghi chú bắt buộc (Audit Trail)', 'warning'); return; }
 
     try {
       const endpoint = pipelineView === 'contacts' ? `/contacts/${transitionModal.itemId}/stage` : (pipelineView === 'companies' ? `/companies/${transitionModal.itemId}/stage` : `/deals/${transitionModal.itemId}/stage`);
       await api.patch(endpoint, { 
         stage_id: transitionModal.toStage,
-        note: transitionModal.note
+        note: transitionModal.isCancellation 
+          ? `[Bể cọc - Không doanh thu] ${transitionModal.note}`
+          : transitionModal.note
       });
       fetchData(); // Refresh
       
@@ -976,64 +1010,191 @@ export const DealsPage: React.FC = () => {
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               onClick={e => e.stopPropagation()}
-              style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '400px', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-2xl)' }}
+              style={{ background: 'var(--color-surface)', width: '90%', maxWidth: transitionModal.isCancellation ? '480px' : '400px', borderRadius: 'var(--radius-xl)', padding: '1.75rem', boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)' }}
             >
-              {(() => {
-                const fromIndex = stages.findIndex(s => s.id === transitionModal.fromStage);
-                const toIndex = stages.findIndex(s => s.id === transitionModal.toStage);
-                const skipped = (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex + 1)
-                  ? stages.slice(fromIndex + 1, toIndex).map(s => s.name)
-                  : (fromIndex !== -1 && toIndex !== -1 && fromIndex > toIndex + 1)
-                  ? stages.slice(toIndex + 1, fromIndex).map(s => s.name)
-                  : [];
-                return (
-                  <>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật Pipeline</h3>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
-                      Từ <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> 
-                      {' '}➔{' '}
-                      <strong style={{ color: stages.find(s => s.id === transitionModal.toStage)?.color }}>{stages.find(s => s.id === transitionModal.toStage)?.name}</strong>
-                    </p>
+              {transitionModal.isCancellation ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem', color: 'var(--color-danger)' }}>
+                    <AlertTriangle size={22} />
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Xác Nhận Nghiệp Vụ Bể Cọc</h3>
+                  </div>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.4 }}>
+                    Bạn đang chuyển Deal này ra khỏi giai đoạn <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> (Báo bể cọc). 
+                    Vui lòng xác nhận tình trạng doanh thu thực tế của Deal:
+                  </p>
 
-                    {skipped.length > 0 && (
-                      <div style={{
-                        background: 'rgba(239, 68, 68, 0.08)',
-                        border: '1px solid rgba(239, 68, 68, 0.3)',
-                        borderRadius: '12px',
-                        padding: '1rem',
-                        marginBottom: '1.25rem',
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
+                    {/* Option 1: No Revenue */}
+                    <button
+                      type="button"
+                      onClick={() => setTransitionModal({ ...transitionModal, hasRevenue: 'no' })}
+                      style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '4px'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.875rem' }}>
-                          <AlertCircle size={16} /> Nhảy cóc giai đoạn!
+                        gap: '4px',
+                        padding: '12px 16px',
+                        border: `1.5px solid ${transitionModal.hasRevenue === 'no' ? 'var(--color-primary)' : 'var(--color-border-light)'}`,
+                        background: transitionModal.hasRevenue === 'no' ? 'var(--color-primary-light)' : 'transparent',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s',
+                        width: '100%'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '16px', height: '16px', borderRadius: '50%', border: '2px solid var(--color-primary)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {transitionModal.hasRevenue === 'no' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)' }} />}
                         </div>
-                        <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                          Bạn đang di chuyển qua nhiều giai đoạn. Bỏ qua các bước: <strong style={{ color: 'var(--color-text)' }}>{skipped.join(', ')}</strong>.
-                        </p>
+                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: transitionModal.hasRevenue === 'no' ? 'var(--color-primary)' : 'var(--color-text)' }}>Chưa phát sinh doanh thu</span>
                       </div>
-                    )}
-                  </>
-                );
-              })()}
-              
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label className="form-label">Ghi chú Audit Trail <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                <textarea 
-                  className="form-input" 
-                  rows={3} 
-                  placeholder="Ghi chú bắt buộc lý do chuyển..."
-                  value={transitionModal.note}
-                  onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
-                  style={{ minHeight: '120px', padding: '12px 16px', lineHeight: 1.5, resize: 'vertical' }}
-                  autoFocus
-                />
-              </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '24px' }}>
+                        Khách hàng hủy cọc trước khi công ty thực thu bất kỳ dòng tiền/phí môi giới nào. Lead sẽ bị hạ cấp và khởi động lại bảo mật.
+                      </span>
+                    </button>
+
+                    {/* Option 2: Has Revenue */}
+                    <button
+                      type="button"
+                      onClick={() => setTransitionModal({ ...transitionModal, hasRevenue: 'yes' })}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        padding: '12px 16px',
+                        border: `1.5px solid ${transitionModal.hasRevenue === 'yes' ? 'var(--color-danger)' : 'var(--color-border-light)'}`,
+                        background: transitionModal.hasRevenue === 'yes' ? 'rgba(239, 68, 68, 0.04)' : 'transparent',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.2s',
+                        width: '100%'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '16px', height: '16px', borderRadius: '50%', border: '2px solid var(--color-danger)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          {transitionModal.hasRevenue === 'yes' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-danger)' }} />}
+                        </div>
+                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: transitionModal.hasRevenue === 'yes' ? 'var(--color-danger)' : 'var(--color-text)' }}>Đã có doanh thu (Đóng đợt 1)</span>
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '24px' }}>
+                        Công ty đã thu phí đợt 1 thành công. Theo quy định, khách hàng phải được giữ nguyên trạng thái Đặt Cọc.
+                      </span>
+                    </button>
+                  </div>
+
+                  {transitionModal.hasRevenue === 'yes' && (
+                    <div style={{
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1.5px solid rgba(239, 68, 68, 0.2)',
+                      borderRadius: '12px',
+                      padding: '12px 16px',
+                      marginBottom: '1.5rem',
+                      display: 'flex',
+                      gap: '8px',
+                      alignItems: 'flex-start'
+                    }}>
+                      <ShieldAlert size={18} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: '2px' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-danger)' }}>Hành động bị chặn!</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', lineHeight: 1.35 }}>
+                          Không cho phép hạ cấp trạng thái. Do giao dịch đã đóng đợt 1, hệ thống bắt buộc giữ nguyên Deal ở cột Đặt Cọc.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {transitionModal.hasRevenue === 'no' && (
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                      <label className="form-label">Lý do bể cọc (Audit Trail) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <textarea 
+                        className="form-input" 
+                        rows={3} 
+                        placeholder="Nhập lý do chi tiết để lưu lịch sử kiểm tra..."
+                        value={transitionModal.note}
+                        onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
+                        style={{ minHeight: '90px', padding: '10px 14px', lineHeight: 1.4, resize: 'vertical' }}
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {(() => {
+                    const fromIndex = stages.findIndex(s => s.id === transitionModal.fromStage);
+                    const toIndex = stages.findIndex(s => s.id === transitionModal.toStage);
+                    const skipped = (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex + 1)
+                      ? stages.slice(fromIndex + 1, toIndex).map(s => s.name)
+                      : (fromIndex !== -1 && toIndex !== -1 && fromIndex > toIndex + 1)
+                      ? stages.slice(toIndex + 1, fromIndex).map(s => s.name)
+                      : [];
+                    return (
+                      <>
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật Pipeline</h3>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
+                          Từ <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> 
+                          {' '}➔{' '}
+                          <strong style={{ color: stages.find(s => s.id === transitionModal.toStage)?.color }}>{stages.find(s => s.id === transitionModal.toStage)?.name}</strong>
+                        </p>
+
+                        {skipped.length > 0 && (
+                          <div style={{
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '12px',
+                            padding: '1rem',
+                            marginBottom: '1.25rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.875rem' }}>
+                              <AlertCircle size={16} /> Nhảy cóc giai đoạn!
+                            </div>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                              Bạn đang di chuyển qua nhiều giai đoạn. Bỏ qua các bước: <strong style={{ color: 'var(--color-text)' }}>{skipped.join(', ')}</strong>.
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                  
+                  <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                    <label className="form-label">Ghi chú Audit Trail <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <textarea 
+                      className="form-input" 
+                      rows={3} 
+                      placeholder="Ghi chú bắt buộc lý do chuyển..."
+                      value={transitionModal.note}
+                      onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
+                      style={{ minHeight: '120px', padding: '12px 16px', lineHeight: 1.5, resize: 'vertical' }}
+                      autoFocus
+                    />
+                  </div>
+                </>
+              )}
               
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button className="btn outline" onClick={() => setTransitionModal(null)}>Hủy</button>
-                <button className="btn primary" onClick={handleConfirmTransition}>Lưu cập nhật</button>
+                <button 
+                  className="btn primary" 
+                  onClick={handleConfirmTransition}
+                  disabled={
+                    transitionModal.isCancellation 
+                      ? (transitionModal.hasRevenue === 'yes' || !transitionModal.hasRevenue || !transitionModal.note.trim())
+                      : !transitionModal.note.trim()
+                  }
+                >
+                  Lưu cập nhật
+                </button>
               </div>
             </motion.div>
           </div>
@@ -1084,13 +1245,7 @@ export const DealsPage: React.FC = () => {
                     className="btn outline"
                     style={{ width: '100%', justifyContent: 'flex-start', borderLeftWidth: '6px', borderLeftColor: s.color || 'var(--color-primary)' }}
                     onClick={() => {
-                      setTransitionModal({
-                        isOpen: true,
-                        itemId: stagePickerItem.id,
-                        fromStage: stagePickerItem.fromStageId,
-                        toStage: s.id,
-                        note: ''
-                      });
+                      openStageTransitionModal(stagePickerItem.id, stagePickerItem.fromStageId, s.id);
                       setStagePickerItem(null);
                     }}
                   >

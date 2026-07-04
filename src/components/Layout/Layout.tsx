@@ -1693,35 +1693,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
       <AIChatbot />
 
-      {/* Floating Fingerprint button when not checked in */}
-      {token && user && user.role === 'sale' && (!todayCheckIn || (todayCheckIn.status !== 'approved' && todayCheckIn.status !== 'pending_approval')) && (
-        <button
-          onClick={() => setCheckInModalOpen(true)}
-          style={{
-            position: 'fixed',
-            bottom: '90px',
-            right: '24px',
-            width: '56px',
-            height: '56px',
-            borderRadius: '50%',
-            background: 'var(--color-danger)',
-            color: 'white',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 4px 20px rgba(189, 29, 45, 0.4)',
-            zIndex: 999,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            animation: 'pulse-avatar-global 2s infinite'
-          }}
-          title={t('Chưa chấm công ngày hôm nay')}
-          className="hover-lift"
-        >
-          <Fingerprint size={28} />
-        </button>
-      )}
+
 
       {/* Global Check-in Modal */}
       {checkInModalOpen && (

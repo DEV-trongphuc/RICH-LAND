@@ -621,7 +621,7 @@ export default function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <AuthProvider>
-          <Toaster position="top-right" />
+          <Toaster position="top-right" containerStyle={{ zIndex: 999999 }} />
           <Router>
             <Suspense fallback={<PageLoader />}>
               <Routes>

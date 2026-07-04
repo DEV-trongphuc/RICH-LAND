@@ -26,6 +26,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
       { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
+      { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] },
       { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2 }
     ]
   },
@@ -36,7 +37,6 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Kho Data', href: '/data', icon: Database },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Công việc', href: '/activities', icon: CheckSquare },
-      { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] },
       { name: 'Lịch biểu & Chấm công', href: '/calendar', icon: Calendar },
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
@@ -205,7 +205,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     if (group.title === 'TỔNG QUAN' && user?.role === 'sale') {
       items = [
         { name: 'Tổng quan', href: '/', icon: LayoutDashboard, end: true },
-        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' }
+        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
+        { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] }
       ];
     }
     const filteredItems = items.filter((item: any) => {
