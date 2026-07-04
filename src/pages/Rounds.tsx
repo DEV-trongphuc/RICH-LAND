@@ -1211,15 +1211,15 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             </div>
 
             {editingRound && (
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', padding: '0 1.25rem', gap: '2rem', flexShrink: 0 }}>
-                <button type="button" onClick={() => setActiveTab('config')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'config' ? '2px solid var(--color-primary)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTab === 'config' ? 600 : 500, cursor: 'pointer' }}>{t("Cấu hình chung")}</button>
-                <button type="button" onClick={() => setActiveTab('reports')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'reports' ? '2px solid var(--color-danger)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'reports' ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: activeTab === 'reports' ? 600 : 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', margin: '0.75rem 1.25rem', width: 'fit-content', gap: '4px' }}>
+                <button type="button" onClick={() => setActiveTab('config')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'config' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'config' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }} className={activeTab === 'config' ? '' : 'hover-lift'}>{t("Cấu hình chung")}</button>
+                <button type="button" onClick={() => setActiveTab('reports')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'reports' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'reports' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'reports' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }} className={activeTab === 'reports' ? '' : 'hover-lift'}>
                   {t("Data Lỗi & Đền Bù")}
                   {reports.filter(r => r.status === 'pending').length > 0 && (
                     <span style={{ background: 'var(--color-danger)', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: 10 }}>{reports.filter(r => r.status === 'pending').length}</span>
                   )}
                 </button>
-                <button type="button" onClick={() => setActiveTab('active_logs')} style={{ background: 'transparent', border: 'none', borderBottom: activeTab === 'active_logs' ? '2px solid var(--color-primary)' : '2px solid transparent', padding: '1rem 0', color: activeTab === 'active_logs' ? 'var(--color-primary)' : 'var(--color-text-muted)', fontWeight: activeTab === 'active_logs' ? 600 : 500, cursor: 'pointer' }}>
+                <button type="button" onClick={() => setActiveTab('active_logs')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'active_logs' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'active_logs' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'active_logs' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }} className={activeTab === 'active_logs' ? '' : 'hover-lift'}>
                   {t("Log bù chủ động")}
                 </button>
               </div>

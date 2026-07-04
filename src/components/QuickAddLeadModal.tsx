@@ -1324,8 +1324,8 @@ export const QuickAddLeadModal = () => {
                 AI VIP PROMAX ULTRA
               </label>
               <textarea
-                className="form-input"
-                rows={2}
+                className="form-textarea"
+                rows={3}
                 style={{
                   resize: 'none',
                   fontSize: '0.8125rem',
@@ -1337,7 +1337,8 @@ export const QuickAddLeadModal = () => {
                   width: '100%',
                   outline: 'none',
                   transition: 'border-color 0.2s',
-                  color: theme === 'dark' ? 'var(--color-text)' : 'inherit'
+                  color: theme === 'dark' ? 'var(--color-text)' : 'inherit',
+                  minHeight: '80px'
                 }}
                 placeholder={t("Ví dụ: Trần Văn Hiền - 0364200518 - tìm hiểu liên thông - FB_Ads")}
                 value={quickInput}
@@ -1570,7 +1571,7 @@ export const QuickAddLeadModal = () => {
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Ghi chú')}</label>
-                <textarea className="form-input" rows={3} style={{ resize: 'vertical', minHeight: '80px', lineHeight: 1.5, padding: '10px 12px' }} placeholder={t("Ghi chú thêm (Hỗ trợ nhiều dòng)...")} value={manualData.note} onChange={e => setManualData({ ...manualData, note: e.target.value })} />
+                <textarea className="form-textarea" rows={4} style={{ resize: 'vertical', minHeight: '140px', lineHeight: 1.5, padding: '10px 12px' }} placeholder={t("Ghi chú thêm (Hỗ trợ nhiều dòng)...")} value={manualData.note} onChange={e => setManualData({ ...manualData, note: e.target.value })} />
               </div>
             </div>
           </>
@@ -1699,11 +1700,11 @@ export const QuickAddLeadModal = () => {
                   {t('Dán danh sách khách hàng (Hỗ trợ định dạng CSV, Semicolon hoặc Tab excel)')}
                 </label>
                 <textarea
-                  className="form-input"
-                  rows={6}
+                  className="form-textarea"
+                  rows={8}
                   value={bulkInputText}
                   onChange={e => setBulkInputText(e.target.value)}
-                  style={{ fontFamily: 'monospace', fontSize: '0.8125rem', lineHeight: 1.4 }}
+                  style={{ fontFamily: 'monospace', fontSize: '0.8125rem', lineHeight: 1.4, minHeight: '220px' }}
                   placeholder={`Nguyễn Văn A, 0912345678, email@gmail.com, FB_Ads, Căn hộ, Ghi chú\nNguyễn Văn B, 0923456789, email2@gmail.com, Zalo, Đất nền, Ghi chú 2`}
                 />
                 <button

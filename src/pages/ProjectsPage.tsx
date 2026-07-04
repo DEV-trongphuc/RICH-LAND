@@ -445,16 +445,18 @@ export default function ProjectsPage() {
       </div>
 
       {/* Tab Selector */}
-      <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', padding: '3px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content' }}>
+      <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content', gap: '4px' }}>
         <button 
-           style={{ padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeSubTab === 'projects' ? 'var(--color-surface)' : 'transparent', color: activeSubTab === 'projects' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeSubTab === 'projects' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+           style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeSubTab === 'projects' ? 'var(--color-surface)' : 'transparent', color: activeSubTab === 'projects' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeSubTab === 'projects' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
            onClick={() => setActiveSubTab('projects')}
+           className={activeSubTab === 'projects' ? '' : 'hover-lift'}
         >
           Dự án
         </button>
         <button 
-           style={{ padding: '6px 18px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeSubTab === 'campaigns' ? 'var(--color-surface)' : 'transparent', color: activeSubTab === 'campaigns' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeSubTab === 'campaigns' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+           style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeSubTab === 'campaigns' ? 'var(--color-surface)' : 'transparent', color: activeSubTab === 'campaigns' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeSubTab === 'campaigns' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
            onClick={() => setActiveSubTab('campaigns')}
+           className={activeSubTab === 'campaigns' ? '' : 'hover-lift'}
         >
           Chiến dịch
         </button>

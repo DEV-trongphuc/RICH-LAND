@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, CheckCircle2, Clock, Phone, Mail, Users, Calendar, AlignLeft, X, Loader2, Pencil, Trash2, RefreshCw, Link2, Search, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
@@ -13,6 +13,8 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CalendarView } from '../components/CalendarView';
 import { LayoutList } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
+import { useAuth } from '../contexts/AuthContext';
+import { MentionInput } from '../components/ui/MentionInput';
 
 const PAGE_SIZE = 10;
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
@@ -27,7 +29,7 @@ const T_ICON: Record<string, React.ReactNode> = {
 };
 const T_COLOR: Record<string, string> = { call: '#3b82f6', email: '#BD1D2D', meeting: '#10b981', task: '#f59e0b', note: '#6b7280' };
 
-const EMPTY = { type: 'call', subject: '', status: 'planned', priority: 'medium', due_date: '', related_type: '', related_id: '' };
+const EMPTY = { type: 'task', subject: '', status: 'planned', priority: 'medium', due_date: '', related_type: '', related_id: '', body: '', auto_trigger: false };
 
 const fmtDate = (d: string | null) => {
   if (!d) return null;
@@ -43,6 +45,7 @@ const fmtDate = (d: string | null) => {
 };
 
 export const ActivitiesPage: React.FC = () => {
+  const { user } = useAuth();
   const { addToast, showConfirm } = useUIStore();
   const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
@@ -50,6 +53,10 @@ export const ActivitiesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterTeamId, setFilterTeamId] = useState('');
+  const [filterUserId, setFilterUserId] = useState('');
+  const [teamsList, setTeamsList] = useState<any[]>([]);
+  const [consultantsList, setConsultantsList] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [showModal, setShowModal] = useState(false);
@@ -91,6 +98,28 @@ export const ActivitiesPage: React.FC = () => {
     }
   }, [showModal]);
 
+  useEffect(() => {
+    const isPrivileged = ['admin', 'superadmin', 'super_admin', 'manager'].includes(user?.role || '');
+    if (isPrivileged) {
+      api.get('/teams').then(r => setTeamsList(r.data.data || r.data || [])).catch(() => {});
+      api.get('/get_consultants').then(r => setConsultantsList(r.data.data || r.data || [])).catch(() => {});
+    }
+  }, [user?.role]);
+
+  const teamOptions = useMemo(() => {
+    return [
+      { value: '', label: 'Tất cả Nhóm' },
+      ...teamsList.map(t => ({ value: String(t.id), label: t.name }))
+    ];
+  }, [teamsList]);
+
+  const consultantOptions = useMemo(() => {
+    return [
+      { value: '', label: 'Tất cả Nhân viên' },
+      ...consultantsList.map(u => ({ value: String(u.id), label: u.name }))
+    ];
+  }, [consultantsList]);
+
   const getRelatedOptions = () => {
     if (form.related_type === 'contact') {
       return contacts.map(c => ({ value: c.id, label: c.name, sublabel: c.phone || c.email, avatar: c.avatar }));
@@ -111,11 +140,16 @@ export const ActivitiesPage: React.FC = () => {
       
       if (debouncedSearch) {
         const s = debouncedSearch.toLowerCase();
-        list = list.filter(a => a.subject.toLowerCase().includes(s) || a.notes?.toLowerCase().includes(s));
+        list = list.filter(a => (a.subject || '').toLowerCase().includes(s) || (a.notes || '').toLowerCase().includes(s));
       }
       
       if (filterType) list = list.filter(a => a.type === filterType);
       if (filterStatus) list = list.filter(a => a.status === filterStatus);
+      if (filterUserId) list = list.filter(a => String(a.user_id) === String(filterUserId));
+      if (filterTeamId) {
+        const teamUsers = (state.users || []).filter((u: any) => String(u.team_id) === String(filterTeamId)).map((u: any) => u.id);
+        list = list.filter(a => teamUsers.includes(a.user_id));
+      }
       
       setItems(list);
       setTotal(list.length);
@@ -128,6 +162,8 @@ export const ActivitiesPage: React.FC = () => {
       const params: any = { page, limit: PAGE_SIZE, search: debouncedSearch };
       if (filterType) params.type = filterType;
       if (filterStatus) params.status = filterStatus;
+      if (filterTeamId) params.team_id = filterTeamId;
+      if (filterUserId) params.user_id = filterUserId;
       
       const r = await api.get('/activities', { params });
       const data = r.data.data;
@@ -139,7 +175,7 @@ export const ActivitiesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterType, filterStatus, debouncedSearch, page]);
+  }, [filterType, filterStatus, filterTeamId, filterUserId, debouncedSearch, page]);
 
   useEffect(() => { fetchActivities(); }, [fetchActivities]);
 
@@ -272,6 +308,27 @@ export const ActivitiesPage: React.FC = () => {
           </div>
         </div>
 
+        {['admin', 'superadmin', 'super_admin', 'manager'].includes(user?.role || '') && (
+          <div style={{ display: 'flex', gap: '0.75rem', minWidth: '380px' }}>
+            <div style={{ width: '180px' }}>
+              <CustomSelect
+                options={teamOptions}
+                value={filterTeamId}
+                onChange={val => { setFilterTeamId(val.toString()); setPage(1); }}
+                placeholder="Lọc theo Nhóm"
+              />
+            </div>
+            <div style={{ width: '180px' }}>
+              <CustomSelect
+                options={consultantOptions}
+                value={filterUserId}
+                onChange={val => { setFilterUserId(val.toString()); setPage(1); }}
+                placeholder="Lọc theo Nhân viên"
+              />
+            </div>
+          </div>
+        )}
+
         {/* Quick filter chips */}
         <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
           {TYPES.map(t => (
@@ -350,7 +407,7 @@ export const ActivitiesPage: React.FC = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {(() => {
-                const filtered = items.filter(act => !search || act.subject.toLowerCase().includes(search.toLowerCase()));
+                const filtered = items.filter(act => !search || (act.subject || '').toLowerCase().includes(search.toLowerCase()));
                 if (filtered.length === 0) return (
                   <div className="empty-state card">
                     <Calendar size={40} />
@@ -475,28 +532,51 @@ export const ActivitiesPage: React.FC = () => {
         isOpen={showModal}
         onClose={() => !saving && setShowModal(false)}
         title={editItem ? 'Sửa hoạt động' : 'Thêm hoạt động'}
-        width={520}
+        width={640}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {/* Type selector */}
           <div className="form-group">
             <label className="form-label">Loại hoạt động</label>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.625rem' }}>
               {TYPES.map(t => (
-                <button key={t} type="button" onClick={() => setForm({ ...form, type: t })}
-                  style={{ padding: '0.375rem 0.75rem', borderRadius: 'var(--radius-md)', border: `2px solid ${form.type === t ? T_COLOR[t] : 'var(--color-border)'}`, background: form.type === t ? T_COLOR[t] + '15' : 'transparent', color: form.type === t ? T_COLOR[t] : 'var(--color-text-light)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {T_ICON[t]} {T_LABEL[t]}
+                <button 
+                  key={t} type="button"
+                  onClick={() => setForm({ ...form, type: t })}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                    padding: '0.75rem 0', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+                    background: form.type === t ? `${T_COLOR[t]}12` : 'var(--color-surface)',
+                    border: `2px solid ${form.type === t ? T_COLOR[t] : 'var(--color-border)'}`,
+                    color: form.type === t ? T_COLOR[t] : 'var(--color-text-muted)',
+                    fontWeight: form.type === t ? 700 : 500, transition: 'all 0.2s',
+                    boxShadow: form.type === t ? `0 4px 8px ${T_COLOR[t]}10` : 'none'
+                  }}
+                >
+                  <div style={{ transform: form.type === t ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.2s' }}>
+                    {T_ICON[t]}
+                  </div>
+                  <span style={{ fontSize: '0.75rem' }}>{T_LABEL[t]}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Tiêu đề *</label>
-            <input className="form-input" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Nội dung hoạt động..." autoFocus />
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Tiêu đề *</label>
+              <input className="form-input" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="VD: Gọi điện chốt sale, Họp demo..." autoFocus />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Trạng thái</label>
+              <div style={{ display: 'flex', gap: '6px', height: 42 }}>
+                <button type="button" className={`btn sm ${form.status === 'planned' ? 'primary' : 'outline'}`} style={{ flex: 1, padding: 0 }} onClick={() => setForm({...form, status: 'planned'})}>Kế hoạch</button>
+                <button type="button" className={`btn sm ${form.status === 'done' ? 'success' : 'outline'}`} style={{ flex: 1, padding: 0, borderColor: form.status === 'done' ? 'var(--color-success)' : '' }} onClick={() => setForm({...form, status: 'done'})}>Đã xong</button>
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label">Thời gian</label>
               <input className="form-input" type="datetime-local" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} />
@@ -515,7 +595,7 @@ export const ActivitiesPage: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label">Liên kết đến</label>
               <CustomSelect 
@@ -542,6 +622,44 @@ export const ActivitiesPage: React.FC = () => {
                 />
               </div>
             )}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <AlignLeft size={14} /> Ghi chú chi tiết
+            </label>
+            <MentionInput 
+              className="form-input" 
+              rows={3} 
+              placeholder="Nhập nội dung chi tiết của hoạt động (Sử dụng @ để tag user/sale)..."
+              value={form.body || ''}
+              onChange={e => setForm({ ...form, body: e.target.value })}
+              style={{ resize: 'none' }}
+            />
+          </div>
+
+          {/* Automation Trigger Toggle */}
+          <div 
+            style={{
+              background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.08), rgba(189, 29, 45, 0.08))',
+              border: '1px solid var(--color-primary-light)', borderRadius: 'var(--radius-xl)',
+              padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer',
+              marginTop: '0.25rem'
+            }}
+            onClick={() => setForm({ ...form, auto_trigger: !form.auto_trigger })}
+          >
+            <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', boxShadow: 'var(--shadow-sm)', flexShrink: 0 }}>
+              <Zap size={20} fill={form.auto_trigger ? 'var(--color-primary)' : 'none'} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)', marginBottom: '0.15rem' }}>
+                Tích hợp Automation Workflow
+              </h4>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>
+                Hệ thống sẽ tự động gửi Email, cập nhật Lead Score hoặc chuyển trạng thái Deal dựa trên hành động này.
+              </p>
+            </div>
+            <div className={`custom-toggle ${form.auto_trigger ? 'active' : ''}`} style={{ zoom: 1.0 }}></div>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border)' }}>

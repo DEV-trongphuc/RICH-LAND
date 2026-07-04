@@ -23,8 +23,8 @@
 .modal {
   position: relative;
   width: 100%;
-  max-width: 500px;
-  max-height: 80vh;
+  max-width: 720px;
+  max-height: 85vh;
   background-color: var(--color-surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);

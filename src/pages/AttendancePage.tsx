@@ -570,24 +570,25 @@ export const AttendancePageInner = () => {
         </div>
 
         {/* View Mode Switcher */}
-        <div style={{ display: 'flex', backgroundColor: 'var(--color-bg)', padding: '3px', borderRadius: 'var(--radius-full)' }}>
+        <div style={{ display: 'flex', backgroundColor: 'var(--color-border-light)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
           <button
             onClick={() => setViewMode('list')}
             style={{
-              padding: '6px 16px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-full)',
+              padding: '8px 20px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              borderRadius: '10px',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               backgroundColor: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
-              color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-muted)',
-              boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-light)',
+              boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
               transition: 'all 0.2s'
             }}
+            className={viewMode === 'list' ? '' : 'hover-lift'}
           >
             <Clock size={14} />
             {t('Danh sách')}
@@ -595,20 +596,21 @@ export const AttendancePageInner = () => {
           <button
             onClick={() => setViewMode('calendar')}
             style={{
-              padding: '6px 16px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-full)',
+              padding: '8px 20px',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              borderRadius: '10px',
               border: 'none',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               backgroundColor: viewMode === 'calendar' ? 'var(--color-surface)' : 'transparent',
-              color: viewMode === 'calendar' ? 'var(--color-text)' : 'var(--color-text-muted)',
-              boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              color: viewMode === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)',
+              boxShadow: viewMode === 'calendar' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
               transition: 'all 0.2s'
             }}
+            className={viewMode === 'calendar' ? '' : 'hover-lift'}
           >
             <Calendar size={14} />
             {t('Lịch biểu')}

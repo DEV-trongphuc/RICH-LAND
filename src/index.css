@@ -2084,7 +2084,7 @@ input[type="radio"]:hover:not(:checked) {
   border: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
-  width: 720px;
+  width: 880px;
   max-width: calc(100vw - 2rem);
   z-index: 1001;
   position: relative;
@@ -2092,19 +2092,19 @@ input[type="radio"]:hover:not(:checked) {
 }
 
 .modal-sm {
-  width: 420px;
+  width: 580px;
 }
 
 .modal-md {
-  width: 720px;
+  width: 880px;
 }
 
 .modal-lg {
-  width: 960px;
+  width: 1120px;
 }
 
 .modal-xl {
-  width: 1200px;
+  width: 1380px;
 }
 
 .modal-header {
@@ -3637,9 +3637,11 @@ table td {
   height: 34px !important;
 }
 
-.form-textarea {
+textarea, .form-textarea, textarea.form-input, textarea.form-control {
   height: auto !important;
-  min-height: 80px !important;
+  min-height: 140px !important;
+  resize: vertical !important;
+  line-height: 1.5 !important;
 }
 
 .btn {

@@ -25,6 +25,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     title: 'TỔNG QUAN',
     items: [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
+      { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
       { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2 }
     ]
   },
@@ -34,6 +35,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Khách hàng', href: '/contacts', icon: Users },
       { name: 'Kho Data', href: '/data', icon: Database },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
+      { name: 'Công việc', href: '/activities', icon: CheckSquare },
       { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] },
       { name: 'Lịch biểu & Chấm công', href: '/calendar', icon: Calendar },
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
@@ -106,6 +108,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const [pendingTickets, setPendingTickets] = useState(0);
   const [heldLeadsCount, setHeldLeadsCount] = useState(0);
   const [pendingCoopCount, setPendingCoopCount] = useState(0);
+  const [undoneTasksCount, setUndoneTasksCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
@@ -135,6 +138,13 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       try {
         const role = user.role as string;
         const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager';
+
+        // Fetch undone tasks for all roles
+        const resTasks = await fetchAPI('activities&type=task&limit=100');
+        if (resTasks && resTasks.success && Array.isArray(resTasks.data)) {
+          const count = resTasks.data.filter((task: any) => task.status !== 'done').length;
+          setUndoneTasksCount(count);
+        }
 
         if (isAdminOrManager) {
           const [resReports, resHeld, resCoop] = await Promise.all([
@@ -179,9 +189,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     fetchPending();
     const interval = setInterval(fetchPending, 60000);
     window.addEventListener('ticket-resolved', fetchPending);
+    window.addEventListener('task-updated', fetchPending);
     return () => {
       clearInterval(interval);
       window.removeEventListener('ticket-resolved', fetchPending);
+      window.removeEventListener('task-updated', fetchPending);
     };
   }, [user]);
 
@@ -190,7 +202,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     if (group.title === 'TỔNG QUAN' && user?.role === 'sale') {
       items = [
         { name: 'Tổng quan', href: '/', icon: LayoutDashboard, end: true },
-        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare }
+        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' }
       ];
     }
     const filteredItems = items.filter((item: any) => {
@@ -390,8 +402,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                     {t(group.title)}
                   </span>
                 )}
-                {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
-                  const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : 0;
+                 {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
+                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'workspaceTasks' ? undoneTasksCount : 0;
                   const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href && location.search === '');
                   const displayName = t(name);
 

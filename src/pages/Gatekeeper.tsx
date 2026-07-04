@@ -2140,12 +2140,13 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         {/* Custom Tabs Bar */}
         <div style={{
           display: 'flex',
-          borderBottom: '1px solid var(--color-border)',
-          background: 'rgba(163, 20, 34, 0.02)',
-          padding: '10px 18px',
-          gap: '8px',
+          background: 'var(--color-border-light)',
+          padding: '4px',
+          borderRadius: '12px',
+          gap: '4px',
           alignItems: 'center',
-          flexWrap: 'wrap'
+          width: 'fit-content',
+          margin: '10px 18px'
         }}>
           {[
             { id: 'queue', label: t('Hàng chờ duyệt'), count: tabCounts.queue, color: 'var(--color-warning)' },
@@ -2162,31 +2163,32 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '8px 16px',
-                  borderRadius: '20px',
-                  border: '1px solid',
-                  borderColor: isActiveTab ? 'var(--color-primary)' : 'var(--color-border)',
-                  background: isActiveTab ? 'var(--color-primary-light)' : 'transparent',
-                  color: isActiveTab ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  padding: '8px 20px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: isActiveTab ? 'var(--color-surface)' : 'transparent',
+                  color: isActiveTab ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  boxShadow: isActiveTab ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
                   cursor: 'pointer',
-                  fontWeight: 600,
-                  fontSize: '0.825rem',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
                   transition: 'all 0.2s ease',
                   outline: 'none'
                 }}
+                className={isActiveTab ? '' : 'hover-lift'}
               >
                 <span>{tab.label}</span>
                 <span style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minWidth: '18px',
-                  height: '18px',
-                  padding: '0 5px',
-                  borderRadius: '9px',
-                  background: tab.color,
-                  color: '#ffffff',
-                  fontSize: '0.7rem',
+                  minWidth: '20px',
+                  height: '20px',
+                  padding: '0 6px',
+                  borderRadius: '10px',
+                  background: isActiveTab ? 'rgba(189, 29, 45, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  color: isActiveTab ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontSize: '0.72rem',
                   fontWeight: 700
                 }}>
                   {tab.count}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -15,6 +15,7 @@ import { MentionInput } from '../components/ui/MentionInput';
 import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
 import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { Avatar } from '../components/ui/Avatar';
+import { CustomModal } from '../components/ui/CustomModal';
 import { compressToWebP } from '../utils/imageCompress';
 import { TicketDrawer } from './TicketDrawer';
 import { EmptyCard } from '../components/ui/EmptyCard';
@@ -1245,6 +1246,37 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const [docs, setDocs] = useState<any[]>([]);
+  const [currentFolder, setCurrentFolder] = useState<string>('');
+  const [localFolders, setLocalFolders] = useState<string[]>([]);
+  const [movingFile, setMovingFile] = useState<any>(null);
+
+  useEffect(() => {
+    if (contact?.id) {
+      setCurrentFolder('');
+      try {
+        const saved = localStorage.getItem(`richland_folders_contact_${contact.id}`);
+        setLocalFolders(saved ? JSON.parse(saved) : []);
+      } catch {
+        setLocalFolders([]);
+      }
+    }
+  }, [contact?.id]);
+
+  const allFolders = useMemo(() => {
+    const docCategories = docs
+      .map(d => d.category)
+      .filter(c => c && c !== 'general' && c !== 'shared');
+    return Array.from(new Set([...localFolders, ...docCategories]));
+  }, [localFolders, docs]);
+
+  const visibleDocs = useMemo(() => {
+    if (currentFolder === '') {
+      return docs.filter(d => !d.category || d.category === 'general' || d.category === 'shared' || !allFolders.includes(d.category));
+    } else {
+      return docs.filter(d => d.category === currentFolder);
+    }
+  }, [docs, currentFolder, allFolders]);
+
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [deals, setDeals] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
@@ -1486,7 +1518,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         date: new Date(d.created_at).toLocaleDateString('vi-VN'),
         size: (d.file_size / 1024 / 1024).toFixed(1) + ' MB',
         type: d.name.split('.').pop() || 'file',
-        path: d.file_path
+        path: d.file_path,
+        category: d.category
       })));
 
     } catch (e: any) {
@@ -4408,76 +4441,150 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* RESTORED OLD TABS */}
                   {activeTab === 'docs' && (
                     <div className="animate-fade">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hồ sơ & Tài liệu</h3>
+                      {/* Spaced and styled Title block */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)', margin: 0 }}>Hồ sơ & Tài liệu</h3>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                            Quản lý hợp đồng, CMND/CCCD hoặc báo giá của khách hàng theo thư mục
+                          </span>
+                        </div>
                         {isOwnerOrAdmin && (
-                          <label className="btn outline sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <input type="file" style={{ display: 'none' }} onChange={async (e) => {
-                              if (e.target.files?.[0]) {
-                                const file = e.target.files[0];
-                                const originalName = file.name;
-                                const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-                                const customName = window.prompt("Nhập tên tài liệu:", defaultName);
-                                if (customName === null) {
-                                  addToast('Đã hủy tải lên tài liệu.', 'info');
-                                  e.target.value = '';
-                                  return;
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <button
+                              onClick={() => {
+                                const name = prompt('Nhập tên thư mục mới:');
+                                if (name && name.trim()) {
+                                  const trimmed = name.trim();
+                                  if (allFolders.includes(trimmed)) {
+                                    addToast('Thư mục đã tồn tại.', 'warning');
+                                    return;
+                                  }
+                                  const next = [...localFolders, trimmed];
+                                  setLocalFolders(next);
+                                  localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(next));
+                                  addToast('Đã tạo thư mục mới.', 'success');
                                 }
-                                const ext = originalName.substring(originalName.lastIndexOf('.'));
-                                const finalName = (customName.trim() || defaultName) + ext;
-                                
-                                let fileToUpload = file;
-                                if (file.type && file.type.startsWith('image/')) {
+                              }}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '8px 16px',
+                                borderRadius: '8px',
+                                background: 'rgba(16, 185, 129, 0.1)',
+                                color: '#10b981',
+                                border: '1px solid rgba(16, 185, 129, 0.2)',
+                                fontSize: '0.825rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                height: '36px'
+                              }}
+                              className="hover-lift"
+                            >
+                              <FolderPlus size={16} /> Tạo thư mục
+                            </button>
+                            <label
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '8px 16px',
+                                borderRadius: '8px',
+                                background: 'rgba(37, 99, 235, 0.1)',
+                                color: '#2563eb',
+                                border: '1px solid rgba(37, 99, 235, 0.2)',
+                                fontSize: '0.825rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                height: '36px'
+                              }}
+                              className="hover-lift"
+                            >
+                              <input type="file" style={{ display: 'none' }} onChange={async (e) => {
+                                if (e.target.files?.[0]) {
+                                  const file = e.target.files[0];
+                                  const originalName = file.name;
+                                  const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                                  const customName = window.prompt("Nhập tên tài liệu:", defaultName);
+                                  if (customName === null) {
+                                    addToast('Đã hủy tải lên tài liệu.', 'info');
+                                    e.target.value = '';
+                                    return;
+                                  }
+                                  const ext = originalName.substring(originalName.lastIndexOf('.'));
+                                  const finalName = (customName.trim() || defaultName) + ext;
+                                  
+                                  let fileToUpload = file;
+                                  if (file.type && file.type.startsWith('image/')) {
+                                    try {
+                                      fileToUpload = await compressToWebP(file);
+                                    } catch (compressErr) {
+                                      console.error("Compression failed, using original file", compressErr);
+                                    }
+                                  }
+                                  const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
+                                  const fData = new FormData();
+                                  fData.append('file', renamedFile);
+                                  fData.append('name', finalName);
+                                  fData.append('contact_id', String(contact.id));
+                                  fData.append('category', currentFolder || 'general');
+                                  fData.append('visibility', 'shared');
+
+                                  const isImg = renamedFile.type && renamedFile.type.startsWith('image/');
+                                  const previewUrl = isImg ? URL.createObjectURL(renamedFile) : '';
+                                  setUploadingFileObj({
+                                    name: finalName,
+                                    size: (renamedFile.size / 1024 / 1024).toFixed(1) + ' MB',
+                                    previewUrl,
+                                    isImage: isImg
+                                  });
+                                  setUploadProgress(0);
+
                                   try {
-                                    fileToUpload = await compressToWebP(file);
-                                  } catch (compressErr) {
-                                    console.error("Compression failed, using original file", compressErr);
+                                    await api.post('/cloud-files', fData, {
+                                      headers: { 'Content-Type': 'multipart/form-data' },
+                                      onUploadProgress: (progressEvent) => {
+                                        const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
+                                        setUploadProgress(percent);
+                                      }
+                                    });
+                                    setUploadProgress(null);
+                                    setUploadingFileObj(null);
+                                    fetchData();
+                                    addToast('Đã tải lên tài liệu mới thành công.', 'success');
+                                  } catch (err: any) {
+                                    setUploadProgress(null);
+                                    setUploadingFileObj(null);
+                                    addToast('Lỗi khi tải tài liệu lên server', 'error');
+                                  } finally {
+                                    e.target.value = '';
                                   }
                                 }
-                                const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
-                                const fData = new FormData();
-                                fData.append('file', renamedFile);
-                                fData.append('name', finalName);
-                                fData.append('contact_id', String(contact.id));
-                                fData.append('category', 'general');
-                                fData.append('visibility', 'shared');
-
-                                const isImg = renamedFile.type && renamedFile.type.startsWith('image/');
-                                const previewUrl = isImg ? URL.createObjectURL(renamedFile) : '';
-                                setUploadingFileObj({
-                                  name: finalName,
-                                  size: (renamedFile.size / 1024 / 1024).toFixed(1) + ' MB',
-                                  previewUrl,
-                                  isImage: isImg
-                                });
-                                setUploadProgress(0);
-
-                                try {
-                                  await api.post('/cloud-files', fData, {
-                                    headers: { 'Content-Type': 'multipart/form-data' },
-                                    onUploadProgress: (progressEvent) => {
-                                      const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-                                      setUploadProgress(percent);
-                                    }
-                                  });
-                                  setUploadProgress(null);
-                                  setUploadingFileObj(null);
-                                  fetchData();
-                                  addToast('Đã tải lên tài liệu mới thành công.', 'success');
-                                } catch (err: any) {
-                                  setUploadProgress(null);
-                                  setUploadingFileObj(null);
-                                  addToast('Lỗi khi tải tài liệu lên server', 'error');
-                                } finally {
-                                  e.target.value = '';
-                                }
-                              }
-                            }} />
-                            <Plus size={14} /> Upload file
-                          </label>
+                              }} />
+                              <Plus size={16} /> Upload file
+                            </label>
+                          </div>
                         )}
                       </div>
 
+                      {/* Folder Breadcrumb Navigation */}
+                      {currentFolder !== '' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '1.25rem', padding: '8px 14px', background: 'var(--color-bg)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                          <span 
+                            style={{ color: 'var(--color-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            onClick={() => setCurrentFolder('')}
+                          >
+                            <Folder size={15} /> Tất cả tài liệu
+                          </span>
+                          <ChevronRight size={14} style={{ color: 'var(--color-text-muted)' }} />
+                          <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{currentFolder}</span>
+                        </div>
+                      )}
+
+                      {/* Uploading progress bar */}
                       {uploadProgress !== null && uploadingFileObj && (
                         <div className="card-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', marginBottom: '1rem' }}>
                           <div style={{ width: 40, height: 40, background: 'var(--color-info-light)', color: 'var(--color-info)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
@@ -4508,6 +4615,142 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       )}
 
+                      {/* Root Folders Grid View */}
+                      {currentFolder === '' && allFolders.length > 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
+                          {allFolders.map(folder => {
+                            const folderFiles = docs.filter(d => d.category === folder);
+                            return (
+                              <div
+                                key={folder}
+                                className="card-panel hover-lift"
+                                style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  justifyContent: 'space-between',
+                                  padding: '1.25rem 1rem',
+                                  background: 'var(--color-surface)',
+                                  border: '1px solid var(--color-border-light)',
+                                  borderRadius: '16px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.25s'
+                                }}
+                                onClick={() => setCurrentFolder(folder)}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '1.25rem' }}>
+                                  <div style={{ width: 44, height: 44, background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <Folder size={24} fill="#f59e0b" fillOpacity={0.2} />
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <h4 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {folder}
+                                    </h4>
+                                    <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                                      {folderFiles.length} tệp tin
+                                    </span>
+                                  </div>
+                                </div>
+                                {isOwnerOrAdmin && (
+                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
+                                    <button
+                                      style={{
+                                        background: 'rgba(37, 99, 235, 0.08)',
+                                        color: '#2563eb',
+                                        border: '1px solid rgba(37, 99, 235, 0.15)',
+                                        padding: '4px 10px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        height: '26px'
+                                      }}
+                                      className="hover-lift"
+                                      title="Đổi tên thư mục"
+                                      onClick={async () => {
+                                        const newName = prompt('Nhập tên mới cho thư mục:', folder);
+                                        if (newName && newName.trim() && newName.trim() !== folder) {
+                                          const trimmed = newName.trim();
+                                          try {
+                                            const updates = folderFiles.map(d =>
+                                              api.put(`/cloud-files/${d.id}`, { name: d.name, category: trimmed })
+                                            );
+                                            await Promise.all(updates);
+                                            
+                                            const next = localFolders.map(f => f === folder ? trimmed : f);
+                                            setLocalFolders(next);
+                                            localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(next));
+                                            
+                                            fetchData();
+                                            addToast('Đã đổi tên thư mục thành công.', 'success');
+                                          } catch (err) {
+                                            addToast('Lỗi khi đổi tên thư mục.', 'error');
+                                          }
+                                        }
+                                      }}
+                                    >
+                                      <Pencil size={12} /> Đổi tên
+                                    </button>
+                                    <button
+                                      style={{
+                                        background: 'rgba(239, 68, 68, 0.08)',
+                                        color: '#ef4444',
+                                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                                        padding: '4px 10px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        height: '26px'
+                                      }}
+                                      className="hover-lift"
+                                      title="Xóa thư mục"
+                                      onClick={() => {
+                                        showConfirm({
+                                          title: 'Xóa thư mục?',
+                                          message: folderFiles.length > 0
+                                            ? `Thư mục "${folder}" đang chứa ${folderFiles.length} tệp tin. Bạn muốn di chuyển chúng ra thư mục gốc hay xóa tất cả?`
+                                            : `Bạn có chắc muốn xóa thư mục "${folder}"?`,
+                                          isDanger: true,
+                                          confirmText: folderFiles.length > 0 ? 'Chuyển ra gốc & Xóa' : 'Xóa',
+                                          onConfirm: async () => {
+                                            try {
+                                              if (folderFiles.length > 0) {
+                                                const updates = folderFiles.map(d =>
+                                                  api.put(`/cloud-files/${d.id}`, { name: d.name, category: 'general' })
+                                                );
+                                                await Promise.all(updates);
+                                              }
+                                              
+                                              const next = localFolders.filter(f => f !== folder);
+                                              setLocalFolders(next);
+                                              localStorage.setItem(`richland_folders_contact_${contact.id}`, JSON.stringify(next));
+                                              
+                                              fetchData();
+                                              addToast('Đã xóa thư mục thành công.', 'success');
+                                            } catch (err) {
+                                              addToast('Lỗi khi xóa thư mục.', 'error');
+                                            }
+                                          }
+                                        });
+                                      }}
+                                    >
+                                      <Trash2 size={12} /> Xóa
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Empty documents placeholder */}
                       {docs.length === 0 ? (
                         <EmptyCard
                           icon={<FileText size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
@@ -4519,9 +4762,86 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             if (fileInput) fileInput.click();
                           } : undefined}
                         />
+                      ) : visibleDocs.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', background: 'var(--color-surface)', border: '1px dashed var(--color-border)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <Folder size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5, marginBottom: '0.75rem' }} />
+                          <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', marginBottom: '4px' }}>Thư mục trống</h4>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>Chưa có tài liệu nào trong thư mục này.</p>
+                          {isOwnerOrAdmin && (
+                            <label
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 14px',
+                                borderRadius: '8px',
+                                background: 'rgba(37, 99, 235, 0.1)',
+                                color: '#2563eb',
+                                border: '1px solid rgba(37, 99, 235, 0.2)',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                height: '32px'
+                              }}
+                              className="hover-lift"
+                            >
+                              <input type="file" style={{ display: 'none' }} onChange={async (e) => {
+                                if (e.target.files?.[0]) {
+                                  const file = e.target.files[0];
+                                  const originalName = file.name;
+                                  const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+                                  const customName = window.prompt("Nhập tên tài liệu:", defaultName);
+                                  if (customName === null) return;
+                                  const ext = originalName.substring(originalName.lastIndexOf('.'));
+                                  const finalName = (customName.trim() || defaultName) + ext;
+
+                                  let fileToUpload = file;
+                                  if (file.type && file.type.startsWith('image/')) {
+                                    try { fileToUpload = await compressToWebP(file); } catch (e) {}
+                                  }
+                                  const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
+                                  const fData = new FormData();
+                                  fData.append('file', renamedFile);
+                                  fData.append('name', finalName);
+                                  fData.append('contact_id', String(contact.id));
+                                  fData.append('category', currentFolder || 'general');
+                                  fData.append('visibility', 'shared');
+
+                                  setUploadingFileObj({
+                                    name: finalName,
+                                    size: (renamedFile.size / 1024 / 1024).toFixed(1) + ' MB',
+                                    previewUrl: renamedFile.type.startsWith('image/') ? URL.createObjectURL(renamedFile) : '',
+                                    isImage: renamedFile.type.startsWith('image/')
+                                  });
+                                  setUploadProgress(0);
+
+                                  try {
+                                    await api.post('/cloud-files', fData, {
+                                      headers: { 'Content-Type': 'multipart/form-data' },
+                                      onUploadProgress: (progressEvent) => {
+                                        setUploadProgress(Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1)));
+                                      }
+                                    });
+                                    setUploadProgress(null);
+                                    setUploadingFileObj(null);
+                                    fetchData();
+                                    addToast('Đã tải lên tài liệu mới thành công.', 'success');
+                                  } catch (err: any) {
+                                    setUploadProgress(null);
+                                    setUploadingFileObj(null);
+                                    addToast('Lỗi khi tải tài liệu lên server', 'error');
+                                  }
+                                }
+                              }} />
+                              <Plus size={14} /> Upload file ngay
+                            </label>
+                          )}
+                        </div>
                       ) : (
+                        /* Files List View */
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                          {docs.map(doc => {
+                          {visibleDocs.map(doc => {
                             const ext = doc.name.split('.').pop()?.toLowerCase();
                             const isImg = ext && ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
                             const fileUrl = `${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.path}`;
@@ -4546,42 +4866,167 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <p className="text-xs text-light mt-1">Tải lên: {doc.date} • {doc.size}</p>
                                 </div>
                                 {isOwnerOrAdmin && (
-                                  <div className="flex gap-2" style={{ flexShrink: 0 }}>
-                                    <button className="btn-icon sm" title="Đổi tên" onClick={async () => {
-                                      const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
-                                      if (newName && newName.trim()) {
-                                        try {
-                                          await api.put(`/cloud-files/${doc.id}`, { name: newName.trim() });
-                                          fetchData();
-                                          addToast('Đã đổi tên tài liệu.', 'success');
-                                        } catch (err) {
-                                          addToast('Lỗi khi đổi tên tài liệu.', 'error');
-                                        }
-                                      }
-                                    }}><Pencil size={14} /></button>
-                                    <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
-                                      showConfirm({
-                                        title: 'Xóa tài liệu?',
-                                        message: `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
-                                        isDanger: true,
-                                        confirmText: 'Xóa',
-                                        onConfirm: async () => {
+                                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
+                                    <button
+                                      style={{
+                                        background: 'rgba(16, 185, 129, 0.08)',
+                                        color: '#10b981',
+                                        border: '1px solid rgba(16, 185, 129, 0.15)',
+                                        padding: '6px 12px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        height: '30px',
+                                        transition: 'all 0.2s'
+                                      }}
+                                      className="hover-lift"
+                                      title="Di chuyển tệp vào/ra thư mục"
+                                      onClick={() => setMovingFile(doc)}
+                                    >
+                                      <ArrowRightLeft size={13} /> Di chuyển
+                                    </button>
+                                    <button
+                                      style={{
+                                        background: 'rgba(37, 99, 235, 0.08)',
+                                        color: '#2563eb',
+                                        border: '1px solid rgba(37, 99, 235, 0.15)',
+                                        padding: '6px 12px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        height: '30px',
+                                        transition: 'all 0.2s'
+                                      }}
+                                      className="hover-lift"
+                                      title="Đổi tên tài liệu"
+                                      onClick={async () => {
+                                        const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
+                                        if (newName && newName.trim()) {
                                           try {
-                                            await api.delete(`/cloud-files/${doc.id}`);
-                                            setDocs(prev => prev.filter(d => d.id !== doc.id));
-                                            addToast('Đã xóa tài liệu.', 'success');
+                                            await api.put(`/cloud-files/${doc.id}`, { name: newName.trim(), category: doc.category || 'general' });
+                                            fetchData();
+                                            addToast('Đã đổi tên tài liệu.', 'success');
                                           } catch (err) {
-                                            addToast('Lỗi khi xóa tài liệu.', 'error');
+                                            addToast('Lỗi khi đổi tên tài liệu.', 'error');
                                           }
                                         }
-                                      });
-                                    }}><Trash2 size={14} /></button>
+                                      }}
+                                    >
+                                      <Pencil size={13} /> Đổi tên
+                                    </button>
+                                    <button
+                                      style={{
+                                        background: 'rgba(239, 68, 68, 0.08)',
+                                        color: '#ef4444',
+                                        border: '1px solid rgba(239, 68, 68, 0.15)',
+                                        padding: '6px 12px',
+                                        borderRadius: '8px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        height: '30px',
+                                        transition: 'all 0.2s'
+                                      }}
+                                      className="hover-lift"
+                                      title="Xóa tài liệu"
+                                      onClick={() => {
+                                        showConfirm({
+                                          title: 'Xóa tài liệu?',
+                                          message: `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
+                                          isDanger: true,
+                                          confirmText: 'Xóa',
+                                          onConfirm: async () => {
+                                            try {
+                                              await api.delete(`/cloud-files/${doc.id}`);
+                                              setDocs(prev => prev.filter(d => d.id !== doc.id));
+                                              addToast('Đã xóa tài liệu.', 'success');
+                                            } catch (err) {
+                                              addToast('Lỗi khi xóa tài liệu.', 'error');
+                                            }
+                                          }
+                                        });
+                                      }}
+                                    >
+                                      <Trash2 size={13} /> Xóa
+                                    </button>
                                   </div>
                                 )}
                               </div>
                             );
                           })}
                         </div>
+                      )}
+
+                      {/* Moving File CustomModal */}
+                      {movingFile && (
+                        <CustomModal
+                          isOpen={!!movingFile}
+                          onClose={() => setMovingFile(null)}
+                          title={t('Di chuyển tài liệu')}
+                          width="420px"
+                        >
+                          <div style={{ padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                              Chọn thư mục đích cho tài liệu <strong>{movingFile.name}</strong>:
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '280px', overflowY: 'auto' }} className="custom-scrollbar">
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '10px', cursor: 'pointer' }}>
+                                <input
+                                  type="radio"
+                                  name="destFolder"
+                                  value="general"
+                                  defaultChecked={movingFile.category === 'general' || !movingFile.category || !allFolders.includes(movingFile.category)}
+                                />
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>Thư mục gốc (Root)</span>
+                              </label>
+                              {allFolders.map(folder => (
+                                <label key={folder} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '10px', cursor: 'pointer' }}>
+                                  <input
+                                    type="radio"
+                                    name="destFolder"
+                                    value={folder}
+                                    defaultChecked={movingFile.category === folder}
+                                  />
+                                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)' }}>{folder}</span>
+                                </label>
+                              ))}
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                              <button className="btn outline" onClick={() => setMovingFile(null)}>{t('Hủy')}</button>
+                              <button
+                                className="btn primary"
+                                onClick={async () => {
+                                  const selectedRadio = document.querySelector('input[name="destFolder"]:checked') as HTMLInputElement;
+                                  if (selectedRadio) {
+                                    const dest = selectedRadio.value;
+                                    try {
+                                      await api.put(`/cloud-files/${movingFile.id}`, { name: movingFile.name, category: dest });
+                                      fetchData();
+                                      addToast('Đã di chuyển tài liệu thành công.', 'success');
+                                    } catch {
+                                      addToast('Lỗi khi di chuyển tài liệu.', 'error');
+                                    } finally {
+                                      setMovingFile(null);
+                                    }
+                                  }
+                                }}
+                              >
+                                {t('Xác nhận')}
+                              </button>
+                            </div>
+                          </div>
+                        </CustomModal>
                       )}
                     </div>
                   )}

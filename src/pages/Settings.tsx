@@ -1070,36 +1070,41 @@ const SettingsInner = () => {
         />
       </div>
 
-      <div className="mobile-filter-tabs hide-on-mobile" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--color-border)' }}>
+      <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content', gap: '4px', flexWrap: 'wrap' }} className="hide-on-mobile">
         <button
           onClick={() => setActiveTab('processing')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'processing' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'processing' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'processing' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
+          className={activeTab === 'processing' ? '' : 'hover-lift'}
         >
-          <SettingsIcon size={18} /> {t('Cấu hình Xử lý')}
+          <SettingsIcon size={16} /> {t('Cấu hình Xử lý')}
         </button>
         <button
           onClick={() => setActiveTab('communications')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'communications' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'communications' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'communications' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'communications' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'communications' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
+          className={activeTab === 'communications' ? '' : 'hover-lift'}
         >
-          <Send size={18} /> {t('Cấu hình Gửi tin & Email')}
+          <Send size={16} /> {t('Cấu hình Gửi tin & Email')}
         </button>
         <button
           onClick={() => setActiveTab('report')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'report' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'report' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'report' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'report' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'report' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
+          className={activeTab === 'report' ? '' : 'hover-lift'}
         >
-          <BarChart2 size={18} /> Báo cáo
+          <BarChart2 size={16} /> {t('Báo cáo')}
         </button>
         <button
           onClick={() => setActiveTab('duplicate_check')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'duplicate_check' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'duplicate_check' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'duplicate_check' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'duplicate_check' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'duplicate_check' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
+          className={activeTab === 'duplicate_check' ? '' : 'hover-lift'}
         >
-          <FileSpreadsheet size={18} /> Ánh xạ dữ liệu cũ
+          <FileSpreadsheet size={16} /> {t('Ánh xạ dữ liệu cũ')}
         </button>
         <button
           onClick={() => setActiveTab('ai')}
-          style={{ padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9375rem', fontWeight: 600, background: 'transparent', border: 'none', borderBottom: activeTab === 'ai' ? '2px solid var(--color-primary)' : '2px solid transparent', color: activeTab === 'ai' ? 'var(--color-primary)' : 'var(--color-text-muted)', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'ai' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'ai' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'ai' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
+          className={activeTab === 'ai' ? '' : 'hover-lift'}
         >
-          <Zap size={18} /> Cấu hình Trợ lý AI
+          <Zap size={16} /> {t('Cấu hình Trợ lý AI')}
         </button>
       </div>
 

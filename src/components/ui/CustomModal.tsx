@@ -33,6 +33,15 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
+  const resolvedWidth = React.useMemo(() => {
+    if (!width) return '680px';
+    const num = parseInt(String(width), 10);
+    if (!isNaN(num) && num < 580) {
+      return '580px';
+    }
+    return width;
+  }, [width]);
+
   const modalContent = (
     <AnimatePresence>
       {isOpen && (
@@ -45,7 +54,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <div
               className={styles.modal}
-              style={width ? { width, maxWidth: '95vw' } : {}}
+              style={{ width: resolvedWidth, maxWidth: '95vw' }}
             >
               {title && (
                 <div className={styles.header}>
@@ -80,7 +89,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <motion.div
               className={styles.modal}
-              style={width ? { width, maxWidth: '95vw' } : {}}
+              style={{ width: resolvedWidth, maxWidth: '95vw' }}
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}

@@ -9,6 +9,7 @@ class ActivityController {
         $limit = min(100,max(10,(int)($_GET['limit']??20)));
         $offset = ($page-1)*$limit;
         $type = $_GET['type']??''; $status = $_GET['status']??''; $uid = $_GET['user_id']??'';
+        $teamId = $_GET['team_id']??'';
         $relType = $_GET['related_type']??''; $relId = $_GET['related_id']??'';
         $search = $_GET['search'] ?? '';
         $start = $_GET['start_date'] ?? '';
@@ -39,13 +40,21 @@ class ActivityController {
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'ASC';
 
         if (in_array($auth['role'], ['sales', 'sale'], true) && !$relType && !$relId) {
-            $where[] = '(a.user_id = ? OR (a.related_type = \'contact\' AND EXISTS (SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND ct.owner_id = ?)) OR (a.related_type = \'deal\' AND EXISTS (SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (d.owner_id = ? OR ct.owner_id = ?))))';
+            $where[] = '(
+                a.user_id = ? 
+                OR (a.related_type = \'contact\' AND EXISTS (SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND ct.owner_id = ?)) 
+                OR (a.related_type = \'deal\' AND EXISTS (SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (d.owner_id = ? OR ct.owner_id = ?)))
+                OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id = (SELECT team_id FROM users WHERE id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
+            )';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager' && !$relType && !$relId) {
-            $where[] = '(a.user_id = ? 
+            $where[] = '(
+                a.user_id = ? 
+                OR a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?))
                 OR (a.related_type = \'contact\' AND EXISTS (
                     SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR ct.owner_id IN (
                         SELECT id FROM users WHERE team_id IN (
@@ -66,7 +75,10 @@ class ActivityController {
                         )
                     )
                 ))
+                OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
             )';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -78,6 +90,7 @@ class ActivityController {
         if ($type)     { $where[]='a.type=?';    $params[]=$type; }
         if ($status)   { $where[]='a.status=?';  $params[]=$status; }
         if ($uid)      { $where[]='a.user_id=?'; $params[]=(int)$uid; }
+        if ($teamId)   { $where[]='a.user_id IN (SELECT id FROM users WHERE team_id = ?)'; $params[]=(int)$teamId; }
         if ($relType)  { $where[]='a.related_type=?'; $params[]=$relType; }
         if ($relId)    { $where[]='a.related_id=?';   $params[]=(int)$relId; }
         $priority = $_GET['priority'] ?? '';
@@ -190,6 +203,39 @@ class ActivityController {
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'activity', $actId, json_encode(['subject' => $b['subject'], 'type' => $b['type']]));
 
+        // Task notifications on creation
+        if ((int)$targetUserId !== (int)$auth['user_id']) {
+            $this->notifyUser(
+                (int)$targetUserId,
+                'Bạn có nhiệm vụ mới được giao',
+                'Bạn được giao nhiệm vụ mới: "' . $b['subject'] . '" bởi ' . $auth['full_name'] . '.',
+                'task_assignment',
+                "/activities/{$actId}"
+            );
+        }
+        if ((int)($b['require_approval']??0) === 1 && (int)($b['progress']??0) === 100 && !empty($b['approver_id'])) {
+            $this->notifyUser(
+                (int)$b['approver_id'],
+                'Yêu cầu phê duyệt hoàn thành công việc',
+                $auth['full_name'] . ' đã hoàn thành công việc "' . $b['subject'] . '" và đang chờ bạn phê duyệt.',
+                'approval_request',
+                "/activities/{$actId}"
+            );
+        }
+        if (!empty($b['participant_ids'])) {
+            $pIds = array_filter(array_map('intval', explode(',', $b['participant_ids'])));
+            foreach ($pIds as $pId) {
+                if ($pId === (int)$auth['user_id']) continue;
+                $this->notifyUser(
+                    $pId,
+                    'Bạn được thêm vào danh sách người liên quan',
+                    $auth['full_name'] . ' đã thêm bạn làm người liên quan trong công việc "' . $b['subject'] . '".',
+                    'task_participant',
+                    "/activities/{$actId}"
+                );
+            }
+        }
+
         if (!empty($b['auto_trigger'])) {
             $this->triggerAutomationWorkflow($auth, $b);
         }
@@ -228,6 +274,18 @@ class ActivityController {
                 if ($checkOwner->fetch()) {
                     $allowed = true;
                 }
+            } elseif ($row['tags'] && strpos($row['tags'], 'internal_') === 0) {
+                // Check if creator is in the same team or scope is global
+                $stmtTeamCheck = $this->db->prepare("
+                    SELECT 1 FROM users u 
+                    WHERE u.id = ? 
+                      AND (u.team_id = (SELECT team_id FROM users WHERE id = ?) 
+                           OR ? LIKE '%\"scope\":\"global\"%')
+                ");
+                $stmtTeamCheck->execute([$row['user_id'], $auth['user_id'], $row['body']]);
+                if ($stmtTeamCheck->fetch()) {
+                    $allowed = true;
+                }
             }
             if (!$allowed) respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
         } else if ($auth['role'] === 'manager') {
@@ -243,6 +301,17 @@ class ActivityController {
                 ))");
                 $checkOwner->execute([(int)$row['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
                 if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            } else {
+                // Check if target user belongs to manager's team
+                $stmtMgrTeam = $this->db->prepare("
+                    SELECT 1 FROM users WHERE id = ? AND team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ");
+                $stmtMgrTeam->execute([$row['user_id'], $auth['user_id']]);
+                if ($stmtMgrTeam->fetch()) {
                     $allowed = true;
                 }
             }
@@ -311,6 +380,18 @@ class ActivityController {
                 if ($checkOwner->fetch()) {
                     $allowed = true;
                 }
+            } elseif ($activity['tags'] && strpos($activity['tags'], 'internal_') === 0) {
+                // Check if creator is in the same team or scope is global
+                $stmtTeamCheck = $this->db->prepare("
+                    SELECT 1 FROM users u 
+                    WHERE u.id = ? 
+                      AND (u.team_id = (SELECT team_id FROM users WHERE id = ?) 
+                           OR ? LIKE '%\"scope\":\"global\"%')
+                ");
+                $stmtTeamCheck->execute([$activity['user_id'], $auth['user_id'], $activity['body']]);
+                if ($stmtTeamCheck->fetch()) {
+                    $allowed = true;
+                }
             }
             if (!$allowed) respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
         } else if ($auth['role'] === 'manager') {
@@ -326,6 +407,17 @@ class ActivityController {
                 ))");
                 $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
                 if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            } else {
+                // Check if target user belongs to manager's team
+                $stmtMgrTeam = $this->db->prepare("
+                    SELECT 1 FROM users WHERE id = ? AND team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ");
+                $stmtMgrTeam->execute([$activity['user_id'], $auth['user_id']]);
+                if ($stmtMgrTeam->fetch()) {
                     $allowed = true;
                 }
             }
@@ -374,6 +466,70 @@ class ActivityController {
                              ->execute([(int)$cid, $auth['tenant_id']]);
                     }
                 }
+            }
+        }
+
+        // Send notifications for updates
+        if (isset($b['user_id']) && (int)$b['user_id'] !== (int)$activity['user_id'] && (int)$b['user_id'] !== (int)$auth['user_id']) {
+            $this->notifyUser(
+                (int)$b['user_id'],
+                'Bạn có nhiệm vụ mới được giao',
+                'Nhiệm vụ "' . $activity['subject'] . '" đã được chuyển giao cho bạn bởi ' . $auth['full_name'] . '.',
+                'task_assignment',
+                "/activities/{$id}"
+            );
+        }
+
+        $currentProgress = isset($b['progress']) ? (int)$b['progress'] : (int)$activity['progress'];
+        $currentReqApproval = isset($b['require_approval']) ? (int)$b['require_approval'] : (int)$activity['require_approval'];
+        $currentApprover = isset($b['approver_id']) ? (int)$b['approver_id'] : (int)$activity['approver_id'];
+
+        if ($currentProgress === 100 && $currentReqApproval === 1 && $currentApprover) {
+            if ((int)$activity['progress'] < 100 || (isset($b['approver_id']) && (int)$b['approver_id'] !== (int)$activity['approver_id']) || (isset($b['approval_status']) && $b['approval_status'] === 'pending' && $activity['approval_status'] !== 'pending')) {
+                $this->notifyUser(
+                    $currentApprover,
+                    'Yêu cầu phê duyệt hoàn thành công việc',
+                    $auth['full_name'] . ' đã hoàn thành công việc "' . $activity['subject'] . '" và đang chờ bạn phê duyệt.',
+                    'approval_request',
+                    "/activities/{$id}"
+                );
+            }
+        }
+
+        if (isset($b['approval_status']) && $b['approval_status'] !== $activity['approval_status']) {
+            $assignee = isset($b['user_id']) ? (int)$b['user_id'] : (int)$activity['user_id'];
+            if ($b['approval_status'] === 'approved') {
+                $this->notifyUser(
+                    $assignee,
+                    'Nhiệm vụ được phê duyệt hoàn thành',
+                    'Công việc "' . $activity['subject'] . '" của bạn đã được phê duyệt hoàn thành bởi ' . $auth['full_name'] . '.',
+                    'approval_status',
+                    "/activities/{$id}"
+                );
+            } elseif ($b['approval_status'] === 'rejected') {
+                $this->notifyUser(
+                    $assignee,
+                    'Yêu cầu hoàn thành nhiệm vụ bị từ chối',
+                    'Yêu cầu hoàn thành công việc "' . $activity['subject'] . '" của bạn đã bị từ chối bởi ' . $auth['full_name'] . '.',
+                    'approval_status',
+                    "/activities/{$id}"
+                );
+            }
+        }
+
+        if (isset($b['participant_ids']) && $b['participant_ids'] !== $activity['participant_ids']) {
+            $oldP = array_filter(array_map('intval', explode(',', $activity['participant_ids'] ?? '')));
+            $newP = array_filter(array_map('intval', explode(',', $b['participant_ids'] ?? '')));
+            $addedP = array_diff($newP, $oldP);
+            foreach ($addedP as $pId) {
+                if ($pId === (int)$auth['user_id']) continue;
+                $this->notifyUser(
+                    $pId,
+                    'Bạn được thêm vào danh sách người liên quan',
+                    $auth['full_name'] . ' đã thêm bạn làm người liên quan trong công việc "' . $activity['subject'] . '".',
+                    'task_participant',
+                    "/activities/{$id}"
+                );
             }
         }
 
@@ -662,6 +818,44 @@ class ActivityController {
                     logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'contact', $contactId, json_encode(['stage_id' => 2, 'pipeline_status' => 'quan_tam', 'note' => 'Automation Workflow']));
                 }
             }
+        }
+    }
+
+    private function notifyUser(int $userId, string $title, string $body, string $type, string $link): void {
+        try {
+            $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
+            $stmtUser->execute([$userId]);
+            $u = $stmtUser->fetch(PDO::FETCH_ASSOC);
+            if (!$u) return;
+
+            // Fetch tenant_id
+            $stmtTenant = $this->db->prepare("SELECT tenant_id FROM users WHERE id=?");
+            $stmtTenant->execute([$userId]);
+            $tenantId = $stmtTenant->fetchColumn() ?: 1;
+
+            // Insert DB notification
+            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+            $notif->execute([
+                $userId,
+                $tenantId,
+                $title,
+                $body,
+                $type,
+                $link
+            ]);
+
+            // Send Email
+            if (!empty($u['email'])) {
+                require_once __DIR__ . '/../mailer.php';
+                $emailSubject = "[RICH LAND] " . $title;
+                $emailTitle = mb_strtoupper($type, 'UTF-8');
+                $emailContent = "Chào <strong>" . htmlspecialchars($u['full_name']) . "</strong>,<br/><br/>" .
+                                htmlspecialchars($body) . "<br/><br/>" .
+                                "Vui lòng truy cập hệ thống theo đường dẫn để xử lý công việc: <a href='" . htmlspecialchars($link) . "'>Xem chi tiết</a>";
+                sendEmailNotification($u['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+            }
+        } catch (Throwable $e) {
+            error_log("Notification System Error: " . $e->getMessage());
         }
     }
 }

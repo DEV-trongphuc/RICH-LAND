@@ -316,16 +316,18 @@ export const FilesPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
            {/* Pill Tab Switcher */}
-           <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', padding: '3px' }}>
+           <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', gap: '4px' }}>
              <button 
-                style={{ padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeTab === 'shared' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'shared' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeTab === 'shared' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'shared' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'shared' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'shared' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                 onClick={() => setActiveTab('shared')}
+                className={activeTab === 'shared' ? '' : 'hover-lift'}
              >
                Dùng chung
              </button>
              <button 
-                style={{ padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, background: activeTab === 'personal' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'personal' ? 'var(--color-text)' : 'var(--color-text-muted)', boxShadow: activeTab === 'personal' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'personal' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'personal' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'personal' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                 onClick={() => setActiveTab('personal')}
+                className={activeTab === 'personal' ? '' : 'hover-lift'}
              >
                Cá nhân
              </button>

@@ -1784,6 +1784,35 @@ try {
     ");
     $logMsg("Đã cập nhật VIEW accounts để hỗ trợ mọi roles đăng nhập", "success");
 
+    // Recreate the consultants VIEW to support extended profile fields (dob, gender, etc.)
+    $conn->query("
+        CREATE OR REPLACE VIEW `consultants` AS 
+        SELECT 
+          `id`, 
+          `full_name` AS `name`, 
+          `email`, 
+          `status`, 
+          `leave_start`, 
+          `leave_end`, 
+          `created_at`, 
+          `zalo_chat_id`, 
+          `work_start_time`, 
+          `work_end_time`, 
+          `work_schedule`, 
+          `avatar_url` AS `avatar`, 
+          `vacation_mode`, 
+          `team_id`,
+          `dob`,
+          `gender`,
+          `citizen_id`,
+          `address`,
+          `bank_name`,
+          `bank_account`
+        FROM `users`
+        WHERE `role` = 'sales'
+    ");
+    $logMsg("Đã cập nhật VIEW consultants để hỗ trợ các trường ERP mới", "success");
+
     // Seed default Admin & Sale users for Developer Quick Login
     $adminEmail = 'admin@richland.net';
     $adminPassHash = password_hash('admin123', PASSWORD_BCRYPT);

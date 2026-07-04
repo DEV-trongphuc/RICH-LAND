@@ -553,20 +553,21 @@ const ConsultantsInner = () => {
 
       {/* Tab bar */}
       {showAllTabs && (
-        <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', padding: '3px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content' }}>
+        <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content', gap: '4px' }}>
           <button
             onClick={() => navigate('/consultants?tab=consultants')}
             style={{
-              padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, border: 'none',
+              padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none',
               background: activeTab === 'consultants' ? 'var(--color-surface)' : 'transparent',
-              color: activeTab === 'consultants' ? 'var(--color-text)' : 'var(--color-text-muted)',
-              boxShadow: activeTab === 'consultants' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              color: activeTab === 'consultants' ? 'var(--color-primary)' : 'var(--color-text-light)',
+              boxShadow: activeTab === 'consultants' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
               transition: 'all 0.2s',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer'
             }}
+            className={activeTab === 'consultants' ? '' : 'hover-lift'}
           >
             <User size={14} />
             {t('Tư vấn viên')}
@@ -574,16 +575,17 @@ const ConsultantsInner = () => {
           <button
             onClick={() => navigate('/consultants?tab=teams')}
             style={{
-              padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, border: 'none',
+              padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none',
               background: activeTab === 'teams' ? 'var(--color-surface)' : 'transparent',
-              color: activeTab === 'teams' ? 'var(--color-text)' : 'var(--color-text-muted)',
-              boxShadow: activeTab === 'teams' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              color: activeTab === 'teams' ? 'var(--color-primary)' : 'var(--color-text-light)',
+              boxShadow: activeTab === 'teams' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
               transition: 'all 0.2s',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer'
             }}
+            className={activeTab === 'teams' ? '' : 'hover-lift'}
           >
             <Users size={14} />
             {t('Nhóm (Team)')}
@@ -591,16 +593,17 @@ const ConsultantsInner = () => {
           <button
             onClick={() => navigate('/consultants?tab=branches')}
             style={{
-              padding: '6px 16px', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, border: 'none',
+              padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none',
               background: activeTab === 'branches' ? 'var(--color-surface)' : 'transparent',
-              color: activeTab === 'branches' ? 'var(--color-text)' : 'var(--color-text-muted)',
-              boxShadow: activeTab === 'branches' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+              color: activeTab === 'branches' ? 'var(--color-primary)' : 'var(--color-text-light)',
+              boxShadow: activeTab === 'branches' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
               transition: 'all 0.2s',
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer'
             }}
+            className={activeTab === 'branches' ? '' : 'hover-lift'}
           >
             <Building2 size={14} />
             {t('Chi nhánh')}
@@ -1264,17 +1267,18 @@ const ConsultantsInner = () => {
                       </label>
 
                       {/* Segmented Control for Schedule Mode */}
-                      <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: 'var(--radius-full)', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', background: 'var(--color-border-light)', padding: '4px', borderRadius: '12px', gap: '4px', marginBottom: '0.75rem' }}>
                         <button
                           type="button"
                           onClick={() => setScheduleMode('daily')}
                           style={{
-                            flex: 1, padding: '6px 12px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.75rem',
+                            flex: 1, padding: '6px 12px', borderRadius: '10px', fontWeight: 700, fontSize: '0.75rem',
                             background: scheduleMode === 'daily' ? 'var(--color-surface)' : 'transparent',
-                            color: scheduleMode === 'daily' ? 'var(--color-text)' : 'var(--color-text-muted)',
-                            boxShadow: scheduleMode === 'daily' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                            color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                            boxShadow: scheduleMode === 'daily' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
                           }}
+                          className={scheduleMode === 'daily' ? '' : 'hover-lift'}
                         >{t('Cố định hàng ngày')}</button>
                         <button
                           type="button"
@@ -1285,12 +1289,13 @@ const ConsultantsInner = () => {
                             }
                           }}
                           style={{
-                            flex: 1, padding: '6px 12px', borderRadius: 'var(--radius-full)', fontWeight: 600, fontSize: '0.75rem',
+                            flex: 1, padding: '6px 12px', borderRadius: '10px', fontWeight: 700, fontSize: '0.75rem',
                             background: scheduleMode === 'custom' ? 'var(--color-surface)' : 'transparent',
-                            color: scheduleMode === 'custom' ? 'var(--color-text)' : 'var(--color-text-muted)',
-                            boxShadow: scheduleMode === 'custom' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                            color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-light)',
+                            boxShadow: scheduleMode === 'custom' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
                             transition: 'all 0.2s', border: 'none', cursor: 'pointer'
                           }}
+                          className={scheduleMode === 'custom' ? '' : 'hover-lift'}
                         >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
                       </div>
 
