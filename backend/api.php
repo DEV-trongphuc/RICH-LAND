@@ -7940,7 +7940,7 @@ switch ($action) {
                 $note = $lead['note'] . $adminNote;
 
                 $upd = $conn->prepare("UPDATE leads SET status = 'active', target_round_id = ?, assigned_to = ?, note = ?, last_interaction_date = NOW(), ai_screener_status = 'failed' WHERE id = ?");
-                $upd->bind_param("iiisi", $targetRoundId, $assignedConsultantId, $note, $lead_id);
+                $upd->bind_param("iisi", $targetRoundId, $assignedConsultantId, $note, $lead_id);
                 $upd->execute();
                 $upd->close();
 
@@ -10162,7 +10162,7 @@ switch ($action) {
         $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
 
         $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=? WHERE id=?");
-        $stmt->bind_param("ssssssssssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $targetId);
+        $stmt->bind_param("sssssssssssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $targetId);
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {
