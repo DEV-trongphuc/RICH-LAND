@@ -8,6 +8,23 @@ class CooperationController {
         $this->db = $db;
     }
 
+    private function notifyShareholders(int $slipId, array $shares, string $subject, string $title, string $content): void {
+        require_once __DIR__ . '/../mailer.php';
+        $uids = array_map('intval', array_keys($shares));
+        if (empty($uids)) return;
+        
+        $inClause = implode(',', array_fill(0, count($uids), '?'));
+        $stmtU = $this->db->prepare("SELECT email, full_name FROM users WHERE id IN ($inClause)");
+        $stmtU->execute($uids);
+        $users = $stmtU->fetchAll(PDO::FETCH_ASSOC);
+        
+        foreach ($users as $u) {
+            if (!empty($u['email'])) {
+                sendEmailNotification($u['email'], $subject, $title, $content, '', false);
+            }
+        }
+    }
+
     public function index(array $auth): void {
         $tid = $auth['tenant_id'];
 
@@ -132,6 +149,15 @@ class CooperationController {
             VALUES (?, ?, 1, 100, ?, '{}', 'pending_signatures', ?)
         ");
         $stmtIns->execute([$contactId, $depositId, $sharesJson, $creatorId]);
+        $slipId = (int)$this->db->lastInsertId();
+
+        // Email all shareholders that a slip requires their signature
+        $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận Phiếu hợp tác #" . $slipId;
+        $emailTitle = "KÝ XÁC NHẬN PHIẾU HỢP TÁC";
+        $emailContent = "Chào các thành viên,<br/><br/>" .
+                        "Một phiếu hợp tác chia sẻ hoa hồng mới (#" . $slipId . ") đã được tự động khởi tạo trên hệ thống.<br/>" .
+                        "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để xem chi tiết và ký xác nhận.";
+        $this->notifyShareholders($slipId, $shares, $emailSubject, $emailTitle, $emailContent);
     }
 
     public function updateShares(array $auth, int $id): void {
@@ -227,6 +253,34 @@ class CooperationController {
             foreach ($mgrs as $mgrId) {
                 $stmtNotif->execute([$mgrId, $auth['tenant_id'], $notifTitle, $notifBody, "/cooperation-slips"]);
             }
+
+            // Asynchronously email managers for approval
+            if (!empty($mgrs)) {
+                require_once __DIR__ . '/../mailer.php';
+                $stmtMgrEmails = $this->db->prepare("SELECT email FROM users WHERE id IN (" . implode(',', array_fill(0, count($mgrs), '?')) . ")");
+                $stmtMgrEmails->execute($mgrs);
+                $mgrEmails = $stmtMgrEmails->fetchAll(PDO::FETCH_COLUMN) ?: [];
+                foreach ($mgrEmails as $mgrEmail) {
+                    if (!empty($mgrEmail)) {
+                        $emailSubject = "[RICH LAND] Yêu cầu phê duyệt thay đổi hoa hồng Phiếu hợp tác #" . $id;
+                        $emailTitle = "PHÊ DUYỆT THAY ĐỔI HOA HỒNG";
+                        $emailContent = "Chào quản trị viên,<br/><br/>" .
+                                        "Nhân viên <strong>" . htmlspecialchars($userName) . "</strong> yêu cầu thay đổi tỷ lệ hoa hồng cho Phiếu hợp tác <strong>#" . $id . "</strong>.<br/>" .
+                                        "Lý do: <em>" . htmlspecialchars($reason) . "</em>.<br/>" .
+                                        "Vui lòng truy cập hệ thống RICH LAND CRM để phê duyệt hoặc từ chối.";
+                        sendEmailNotification($mgrEmail, $emailSubject, $emailTitle, $emailContent, '', false);
+                    }
+                }
+            }
+        } elseif ($newStatus === 'pending_signatures' || $newStatus === 'approved_pending_signatures') {
+            // Email all shareholders about the change and sign request
+            $emailSubject = "[RICH LAND] Yêu cầu ký xác nhận lại Phiếu hợp tác #" . $id;
+            $emailTitle = "KÝ XÁC NHẬN LẠI PHIẾU HỢP TÁC";
+            $emailContent = "Chào các thành viên,<br/><br/>" .
+                            "Tỷ lệ hoa hồng trong Phiếu hợp tác #" . $id . " đã được cập nhật bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
+                            "Lý do: <em>" . htmlspecialchars($reason) . "</em>.<br/>" .
+                            "Vui lòng truy cập hệ thống để ký xác nhận lại.";
+            $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
         }
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_COOPERATION_SHARES', 'cooperation_slip', $id, "Cập nhật/Yêu cầu thay đổi tỷ lệ hoa hồng phiên bản " . ($slip['version'] + 1) . ". Lý do: $reason");
@@ -297,6 +351,50 @@ class CooperationController {
         $stmt = $this->db->prepare("UPDATE cooperation_slips SET signatures_json = ?, status = ? WHERE id = ?");
         $stmt->execute([$signaturesJson, $status, $id]);
 
+        // Email notifications based on signature status
+        if ($allSigned) {
+            if ($status === 'approved') {
+                $emailSubject = "[RICH LAND] Phiếu hợp tác #" . $id . " đã được phê duyệt và ký kết thành công";
+                $emailTitle = "PHÊ DUYỆT PHIẾU HỢP TÁC";
+                $emailContent = "Chào các thành viên,<br/><br/>" .
+                                "Phiếu hợp tác chia sẻ hoa hồng #" . $id . " đã được thu thập đầy đủ chữ ký và chính thức phê duyệt thành công.<br/>" .
+                                "Vui lòng truy cập hệ thống để xem chi tiết.";
+                $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
+            } else { // pending_manager_approval
+                // Fetch manager emails
+                $stmtMgrs = $this->db->prepare("SELECT id, email FROM users WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager')");
+                $stmtMgrs->execute([$auth['tenant_id']]);
+                $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                
+                foreach ($mgrs as $mgr) {
+                    if (!empty($mgr['email'])) {
+                        $emailSubject = "[RICH LAND] Yêu cầu phê duyệt Phiếu hợp tác #" . $id;
+                        $emailTitle = "PHÊ DUYỆT PHIẾU HỢP TÁC";
+                        $emailContent = "Chào quản trị viên,<br/><br/>" .
+                                        "Phiếu hợp tác chia sẻ hoa hồng #" . $id . " đã thu thập đầy đủ chữ ký của các thành viên liên quan.<br/>" .
+                                        "Vui lòng truy cập hệ thống RICH LAND CRM để xem xét và duyệt phiếu.";
+                        sendEmailNotification($mgr['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                    }
+                }
+            }
+        } else {
+            // Find remaining signers
+            $remainingShares = [];
+            foreach ($shares as $uid => $percent) {
+                if (!isset($signatures[$uid])) {
+                    $remainingShares[$uid] = $percent;
+                }
+            }
+            if (!empty($remainingShares)) {
+                $emailSubject = "[RICH LAND] Nhắc nhở ký xác nhận Phiếu hợp tác #" . $id;
+                $emailTitle = "NHẮC NHỞ KÝ XÁC NHẬN PHIẾU";
+                $emailContent = "Chào bạn,<br/><br/>" .
+                                "Bạn có một yêu cầu ký xác nhận cho Phiếu hợp tác chia sẻ hoa hồng #" . $id . " chưa hoàn thành.<br/>" .
+                                "Vui lòng đăng nhập hệ thống RICH LAND CRM và truy cập mục <strong>Phiếu hợp tác</strong> để ký xác nhận sớm nhất.";
+                $this->notifyShareholders($id, $remainingShares, $emailSubject, $emailTitle, $emailContent);
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'SIGN_COOPERATION_SLIP', 'cooperation_slip', $id, "Ký xác nhận phiếu hợp tác ID: $id");
         respond(200, ['status' => $status], 'Ký xác nhận phiếu hợp tác thành công');
     }
@@ -323,6 +421,15 @@ class CooperationController {
 
         $stmt = $this->db->prepare("UPDATE cooperation_slips SET status = 'approved' WHERE id = ?");
         $stmt->execute([$id]);
+
+        // Email shareholders about approval
+        $shares = json_decode($slip['shares_json'], true) ?: [];
+        $emailSubject = "[RICH LAND] Phiếu hợp tác #" . $id . " đã được phê duyệt thành công";
+        $emailTitle = "PHÊ DUYỆT PHIẾU HỢP TÁC";
+        $emailContent = "Chào các thành viên,<br/><br/>" .
+                        "Phiếu hợp tác chia sẻ hoa hồng #" . $id . " đã được phê duyệt thành công bởi quản trị viên.<br/>" .
+                        "Vui lòng truy cập hệ thống để xem chi tiết.";
+        $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'APPROVE_COOPERATION_SLIP', 'cooperation_slip', $id, "Duyệt phiếu hợp tác hoa hồng ID: $id");
         respond(200, null, 'Phê duyệt phiếu hợp tác hoa hồng thành công');
@@ -362,6 +469,15 @@ class CooperationController {
             WHERE id = ?
         ");
         $stmt->execute([$details, $id]);
+
+        // Email shareholders about dispute/rejection
+        $emailSubject = "[RICH LAND] Từ chối / Khiếu nại Phiếu hợp tác #" . $id;
+        $emailTitle = "KHIẾU NẠI PHIẾU HỢP TÁC";
+        $emailContent = "Chào các thành viên,<br/><br/>" .
+                        "Phiếu hợp tác chia sẻ hoa hồng #" . $id . " đã bị từ chối / gửi phản hồi khiếu nại bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
+                        "Lý do: <em>" . htmlspecialchars($details) . "</em>.<br/>" .
+                        "Vui lòng truy cập hệ thống RICH LAND CRM để xem chi tiết và cập nhật lại.";
+        $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'REJECT_COOPERATION_SLIP', 'cooperation_slip', $id, "Từ chối phiếu hợp tác ID: $id. Lý do: $details");
         respond(200, null, 'Đã từ chối phiếu hợp tác và yêu cầu ký lại từ đầu');

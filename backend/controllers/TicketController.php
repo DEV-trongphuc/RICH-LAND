@@ -141,6 +141,39 @@ class TicketController {
         ]);
         $id = $this->db->lastInsertId();
 
+        // Email notifications for Assignee & Related Users
+        require_once __DIR__ . '/../mailer.php';
+        $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
+        $stmtUser->execute([$assigneeId]);
+        $assigneeRow = $stmtUser->fetch();
+        if ($assigneeRow && !empty($assigneeRow['email'])) {
+            $emailSubject = "[RICH LAND] Bạn được phân công hỗ trợ Ticket #" . $id;
+            $emailTitle = "PHÂN CÔNG HỖ TRỢ TICKET";
+            $emailContent = "Chào <strong>" . htmlspecialchars($assigneeRow['full_name']) . "</strong>,<br/><br/>" .
+                            "Bạn đã được phân công xử lý Ticket mới: <strong>" . htmlspecialchars($data['subject']) . "</strong>.<br/>" .
+                            "Mô tả: <em>" . htmlspecialchars($data['description'] ?? 'Không có') . "</em>.<br/>" .
+                            "Vui lòng truy cập hệ thống RICH LAND CRM mục <strong>Hỗ trợ / Khiếu nại</strong> để xử lý.";
+            sendEmailNotification($assigneeRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+        }
+
+        if (!empty($validUsers)) {
+            $inClause = implode(',', array_fill(0, count($validUsers), '?'));
+            $stmtRelated = $this->db->prepare("SELECT email, full_name FROM users WHERE id IN ($inClause)");
+            $stmtRelated->execute($validUsers);
+            $relatedRows = $stmtRelated->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            foreach ($relatedRows as $rel) {
+                if (!empty($rel['email'])) {
+                    $emailSubject = "[RICH LAND] Bạn được thêm là người liên quan Ticket #" . $id;
+                    $emailTitle = "NGƯỜI LIÊN QUAN TICKET";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($rel['full_name']) . "</strong>,<br/><br/>" .
+                                    "Bạn đã được thêm vào làm người liên quan của Ticket: <strong>" . htmlspecialchars($data['subject']) . "</strong>.<br/>" .
+                                    "Người phân công: <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
+                                    "Vui lòng truy cập hệ thống RICH LAND CRM để biết thêm chi tiết.";
+                    sendEmailNotification($rel['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+        }
+
         // Log interaction for related contacts
         if (!empty($validContacts)) {
             foreach ($validContacts as $cId) {
@@ -210,6 +243,11 @@ class TicketController {
         
         $params[] = $id; 
         $params[] = $auth['tenant_id'];
+
+        // Get old ticket state for notifications comparison
+        $stmtOld = $this->db->prepare("SELECT assignee_id, related_users, subject, status, created_by FROM tickets WHERE id=? AND tenant_id=?");
+        $stmtOld->execute([$id, $auth['tenant_id']]);
+        $oldTicket = $stmtOld->fetch(PDO::FETCH_ASSOC);
         
         $sql = "UPDATE tickets SET " . implode(',', $sets) . " WHERE id=? AND tenant_id=?";
         if ($auth['role'] === 'sales') {
@@ -219,6 +257,73 @@ class TicketController {
         }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
+
+        // Send update email notifications
+        if ($oldTicket) {
+            require_once __DIR__ . '/../mailer.php';
+            
+            // 1. Check if Assignee changed
+            if (isset($data['assignee_id']) && (int)$data['assignee_id'] !== (int)$oldTicket['assignee_id']) {
+                $newAssigneeId = (int)$data['assignee_id'];
+                $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
+                $stmtUser->execute([$newAssigneeId]);
+                $assigneeRow = $stmtUser->fetch();
+                if ($assigneeRow && !empty($assigneeRow['email'])) {
+                    $emailSubject = "[RICH LAND] Bạn được phân công hỗ trợ Ticket #" . $id;
+                    $emailTitle = "PHÂN CÔNG HỖ TRỢ TICKET";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($assigneeRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Bạn đã được phân công xử lý Ticket: <strong>" . htmlspecialchars($oldTicket['subject']) . "</strong>.<br/>" .
+                                    "Người phân công: <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
+                                    "Vui lòng truy cập hệ thống để xử lý.";
+                    sendEmailNotification($assigneeRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+
+            // 2. Check if new related users added
+            if (isset($data['related_users'])) {
+                $oldRel = json_decode($oldTicket['related_users'] ?? '[]', true) ?: [];
+                $newRel = $validUsers ?? [];
+                $addedRel = array_diff($newRel, $oldRel);
+                if (!empty($addedRel)) {
+                    $inClause = implode(',', array_fill(0, count($addedRel), '?'));
+                    $stmtRelated = $this->db->prepare("SELECT email, full_name FROM users WHERE id IN ($inClause)");
+                    $stmtRelated->execute($addedRel);
+                    $relatedRows = $stmtRelated->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                    foreach ($relatedRows as $rel) {
+                        if (!empty($rel['email'])) {
+                            $emailSubject = "[RICH LAND] Bạn được thêm là người liên quan Ticket #" . $id;
+                            $emailTitle = "NGƯỜI LIÊN QUAN TICKET";
+                            $emailContent = "Chào <strong>" . htmlspecialchars($rel['full_name']) . "</strong>,<br/><br/>" .
+                                            "Bạn đã được thêm vào làm người liên quan của Ticket: <strong>" . htmlspecialchars($oldTicket['subject']) . "</strong>.<br/>" .
+                                            "Người cập nhật: <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
+                                            "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
+                            sendEmailNotification($rel['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                        }
+                    }
+                }
+            }
+
+            // 3. Check if Status changed
+            if (isset($data['status']) && $data['status'] !== $oldTicket['status']) {
+                $newStatusVal = $data['status'];
+                $notifUids = array_unique([(int)$oldTicket['created_by'], (int)$oldTicket['assignee_id']]);
+                foreach ($notifUids as $nUid) {
+                    $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
+                    $stmtUser->execute([$nUid]);
+                    $notifRow = $stmtUser->fetch();
+                    if ($notifRow && !empty($notifRow['email'])) {
+                        $emailSubject = "[RICH LAND] Cập nhật trạng thái Ticket #" . $id;
+                        $emailTitle = "CẬP NHẬT TRẠNG THÁI TICKET";
+                        $emailContent = "Chào <strong>" . htmlspecialchars($notifRow['full_name']) . "</strong>,<br/><br/>" .
+                                        "Ticket <strong>" . htmlspecialchars($oldTicket['subject']) . "</strong> đã được cập nhật trạng thái mới.<br/>" .
+                                        "Trạng thái mới: <strong style='color: #ea580c;'>" . htmlspecialchars($newStatusVal) . "</strong>.<br/>" .
+                                        "Người cập nhật: <strong>" . htmlspecialchars($auth['full_name']) . "</strong>.<br/>" .
+                                        "Vui lòng truy cập hệ thống để xem chi tiết.";
+                        sendEmailNotification($notifRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                    }
+                }
+            }
+        }
 
         // Log if resolved
         if (isset($data['status']) && $data['status'] === 'resolved') {

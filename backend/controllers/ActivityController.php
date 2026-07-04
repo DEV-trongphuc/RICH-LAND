@@ -464,6 +464,51 @@ class ActivityController {
         ]);
 
         $commentId = $this->db->lastInsertId();
+
+        // Parse mentions in comment content
+        $content = $b['content'] ?? '';
+        $mentions = [];
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}]+)/u', $content, $matches);
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $nameWithUnderscores) {
+                $fullName = str_replace('_', ' ', $nameWithUnderscores);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
+                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                if ($userRow) {
+                    $uid = (int)$userRow['id'];
+                    if ($uid !== (int)$auth['user_id']) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        if (!empty($mentions)) {
+            require_once __DIR__ . '/../mailer.php';
+            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+            foreach ($mentions as $uid => $userRow) {
+                $notif->execute([
+                    $uid, $auth['tenant_id'],
+                    'Bạn được nhắc tên trong bình luận',
+                    $auth['full_name'] . ' đã nhắc tên bạn trong một bình luận hoạt động.',
+                    'mention',
+                    "/activities/{$id}"
+                ]);
+
+                if (!empty($userRow['email'])) {
+                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong bình luận của " . $auth['full_name'];
+                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một bình luận của hoạt động.<br/>" .
+                                    "Nội dung:<br/>" .
+                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($content)) . "</blockquote>" .
+                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
+                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'ADD_COMMENT', 'activity', $id);
 
         respond(200, ['id' => $commentId], 'Đã thêm bình luận');

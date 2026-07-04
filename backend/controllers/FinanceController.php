@@ -743,6 +743,27 @@ class FinanceController
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'expense', $expId, json_encode(['title' => $data['title'], 'amount' => $totalAmount]));
 
+            $statusVal = $data['status'] ?? 'pending';
+            if ($statusVal === 'pending') {
+                $stmtMgrs = $this->db->prepare("SELECT id, email FROM users WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager')");
+                $stmtMgrs->execute([$auth['tenant_id']]);
+                $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                
+                require_once __DIR__ . '/../mailer.php';
+                foreach ($mgrs as $mgr) {
+                    if (!empty($mgr['email'])) {
+                        $emailSubject = "[RICH LAND] Yêu cầu phê duyệt Chi phí #" . $expId;
+                        $emailTitle = "PHÊ DUYỆT CHI PHÍ";
+                        $emailContent = "Chào quản trị viên,<br/><br/>" .
+                                        "Nhân viên <strong>" . htmlspecialchars($auth['full_name']) . "</strong> đã tạo một khoản chi phí mới cần phê duyệt: <strong>" . htmlspecialchars($data['title']) . "</strong>.<br/>" .
+                                        "Số tiền: <strong>" . number_format($totalAmount, 0, ',', '.') . "đ</strong>.<br/>" .
+                                        "Ghi chú: <em>" . htmlspecialchars($data['notes'] ?? 'Không có') . "</em>.<br/>" .
+                                        "Vui lòng truy cập hệ thống RICH LAND CRM để xem xét và duyệt chi phí.";
+                        sendEmailNotification($mgr['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                    }
+                }
+            }
+
             $this->showExpense($auth, $expId);
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -895,6 +916,29 @@ class FinanceController
             $this->db->prepare("UPDATE expenses SET status=?, approver_id=NULL, approved_at=NULL WHERE id=? AND tenant_id=?")
                 ->execute([$status, $id, $auth['tenant_id']]);
         }
+
+        // Email creator of the expense
+        $stmtExp = $this->db->prepare("SELECT created_by, title, amount FROM expenses WHERE id=? AND tenant_id=?");
+        $stmtExp->execute([$id, $auth['tenant_id']]);
+        $expenseRow = $stmtExp->fetch();
+        if ($expenseRow) {
+            $creatorId = (int)$expenseRow['created_by'];
+            $stmtUser = $this->db->prepare("SELECT email, full_name FROM users WHERE id=?");
+            $stmtUser->execute([$creatorId]);
+            $creatorRow = $stmtUser->fetch();
+            if ($creatorRow && !empty($creatorRow['email'])) {
+                require_once __DIR__ . '/../mailer.php';
+                $emailSubject = "[RICH LAND] Chi phí của bạn đã được " . ($status === 'approved' ? 'duyệt' : 'từ chối');
+                $emailTitle = "PHẢN HỒI YÊU CẦU CHI PHÍ";
+                $emailContent = "Chào <strong>" . htmlspecialchars($creatorRow['full_name']) . "</strong>,<br/><br/>" .
+                                "Yêu cầu thanh toán chi phí của bạn cho mục <strong>" . htmlspecialchars($expenseRow['title']) . "</strong> đã được cập nhật.<br/>" .
+                                "Số tiền: <strong>" . number_format($expenseRow['amount'] ?? 0, 0, ',', '.') . "đ</strong>.<br/>" .
+                                "Trạng thái mới: <strong style='color: " . ($status === 'approved' ? '#22c55e' : '#ef4444') . ";'>" . ($status === 'approved' ? 'Đã duyệt' : 'Từ chối') . "</strong> bởi quản trị viên.<br/>" .
+                                "Vui lòng đăng nhập hệ thống RICH LAND CRM để xem chi tiết.";
+                sendEmailNotification($creatorRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'APPROVE', 'expense', $id, json_encode(['status' => $status]));
         respond(200, null, 'Đã cập nhật trạng thái');
     }
