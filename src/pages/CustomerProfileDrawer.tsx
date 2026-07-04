@@ -3997,84 +3997,98 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         }} style={{ fontWeight: 600 }}><Plus size={14} /> Thêm ghi chú</button>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                        {notes.map(n => {
-                          const cardBg = '#fefce8'; // pale yellow like note paper
-                          const leftBorder = '4px solid #eab308'; // golden yellow accent border
+                      {notes.length === 0 ? (
+                        <EmptyCard
+                          icon={<FileText size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
+                          title="Chưa có ghi chú nội bộ"
+                          description="Các ghi chú dạng giấy Note đính kèm thông tin khách hàng sẽ xuất hiện tại đây."
+                          actionText="Thêm ghi chú"
+                          onAction={() => {
+                            setEditingNote(null);
+                            setNewNote('');
+                            setShowNoteModal(true);
+                          }}
+                        />
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                          {notes.map(n => {
+                            const cardBg = '#fefce8'; // pale yellow like note paper
+                            const leftBorder = '4px solid #eab308'; // golden yellow accent border
 
-                          return (
-                            <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid #fef08a', borderLeft: leftBorder, borderRadius: '12px', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.05)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '160px' }}>
-                              <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                  <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{formatNote(n.text)}</p>
-                                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                                    {canDeleteNote(n.user_id) && (
-                                      <>
-                                        <button
-                                          className="btn ghost sm"
-                                          style={{ padding: '4px', height: '24px', width: '24px', color: 'var(--color-text-muted)', border: 'none', background: 'transparent' }}
-                                          onClick={() => {
-                                            setEditingNote(n);
-                                            setNewNote(n.text);
-                                            setShowNoteModal(true);
-                                          }}
-                                        >
-                                          <Pencil size={12} />
-                                        </button>
-                                        <button
-                                          className="btn ghost sm text-danger"
-                                          style={{ padding: '4px', height: '24px', width: '24px', border: 'none', background: 'transparent' }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            showConfirm(
-                                              'Xóa ghi chú?',
-                                              'Bạn có chắc chắn muốn xóa ghi chú này không?',
-                                              async () => {
-                                                try {
-                                                  await api.delete(`/notes/${n.id}`);
-                                                  setNotes(prev => prev.filter(x => x.id !== n.id));
-                                                  addToast('Đã xóa ghi chú', 'success');
-                                                } catch (e: any) {
-                                                  addToast('Lỗi khi xóa ghi chú', 'error');
+                            return (
+                              <div key={n.id} className="card-panel animate-fade" style={{ padding: '1.25rem', background: cardBg, border: '1px solid #fef08a', borderLeft: leftBorder, borderRadius: '12px', boxShadow: '0 4px 12px rgba(234, 179, 8, 0.05)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '160px' }}>
+                                <div>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                                    <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{formatNote(n.text)}</p>
+                                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                                      {canDeleteNote(n.user_id) && (
+                                        <>
+                                          <button
+                                            className="btn ghost sm"
+                                            style={{ padding: '4px', height: '24px', width: '24px', color: 'var(--color-text-muted)', border: 'none', background: 'transparent' }}
+                                            onClick={() => {
+                                              setEditingNote(n);
+                                              setNewNote(n.text);
+                                              setShowNoteModal(true);
+                                            }}
+                                          >
+                                            <Pencil size={12} />
+                                          </button>
+                                          <button
+                                            className="btn ghost sm text-danger"
+                                            style={{ padding: '4px', height: '24px', width: '24px', border: 'none', background: 'transparent' }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              showConfirm(
+                                                'Xóa ghi chú?',
+                                                'Bạn có chắc chắn muốn xóa ghi chú này không?',
+                                                async () => {
+                                                  try {
+                                                    await api.delete(`/notes/${n.id}`);
+                                                    setNotes(prev => prev.filter(x => x.id !== n.id));
+                                                    addToast('Đã xóa ghi chú', 'success');
+                                                  } catch (e: any) {
+                                                    addToast('Lỗi khi xóa ghi chú', 'error');
+                                                  }
                                                 }
-                                              }
-                                            );
-                                          }}
-                                        >
-                                          <Trash2 size={12} />
-                                        </button>
-                                      </>
-                                    )}
+                                              );
+                                            }}
+                                          >
+                                            <Trash2 size={12} />
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
                                   </div>
+                                  {n.attachment_url && (
+                                    <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
+                                        <Camera size={12} style={{ color: '#10b981' }} />
+                                      ) : (
+                                        <FileText size={12} style={{ color: 'var(--color-primary)' }} />
+                                      )}
+                                      <a
+                                        href={resolveAttachmentUrl(n.attachment_url)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
+                                      >
+                                        {n.attachment_url.split('/').pop()}
+                                      </a>
+                                    </div>
+                                  )}
                                 </div>
-                                {n.attachment_url && (
-                                  <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    {/\.(jpg|jpeg|png|gif|webp)$/i.test(n.attachment_url) ? (
-                                      <Camera size={12} style={{ color: '#10b981' }} />
-                                    ) : (
-                                      <FileText size={12} style={{ color: 'var(--color-primary)' }} />
-                                    )}
-                                    <a
-                                      href={resolveAttachmentUrl(n.attachment_url)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, textDecoration: 'underline' }}
-                                    >
-                                      {n.attachment_url.split('/').pop()}
-                                    </a>
-                                  </div>
-                                )}
+                                <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
+                                  <EditHistoryIndicator history={n.edit_history} />
+                                  <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                                    Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
+                                  </p>
+                                </div>
                               </div>
-                              <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
-                                <EditHistoryIndicator history={n.edit_history} />
-                                <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                                  Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
-                                </p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
 
