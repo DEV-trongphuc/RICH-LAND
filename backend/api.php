@@ -14119,7 +14119,7 @@ switch ($action) {
                 INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'databank', 'lead', 'chua_xac_dinh', ?)
             ");
-            $stmtIns->bind_param("iiiissssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $secExpiresTime);
+            $stmtIns->bind_param("iiiisssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $secExpiresTime);
             $stmtIns->execute();
             $newContactId = $conn->insert_id;
             $stmtIns->close();
