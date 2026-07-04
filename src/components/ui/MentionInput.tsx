@@ -26,10 +26,16 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
   const [cursorPos, setCursorPos] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const isTeamMember = (u: User) => {
+    if (!u || !u.role) return false;
+    const r = u.role.toLowerCase();
+    return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(r);
+  };
+
   useEffect(() => {
     if (propUsers && propUsers.length > 0) {
       console.log("MentionInput using propUsers:", propUsers);
-      setUsers(propUsers);
+      setUsers(propUsers.filter(isTeamMember));
       return;
     }
     // Fetch users for mentions
@@ -38,12 +44,8 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
       const d = res.data.data;
       const list = Array.isArray(d) ? d : (d?.items || []);
       console.log("MentionInput API response list:", list);
-      if (list.length === 0) {
-        console.log("MentionInput list is empty");
-        setUsers([]);
-      } else {
-        setUsers(list);
-      }
+      const filtered = list.filter(isTeamMember);
+      setUsers(filtered);
     }).catch(err => {
       console.error("MentionInput failed to load users:", err);
       setUsers([]);

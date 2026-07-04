@@ -243,7 +243,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     due_date: new Date().toISOString().slice(0, 10),
     description: '',
     link: '',
-    related_id: ''
+    related_id: '',
+    user_id: '',
+    progress: 0,
+    require_approval: 0,
+    approver_id: ''
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -717,7 +721,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (token) {
       api.get('/users').then(r => {
         const d = r.data.data;
-        setUsers(Array.isArray(d) ? d : (d?.items || []));
+        const list = Array.isArray(d) ? d : (d?.items || []);
+        const team = list.filter((u: any) => {
+          if (!u || !u.role) return false;
+          const roleLower = u.role.toLowerCase();
+          return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
+        });
+        setUsers(team);
       }).catch(() => {});
     }
   }, [token]);
@@ -1589,8 +1599,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         due_date: taskForm.due_date,
         related_type: taskForm.related_id ? 'contact' : null,
         related_id: taskForm.related_id ? Number(taskForm.related_id) : null,
+        user_id: taskForm.user_id ? Number(taskForm.user_id) : null,
         body: bodyText || null,
-        status: 'planned'
+        status: 'planned',
+        progress: Number(taskForm.progress || 0),
+        require_approval: Number(taskForm.require_approval || 0),
+        approver_id: taskForm.approver_id ? Number(taskForm.approver_id) : null
       });
       setShowTaskModal(false);
       setTaskForm({
@@ -1599,7 +1613,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         due_date: new Date().toISOString().slice(0, 10),
         description: '',
         link: '',
-        related_id: ''
+        related_id: '',
+        user_id: '',
+        progress: 0,
+        require_approval: 0,
+        approver_id: ''
       });
       fetchPortalTasks();
       toast.success(t('Đã tạo công việc mới'));
@@ -6774,6 +6792,111 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               style={{ minHeight: 80, resize: 'vertical' }}
             />
           </div>
+
+          <div className="form-group">
+            <label className="form-label">{t('Người thực hiện')}</label>
+            <CustomSelect
+              showAvatars={true}
+              searchable={true}
+              options={[
+                { value: '', label: t('Chưa giao cho ai') },
+                ...users.map(u => ({
+                  value: String(u.id),
+                  label: `${u.full_name} (${u.role})`,
+                  avatar: u.avatar_url || undefined
+                }))
+              ]}
+              value={taskForm.user_id}
+              onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
+            />
+          </div>
+
+          {/* Progress Slider */}
+          <div className="form-group">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <label className="form-label" style={{ margin: 0 }}>{t('Tiến độ công việc')}</label>
+              <span style={{ fontSize: '0.85rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="10"
+              value={taskForm.progress || 0}
+              onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
+              style={{
+                width: '100%',
+                cursor: 'pointer',
+                accentColor: 'var(--color-primary)',
+                height: '6px',
+                borderRadius: '3px',
+                background: '#e5e7eb'
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+              <span>0%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          {/* Approval Toggle */}
+          <div className="form-group">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Yêu cầu phê duyệt')}</span>
+              <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                <div 
+                  style={{
+                    width: 38,
+                    height: 20,
+                    borderRadius: 10,
+                    background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
+                    position: 'relative',
+                    transition: 'background 0.2s'
+                  }}
+                  onClick={() => {
+                    const next = taskForm.require_approval === 1 ? 0 : 1;
+                    setTaskForm({ ...taskForm, require_approval: next });
+                  }}
+                >
+                  <div 
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      background: 'white',
+                      position: 'absolute',
+                      top: 2,
+                      left: taskForm.require_approval === 1 ? 20 : 2,
+                      transition: 'left 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                    }}
+                  />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Approver Select */}
+          {taskForm.require_approval === 1 && (
+            <div className="form-group">
+              <label className="form-label">{t('Người duyệt')}</label>
+              <CustomSelect
+                showAvatars={true}
+                searchable={true}
+                options={[
+                  { value: '', label: t('Chọn người duyệt...') },
+                  ...users.map(u => ({
+                    value: String(u.id),
+                    label: `${u.full_name} (${u.role})`,
+                    avatar: u.avatar_url || undefined
+                  }))
+                ]}
+                value={taskForm.approver_id}
+                onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
+              />
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
