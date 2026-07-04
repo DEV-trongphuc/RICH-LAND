@@ -432,7 +432,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         isOpen={isUnifiedInboxOpen}
         onClose={() => setIsUnifiedInboxOpen(false)}
         title={t("Hộp thư Phê duyệt & Tồn đọng")}
-        width={500}
+        width={680}
       >
         <div style={{ display: 'flex', flexDirection: 'column', padding: '0.25rem 0' }}>
           <style>{`
