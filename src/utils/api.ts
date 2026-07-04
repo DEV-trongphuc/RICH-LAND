@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : '/backend/api.php';
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const BASE_URL = isLocal ? '/backend/api.php' : (import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api.php` : '/backend/api.php');
 import { en, ja, zh } from './translations';
 
 function getTranslatedError(key: string, replacements?: Record<string, string | number>): string {
@@ -18,129 +19,34 @@ function getTranslatedError(key: string, replacements?: Record<string, string | 
 }
 
 
-// BUG-11 fix: Guard against multiple concurrent 401 redirects
-let _isRedirectingToLogin = false;
+import api from '../api/axios';
 
-const pendingRequests = new Map<string, Promise<any>>();
+export async function fetchAPI(action: string, options: RequestInit = {}) {
+  const originalMethod = (options.method || 'GET').toUpperCase();
+  
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
 
-export async function fetchAPI(action: string, options: RequestInit = {}, retries = 2) {
-  const originalMethod = options.method ? options.method.toUpperCase() : 'GET';
-  const isDevMode = import.meta.env.DEV || window.location.hostname === 'localhost';
-  const isProd = !isDevMode;
-
-  if (isProd && ['PUT', 'PATCH', 'DELETE'].includes(originalMethod)) {
-    options.method = 'POST';
+  const token = localStorage.getItem('richland_token');
+  let url = `api.php?action=${action}`;
+  if (token) {
+    url += `&token=${token}`;
   }
 
-  const isGet = originalMethod === 'GET';
-  let requestKey = '';
-  if (isGet) {
-    try {
-      requestKey = `${action}_${JSON.stringify(options)}`;
-    } catch (e) {
-      requestKey = `${action}_unknown_options`;
+  try {
+    const response = await api({
+      method: originalMethod as any,
+      url,
+      data: options.body,
+      headers,
+    });
+    return response.data;
+  } catch (err: any) {
+    if (err.response) {
+      throw new Error(err.response.data?.message || err.message);
     }
-  }
-
-  if (isGet && pendingRequests.has(requestKey)) {
-    return pendingRequests.get(requestKey);
-  }
-
-  const promise = (async () => {
-    const token = localStorage.getItem('richland_token');
-    
-    const headers: Record<string, string> = {
-      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
-      ...(options.headers as Record<string, string>),
-    };
-
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-      headers['X-Auth-Token'] = token;
-    }
-
-    let url = `${BASE_URL}?action=${action}`;
-    if (token) {
-      url += `&token=${token}`;
-    }
-    if (isProd && ['PUT', 'PATCH', 'DELETE'].includes(originalMethod)) {
-      url += `&_method=${originalMethod}`;
-    }
-
-    let lastError: any;
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const response = await fetch(url, {
-          ...options,
-          headers,
-        });
-
-        const json = await response.json();
-
-        if (!response.ok) {
-          if (response.status === 401 && action !== 'login') {
-            const userStr = localStorage.getItem('richland_user');
-            const userObj = userStr ? JSON.parse(userStr) : null;
-            if (window.location.pathname === '/sale-portal' || userObj?.role === 'sale') {
-              localStorage.removeItem('richland_token');
-              localStorage.removeItem('richland_user');
-              throw new Error(json.message || 'Unauthorized');
-            }
-            // BUG-11 fix: Only redirect once even if multiple parallel requests all fail
-            if (!_isRedirectingToLogin) {
-              _isRedirectingToLogin = true;
-              localStorage.removeItem('richland_token');
-              localStorage.removeItem('richland_user');
-              // Use replace to avoid back-button loop
-              window.location.replace('/login');
-            }
-          }
-          // Do not retry 4xx errors
-          if (response.status >= 400 && response.status < 500) {
-            throw new Error(json.message || getTranslatedError('Lỗi dữ liệu phía người dùng'));
-          }
-          // If 5xx, we throw to trigger retry
-          throw new Error(json.message || getTranslatedError('Lỗi kết nối máy chủ ({status})', { status: response.status }));
-        }
-
-        return json;
-      } catch (err: any) {
-        lastError = err;
-        const isNetworkError = err instanceof TypeError && err.message === 'Failed to fetch';
-        const isServerError = err instanceof Error && (
-          err.message.includes('Lỗi kết nối máy chủ') ||
-          err.message.includes('Server connection error') ||
-          err.message.includes('サーバー接続エラー') ||
-          err.message.includes('服务器连接错误')
-        );
-        
-        // Retry ONLY on pure network drops or 5xx server errors
-        if (!isNetworkError && !isServerError) {
-          throw err;
-        }
-        
-        // If last attempt, give up
-        if (attempt === retries) {
-          break;
-        }
-        
-        // Exponential backoff
-        await new Promise(res => setTimeout(res, 1000 * Math.pow(2, attempt)));
-      }
-    }
-
-    throw lastError;
-  })();
-
-  if (isGet) {
-    pendingRequests.set(requestKey, promise);
-    try {
-      return await promise;
-    } finally {
-      pendingRequests.delete(requestKey);
-    }
-  } else {
-    return promise;
+    throw err;
   }
 }
 
@@ -157,8 +63,9 @@ export async function fetchPublicAPI(action: string, options: RequestInit = {}) 
     options.method = 'POST';
   }
 
+  const isPayloadMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(originalMethod);
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isPayloadMethod && !(options.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers as Record<string, string>),
   };
 

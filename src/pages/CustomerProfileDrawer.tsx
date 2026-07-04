@@ -823,6 +823,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showParticipantDropdown, setShowParticipantDropdown] = useState(false);
   const [showApproverDropdown, setShowApproverDropdown] = useState(false);
   const [userSearch, setUserSearch] = useState('');
+  const [uploadingFileObj, setUploadingFileObj] = useState<any>(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
   const [newNote, setNewNote] = useState('');
@@ -2524,7 +2525,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               key={tab.id}
                               className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
                               onClick={() => setActiveTab(tab.id)}
-                              style={{ padding: '2px 0.75rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
+                              style={{ padding: '8px 0.75rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {tab.icon}
@@ -4069,20 +4070,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
                                 const customName = window.prompt("Nhập tên tài liệu:", defaultName);
                                 if (customName === null) {
-                                  return; // User cancelled
+                                  addToast('Đã hủy tải lên tài liệu.', 'info');
+                                  e.target.value = '';
+                                  return;
                                 }
                                 const ext = originalName.substring(originalName.lastIndexOf('.'));
                                 const finalName = (customName.trim() || defaultName) + ext;
                                 
-                                const compressed = await compressToWebP(file);
-                                const renamedFile = new File([compressed], finalName, { type: compressed.type });
+                                let fileToUpload = file;
+                                if (file.type && file.type.startsWith('image/')) {
+                                  try {
+                                    fileToUpload = await compressToWebP(file);
+                                  } catch (compressErr) {
+                                    console.error("Compression failed, using original file", compressErr);
+                                  }
+                                }
+                                const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
                                 const fData = new FormData();
                                 fData.append('file', renamedFile);
                                 fData.append('name', finalName);
                                 fData.append('contact_id', String(contact.id));
                                 fData.append('category', 'general');
                                 fData.append('visibility', 'shared');
+
+                                const isImg = renamedFile.type && renamedFile.type.startsWith('image/');
+                                const previewUrl = isImg ? URL.createObjectURL(renamedFile) : '';
+                                setUploadingFileObj({
+                                  name: finalName,
+                                  size: (renamedFile.size / 1024 / 1024).toFixed(1) + ' MB',
+                                  previewUrl,
+                                  isImage: isImg
+                                });
                                 setUploadProgress(0);
+
                                 try {
                                   await api.post('/cloud-files', fData, {
                                     headers: { 'Content-Type': 'multipart/form-data' },
@@ -4092,11 +4112,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     }
                                   });
                                   setUploadProgress(null);
+                                  setUploadingFileObj(null);
                                   fetchData();
-                                  addToast('Đã tải lên tài liệu mới.', 'success');
+                                  addToast('Đã tải lên tài liệu mới thành công.', 'success');
                                 } catch (err: any) {
                                   setUploadProgress(null);
+                                  setUploadingFileObj(null);
                                   addToast('Lỗi khi tải tài liệu lên server', 'error');
+                                } finally {
+                                  e.target.value = '';
                                 }
                               }
                             }} />
@@ -4105,14 +4129,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         )}
                       </div>
 
-                      {uploadProgress !== null && (
-                        <div style={{ padding: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', marginBottom: '1rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, marginBottom: '6px' }}>
-                            <span style={{ color: 'var(--color-text)' }}>Đang tải tài liệu lên...</span>
-                            <span style={{ color: 'var(--color-primary)' }}>{uploadProgress}%</span>
+                      {uploadProgress !== null && uploadingFileObj && (
+                        <div className="card-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', marginBottom: '1rem' }}>
+                          <div style={{ width: 40, height: 40, background: 'var(--color-info-light)', color: 'var(--color-info)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                            {uploadingFileObj.isImage ? (
+                              <img src={uploadingFileObj.previewUrl} alt={uploadingFileObj.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <FileText size={20} />
+                            )}
                           </div>
-                          <div style={{ width: '100%', height: '6px', background: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--color-primary)', transition: 'width 0.1s ease-out' }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text)', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {uploadingFileObj.name}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', flexShrink: 0 }}>
+                                {uploadProgress}%
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ flex: 1, height: '6px', background: 'var(--color-bg)', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--color-primary)', transition: 'width 0.1s ease-out' }} />
+                              </div>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', flexShrink: 0 }}>
+                                {uploadingFileObj.size}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}

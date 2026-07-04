@@ -148,7 +148,7 @@ export const ContactsPage: React.FC = () => {
     { id: 'phone', label: 'SĐT', visible: true },
     { id: 'score', label: 'Lead Score', visible: false },
     { id: 'company', label: 'Công ty', visible: false },
-    { id: 'tags', label: 'Phân loại (Tags)', visible: true },
+    { id: 'tags', label: 'Phân loại (Tags)', visible: false },
     { id: 'status', label: 'Trạng thái', visible: true },
     { id: 'contact', label: 'Liên lạc cuối', visible: true },
     { id: 'deal', label: 'Deal hiện tại', visible: false },
@@ -768,7 +768,7 @@ export const ContactsPage: React.FC = () => {
                     {columns.find(c => c.id === 'company')?.visible && !columns.find(c => c.id === 'name')?.visible && (
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Công ty</th>
                     )}
-                    {columns.find(c => c.id === 'tags')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Tags</th>}
+                    {/* {columns.find(c => c.id === 'tags')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Tags</th>} */}
                     {columns.find(c => c.id === 'status')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
                     {columns.find(c => c.id === 'contact')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>
@@ -838,7 +838,7 @@ export const ContactsPage: React.FC = () => {
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{c.job_title || ''}</p>
                           </td>
                         )}
-                        {columns.find(col => col.id === 'tags')?.visible && (
+                        {/* {columns.find(col => col.id === 'tags')?.visible && (
                           <td style={{ padding: '1rem', maxWidth: 160, borderBottom: '1px solid var(--color-border)' }}>
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                               {(c.tags || []).slice(0, 2).map((t: string) => (
@@ -851,7 +851,7 @@ export const ContactsPage: React.FC = () => {
                               )}
                             </div>
                           </td>
-                        )}
+                        )} */}
                         {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
@@ -905,7 +905,13 @@ export const ContactsPage: React.FC = () => {
                         )}
                         {columns.find(col => col.id === 'created_at')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '—'}</p>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                              {c.created_at ? (() => {
+                                const d = new Date(c.created_at);
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                              })() : '—'}
+                            </p>
                           </td>
                         )}
                         <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
