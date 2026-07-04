@@ -1828,6 +1828,29 @@ try {
     assertTest("TEST 80: Night shift registration auto-wipe verification", $wipeSuccess, "Yesterday shifts remaining: $oldShiftCount");
 
     // ─────────────────────────────────────────────────────────────────
+    // Phase 19: Automated Workflow Templates & Stage Transition Tasks
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("INSERT INTO workflow_task_templates (tenant_id, stage_id, title, description, priority, due_days_offset, is_active) 
+                  VALUES (?, 1, ?, 'E2E description text', 'high', 3, 1)")
+       ->execute([$tenantId, 'E2E Workflow task ' . $suffix]);
+    $tplId = (int)$db->lastInsertId();
+
+    require_once __DIR__ . '/config/WorkflowHelper.php';
+    $db->prepare("INSERT INTO contacts (tenant_id, owner_id, pipeline_status, stage_id, first_name, last_name) 
+                  VALUES (?, ?, 'lead', 1, 'John', 'WorkflowTest')")
+       ->execute([$tenantId, $saleUserId]);
+    $wfContactId = (int)$db->lastInsertId();
+
+    WorkflowHelper::triggerTasks($db, $tenantId, $wfContactId, 1, $saleUserId);
+
+    $stmtWfTask = $db->prepare("SELECT * FROM activities WHERE related_type = 'contact' AND related_id = ? AND subject = ?");
+    $stmtWfTask->execute([$wfContactId, 'E2E Workflow task ' . $suffix]);
+    $spawnedTask = $stmtWfTask->fetch(PDO::FETCH_ASSOC);
+
+    $wfSuccess = ($tplId > 0 && !empty($spawnedTask) && $spawnedTask['priority'] === 'high');
+    assertTest("Phase 19: Automated Workflow Templates & Stage Transition Tasks", $wfSuccess, "Template ID: $tplId, Spawned Task: " . ($spawnedTask ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)
     // We intentionally do not delete these records so they are visible in the CRM frontend UI.
     $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId, $viewerUserId)")->fetchColumn();

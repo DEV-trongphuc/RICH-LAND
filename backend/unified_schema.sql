@@ -1479,10 +1479,36 @@ ALTER TABLE `data_reports`
   ADD CONSTRAINT `data_reports_ibfk_1` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `data_reports_ibfk_2` FOREIGN KEY (`consultant_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `data_reports_ibfk_3` FOREIGN KEY (`round_id`) REFERENCES `distribution_rounds` (`id`) ON DELETE CASCADE;
-
 ALTER TABLE `sync_queue`
   ADD CONSTRAINT `sync_queue_ibfk_1` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `sync_queue_ibfk_2` FOREIGN KEY (`connection_id`) REFERENCES `sheet_connections` (`id`) ON DELETE SET NULL;
+
+-- Indexes for CRM performance optimization
+ALTER TABLE `contacts`
+  ADD KEY `idx_contacts_phone` (`phone`),
+  ADD KEY `idx_contacts_email` (`email`),
+  ADD KEY `idx_contacts_owner_id` (`owner_id`),
+  ADD KEY `idx_contacts_stage_id` (`stage_id`),
+  ADD KEY `idx_contacts_status` (`status`),
+  ADD KEY `idx_contacts_pipeline_status` (`pipeline_status`),
+  ADD KEY `idx_contacts_created_at` (`created_at`),
+  ADD KEY `idx_contacts_deleted_at` (`deleted_at`);
+
+ALTER TABLE `activities`
+  ADD KEY `idx_activities_tenant_user` (`tenant_id`, `user_id`),
+  ADD KEY `idx_activities_related` (`related_type`, `related_id`),
+  ADD KEY `idx_activities_due_date` (`due_date`);
+
+ALTER TABLE `activity_comments`
+  ADD KEY `idx_comments_activity_id` (`activity_id`);
+
+ALTER TABLE `deposits`
+  ADD KEY `idx_deposits_contact_id` (`contact_id`),
+  ADD KEY `idx_deposits_project_id` (`project_id`);
+
+ALTER TABLE `notifications`
+  ADD KEY `idx_notifications_user_unread` (`user_id`, `is_read`);
+
 
 -- ────────────────────────────────────────────────────────
 -- INITIAL SEED DATA

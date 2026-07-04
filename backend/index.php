@@ -341,6 +341,7 @@ require_once __DIR__ . '/controllers/CooperationController.php';
 require_once __DIR__ . '/controllers/CapiController.php';
 require_once __DIR__ . '/controllers/CheckInController.php';
 require_once __DIR__ . '/controllers/TeamController.php';
+require_once __DIR__ . '/controllers/WorkflowTaskTemplateController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -499,6 +500,17 @@ switch ($resource) {
         elseif ($resourceId  && $subResource === 'move' && $method === 'POST') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'switch' && $method === 'POST') $ctrl->switchUnit($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // WORKFLOW TASK TEMPLATES
+    case 'workflow-task-templates':
+        $auth = requireAuth();
+        $ctrl = new WorkflowTaskTemplateController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);

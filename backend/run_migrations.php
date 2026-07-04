@@ -524,6 +524,46 @@ try {
             $conn->query("ALTER TABLE distribution_logs ADD INDEX `idx_stats_group` (`received_at`, `status`)");
         }
 
+        // Self-healing database performance indexes optimization
+        $indices_to_create = [
+            'contacts' => [
+                'idx_contacts_phone' => ['phone'],
+                'idx_contacts_email' => ['email'],
+                'idx_contacts_owner_id' => ['owner_id'],
+                'idx_contacts_stage_id' => ['stage_id'],
+                'idx_contacts_status' => ['status'],
+                'idx_contacts_pipeline_status' => ['pipeline_status'],
+                'idx_contacts_created_at' => ['created_at'],
+                'idx_contacts_deleted_at' => ['deleted_at'],
+            ],
+            'activities' => [
+                'idx_activities_tenant_user' => ['tenant_id', 'user_id'],
+                'idx_activities_related' => ['related_type', 'related_id'],
+                'idx_activities_due_date' => ['due_date'],
+            ],
+            'activity_comments' => [
+                'idx_comments_activity_id' => ['activity_id'],
+            ],
+            'deposits' => [
+                'idx_deposits_contact_id' => ['contact_id'],
+                'idx_deposits_project_id' => ['project_id'],
+            ],
+            'notifications' => [
+                'idx_notifications_user_unread' => ['user_id', 'is_read'],
+            ],
+        ];
+
+        foreach ($indices_to_create as $table => $indexes) {
+            foreach ($indexes as $index_name => $columns) {
+                $chk = $conn->query("SHOW INDEX FROM `$table` WHERE Key_name='$index_name'");
+                if ($chk && $chk->num_rows === 0) {
+                    $cols_str = implode("`, `", $columns);
+                    $conn->query("ALTER TABLE `$table` ADD INDEX `$index_name` (`$cols_str`)");
+                    $logMsg("Đã tạo INDEX $index_name trên bảng $table", "success");
+                }
+            }
+        }
+
         // Auto-migrate: email in accounts
         $chkAccEmail = $conn->query("SHOW COLUMNS FROM accounts LIKE 'email'");
         if ($chkAccEmail && $chkAccEmail->num_rows === 0) {
@@ -1576,6 +1616,25 @@ try {
         $conn->query("ALTER TABLE activities ADD COLUMN link VARCHAR(255) NULL DEFAULT NULL AFTER approval_status");
         $logMsg("Đã thêm cột link cho activities", "success");
     }
+    // Create workflow_task_templates table
+    $conn->query("CREATE TABLE IF NOT EXISTS `workflow_task_templates` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `tenant_id` int(11) NOT NULL,
+        `stage_id` int(11) NOT NULL,
+        `team_id` int(11) DEFAULT NULL,
+        `title` varchar(255) NOT NULL,
+        `description` text DEFAULT NULL,
+        `priority` enum('low', 'medium', 'high') NOT NULL DEFAULT 'medium',
+        `due_days_offset` int(11) NOT NULL DEFAULT 1,
+        `require_approval` tinyint(4) NOT NULL DEFAULT 0,
+        `is_active` tinyint(4) NOT NULL DEFAULT 1,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`),
+        KEY `tenant_id` (`tenant_id`),
+        KEY `stage_id` (`stage_id`),
+        KEY `team_id` (`team_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+    $logMsg("Đã tạo bảng workflow_task_templates thành công", "success");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('temperature_decay_days', '5')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('lead_response_timeout_minutes', '2')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('uncontacted_lead_share_hours', '3')");

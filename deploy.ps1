@@ -5,7 +5,7 @@ Write-Host "=== STARTING AUTOMATED DEPLOYMENT & MIGRATION ===" -ForegroundColor 
 
 # 1. Upload all backend files
 Write-Host "1. Uploading backend files via SCP..." -ForegroundColor Yellow
-scp -P 2210 -o StrictHostKeyChecking=no -r backend/* vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+scp -4 -P 2210 -o StrictHostKeyChecking=no -r backend/* vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to upload backend files." -ForegroundColor Red
@@ -14,7 +14,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # 2. Trigger database migrations
 Write-Host "2. Running migrations on remote backend..." -ForegroundColor Yellow
-ssh -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "php /home/vhvxoigh/open.domation.net/richland/run_migrations.php --apply"
+ssh -4 -p 2210 -o StrictHostKeyChecking=no vhvxoigh@chiefaiofficer.vn "php /home/vhvxoigh/open.domation.net/richland/run_migrations.php --apply"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Failed to apply database migrations." -ForegroundColor Red

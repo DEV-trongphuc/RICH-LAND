@@ -276,7 +276,7 @@ class ContactController {
         $b = getBody();
 
         // 1. Pre-fetch current contact state for lifecycle validation
-        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtCurr->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtCurr->fetch();
         if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -463,6 +463,18 @@ class ContactController {
                 $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
                 $stmtTimer->execute([$securityExpires, $id]);
 
+                // Auto spawn workflow tasks if stage changes
+                $targetStageId = isset($b['stage_id']) ? (int)$b['stage_id'] : null;
+                if ($targetStageId === null) {
+                    $stmtGetStage = $this->db->prepare("SELECT stage_id FROM contacts WHERE id = ?");
+                    $stmtGetStage->execute([$id]);
+                    $targetStageId = (int)$stmtGetStage->fetchColumn();
+                }
+                if ($targetStageId > 0) {
+                    require_once __DIR__ . '/../config/WorkflowHelper.php';
+                    WorkflowHelper::triggerTasks($this->db, $auth['tenant_id'], $id, $targetStageId, $auth['user_id']);
+                }
+
                 // Withdraw from databank if dat_coc
                 if ($newStatus === 'dat_coc') {
                     $stmtGetPerson = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ?");
@@ -486,6 +498,35 @@ class ContactController {
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
         }
+
+        // Notify the owner if modified by another user
+        if ($currentContact && !empty($currentContact['owner_id']) && (int)$currentContact['owner_id'] !== (int)$auth['user_id']) {
+            $ownerId = (int)$currentContact['owner_id'];
+            $stmtOwner = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ? AND tenant_id = ?");
+            $stmtOwner->execute([$ownerId, $auth['tenant_id']]);
+            $ownerRow = $stmtOwner->fetch(PDO::FETCH_ASSOC);
+            if ($ownerRow) {
+                $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+                $notif->execute([
+                    $ownerId, $auth['tenant_id'],
+                    'Khách hàng của bạn được cập nhật',
+                    $auth['full_name'] . ' đã cập nhật thông tin khách hàng "' . $currentContact['first_name'] . ' ' . $currentContact['last_name'] . '".',
+                    'update',
+                    "/contacts/{$id}"
+                ]);
+
+                if (!empty($ownerRow['email'])) {
+                    require_once __DIR__ . '/../mailer.php';
+                    $emailSubject = "[RICH LAND] Cập nhật thông tin khách hàng bởi " . $auth['full_name'];
+                    $emailTitle = "THÔNG TIN KHÁCH HÀNG THAY ĐỔI";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Nhân viên <strong>" . htmlspecialchars($auth['full_name']) . "</strong> đã cập nhật thông tin khách hàng của bạn:<br/>" .
+                                    "Khách hàng: <strong>" . htmlspecialchars($currentContact['first_name'] . ' ' . $currentContact['last_name']) . "</strong><br/>" .
+                                    "Vui lòng truy cập hệ thống CRM để kiểm tra chi tiết.";
+                    sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+        }
         
         $this->show($auth, $id);
     }
@@ -502,9 +543,10 @@ class ContactController {
         $newStatus = $this->getSlugFromStageId($stageId, $auth['tenant_id']);
 
         // Check current status for CAPI/Timer trigger
-        $stmtC = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtC = $this->db->prepare("SELECT pipeline_status, owner_id, first_name, last_name FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtC->execute([$id, $auth['tenant_id']]);
-        $currStatus = $stmtC->fetchColumn() ?: 'chua_xac_dinh';
+        $currentContact = $stmtC->fetch();
+        $currStatus = $currentContact['pipeline_status'] ?? 'chua_xac_dinh';
 
         $sql = "UPDATE contacts SET stage_id=?, pipeline_status=? WHERE id=? AND tenant_id=?";
         $p = [$stageId, $newStatus, $id, $auth['tenant_id']];
@@ -515,6 +557,35 @@ class ContactController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(403, null, 'Bạn không có quyền di chuyển liên hệ này', false);
+
+        // Notify the owner if modified by another user
+        if ($currentContact && !empty($currentContact['owner_id']) && (int)$currentContact['owner_id'] !== (int)$auth['user_id']) {
+            $ownerId = (int)$currentContact['owner_id'];
+            $stmtOwner = $this->db->prepare("SELECT email, full_name FROM users WHERE id = ? AND tenant_id = ?");
+            $stmtOwner->execute([$ownerId, $auth['tenant_id']]);
+            $ownerRow = $stmtOwner->fetch(PDO::FETCH_ASSOC);
+            if ($ownerRow) {
+                $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+                $notif->execute([
+                    $ownerId, $auth['tenant_id'],
+                    'Giai đoạn khách hàng thay đổi',
+                    $auth['full_name'] . ' đã di chuyển khách hàng "' . $currentContact['first_name'] . ' ' . $currentContact['last_name'] . '" sang giai đoạn mới.',
+                    'update',
+                    "/contacts/{$id}"
+                ]);
+
+                if (!empty($ownerRow['email'])) {
+                    require_once __DIR__ . '/../mailer.php';
+                    $emailSubject = "[RICH LAND] Di chuyển giai đoạn khách hàng bởi " . $auth['full_name'];
+                    $emailTitle = "GIAI ĐOẠN KHÁCH HÀNG THAY ĐỔI";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Nhân viên <strong>" . htmlspecialchars($auth['full_name']) . "</strong> đã di chuyển giai đoạn khách hàng của bạn:<br/>" .
+                                    "Khách hàng: <strong>" . htmlspecialchars($currentContact['first_name'] . ' ' . $currentContact['last_name']) . "</strong><br/>" .
+                                    "Vui lòng truy cập hệ thống CRM để kiểm tra chi tiết.";
+                    sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+        }
 
         // Trigger CAPI / Security timer updates on status change
         if ($newStatus !== $currStatus) {
@@ -531,6 +602,10 @@ class ContactController {
             $securityExpires = $this->getSecurityExpiration($newStatus);
             $stmtTimer = $this->db->prepare("UPDATE contacts SET security_expires_at = ? WHERE id = ?");
             $stmtTimer->execute([$securityExpires, $id]);
+
+            // Auto spawn workflow tasks
+            require_once __DIR__ . '/../config/WorkflowHelper.php';
+            WorkflowHelper::triggerTasks($this->db, $auth['tenant_id'], $id, $stageId, $auth['user_id']);
 
             // Withdraw from databank if dat_coc
             if ($newStatus === 'dat_coc') {

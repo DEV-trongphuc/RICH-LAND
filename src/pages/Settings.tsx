@@ -99,14 +99,15 @@ const SettingsInner = () => {
   const [testing, setTesting] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai' | 'workflow'>('processing');
 
   const tabOptions = [
     { value: 'processing', label: t('Cấu hình Xử lý'), icon: <SettingsIcon size={16} /> },
     { value: 'communications', label: t('Cấu hình Gửi tin & Email'), icon: <Send size={16} /> },
     { value: 'report', label: t('Báo cáo'), icon: <BarChart2 size={16} /> },
     { value: 'duplicate_check', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={16} /> },
-    { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> }
+    { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> },
+    { value: 'workflow', label: t('Mẫu Quy trình'), icon: <Activity size={16} /> }
   ];
 
   // States for Gemini API Connection
@@ -500,6 +501,91 @@ const SettingsInner = () => {
       fetchImportHistory(historyPage, historySearch);
     }
   }, [activeTab, historyPage, historySearch]);
+
+  // Workflow Templates States
+  const [workflowTemplates, setWorkflowTemplates] = useState<any[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [loadingWorkflow, setLoadingWorkflow] = useState(false);
+
+  const [showWorkflowModal, setShowWorkflowModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [workflowForm, setWorkflowForm] = useState({
+    title: '',
+    description: '',
+    stage_id: '',
+    team_id: '',
+    priority: 'medium',
+    due_days_offset: 1,
+    require_approval: 0,
+    is_active: 1
+  });
+
+  const fetchWorkflowData = async () => {
+    setLoadingWorkflow(true);
+    try {
+      const [tplsRes, stagesRes, teamsRes] = await Promise.all([
+        fetchAPI('workflow-task-templates'),
+        fetchAPI('pipeline-stages'),
+        fetchAPI('teams')
+      ]);
+      if (tplsRes.success) setWorkflowTemplates(tplsRes.data);
+      if (stagesRes.success) setPipelineStages(stagesRes.data);
+      if (teamsRes) setTeams(teamsRes);
+    } catch (err) {
+      console.error("Error fetching workflow settings data:", err);
+    }
+    setLoadingWorkflow(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'workflow') {
+      fetchWorkflowData();
+    }
+  }, [activeTab]);
+
+  const handleSaveWorkflowTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!workflowForm.title || !workflowForm.stage_id) {
+      toast.error(t('Vui lòng điền đầy đủ tiêu đề và giai đoạn'));
+      return;
+    }
+    try {
+      const isEdit = Boolean(editingTemplate);
+      const url = isEdit ? `workflow-task-templates/${editingTemplate.id}` : 'workflow-task-templates';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetchAPI(url, {
+        method,
+        body: JSON.stringify(workflowForm)
+      });
+      if (res.success) {
+        toast.success(res.message || t('Đã lưu mẫu công việc thành công'));
+        setShowWorkflowModal(false);
+        fetchWorkflowData();
+      } else {
+        toast.error(res.message || t('Lỗi khi lưu mẫu công việc'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    }
+  };
+
+  const handleDeleteWorkflowTemplate = async (id: number) => {
+    if (!window.confirm(t('Bạn có chắc chắn muốn xóa mẫu công việc này?'))) return;
+    try {
+      const res = await fetchAPI(`workflow-task-templates/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.success) {
+        toast.success(res.message || t('Đã xóa thành công'));
+        fetchWorkflowData();
+      } else {
+        toast.error(res.message || t('Lỗi khi xóa'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối: ') + err.message);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -1026,7 +1112,7 @@ const SettingsInner = () => {
         </div>
       ) : (
         <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
+          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai' || activeTab === 'workflow') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
             {/* AI Assistant Tab Content */}
             <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1092,6 +1178,142 @@ const SettingsInner = () => {
               </div>
 
 
+            </div>
+
+            {/* ===== TAB: WORKFLOW TEMPLATES ===== */}
+            <div style={{ display: activeTab === 'workflow' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Activity size={18} color="var(--color-primary)" />
+                      {t('Quy trình & Mẫu công việc tự động')}
+                    </h3>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                      {t('Cấu hình tự động tạo và gán công việc cho nhân viên khi Khách hàng tiềm năng chuyển sang một giai đoạn mới.')}
+                    </p>
+                  </div>
+                  <button 
+                    type="button" 
+                    className="btn primary sm" 
+                    onClick={() => {
+                      setEditingTemplate(null);
+                      setWorkflowForm({
+                        title: '',
+                        description: '',
+                        stage_id: pipelineStages[0]?.id || '',
+                        team_id: '',
+                        priority: 'medium',
+                        due_days_offset: 1,
+                        require_approval: 0,
+                        is_active: 1
+                      });
+                      setShowWorkflowModal(true);
+                    }}
+                  >
+                    <Plus size={14} /> {t('Thêm mẫu mới')}
+                  </button>
+                </div>
+
+                {loadingWorkflow ? (
+                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <RefreshCw className="spin" size={24} style={{ color: 'var(--color-primary)' }} />
+                  </div>
+                ) : workflowTemplates.length === 0 ? (
+                  <div className="card-panel" style={{ textAlign: 'center', padding: '3rem 2rem', border: '2px dashed var(--color-border-light)' }}>
+                    <Activity size={32} style={{ color: 'var(--color-border)', margin: '0 auto 1rem', opacity: 0.5 }} />
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                      {t('Chưa có mẫu quy trình công việc nào. Bấm nút phía trên để tạo mẫu mới!')}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="responsive-table-wrap" style={{ border: '1px solid var(--color-border)', borderRadius: '12px', background: 'var(--color-surface)' }}>
+                    <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Tiêu đề công việc')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Giai đoạn kích hoạt')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Áp dụng cho Nhóm')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Độ ưu tiên')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Hạn xử lý')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Yêu cầu duyệt')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>{t('Trạng thái')}</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 700 }}>{t('Thao tác')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {workflowTemplates.map(tpl => (
+                          <tr key={tpl.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                            <td style={{ padding: '12px 16px' }}>
+                              <div style={{ fontWeight: 600 }}>{tpl.title}</div>
+                              {tpl.description && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{tpl.description}</div>}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: 'rgba(16,185,129,0.08)', color: '#059669' }}>
+                                {tpl.stage_name || t('Không xác định')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', color: 'var(--color-text-light)' }}>
+                              {tpl.team_name || <em>{t('Tất cả')}</em>}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span className={`badge ${tpl.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem' }}>
+                                {tpl.priority === 'high' ? t('Cao') : t('Trung bình')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600 }}>
+                              {tpl.due_days_offset} {t('ngày')}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              {tpl.require_approval ? (
+                                <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: 'rgba(239,68,68,0.08)', color: 'var(--color-danger)', fontWeight: 600 }}>
+                                  {t('Cần duyệt')}
+                                </span>
+                              ) : <span>-</span>}
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: tpl.is_active ? 'rgba(16,185,129,0.08)' : 'rgba(100,116,139,0.08)', color: tpl.is_active ? '#059669' : 'var(--color-text-muted)', fontWeight: 600 }}>
+                                {tpl.is_active ? t('Kích hoạt') : t('Tắt')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                <button 
+                                  type="button" 
+                                  className="btn-icon sm" 
+                                  onClick={() => {
+                                    setEditingTemplate(tpl);
+                                    setWorkflowForm({
+                                      title: tpl.title,
+                                      description: tpl.description || '',
+                                      stage_id: String(tpl.stage_id),
+                                      team_id: tpl.team_id ? String(tpl.team_id) : '',
+                                      priority: tpl.priority,
+                                      due_days_offset: tpl.due_days_offset,
+                                      require_approval: tpl.require_approval,
+                                      is_active: tpl.is_active
+                                    });
+                                    setShowWorkflowModal(true);
+                                  }}
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button 
+                                  type="button" 
+                                  className="btn-icon sm text-danger" 
+                                  onClick={() => handleDeleteWorkflowTemplate(tpl.id)}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div style={{ display: activeTab === 'duplicate_check' ? 'block' : 'none' }} className="subtab-enter-active">
@@ -3771,6 +3993,135 @@ function doPost(e) {
           )}
         </div>
       )}
+      {/* Custom Modal for Workflow Template */}
+      <CustomModal
+        isOpen={showWorkflowModal}
+        onClose={() => setShowWorkflowModal(false)}
+        title={editingTemplate ? t("Chỉnh sửa Mẫu Công Việc") : t("Thêm Mẫu Công Việc Mới")}
+        width="600px"
+      >
+        {showWorkflowModal && (
+          <form onSubmit={handleSaveWorkflowTemplate} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.25rem 0' }}>
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>{t('Tiêu đề công việc')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <input
+                type="text"
+                className="form-input"
+                required
+                placeholder={t("Ví dụ: Gọi điện khảo sát nhu cầu")}
+                value={workflowForm.title}
+                onChange={e => setWorkflowForm({ ...workflowForm, title: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="form-label" style={{ fontWeight: 600 }}>{t('Mô tả / Hướng dẫn chi tiết')}</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                placeholder={t("Hướng dẫn cho nhân viên khi thực hiện công việc này...")}
+                value={workflowForm.description}
+                onChange={e => setWorkflowForm({ ...workflowForm, description: e.target.value })}
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600 }}>{t('Giai đoạn kích hoạt')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                <select
+                  className="form-input"
+                  required
+                  value={workflowForm.stage_id}
+                  onChange={e => setWorkflowForm({ ...workflowForm, stage_id: e.target.value })}
+                >
+                  <option value="">-- {t('Chọn giai đoạn')} --</option>
+                  {pipelineStages.map(st => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 600 }}>{t('Áp dụng cho Nhóm (Team)')}</label>
+                <select
+                  className="form-input"
+                  value={workflowForm.team_id}
+                  onChange={e => setWorkflowForm({ ...workflowForm, team_id: e.target.value })}
+                >
+                  <option value="">{t('Tất cả các nhóm')}</option>
+                  {teams.map(tm => (
+                    <option key={tm.id} value={tm.id}>{tm.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600 }}>{t('Độ ưu tiên')}</label>
+                <select
+                  className="form-input"
+                  value={workflowForm.priority}
+                  onChange={e => setWorkflowForm({ ...workflowForm, priority: e.target.value })}
+                >
+                  <option value="low">{t('Thấp')}</option>
+                  <option value="medium">{t('Trung bình')}</option>
+                  <option value="high">{t('Cao')}</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: 600 }}>{t('Hạn hoàn thành (Số ngày)')}</label>
+                <input
+                  type="number"
+                  className="form-input"
+                  min={1}
+                  required
+                  value={workflowForm.due_days_offset}
+                  onChange={e => setWorkflowForm({ ...workflowForm, due_days_offset: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--color-bg-light)', padding: '12px', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>{t('Yêu cầu phê duyệt')}</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{t('Yêu cầu quản lý phê duyệt sau khi hoàn thành.')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={workflowForm.require_approval === 1}
+                  onChange={e => setWorkflowForm({ ...workflowForm, require_approval: e.target.checked ? 1 : 0 })}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+              </div>
+
+              <hr style={{ border: 0, borderTop: '1px solid var(--color-border-light)', margin: '8px 0' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 700 }}>{t('Trạng thái kích hoạt')}</span>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{t('Bật/Tắt mẫu quy trình công việc này.')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={workflowForm.is_active === 1}
+                  onChange={e => setWorkflowForm({ ...workflowForm, is_active: e.target.checked ? 1 : 0 })}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button type="button" className="btn outline" onClick={() => setShowWorkflowModal(false)}>{t('Hủy')}</button>
+              <button type="submit" className="btn primary">{t('Lưu lại')}</button>
+            </div>
+          </form>
+        )}
+      </CustomModal>
+
       {/* Custom Modal for Auto-Approve Rule */}
       <CustomModal
         isOpen={ruleModalOpen}

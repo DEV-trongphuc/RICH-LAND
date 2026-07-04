@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
+import confetti from 'canvas-confetti';
 
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
@@ -88,6 +89,23 @@ const parseServerDate = (dateStr: string) => {
   }
   const isoStr = trimmed.replace(' ', 'T') + '+07:00';
   return new Date(isoStr);
+};
+
+const getDueDateLabel = (dateStr: string | null | undefined, isDone: boolean, t: any) => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  if (isDone) return d.toLocaleDateString('vi-VN');
+  const today = new Date().setHours(0,0,0,0);
+  const due = d.setHours(0,0,0,0);
+  if (due === today) return t('Hôm nay');
+  if (due < today) {
+    const diff = Math.ceil((today - due) / (1000 * 60 * 60 * 24));
+    return `${t('Trễ')} ${diff} ${t('ngày')}`;
+  }
+  const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+  if (diff <= 7) return `${t('Còn')} ${diff} ${t('ngày')}`;
+  return d.toLocaleDateString('vi-VN');
 };
 
 interface SalePortalProps {
@@ -251,6 +269,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   });
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [wsTaskFilter, setWsTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
 
   // Authentication states
   const [googleError, setGoogleError] = useState('');
@@ -338,9 +357,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setChecklist(prev => prev.filter((_, i) => i !== idx));
   };
   const filteredWsTasks = useMemo(() => {
-    if (!wsSearch) return wsTasks;
+    let list = wsTasks;
+    const currentUserId = Number(currentUser?.id);
+
+    // Apply quick filters
+    if (wsTaskFilter === 'assigned_to_me') {
+      list = list.filter(task => Number(task.user_id) === currentUserId);
+    } else if (wsTaskFilter === 'approve_by_me') {
+      list = list.filter(task => task.require_approval === 1 && Number(task.approver_id) === currentUserId);
+    } else if (wsTaskFilter === 'collaborator') {
+      list = list.filter(task => {
+        const pIds = task.participant_ids ? task.participant_ids.split(',').map(Number).filter(Boolean) : [];
+        return pIds.includes(currentUserId);
+      });
+    }
+
+    if (!wsSearch) return list;
     const searchVal = wsSearch.toLowerCase();
-    return wsTasks.filter(task => {
+    return list.filter(task => {
       const subject = task.subject ? String(task.subject).toLowerCase() : '';
       const body = task.body ? String(task.body).toLowerCase() : '';
       const contactName = task.contact_name ? String(task.contact_name).toLowerCase() : '';
@@ -354,7 +388,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         dealName.includes(searchVal)
       );
     });
-  }, [wsTasks, wsSearch]);
+  }, [wsTasks, wsSearch, wsTaskFilter, currentUser]);
   const [loadingWsTasks, setLoadingWsTasks] = useState(false);
   const [wsContacts, setWsContacts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -1093,6 +1127,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     try {
       await api.put(`/activities/${taskId}`, { status: 'done' });
       toast.success(t('Đã hoàn thành công việc'));
+      confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
       fetchPortalTasks();
     } catch (e) {
       toast.error(t('Lỗi khi cập nhật trạng thái công việc'));
@@ -1154,7 +1189,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       });
       if (json.success) {
         toast.success(t('Đã thay đổi trạng thái Tạm ngưng'));
-        setPortalVacationMode(Boolean(Number(json.vacation_mode)));
+        const nextMode = Boolean(Number(json.vacation_mode));
+        setPortalVacationMode(nextMode);
+        window.dispatchEvent(new CustomEvent('vacation-status-changed', { detail: nextMode }));
       } else {
         toast.error(json.message || t('Lỗi thay đổi trạng thái'));
       }
@@ -1169,6 +1206,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const res = await fetchAPI('check-ins&today_only=1');
       if (res.success) {
         setTodayCheckIn(res.data);
+        window.dispatchEvent(new CustomEvent('checkin-status-changed'));
       }
     } catch (err) {
       console.error("Error loading check-in status:", err);
@@ -1430,6 +1468,34 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       stopCamera();
     };
   }, [checkInModalOpen]);
+
+  useEffect(() => {
+    const handleTriggerCheckIn = () => {
+      setCheckInModalOpen(true);
+    };
+    window.addEventListener('trigger-checkin-modal', handleTriggerCheckIn);
+    
+    // Check localStorage flag
+    if (localStorage.getItem('trigger_checkin') === '1') {
+      localStorage.removeItem('trigger_checkin');
+      setCheckInModalOpen(true);
+    }
+
+    return () => {
+      window.removeEventListener('trigger-checkin-modal', handleTriggerCheckIn);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleVacationChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setPortalVacationMode(customEvent.detail);
+    };
+    window.addEventListener('vacation-status-changed', handleVacationChange);
+    return () => {
+      window.removeEventListener('vacation-status-changed', handleVacationChange);
+    };
+  }, []);
 
   const handleOpenContactProfile = async (contactId: number, tab: string = 'info') => {
     if (!contactId) return;
@@ -2478,6 +2544,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         )}
 
+        {/* Quick Task Role Filters */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '0.25rem', background: 'white', padding: '6px', borderRadius: '12px', width: 'fit-content', border: '1px solid var(--color-border)' }}>
+          {[
+            { value: 'all', label: t('Tất cả') },
+            { value: 'assigned_to_me', label: t('Tôi thực hiện') },
+            { value: 'approve_by_me', label: t('Tôi duyệt') },
+            { value: 'collaborator', label: t('Tôi liên quan') }
+          ].map(tab => {
+            const isSelected = wsTaskFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => setWsTaskFilter(tab.value as any)}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: isSelected ? 'var(--color-primary)' : 'transparent',
+                  color: isSelected ? 'white' : 'var(--color-text-muted)',
+                  boxShadow: isSelected ? '0 4px 12px rgba(189, 29, 45, 0.15)' : 'none'
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Task Grid */}
         {loadingWsTasks ? (
           <div style={{ padding: '3rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
@@ -2516,12 +2614,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   style={{
                     padding: '1.25rem',
                     background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border-light)',
+                    border: isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
                     borderRadius: '12px',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '0.75rem',
-                    boxShadow: '0 4px 18px -4px rgba(0, 0, 0, 0.04)',
+                    boxShadow: isOverdue && task.status !== 'done' ? '0 0 10px rgba(239, 68, 68, 0.12)' : '0 4px 18px -4px rgba(0, 0, 0, 0.04)',
                     transition: 'all 0.2s',
                     cursor: 'pointer',
                     position: 'relative'
@@ -2611,7 +2709,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {task.due_date && (
                         <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Calendar size={11} /> {isToday ? t('Hôm nay') : isOverdue ? t('Quá hạn') : new Date(task.due_date).toLocaleDateString('vi-VN')}
+                          <Calendar size={11} /> {getDueDateLabel(task.due_date, task.status === 'done', t)}
+                          {isOverdue && task.status !== 'done' && <ShieldAlert size={10} style={{ marginLeft: 2 }} />}
                         </span>
                       )}
                       

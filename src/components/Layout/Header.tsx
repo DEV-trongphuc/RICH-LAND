@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { ToggleSwitch } from '../ui/ToggleSwitch';
+import { toast } from 'react-hot-toast';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { SIDEBAR_GROUPS } from './Sidebar';
 import { Avatar } from '../ui/Avatar';
@@ -38,9 +40,71 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
+  const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
+  const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const fetchHeaderPortalData = async () => {
+    if (user?.role !== 'sale') return;
+    try {
+      const res = await fetchAPI('check-ins&today_only=1');
+      if (res.success) {
+        setHeaderCheckIn(res.data);
+      }
+    } catch (err) {
+      console.error("Error fetching check-in in Header:", err);
+    }
+    try {
+      const json = await fetchAPI('get_sale_portal_data');
+      if (json.success && json.vacation_mode !== undefined) {
+        setHeaderVacationMode(Boolean(Number(json.vacation_mode)));
+      }
+    } catch (err) {
+      console.error("Error fetching vacation mode in Header:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchHeaderPortalData();
+  }, [user]);
+
+  useEffect(() => {
+    const handleVacationChange = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setHeaderVacationMode(customEvent.detail);
+    };
+    const handleCheckInChange = () => {
+      fetchHeaderPortalData();
+    };
+    window.addEventListener('vacation-status-changed', handleVacationChange);
+    window.addEventListener('checkin-status-changed', handleCheckInChange);
+    return () => {
+      window.removeEventListener('vacation-status-changed', handleVacationChange);
+      window.removeEventListener('checkin-status-changed', handleCheckInChange);
+    };
+  }, [user]);
+
+  const handleToggleHeaderVacation = async () => {
+    try {
+      const json = await fetchAPI('toggle_consultant_vacation', {
+        method: 'POST',
+        body: JSON.stringify({ id: user?.consultant_id })
+      });
+      if (json.success) {
+        const nextMode = Boolean(Number(json.vacation_mode));
+        setHeaderVacationMode(nextMode);
+        toast.success(t('Đã thay đổi trạng thái Tạm ngưng'));
+        window.dispatchEvent(new CustomEvent('vacation-status-changed', { detail: nextMode }));
+      } else {
+        toast.error(json.message || t('Lỗi thay đổi trạng thái'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi thay đổi trạng thái: ') + e.message);
+    }
   };
 
   useEffect(() => {
@@ -388,6 +452,59 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           </div>
         )}
         
+        {/* Sales widgets for receiving data and check-in */}
+        {user?.role === 'sale' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
+            {/* Receiving Data Toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '4px 10px', height: '36px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: !headerVacationMode ? '#10b981' : '#f59e0b' }}>
+                {!headerVacationMode ? t('Nhận data') : t('Tạm ngưng')}
+              </span>
+              <ToggleSwitch
+                checked={!headerVacationMode}
+                onChange={handleToggleHeaderVacation}
+              />
+            </div>
+
+            {/* Check-in status / trigger button */}
+            {(!headerCheckIn || headerCheckIn.status === 'rejected') ? (
+              <button
+                onClick={() => {
+                  localStorage.setItem('trigger_checkin', '1');
+                  navigate('/sale-portal');
+                  window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
+                }}
+                className="btn danger sm"
+                style={{
+                  height: 36,
+                  fontSize: '0.75rem',
+                  padding: '0 12px',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontWeight: 700,
+                  boxShadow: '0 0 10px rgba(239, 68, 68, 0.4)',
+                  animation: 'pulse 1.5s infinite'
+                }}
+              >
+                <Clock size={14} />
+                <span>{t('Chấm công ngay')}</span>
+              </button>
+            ) : headerCheckIn.status === 'approved' ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px', padding: '4px 10px', height: '36px', fontSize: '0.75rem', fontWeight: 700 }}>
+                <CheckCircle2 size={12} />
+                <span>{t('Đã Chấm công')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: 'var(--color-warning)', borderRadius: '8px', padding: '4px 10px', height: '36px', fontSize: '0.75rem', fontWeight: 700 }}>
+                <Clock size={12} />
+                <span>{t('Chờ duyệt trễ')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Version Badge */}
         <div style={{
           padding: '4px 10px',

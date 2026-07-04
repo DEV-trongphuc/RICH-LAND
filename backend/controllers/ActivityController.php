@@ -509,6 +509,44 @@ class ActivityController {
             }
         }
 
+        // Also notify the contact owner if they are not the one commenting or already mentioned
+        if ($activity['related_type'] === 'contact' && $activity['related_id']) {
+            $stmtOwner = $this->db->prepare("
+                SELECT c.owner_id, u.email, u.full_name 
+                FROM contacts c 
+                JOIN users u ON c.owner_id = u.id 
+                WHERE c.id = ? AND c.tenant_id = ?
+            ");
+            $stmtOwner->execute([(int)$activity['related_id'], $auth['tenant_id']]);
+            $ownerRow = $stmtOwner->fetch(PDO::FETCH_ASSOC);
+            if ($ownerRow) {
+                $ownerUid = (int)$ownerRow['owner_id'];
+                if ($ownerUid !== (int)$auth['user_id'] && !isset($mentions[$ownerUid])) {
+                    // Send notification in database
+                    $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+                    $notif->execute([
+                        $ownerUid, $auth['tenant_id'],
+                        'Bình luận mới trên khách hàng của bạn',
+                        $auth['full_name'] . ' đã bình luận trong một hoạt động thuộc khách hàng của bạn.',
+                        'comment',
+                        "/activities/{$id}"
+                    ]);
+
+                    if (!empty($ownerRow['email'])) {
+                        require_once __DIR__ . '/../mailer.php';
+                        $emailSubject = "[RICH LAND] Bình luận mới trên khách hàng của bạn bởi " . $auth['full_name'];
+                        $emailTitle = "BÌNH LUẬN MỚI TRÊN KHÁCH HÀNG";
+                        $emailContent = "Chào <strong>" . htmlspecialchars($ownerRow['full_name']) . "</strong>,<br/><br/>" .
+                                        "Có bình luận mới từ <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trên hoạt động thuộc khách hàng của bạn.<br/>" .
+                                        "Nội dung bình luận:<br/>" .
+                                        "<blockquote style='border-left: 4px solid #BD1D2D; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($content)) . "</blockquote>" .
+                                        "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
+                        sendEmailNotification($ownerRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                    }
+                }
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'ADD_COMMENT', 'activity', $id);
 
         respond(200, ['id' => $commentId], 'Đã thêm bình luận');

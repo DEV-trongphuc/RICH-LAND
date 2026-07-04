@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -1195,6 +1196,34 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   });
 
 
+  const [drawerTaskFilter, setDrawerTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'call' | 'email' | 'meeting' | 'task'>('all');
+
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    addToast('Đã sao chép: ' + text, 'success');
+    setTimeout(() => setCopiedField(null), 1200);
+  };
+
+  const getDueDateLabel = (dateStr: string | null | undefined, isDone: boolean) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Hạn hoàn thành: ' + dateStr;
+    if (isDone) return 'Hạn hoàn thành: ' + d.toLocaleDateString('vi-VN');
+    const today = new Date().setHours(0,0,0,0);
+    const due = d.setHours(0,0,0,0);
+    if (due === today) return 'Hôm nay';
+    if (due < today) {
+      const diff = Math.ceil((today - due) / (1000 * 60 * 60 * 24));
+      return `Trễ ${diff} ngày`;
+    }
+    const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+    if (diff <= 7) return `Còn ${diff} ngày`;
+    return d.toLocaleDateString('vi-VN');
+  };
+
   const [docs, setDocs] = useState<any[]>([]);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [deals, setDeals] = useState<any[]>([]);
@@ -1599,7 +1628,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const timeline = useMemo(() => {
     if (!contact?.id) return [];
-    const source = drawerActivities;
+    let source = drawerActivities;
+    if (timelineFilter !== 'all') {
+      source = source.filter((a: any) => a.type === timelineFilter);
+    }
     return source.map((a: any) => ({
       id: a.id,
       title: a.subject,
@@ -1612,7 +1644,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       comment_count: a.comment_count,
       expense_image_url: a.expense_image_url
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  }, [drawerActivities, mockStore.activities, contact?.id]);
+  }, [drawerActivities, mockStore.activities, contact?.id, timelineFilter]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
 
   const handleAddCustomField = () => {
@@ -2020,6 +2052,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const nextStatus = !currentDone ? 'done' : 'planned';
       await api.put(`/activities/${taskId}`, { status: nextStatus });
       addToast(nextStatus === 'done' ? 'Đã hoàn thành công việc' : 'Đã mở lại công việc', 'success');
+      if (nextStatus === 'done') {
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 } });
+      }
       setDrawerActivities(prev => prev.map(a => a.id === taskId ? { ...a, status: nextStatus } : a));
     } catch (err: any) {
       setTasks(p => p.map(x => x.id === taskId ? { ...x, done: currentDone } : x));
@@ -2052,6 +2087,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       });
       if (res.data.success || res.data) {
         addToast('Tạo phiếu cọc thành công!', 'success');
+        confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
         setShowDealModal(false);
         // Reset form
         setDepositProjectId('');
@@ -2366,7 +2402,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* Info Section */}
                   <div className={styles.profileInfoSection}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word' }}>{fullName}</h2>
+                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {fullName}
+                        <button
+                          className="btn-icon xs"
+                          style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}
+                          onClick={() => copyToClipboard(fullName, 'name')}
+                          title="Sao chép tên"
+                        >
+                          {copiedField === 'name' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                        </button>
+                      </h2>
                       <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 8px', fontSize: '0.6875rem', borderRadius: '6px' }}>
                         {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
                       </span>
@@ -2388,12 +2434,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <Phone size={12} style={{ color: 'var(--color-primary)' }} />
                         </div>
                         <PhoneLink phone={formData.phone} style={{ fontSize: '0.8125rem' }} />
+                        {formData.phone && (
+                          <button
+                            className="btn-icon xs"
+                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
+                            onClick={() => copyToClipboard(formData.phone, 'phone')}
+                            title="Sao chép số điện thoại"
+                          >
+                            {copiedField === 'phone' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                          </button>
+                        )}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Mail size={12} className="text-muted" />
                         </div>
                         <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
+                        {formData.email && (
+                          <button
+                            className="btn-icon xs"
+                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
+                            onClick={() => copyToClipboard(formData.email, 'email')}
+                            title="Sao chép email"
+                          >
+                            {copiedField === 'email' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                          </button>
+                        )}
                       </div>
                       <div
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
@@ -3503,6 +3569,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
 
+                      {/* Timeline Type Filters */}
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.25rem', background: 'white', padding: '4px', borderRadius: '10px', width: 'fit-content', border: '1px solid var(--color-border)' }}>
+                        {[
+                          { value: 'all', label: 'Tất cả' },
+                          { value: 'call', label: '📞 Cuộc gọi' },
+                          { value: 'email', label: '✉️ Email' },
+                          { value: 'meeting', label: '🤝 Gặp gỡ' },
+                          { value: 'task', label: '📋 Công việc' }
+                        ].map(tab => {
+                          const isSelected = timelineFilter === tab.value;
+                          return (
+                            <button
+                              key={tab.value}
+                              onClick={() => setTimelineFilter(tab.value as any)}
+                              style={{
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                background: isSelected ? 'var(--color-primary)' : 'transparent',
+                                color: isSelected ? 'white' : 'var(--color-text-muted)',
+                                boxShadow: isSelected ? '0 2px 8px rgba(189, 29, 45, 0.15)' : 'none'
+                              }}
+                            >
+                              {tab.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
                       {timeline.length === 0 ? (
                         <EmptyCard
                           icon={<History size={40} style={{ color: 'var(--color-text-muted)', opacity: 0.5 }} />}
@@ -3901,7 +4000,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Công việc cần làm</h3>
                         {!isViewer && (
-                          <button className="btn primary sm" onClick={() => {
+                          <button className="btn primary" style={{ padding: '8px 16px', fontSize: '0.875rem' }} onClick={() => {
                             const today = new Date().toISOString().slice(0, 10);
                             setTaskForm({
                               title: '',
@@ -3919,23 +4018,85 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         )}
                       </div>
 
-                      {tasks.length === 0 ? (
-                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
-                          <CheckSquare size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
-                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có công việc</h4>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Bắt đầu bằng việc thêm một công việc mới để quản lý tiến độ với khách hàng.</p>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          {tasks.map(t => (
-                            <div
-                              key={t.id}
-                              className="card-panel"
-                              onClick={() => setSelectedTaskForDetails(t)}
-                              style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1rem', opacity: t.done ? 0.6 : 1, cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
-                              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'}
-                              onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
+                      {/* Quick Task Role Filters */}
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1rem', background: 'white', padding: '4px', borderRadius: '10px', width: 'fit-content', border: '1px solid var(--color-border)' }}>
+                        {[
+                          { value: 'all', label: 'Tất cả' },
+                          { value: 'assigned_to_me', label: 'Tôi thực hiện' },
+                          { value: 'approve_by_me', label: 'Tôi duyệt' },
+                          { value: 'collaborator', label: 'Tôi liên quan' }
+                        ].map(tab => {
+                          const isSelected = drawerTaskFilter === tab.value;
+                          return (
+                            <button
+                              key={tab.value}
+                              onClick={() => setDrawerTaskFilter(tab.value as any)}
+                              style={{
+                                padding: '4px 12px',
+                                borderRadius: '6px',
+                                border: 'none',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                background: isSelected ? 'var(--color-primary)' : 'transparent',
+                                color: isSelected ? 'white' : 'var(--color-text-muted)',
+                                boxShadow: isSelected ? '0 2px 8px rgba(189, 29, 45, 0.15)' : 'none'
+                              }}
                             >
+                              {tab.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {(() => {
+                        const filteredTasks = tasks.filter(t => {
+                          const currentUserId = Number(currentUser?.id);
+                          if (drawerTaskFilter === 'assigned_to_me') {
+                            return Number(t.user_id) === currentUserId;
+                          } else if (drawerTaskFilter === 'approve_by_me') {
+                            return t.require_approval === 1 && Number(t.approver_id) === currentUserId;
+                          } else if (drawerTaskFilter === 'collaborator') {
+                            const pIds = t.participant_ids ? t.participant_ids.split(',').map(Number).filter(Boolean) : [];
+                            return pIds.includes(currentUserId);
+                          }
+                          return true;
+                        });
+
+                        if (filteredTasks.length === 0) {
+                          return (
+                            <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                              <CheckSquare size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                              <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có công việc</h4>
+                              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Bắt đầu bằng việc thêm một công việc mới để quản lý tiến độ với khách hàng.</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {filteredTasks.map(t => {
+                              const isOverdue = t.due_date && new Date(t.due_date) < new Date(new Date().setHours(0,0,0,0));
+                              return (
+                                <div
+                                  key={t.id}
+                                  className="card-panel"
+                                  onClick={() => setSelectedTaskForDetails(t)}
+                                  style={{
+                                    display: 'flex',
+                                    gap: '1rem',
+                                    alignItems: 'center',
+                                    padding: '1rem',
+                                    opacity: t.done ? 0.6 : 1,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    border: isOverdue && !t.done ? '1.5px solid var(--color-danger)' : '1px solid transparent',
+                                    boxShadow: isOverdue && !t.done ? '0 0 10px rgba(239, 68, 68, 0.12)' : 'none'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.borderColor = isOverdue && !t.done ? 'var(--color-danger)' : 'var(--color-primary-light)'}
+                                  onMouseLeave={e => e.currentTarget.style.borderColor = isOverdue && !t.done ? 'var(--color-danger)' : 'transparent'}
+                                >
                               <div
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -3976,7 +4137,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 )}
                                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.375rem' }}>
                                   <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem' }}>{t.priority === 'high' ? 'Ưu tiên cao' : 'Trung bình'}</span>
-                                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Hạn hoàn thành: {t.due}</span>
+                                  <span style={{ fontSize: '0.8125rem', color: isOverdue && !t.done ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: isOverdue && !t.done ? 600 : 'normal' }}>
+                                    {isOverdue && !t.done && <ShieldAlert size={12} />}
+                                    {getDueDateLabel(t.due_date, t.done)}
+                                  </span>
                                 </div>
                               </div>
                               <button
@@ -4004,11 +4168,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <Trash2 size={16} />
                               </button>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                  </div>
+                )}
 
                   {/* NOTES TAB */}
                   {activeTab === 'notes' && (
@@ -5159,7 +5325,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowTaskModal(false)}>
             <motion.div
               className="modal-sheet"
-              style={{ width: '100%', maxWidth: 520 }}
+              style={{ width: '100%', maxWidth: 720 }}
               initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               onClick={e => e.stopPropagation()}
@@ -5176,170 +5342,176 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </div>
                 <button className="btn-icon sm" onClick={() => setShowTaskModal(false)}><X size={18} /></button>
               </div>
-              <div className="modal-body">
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Tên công việc *</label>
-                  <input className="form-input" placeholder="VD: Gửi báo giá, Demo tính năng..." value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} autoFocus />
-                </div>
-                
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Người thực hiện</label>
-                  <CustomSelect
-                    showAvatars={true}
-                    searchable={true}
-                    options={[
-                      { value: '', label: 'Chưa giao cho ai' },
-                      ...users.map(u => ({
-                        value: String(u.id),
-                        label: `${u.full_name} (${u.role === 'admin' ? 'Admin' : u.role === 'sales' ? 'Sales' : u.role})`,
-                        avatar: u.avatar_url || undefined
-                      }))
-                    ]}
-                    value={taskForm.user_id}
-                    onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>Tài liệu hoặc Link đính kèm (Tùy chọn)</span>
-                    {uploadingFile && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }} className="animate-pulse">Đang tải tệp lên...</span>}
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input 
-                      className="form-input" 
-                      placeholder="Nhập link tài liệu hoặc link đính kèm..." 
-                      value={taskForm.link || ''} 
-                      onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} 
-                      style={{ flex: 1 }}
-                    />
-                    <label className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, padding: '0 0.75rem', height: '38px', borderRadius: '8px' }}>
-                      <Paperclip size={16} />
-                      Tải tệp
-                      <input 
-                        type="file" 
-                        onChange={handleTaskFileUpload} 
-                        style={{ display: 'none' }} 
-                        disabled={uploadingFile}
-                      />
-                    </label>
+              <div className="modal-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', padding: '1.25rem' }}>
+                {/* Cột trái */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Tên công việc *</label>
+                    <input className="form-input" placeholder="VD: Gửi báo giá, Demo tính năng..." value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} autoFocus />
                   </div>
-                </div>
-
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Mô tả chi tiết công việc</label>
-                  <textarea 
-                    className="form-input" 
-                    placeholder="Nhập ghi chú hoặc mô tả chi tiết công việc..." 
-                    value={taskForm.description} 
-                    onChange={e => setTaskForm({ ...taskForm, description: e.target.value })} 
-                    style={{ minHeight: 80, resize: 'vertical' }}
-                  />
-                </div>
-
-                {/* Progress Slider */}
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <label className="form-label" style={{ margin: 0 }}>Tiến độ công việc</label>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="10"
-                    value={taskForm.progress || 0}
-                    onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
-                    style={{
-                      width: '100%',
-                      cursor: 'pointer',
-                      accentColor: 'var(--color-primary)',
-                      height: '6px',
-                      borderRadius: '3px',
-                      background: '#e5e7eb'
-                    }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
-                  </div>
-                </div>
-
-                {/* Approval Toggle */}
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Yêu cầu phê duyệt</span>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
-                      <div 
-                        style={{
-                          width: 38,
-                          height: 20,
-                          borderRadius: 10,
-                          background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
-                          position: 'relative',
-                          transition: 'background 0.2s'
-                        }}
-                        onClick={() => {
-                          const next = taskForm.require_approval === 1 ? 0 : 1;
-                          setTaskForm({ ...taskForm, require_approval: next });
-                        }}
-                      >
-                        <div 
-                          style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: '50%',
-                            background: 'white',
-                            position: 'absolute',
-                            top: 2,
-                            left: taskForm.require_approval === 1 ? 20 : 2,
-                            transition: 'left 0.2s',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-                          }}
-                        />
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Approver Select */}
-                {taskForm.require_approval === 1 && (
-                  <div className="form-group" style={{ marginBottom: '1rem' }}>
-                    <label className="form-label">Người duyệt</label>
+                  
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Người thực hiện</label>
                     <CustomSelect
                       showAvatars={true}
                       searchable={true}
                       options={[
-                        { value: '', label: 'Chọn người duyệt...' },
+                        { value: '', label: 'Chưa giao cho ai' },
                         ...users.map(u => ({
                           value: String(u.id),
-                          label: `${u.full_name} (${u.role})`,
+                          label: `${u.full_name} (${u.role === 'admin' ? 'Admin' : u.role === 'sales' ? 'Sales' : u.role})`,
                           avatar: u.avatar_url || undefined
                         }))
                       ]}
-                      value={taskForm.approver_id}
-                      onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
+                      value={taskForm.user_id}
+                      onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
                     />
                   </div>
-                )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Mức độ ưu tiên</label>
-                    <CustomSelect
-                      options={[
-                        { value: 'low', label: 'Thấp' },
-                        { value: 'medium', label: 'Trung bình' },
-                        { value: 'high', label: 'Cao' }
-                      ]}
-                      value={taskForm.priority}
-                      onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Tài liệu hoặc Link đính kèm (Tùy chọn)</span>
+                      {uploadingFile && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }} className="animate-pulse">Đang tải tệp lên...</span>}
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input 
+                        className="form-input" 
+                        placeholder="Nhập link tài liệu..." 
+                        value={taskForm.link || ''} 
+                        onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} 
+                        style={{ flex: 1 }}
+                      />
+                      <label className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, padding: '0 0.75rem', height: '38px', borderRadius: '8px' }}>
+                        <Paperclip size={16} />
+                        Tải tệp
+                        <input 
+                          type="file" 
+                          onChange={handleTaskFileUpload} 
+                          style={{ display: 'none' }} 
+                          disabled={uploadingFile}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Mô tả chi tiết công việc</label>
+                    <textarea 
+                      className="form-input" 
+                      placeholder="Nhập ghi chú hoặc mô tả chi tiết công việc..." 
+                      value={taskForm.description} 
+                      onChange={e => setTaskForm({ ...taskForm, description: e.target.value })} 
+                      style={{ minHeight: 90, resize: 'vertical' }}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Hạn hoàn thành</label>
-                    <input className="form-input" type="date" value={taskForm.due_date} onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })} />
+                </div>
+
+                {/* Cột phải */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {/* Progress Slider */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <label className="form-label" style={{ margin: 0 }}>Tiến độ công việc</label>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="10"
+                      value={taskForm.progress || 0}
+                      onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
+                      style={{
+                        width: '100%',
+                        cursor: 'pointer',
+                        accentColor: 'var(--color-primary)',
+                        height: '6px',
+                        borderRadius: '3px',
+                        background: '#e5e7eb'
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      <span>0%</span>
+                      <span>50%</span>
+                      <span>100%</span>
+                    </div>
+                  </div>
+
+                  {/* Approval Toggle */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '10px 12px', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>Yêu cầu phê duyệt</span>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                        <div 
+                          style={{
+                            width: 38,
+                            height: 20,
+                            borderRadius: 10,
+                            background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
+                            position: 'relative',
+                            transition: 'background 0.2s'
+                          }}
+                          onClick={() => {
+                            const next = taskForm.require_approval === 1 ? 0 : 1;
+                            setTaskForm({ ...taskForm, require_approval: next });
+                          }}
+                        >
+                          <div 
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: '50%',
+                              background: 'white',
+                              position: 'absolute',
+                              top: 2,
+                              left: taskForm.require_approval === 1 ? 20 : 2,
+                              transition: 'left 0.2s',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                            }}
+                          />
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Approver Select */}
+                  {taskForm.require_approval === 1 && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Người duyệt</label>
+                      <CustomSelect
+                        showAvatars={true}
+                        searchable={true}
+                        options={[
+                          { value: '', label: 'Chọn người duyệt...' },
+                          ...users.map(u => ({
+                            value: String(u.id),
+                            label: `${u.full_name} (${u.role})`,
+                            avatar: u.avatar_url || undefined
+                          }))
+                        ]}
+                        value={taskForm.approver_id}
+                        onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
+                      />
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Mức độ ưu tiên</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'low', label: 'Thấp' },
+                          { value: 'medium', label: 'Trung bình' },
+                          { value: 'high', label: 'Cao' }
+                        ]}
+                        value={taskForm.priority}
+                        onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label className="form-label">Hạn hoàn thành</label>
+                      <input className="form-input" type="date" value={taskForm.due_date} onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })} />
+                    </div>
                   </div>
                 </div>
               </div>
