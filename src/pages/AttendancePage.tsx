@@ -1322,7 +1322,6 @@ const AttendancePageInner = () => {
               )}
             </div>
           </div>
-          </div>
         </CustomModal>
       )}
 
