@@ -97,6 +97,9 @@ class NoteController {
 
         // Maintain quyen_truy_cap audit log for Cooperation Slips
         if ($type === 'contact') {
+            // Update last_contact on contact to mark as contacted
+            $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")->execute([$entityId, $auth['tenant_id']]);
+
             $stmtOwner = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ?");
             $stmtOwner->execute([$entityId]);
             $ownerId = $stmtOwner->fetchColumn();

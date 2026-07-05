@@ -266,9 +266,8 @@ class ActivityController {
         ]);
         $actId = (int)$this->db->lastInsertId();
 
-        // If status is done, update contact's last_contact (only for communication types: call, meeting, email)
-        $commTypes = ['call', 'meeting', 'email'];
-        if ($status === 'done' && in_array($b['type'], $commTypes, true) && !empty($b['related_id'])) {
+        // Update contact's last_contact whenever an activity is created
+        if (!empty($b['related_id'])) {
             if (($b['related_type'] ?? '') === 'contact') {
                 $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
                      ->execute([(int)$b['related_id'], $auth['tenant_id']]);
@@ -514,24 +513,21 @@ class ActivityController {
         $stmt = $this->db->prepare("UPDATE activities SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
 
-        // If status changed to done, update contact's last_contact (only for communication types: call, meeting, email)
-        if (isset($b['status']) && $b['status'] === 'done') {
-            $checkRel = $this->db->prepare("SELECT type, related_type, related_id FROM activities WHERE id=?");
-            $checkRel->execute([$id]);
-            $rel = $checkRel->fetch();
-            $commTypes = ['call', 'meeting', 'email'];
-            if ($rel && in_array($rel['type'], $commTypes, true) && !empty($rel['related_id'])) {
-                if ($rel['related_type'] === 'contact') {
+        // Update contact's last_contact whenever an activity is updated
+        $checkRel = $this->db->prepare("SELECT related_type, related_id FROM activities WHERE id=?");
+        $checkRel->execute([$id]);
+        $rel = $checkRel->fetch();
+        if ($rel && !empty($rel['related_id'])) {
+            if ($rel['related_type'] === 'contact') {
+                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
+                     ->execute([(int)$rel['related_id'], $auth['tenant_id']]);
+            } else if ($rel['related_type'] === 'deal') {
+                $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+                $sDeal->execute([(int)$rel['related_id'], $auth['tenant_id']]);
+                $cid = $sDeal->fetchColumn();
+                if ($cid) {
                     $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
-                         ->execute([(int)$rel['related_id'], $auth['tenant_id']]);
-                } else if ($rel['related_type'] === 'deal') {
-                    $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
-                    $sDeal->execute([(int)$rel['related_id'], $auth['tenant_id']]);
-                    $cid = $sDeal->fetchColumn();
-                    if ($cid) {
-                        $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
-                             ->execute([(int)$cid, $auth['tenant_id']]);
-                    }
+                         ->execute([(int)$cid, $auth['tenant_id']]);
                 }
             }
         }

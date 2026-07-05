@@ -11273,10 +11273,11 @@ switch ($action) {
         // Query uncontacted count for all consultants
         $uncontactedMap = [];
         $uncontactedRes = $conn->query("
-            SELECT assigned_to, COUNT(*) as cnt 
-            FROM leads 
-            WHERE status != 'reminder' AND is_accepted = 1 AND (contact_last_contact IS NULL OR contact_last_contact = '')
-            GROUP BY assigned_to
+            SELECT l.assigned_to, COUNT(*) as cnt 
+            FROM leads l
+            LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = l.assigned_to AND c.deleted_at IS NULL
+            WHERE l.status != 'reminder' AND l.is_accepted = 1 AND (c.last_contact IS NULL OR c.last_contact = '')
+            GROUP BY l.assigned_to
         ");
         if ($uncontactedRes) {
             while ($r = $uncontactedRes->fetch_assoc()) {

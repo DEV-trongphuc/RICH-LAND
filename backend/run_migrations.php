@@ -1908,6 +1908,31 @@ try {
             $logMsg("Đã thêm cột edit_history cho activities", "success");
         }
 
+        // Self-healing check: Backfill contact's last_contact based on existing notes & activities history
+        $conn->query("
+            UPDATE contacts c
+            INNER JOIN (
+                SELECT entity_id as contact_id, MAX(created_at) as max_date
+                FROM notes
+                WHERE entity_type = 'contact'
+                GROUP BY entity_id
+            ) n ON c.id = n.contact_id
+            SET c.last_contact = DATE(n.max_date)
+            WHERE c.last_contact IS NULL OR c.last_contact < DATE(n.max_date)
+        ");
+        $conn->query("
+            UPDATE contacts c
+            INNER JOIN (
+                SELECT related_id as contact_id, MAX(created_at) as max_date
+                FROM activities
+                WHERE related_type = 'contact'
+                GROUP BY related_id
+            ) a ON c.id = a.contact_id
+            SET c.last_contact = DATE(a.max_date)
+            WHERE c.last_contact IS NULL OR c.last_contact < DATE(a.max_date)
+        ");
+        $logMsg("Đã đồng bộ hóa last_contact cho các contacts đã có lịch sử ghi chú/nhiệm vụ", "success");
+
         $logMsg("Hoàn thành tự tạo các INDEX hiệu năng.", "success");
 
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '154') ON DUPLICATE KEY UPDATE setting_value = '154'");
