@@ -212,6 +212,7 @@ export const ContactsPage: React.FC = () => {
   const [filterBeforeDate, setFilterBeforeDate] = useState('');
   const [filterAfterDate, setFilterAfterDate] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<any[]>([]);
   const [activeFilters, setActiveFilters] = useState({
     status: '',
     source: '',
@@ -346,7 +347,7 @@ export const ContactsPage: React.FC = () => {
 
       // Advanced filters mapping for Mock Mode
       if (activeFilters.status) {
-        list = list.filter(c => c.status === activeFilters.status);
+        list = list.filter(c => String(c.stage_id) === activeFilters.status || c.status === activeFilters.status);
       }
       if (activeFilters.source) {
         list = list.filter(c => c.source === activeFilters.source);
@@ -388,7 +389,13 @@ export const ContactsPage: React.FC = () => {
         order: 'DESC'
       };
       
-      if (activeFilters.status) params.status = activeFilters.status;
+      if (activeFilters.status) {
+        if (/^\d+$/.test(activeFilters.status)) {
+          params.stage_id = activeFilters.status;
+        } else {
+          params.status = activeFilters.status;
+        }
+      }
       if (activeFilters.source) params.source = activeFilters.source;
       if (activeFilters.ownerId) params.owner_id = activeFilters.ownerId;
       if (activeFilters.projectId) params.project_id = activeFilters.projectId;
@@ -434,6 +441,11 @@ export const ContactsPage: React.FC = () => {
     api.get('/projects').then(r => {
       const d = r.data.data;
       setProjects(Array.isArray(d) ? d : (d?.items || []));
+    }).catch(() => {});
+
+    api.get('/pipeline-stages').then(r => {
+      const d = r.data.data;
+      setPipelineStages(Array.isArray(d) ? d : (d?.items || []));
     }).catch(() => {});
   }, []);
 
@@ -537,7 +549,13 @@ export const ContactsPage: React.FC = () => {
     params.set('type', 'contact');
     params.set('token', localStorage.getItem('token') || '');
     if (debouncedSearch) params.set('search', debouncedSearch);
-    if (activeFilters.status) params.set('status', activeFilters.status);
+    if (activeFilters.status) {
+      if (/^\d+$/.test(activeFilters.status)) {
+        params.set('stage_id', activeFilters.status);
+      } else {
+        params.set('status', activeFilters.status);
+      }
+    }
     if (activeFilters.source) params.set('source', activeFilters.source);
     if (activeFilters.ownerId) params.set('owner_id', activeFilters.ownerId);
     if (activeFilters.projectId) params.set('project_id', activeFilters.projectId);
@@ -757,10 +775,15 @@ export const ContactsPage: React.FC = () => {
                       onChange={v => setFilterStatus(v)}
                       options={[
                         { value: '', label: 'Tất cả trạng thái' },
-                        { value: 'lead', label: 'Lead mới' },
-                        { value: 'qualified', label: 'Đủ điều kiện' },
-                        { value: 'customer', label: 'Khách hàng VIP' },
-                        { value: 'churned', label: 'Đã rời' }
+                        ...(pipelineStages.length > 0 
+                          ? pipelineStages.map(s => ({ value: String(s.id), label: s.name }))
+                          : [
+                              { value: 'lead', label: 'Lead mới' },
+                              { value: 'qualified', label: 'Đủ điều kiện' },
+                              { value: 'customer', label: 'Khách hàng VIP' },
+                              { value: 'churned', label: 'Đã rời' }
+                            ]
+                        )
                       ]}
                     />
                   </div>
