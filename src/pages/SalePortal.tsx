@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -1263,16 +1263,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
-  const handleDeleteTaskComment = async (commentId: number) => {
-    try {
-      const res = await api.delete(`/activities/comments/${commentId}`);
-      if (res.data.success) {
-        loadTaskComments(selectedTaskForDetails.id);
+  const handleDeleteTaskComment = (commentId: number) => {
+    showConfirm({
+      title: t('Xóa bình luận'),
+      message: t('Bạn có chắc chắn muốn xóa bình luận này không?'),
+      confirmText: t('Xóa'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await api.delete(`/activities/comments/${commentId}`);
+          if (res.data.success) {
+            toast.success(t('Đã xóa bình luận thành công!'));
+            loadTaskComments(selectedTaskForDetails.id);
+          }
+        } catch (e) {
+          console.error(e);
+          toast.error(t('Lỗi khi xóa bình luận'));
+        }
       }
-    } catch (e) {
-      console.error(e);
-      toast.error(t('Lỗi khi xóa bình luận'));
-    }
+    });
   };
 
   const resolveAttachmentUrl = (path: string) => {
@@ -2182,23 +2192,31 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
-  const handleDeleteLeave = async (leaveId: number) => {
-    if (!window.confirm(t('Bạn có chắc chắn muốn xóa đăng ký nghỉ phép này không?'))) return;
-    try {
-      const res = await fetchAPI('delete_consultant_leave', {
-        method: 'POST',
-        body: JSON.stringify({ id: leaveId })
-      });
-      if (res.success) {
-        toast.success(t('Đã xóa đăng ký nghỉ phép thành công!'));
-        fetchLeaveHistory();
-        loadPortalData();
-      } else {
-        toast.error(res.message || t('Lỗi khi xóa'));
+  const handleDeleteLeave = (leaveId: number) => {
+    showConfirm({
+      title: t('Xác nhận xóa nghỉ phép'),
+      message: t('Bạn có chắc chắn muốn xóa đăng ký nghỉ phép này không?'),
+      confirmText: t('Xóa'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI('delete_consultant_leave', {
+            method: 'POST',
+            body: JSON.stringify({ id: leaveId })
+          });
+          if (res.success) {
+            toast.success(t('Đã xóa đăng ký nghỉ phép thành công!'));
+            fetchLeaveHistory();
+            loadPortalData();
+          } else {
+            toast.error(res.message || t('Lỗi khi xóa'));
+          }
+        } catch (err: any) {
+          toast.error(t('Lỗi kết nối: ') + err.message);
+        }
       }
-    } catch (err: any) {
-      toast.error(t('Lỗi kết nối: ') + err.message);
-    }
+    });
   };
 
   useEffect(() => {
@@ -7739,6 +7757,66 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <AlertTriangle size={14} style={{ color: 'var(--color-danger)' }} />
                     {t('Báo lỗi')}
                   </a>
+
+                  {currentUser?.role !== 'admin' && currentUser?.role !== 'superadmin' && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setActiveTab('schedule');
+                          setIsProfileMenuOpen(false);
+                          toast.success(t('Đang mở trang Thông tin cá nhân'));
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '8px 10px',
+                          border: 'none',
+                          background: 'transparent',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          color: 'var(--color-text)',
+                          fontSize: '0.8125rem',
+                          textAlign: 'left',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <User size={14} style={{ color: 'var(--color-primary)' }} />
+                        {t('Thông tin cá nhân')}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveTab('consultants');
+                          setIsProfileMenuOpen(false);
+                          toast.success(t('Đang mở trang Thông tin Team'));
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          width: '100%',
+                          padding: '8px 10px',
+                          border: 'none',
+                          background: 'transparent',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          color: 'var(--color-text)',
+                          fontSize: '0.8125rem',
+                          textAlign: 'left',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <Users size={14} style={{ color: 'var(--color-primary)' }} />
+                        {t('Thông tin Team')}
+                      </button>
+                    </>
+                  )}
 
                   <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
 

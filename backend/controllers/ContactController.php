@@ -286,9 +286,8 @@ class ContactController {
     public function update(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b = getBody();
-
         // 1. Pre-fetch current contact state for lifecycle validation
-        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtCurr->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtCurr->fetch();
         if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -429,20 +428,35 @@ class ContactController {
             }
         }
         if (isset($b['tags'])) { $sets[] = 'tags=?'; $params[] = json_encode($b['tags']); }
-        // Duplicate Phone Check (excluding self)
+        // Duplicate Phone Check (excluding self and other parallel contacts for the same physical Person)
         $phone = $b['phone'] ?? $b['mobile'] ?? null;
         if ($phone) {
-            $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND deleted_at IS NULL LIMIT 1");
-            $check->execute([$auth['tenant_id'], $phone, $phone, $id]);
+            require_once __DIR__ . '/../webhook_logic.php';
+            $phone = normalizePhone($phone);
+            $personId = $currentContact['person_id'] ?? null;
+            if ($personId) {
+                $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND (person_id IS NULL OR person_id != ?) AND deleted_at IS NULL LIMIT 1");
+                $check->execute([$auth['tenant_id'], $phone, $phone, $id, $personId]);
+            } else {
+                $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND deleted_at IS NULL LIMIT 1");
+                $check->execute([$auth['tenant_id'], $phone, $phone, $id]);
+            }
             if ($check->fetch()) {
                 respond(422, null, "Số điện thoại '$phone' đã tồn tại ở một khách hàng khác.", false);
             }
         }
-        // Duplicate Email Check (excluding self)
+        // Duplicate Email Check (excluding self and other parallel contacts for the same physical Person)
         $email = $b['email'] ?? null;
         if ($email) {
-            $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND deleted_at IS NULL LIMIT 1");
-            $checkEmail->execute([$auth['tenant_id'], $email, $id]);
+            $email = trim(strtolower($email));
+            $personId = $currentContact['person_id'] ?? null;
+            if ($personId) {
+                $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND (person_id IS NULL OR person_id != ?) AND deleted_at IS NULL LIMIT 1");
+                $checkEmail->execute([$auth['tenant_id'], $email, $id, $personId]);
+            } else {
+                $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+                $checkEmail->execute([$auth['tenant_id'], $email, $id]);
+            }
             if ($checkEmail->fetch()) {
                 respond(422, null, "Email '$email' đã tồn tại ở một khách hàng khác.", false);
             }
@@ -805,6 +819,57 @@ class ContactController {
             }
         }
         return 0;
+    }
+
+    public function releaseDatabank(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+        $tid = $auth['tenant_id'];
+
+        // 1. Fetch contact
+        $stmt = $this->db->prepare("SELECT id, person_id, owner_id, first_name, last_name FROM contacts WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmt->execute([$id, $tid]);
+        $contact = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$contact) respond(404, null, 'Không tìm thấy liên hệ', false);
+
+        $personId = $contact['person_id'];
+
+        // 2. Count active contacts for this Person
+        $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmtCount->execute([$personId, $tid]);
+        $activeCount = (int)$stmtCount->fetchColumn();
+
+        if ($activeCount <= 1) {
+            // Only this sale owns this Person. Release to Databank!
+            $defaultStageId = $this->getStageIdFromSlug('chua_xac_dinh', $tid);
+            
+            $stmtRelease = $this->db->prepare("
+                UPDATE contacts 
+                SET owner_id = NULL, 
+                    pipeline_status = 'chua_xac_dinh', 
+                    stage_id = ?, 
+                    status = 'lead',
+                    security_expires_at = NULL,
+                    parallel_assigned = 0 
+                WHERE id = ? AND tenant_id = ?
+            ");
+            $stmtRelease->execute([$defaultStageId, $id, $tid]);
+
+            // Log activity & interaction
+            logActivity($this->db, $tid, $auth['user_id'], 'RELEASE_TO_DATABANK', 'contact', $id, "Trả khách hàng về Databank chung (do chỉ có 1 Sale chăm sóc)");
+            logInteraction($this->db, $tid, $auth['user_id'], 'system', 'Đã trả khách hàng về Databank chung', null, 'contact', $id);
+
+            respond(200, ['action' => 'released'], 'Đã trả khách hàng về Databank chung thành công!');
+        } else {
+            // 2 or more sales own this Person in parallel.
+            // Just soft-delete this sale's contact row!
+            $stmtDelete = $this->db->prepare("UPDATE contacts SET deleted_at = NOW() WHERE id = ? AND tenant_id = ?");
+            $stmtDelete->execute([$id, $tid]);
+
+            // Log activity & interaction
+            logActivity($this->db, $tid, $auth['user_id'], 'REMOVE_PARALLEL_CONTACT', 'contact', $id, "Xóa liên hệ khỏi danh sách cá nhân (do trả về Databank song song)");
+            
+            respond(200, ['action' => 'deleted'], 'Đã xóa khách hàng khỏi danh sách chăm sóc của bạn thành công!');
+        }
     }
 }
 

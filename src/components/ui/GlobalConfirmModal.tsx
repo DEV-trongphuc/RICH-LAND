@@ -27,60 +27,112 @@ export const GlobalConfirmModal: React.FC = () => {
     closeConfirm();
   };
 
+  const renderMessage = (text: string) => {
+    if (!text) return null;
+    return text.split('\n').map((line, idx) => {
+      const trimmed = line.trim();
+      if (!trimmed) return <div key={idx} style={{ height: '8px' }} />;
+      if (trimmed.startsWith('•')) {
+        return (
+          <div key={idx} style={{ display: 'flex', gap: '8px', marginTop: '6px', paddingLeft: '4px' }}>
+            <span style={{ color: isDanger ? '#ef4444' : 'var(--color-primary)', fontWeight: 'bold', fontSize: '1rem', lineHeight: '1.2rem' }}>•</span>
+            <span style={{ fontSize: '0.825rem', color: 'var(--color-text-light)', lineHeight: 1.5 }}>
+              {trimmed.substring(1).trim()}
+            </span>
+          </div>
+        );
+      }
+      return (
+        <p key={idx} style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: '0 0 8px 0' }}>
+          {line}
+        </p>
+      );
+    });
+  };
+
   return (
     <AnimatePresence>
       <div style={{
         position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
+        backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(10px)',
         zIndex: 999999, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '1rem'
+        padding: '1.5rem'
       }} onClick={handleCancel}>
         <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          initial={{ opacity: 0, scale: 0.96, y: 8 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
+          exit={{ opacity: 0, scale: 0.96, y: 8 }}
+          transition={{ type: "tween", ease: "easeOut", duration: 0.25 }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: 'var(--color-surface)', width: '100%', maxWidth: '420px',
-            borderRadius: 'var(--radius-2xl)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            background: 'var(--color-surface)', width: '100%', maxWidth: '480px',
+            borderRadius: '16px', 
+            boxShadow: '0 24px 48px -12px rgba(0, 0, 0, 0.18), 0 8px 16px -8px rgba(0, 0, 0, 0.08)',
             border: '1px solid var(--color-border-light)',
-            overflow: 'hidden', display: 'flex', flexDirection: 'column'
+            overflow: 'hidden', display: 'flex', flexDirection: 'column',
+            position: 'relative'
           }}
         >
+          {/* Close button top right */}
+          <button 
+            onClick={handleCancel}
+            style={{
+              position: 'absolute',
+              top: '18px',
+              right: '18px',
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--color-text-muted)',
+              cursor: 'pointer',
+              padding: '6px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.15s ease',
+              zIndex: 10
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <X size={16} />
+          </button>
+
           {/* Header & Content */}
-          <div style={{ padding: '1.75rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+          <div style={{ padding: '2rem', display: 'flex', alignItems: 'flex-start', gap: '1.25rem' }}>
             <div style={{
-              width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+              width: 48, height: 48, borderRadius: '12px', flexShrink: 0,
               background: isDanger ? 'rgba(239, 68, 68, 0.08)' : 'rgba(163, 20, 34, 0.08)',
-              border: isDanger ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(163, 20, 34, 0.2)',
-              color: isDanger ? '#ef4444' : '#a31422',
-              boxShadow: isDanger ? '0 0 12px rgba(239, 68, 68, 0.1)' : '0 0 12px rgba(163, 20, 34, 0.1)',
+              border: isDanger ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(163, 20, 34, 0.15)',
+              color: isDanger ? '#ef4444' : 'var(--color-primary)',
+              boxShadow: isDanger ? '0 0 16px rgba(239, 68, 68, 0.06)' : '0 0 16px rgba(163, 20, 34, 0.06)',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
-              {isDanger ? <AlertTriangle size={20} /> : <Info size={20} />}
+              {isDanger ? <AlertTriangle size={22} /> : <Info size={22} />}
             </div>
             
-            <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.375rem' }}>
+            <div style={{ flex: 1, paddingRight: '12px' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem', lineHeight: 1.3 }}>
                 {title}
               </h3>
-              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.45, marginBottom: '1rem' }}>
-                {message}
-              </p>
+              
+              <div style={{ marginTop: '0.25rem' }}>
+                {renderMessage(message)}
+              </div>
 
               {impactInfo && (
                 <div style={{ 
-                  background: 'rgba(245, 158, 11, 0.06)', 
-                  border: '1px solid rgba(245, 158, 11, 0.15)', 
-                  padding: '0.625rem 0.875rem', 
-                  borderRadius: '8px',
+                  background: 'rgba(245, 158, 11, 0.04)', 
+                  border: '1px solid rgba(245, 158, 11, 0.12)', 
+                  padding: '0.75rem 1rem', 
+                  borderRadius: '10px',
                   display: 'flex',
                   gap: '8px',
-                  marginBottom: '1rem'
+                  marginTop: '1rem',
+                  marginBottom: '0.5rem'
                 }}>
                   <AlertTriangle size={14} color="#d97706" style={{ flexShrink: 0, marginTop: '2px' }} />
-                  <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600 }}>{impactInfo}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600, lineHeight: 1.4 }}>{impactInfo}</span>
                 </div>
               )}
 
@@ -113,14 +165,35 @@ export const GlobalConfirmModal: React.FC = () => {
 
           {/* Footer actions */}
           <div style={{ 
-            padding: '1rem 1.75rem', background: 'var(--color-bg)',
-            borderTop: '1px solid var(--color-border-light)', display: 'flex', 
-            justifyContent: 'flex-end', gap: '0.625rem'
+            padding: '1.25rem 2rem', 
+            background: 'var(--color-surface-hover, #f8fafc)',
+            borderTop: '1px solid var(--color-border-light)', 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: '0.75rem'
           }}>
             <button 
-              className="btn secondary sm"
+              className="btn sm"
               onClick={handleCancel}
-              style={{ fontWeight: 600, padding: '6px 14px', borderRadius: '8px', fontSize: '0.8125rem' }}
+              style={{ 
+                fontWeight: 700, 
+                padding: '8px 16px', 
+                borderRadius: '10px', 
+                fontSize: '0.8125rem',
+                background: 'var(--color-bg)',
+                border: '1px solid var(--color-border)',
+                color: 'var(--color-text-light)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--color-bg-hover)';
+                e.currentTarget.style.color = 'var(--color-text)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--color-bg)';
+                e.currentTarget.style.color = 'var(--color-text-light)';
+              }}
             >
               {cancelText}
             </button>
@@ -131,23 +204,40 @@ export const GlobalConfirmModal: React.FC = () => {
                   if (onExtra) onExtra();
                   closeConfirm();
                 }}
-                style={{ fontWeight: 600, padding: '6px 14px', borderRadius: '8px', fontSize: '0.8125rem', borderColor: 'var(--color-border)' }}
+                style={{ fontWeight: 700, padding: '8px 16px', borderRadius: '10px', fontSize: '0.8125rem', borderColor: 'var(--color-border)' }}
               >
                 {extraText}
               </button>
             )}
             <button 
-              className={`btn ${isDanger ? 'danger' : 'primary'} sm`}
+              className="btn sm"
               onClick={handleConfirm}
               disabled={isLocked}
               style={{ 
-                minWidth: '90px', 
+                minWidth: '100px', 
                 opacity: isLocked ? 0.4 : 1,
                 cursor: isLocked ? 'not-allowed' : 'pointer',
-                fontWeight: 600,
-                padding: '6px 14px',
-                borderRadius: '8px',
-                fontSize: '0.8125rem'
+                fontWeight: 700,
+                padding: '8px 16px',
+                borderRadius: '10px',
+                fontSize: '0.8125rem',
+                background: isDanger ? '#ef4444' : 'var(--color-primary)',
+                borderColor: isDanger ? '#ef4444' : 'var(--color-primary)',
+                color: 'white',
+                boxShadow: isDanger ? '0 4px 12px rgba(239, 68, 68, 0.18)' : '0 4px 12px rgba(163, 20, 34, 0.18)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                if (!isLocked) {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = isDanger ? '0 6px 16px rgba(239, 68, 68, 0.25)' : '0 6px 16px rgba(163, 20, 34, 0.25)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isLocked) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = isDanger ? '0 4px 12px rgba(239, 68, 68, 0.18)' : '0 4px 12px rgba(163, 20, 34, 0.18)';
+                }
               }}
             >
               {confirmText}

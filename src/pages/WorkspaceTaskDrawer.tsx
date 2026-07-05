@@ -13,6 +13,7 @@ import { Avatar } from '../components/ui/Avatar';
 import styles from './EntityDrawer.module.css';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface WorkspaceTaskDrawerProps {
   isOpen: boolean;
@@ -81,6 +82,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   // Contacts state
   const [contacts, setContacts] = useState<any[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
+  const [originalHash, setOriginalHash] = useState<string>('');
 
   useEffect(() => {
     if (isOpen) {
@@ -110,12 +112,17 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   useEffect(() => {
     if (task) {
-      setFormData(task);
-      setIsPinned(task.tags?.includes('pinned') || false);
+      const normalizedTask = {
+        ...task,
+        subject: task.subject || task.title || '',
+        body: task.body || task.description || ''
+      };
+      setFormData(normalizedTask);
+      setIsPinned(normalizedTask.tags?.includes('pinned') || false);
 
       // Parse erp metadata from task body
       let parsedMeta: any = {
-        description: task.body || '',
+        description: normalizedTask.body || '',
         internal_type: 'task',
         scope: 'team',
         recurrence: { pattern: 'none', weekly_days: [], monthly_day: 1, last_generated: '' },
@@ -123,18 +130,36 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         links: []
       };
 
-      if (task.body && task.body.startsWith('{"erp_task":')) {
+      if (normalizedTask.body && normalizedTask.body.trim().startsWith('{"erp_task":')) {
         try {
-          const parsed = JSON.parse(task.body);
+          const parsed = JSON.parse(normalizedTask.body);
           parsedMeta = { ...parsedMeta, ...parsed.erp_task };
         } catch (e) {
-          parsedMeta.description = task.body;
+          parsedMeta.description = normalizedTask.body;
         }
       }
 
       setErpMeta(parsedMeta);
       setCampaignTarget(parsedMeta.campaign_target || '');
-      loadComments(task.id);
+      loadComments(normalizedTask.id);
+
+      // Compute and store original hash
+      const cleanObj = (obj: any) => {
+        const clean: any = {};
+        Object.keys(obj || {}).forEach(key => {
+          if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+            return;
+          }
+          const val = obj[key];
+          clean[key] = (val === null || val === undefined) ? '' : val;
+        });
+        return clean;
+      };
+
+      setOriginalHash(JSON.stringify({
+        formData: cleanObj(normalizedTask),
+        erpMeta: cleanObj(parsedMeta)
+      }));
     }
   }, [task]);
 
@@ -188,6 +213,23 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       const res = await api.put(`/activities/${task.id}`, payload);
       if (res.data && res.data.success) {
         setErpMeta(updatedMeta);
+        
+        const cleanObj = (obj: any) => {
+          const clean: any = {};
+          Object.keys(obj || {}).forEach(key => {
+            if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+              return;
+            }
+            const val = obj[key];
+            clean[key] = (val === null || val === undefined) ? '' : val;
+          });
+          return clean;
+        };
+        setOriginalHash(JSON.stringify({
+          formData: cleanObj(formData),
+          erpMeta: cleanObj(updatedMeta)
+        }));
+
         onUpdate();
       }
     } catch (e: any) {
@@ -235,6 +277,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       const res = await api.put(`/activities/${task.id}`, payload);
       if (res.data && res.data.success) {
         toast.success(t('Đã lưu tất cả thay đổi thành công!'));
+        setOriginalHash(currentHash);
         onUpdate();
       }
     } catch (e: any) {
@@ -250,7 +293,27 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       const payload: any = { [field]: value };
       const res = await api.put(`/activities/${task.id}`, payload);
       if (res.data && res.data.success) {
-        setFormData((prev: any) => ({ ...prev, [field]: value }));
+        setFormData((prev: any) => {
+          const nextData = { ...prev, [field]: value };
+          
+          const cleanObj = (obj: any) => {
+            const clean: any = {};
+            Object.keys(obj || {}).forEach(key => {
+              if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+                return;
+              }
+              const val = obj[key];
+              clean[key] = (val === null || val === undefined) ? '' : val;
+            });
+            return clean;
+          };
+          setOriginalHash(JSON.stringify({
+            formData: cleanObj(nextData),
+            erpMeta: cleanObj(erpMeta)
+          }));
+
+          return nextData;
+        });
         onUpdate();
       }
     } catch (e: any) {
@@ -490,9 +553,33 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
            (u.role || '').toLowerCase().includes(participantsSearch.toLowerCase());
   });
 
+  const currentHash = (() => {
+    const cleanObj = (obj: any) => {
+      const clean: any = {};
+      Object.keys(obj || {}).forEach(key => {
+        if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+          return;
+        }
+        const val = obj[key];
+        clean[key] = (val === null || val === undefined) ? '' : val;
+      });
+      return clean;
+    };
+    return JSON.stringify({
+      formData: cleanObj(formData),
+      erpMeta: cleanObj(erpMeta)
+    });
+  })();
+
+  const hasChanges = originalHash !== currentHash;
+
   const content = (
-    <div 
+    <motion.div 
       className={styles.drawer}
+      initial={embedMode ? {} : { x: '100vw' }}
+      animate={embedMode ? {} : { x: 0 }}
+      exit={embedMode ? {} : { x: '100vw' }}
+      transition={{ type: 'tween', ease: 'easeOut', duration: 0.3 }}
       style={embedMode ? {
         width: '100%',
         background: 'var(--color-bg)',
@@ -514,7 +601,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         top: 0,
         right: 0,
         boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
-        animation: 'slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+        x: '100vw'
       }}
     >
         {/* Drawer Header */}
@@ -562,8 +649,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               onClick={handleManualSave}
-              disabled={isSaving}
-              className="btn primary hover-lift"
+              disabled={isSaving || !hasChanges}
+              className="btn hover-lift"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -573,10 +660,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 height: '34px',
-                background: 'var(--color-primary)',
-                borderColor: 'var(--color-primary)',
-                color: 'white',
-                cursor: 'pointer'
+                background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                color: hasChanges ? 'white' : '#9ca3af',
+                cursor: hasChanges ? 'pointer' : 'not-allowed',
+                transition: 'all 0.2s ease'
               }}
             >
               {isSaving ? <RefreshCw className="spin" size={14} /> : <CheckSquare2 size={14} />}
@@ -1683,7 +1771,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
   );
 
   if (embedMode) {
@@ -1691,21 +1779,27 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   }
 
   return createPortal(
-    <>
-      <div 
-        className="drawer-backdrop" 
-        onClick={onClose}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.65)',
-          zIndex: 10500,
-          backdropFilter: 'blur(4px)',
-          animation: 'fade-in 0.2s ease-out'
-        }}
-      />
-      {content}
-    </>,
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div 
+            className="drawer-backdrop" 
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.65)',
+              zIndex: 10500,
+              backdropFilter: 'blur(4px)'
+            }}
+          />
+          {content}
+        </>
+      )}
+    </AnimatePresence>,
     document.body
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -669,26 +669,30 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const hasChanges = useMemo(() => {
     if (!contact) return false;
-    if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
     
-    const fieldsToCompare = [
-      'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
-      'mobile', 'job_title', 'department', 'source', 'status', 'notes',
-      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability'
-    ];
-    
-    for (const key of fieldsToCompare) {
-      const val1 = formData[key] === undefined || formData[key] === null ? '' : String(formData[key]);
-      const val2 = baseData[key] === undefined || baseData[key] === null ? '' : String(baseData[key]);
-      if (val1 !== val2) return true;
-    }
-    
-    // Custom fields comparison
-    if (formData.custom_fields && baseData.custom_fields) {
-      if (JSON.stringify(formData.custom_fields) !== JSON.stringify(baseData.custom_fields)) return true;
-    }
-    
-    return false;
+    const cleanObject = (obj: any) => {
+      const clean: any = {};
+      Object.keys(obj || {}).forEach(key => {
+        if (['created_at', 'updated_at', 'deleted_at', 'owner_name', 'stage_name', 'stage_color', 'actual_revenue', 'paid_invoice_count', 'expense_count'].includes(key)) {
+          return;
+        }
+        const val = obj[key];
+        clean[key] = (val === null || val === undefined) ? '' : val;
+      });
+      return clean;
+    };
+
+    const hash1 = JSON.stringify({
+      formData: cleanObject(formData),
+      tags: tags || []
+    });
+
+    const hash2 = JSON.stringify({
+      formData: cleanObject(baseData),
+      tags: baseTags || []
+    });
+
+    return hash1 !== hash2;
   }, [formData, baseData, tags, baseTags, contact]);
 
   const handleSave = useCallback(async () => {
@@ -2409,6 +2413,27 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
+  const handleReturnToDatabank = () => {
+    showConfirm({
+      title: 'Trả khách hàng về Databank',
+      message: 'Bạn có chắc chắn muốn trả khách hàng này về Databank chung không? Lưu ý:\n\n• Nếu bạn là người duy nhất chăm sóc khách hàng này, khách hàng sẽ được nhả về Databank chung (không còn thuộc sở hữu của bạn).\n• Nếu có từ 2 Sale chăm sóc song song trở lên, hệ thống sẽ chỉ xóa khách hàng khỏi danh sách cá nhân của bạn, không ảnh hưởng đến Sale khác.',
+      confirmText: 'Xác nhận trả',
+      cancelText: 'Hủy',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await api.post(`/contacts/${contact.id}/release-databank`);
+          if (res.data.success || res.data) {
+            addToast(res.data.message || 'Thao tác thành công', 'success');
+            onClose();
+          }
+        } catch (e: any) {
+          addToast(e?.response?.data?.message || 'Không thể trả khách hàng về Databank', 'error');
+        }
+      }
+    });
+  };
+
   const handleAddMilestoneInput = () => {
     setDepositMilestones(prev => [...prev, { name: `Đợt ${prev.length + 1}`, amount: '' }]);
   };
@@ -2456,8 +2481,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             />
             <motion.div
               className={styles.drawer}
-              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              initial={{ x: '100vw' }} animate={{ x: 0 }} exit={{ x: '100vw' }}
+              transition={{ type: 'tween', ease: 'easeOut', duration: 0.3 }}
+              style={{ x: '100vw' }}
             >
               <AnimatePresence>
                 {showAvatarModal && (
@@ -2834,10 +2860,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                      </div>
 
                     <button
-                      className={`btn ${hasChanges ? 'primary' : 'outline'} sm`}
-                      disabled={!hasChanges}
+                      disabled={!hasChanges || isSubmitting}
                       onClick={handleSave}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '10px', height: '36px', fontSize: '0.8125rem' }}
+                      className="btn hover-lift"
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        padding: '6px 14px', 
+                        borderRadius: '10px', 
+                        height: '36px', 
+                        fontSize: '0.8125rem',
+                        background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                        borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                        color: hasChanges ? 'white' : '#9ca3af',
+                        cursor: hasChanges ? 'pointer' : 'not-allowed',
+                        transition: 'all 0.2s ease'
+                      }}
                     >
                       <CheckSquare size={14} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
                     </button>
@@ -2905,13 +2944,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                           <div style={{
                             position: 'relative', zIndex: 2, flex: 1,
-                            background: isCurrent ? stColor : 'var(--color-surface)',
+                            background: isCurrent ? 'var(--color-primary)' : 'var(--color-surface)',
                             color: isCurrent ? '#fff' : 'var(--color-text-muted)',
-                            border: isCurrent ? `2px solid ${stColor}` : '1px solid var(--color-border-light)',
+                            border: isCurrent ? '2px solid var(--color-primary)' : '1px solid var(--color-border-light)',
                             padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                             whiteSpace: 'nowrap',
-                            boxShadow: isCurrent ? `0 4px 12px ${stColor}33` : 'none',
+                            boxShadow: isCurrent ? '0 4px 12px rgba(189, 29, 45, 0.2)' : 'none',
                             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                           }}>
                             {isCurrent && <UserCheck size={12} />}
@@ -3015,6 +3054,34 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               )}
                             </button>
                           ))}
+                          {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
+                            <button
+                              className={styles.sidebarTabBtn}
+                              onClick={handleReturnToDatabank}
+                              style={{
+                                padding: '11px 0.875rem',
+                                fontSize: '0.85rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                width: '100%',
+                                border: 'none',
+                                background: 'transparent',
+                                borderRadius: '6px',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                color: 'var(--color-danger)',
+                                fontWeight: 600,
+                                transition: 'all 0.15s ease',
+                                marginTop: '0.15rem'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <RotateCcw size={16} />
+                              <span>Trả về Databank</span>
+                            </button>
+                          )}
                         </div>
                       );
                     });
@@ -4422,7 +4489,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         />
                       ) : (
                         <div className="timeline-stepper" style={{ position: 'relative', marginTop: '1rem', marginLeft: '0.5rem', paddingBottom: '1.5rem' }}>
-                          <div style={{ position: 'absolute', left: 18, top: 10, bottom: 0, width: 2, background: 'linear-gradient(to bottom, var(--color-border) 0%, rgba(0,0,0,0) 100%)' }} />
+                          <div style={{ position: 'absolute', left: 18, top: 10, bottom: 0, width: 0, borderLeft: '2px dashed var(--color-border-light)' }} />
 
                           {timeline.map((ev: any, index) => (
                           <motion.div
@@ -4441,8 +4508,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div
                               onClick={() => handleTimelineItemClick(ev)}
                               style={{ flex: 1, padding: '1rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', cursor: 'pointer' }}
-                              onMouseEnter={e => { e.currentTarget.style.borderColor = ev.color; e.currentTarget.style.transform = 'translateX(4px)'; }}
-                              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = ev.color; }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                                 <div>

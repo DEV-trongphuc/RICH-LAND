@@ -25,9 +25,12 @@ interface AuthStore {
 
 const normalizeUser = (u: AuthUser | null): AuthUser | null => {
   if (!u) return null;
+  let role = u.role;
+  if (role === 'sales') role = 'sale';
+  if (role === 'super_admin') role = 'superadmin';
   return {
     ...u,
-    role: u.role === 'sales' ? 'sale' : u.role
+    role
   };
 };
 

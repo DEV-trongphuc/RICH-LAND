@@ -341,6 +341,8 @@ const IntegrationsInner = () => {
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isConfirmMappingOpen, setIsConfirmMappingOpen] = useState(false);
+  const [deleteMappingId, setDeleteMappingId] = useState<number | null>(null);
 
   // Pause warning modal
   const [showPauseWarning, setShowPauseWarning] = useState(false);
@@ -687,15 +689,22 @@ const IntegrationsInner = () => {
     setNewMappingField('phone');
   };
 
-  const handleDeleteMapping = async (mappingId: number) => {
-    if (!selected) return;
+  const handleConfirmDeleteMapping = async () => {
+    if (!deleteMappingId) return;
     try {
-      await fetchAPI(`delete_mapping&id=${mappingId}`);
+      await fetchAPI(`delete_mapping&id=${deleteMappingId}`);
       toast.success(t('Đã xóa mapping'));
       fetchData();
     } catch (e: any) {
       toast.error(t('Lỗi: ') + e.message);
     }
+    setIsConfirmMappingOpen(false);
+    setDeleteMappingId(null);
+  };
+
+  const handleDeleteMapping = (mappingId: number) => {
+    setDeleteMappingId(mappingId);
+    setIsConfirmMappingOpen(true);
   };
 
   // Actual API call to toggle the connection state
@@ -2123,6 +2132,14 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         message={t('Khi tạm dừng kết nối "{name}":\n\n• Webhook sẽ ngừng nhận dữ liệu mới từ Google Sheets.\n• Cronjob đồng bộ tự động sẽ dừng hoàn toàn.\n• Dữ liệu hiện có sẽ được giữ nguyên.\n\nBạn có thể bật lại bất cứ lúc nào.').replace('{name}', selected?.sheet_name || '')}
         confirmText={t("Tạm dừng")}
         cancelText={t('Hủy bỏ')}
+      />
+
+      <ConfirmModal
+        isOpen={isConfirmMappingOpen}
+        onClose={() => setIsConfirmMappingOpen(false)}
+        onConfirm={handleConfirmDeleteMapping}
+        title={t("Xóa mapping cột")}
+        message={t("Bạn có chắc chắn muốn xóa mapping cột dữ liệu này không?")}
       />
 
       <CustomModal
