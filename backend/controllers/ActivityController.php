@@ -3,6 +3,95 @@ class ActivityController {
     private PDO $db;
     public function __construct(PDO $db) { $this->db = $db; }
 
+    private function hasAccess(array $auth, array $activity): bool {
+        if (in_array($auth['role'], ['super_admin', 'admin'], true)) {
+            return true;
+        }
+        
+        // 1. Check Creator/Assignee
+        if ((int)$activity['user_id'] === (int)$auth['user_id']) {
+            return true;
+        }
+        
+        // 2. Check Approver
+        if (isset($activity['approver_id']) && (int)$activity['approver_id'] === (int)$auth['user_id']) {
+            return true;
+        }
+        
+        // 3. Check Participant
+        if (isset($activity['participant_ids'])) {
+            $pIds = array_filter(array_map('intval', explode(',', $activity['participant_ids'])));
+            if (in_array((int)$auth['user_id'], $pIds, true)) {
+                return true;
+            }
+        }
+        
+        // 4. Check related entity ownership (Contact, Company, Deal)
+        if (!empty($activity['related_type']) && !empty($activity['related_id'])) {
+            $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
+            
+            if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
+                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    return true;
+                }
+            } elseif ($auth['role'] === 'manager') {
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ))");
+                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    return true;
+                }
+            }
+        }
+        
+        // 5. Team-based tags check
+        if (!empty($activity['tags']) && strpos($activity['tags'], 'internal_') === 0) {
+            if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                $stmtTeamCheck = $this->db->prepare("
+                    SELECT 1 FROM users u 
+                    WHERE u.id = ? 
+                      AND (u.team_id = (SELECT team_id FROM users WHERE id = ?) 
+                           OR ? LIKE '%\"scope\":\"global\"%')
+                ");
+                $stmtTeamCheck->execute([$activity['user_id'], $auth['user_id'], $activity['body']]);
+                if ($stmtTeamCheck->fetch()) {
+                    return true;
+                }
+            } elseif ($auth['role'] === 'manager') {
+                $stmtTeamCheck = $this->db->prepare("
+                    SELECT 1 FROM users u 
+                    WHERE u.id = ? 
+                      AND (u.team_id IN (SELECT id FROM teams WHERE leader_id = ?) 
+                           OR ? LIKE '%\"scope\":\"global\"%')
+                ");
+                $stmtTeamCheck->execute([$activity['user_id'], $auth['user_id'], $activity['body']]);
+                if ($stmtTeamCheck->fetch()) {
+                    return true;
+                }
+            }
+        }
+        
+        // 6. Check if target user belongs to manager's team
+        if ($auth['role'] === 'manager') {
+            $stmtMgrTeam = $this->db->prepare("
+                SELECT 1 FROM users WHERE id = ? AND team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ");
+            $stmtMgrTeam->execute([$activity['user_id'], $auth['user_id']]);
+            if ($stmtMgrTeam->fetch()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function index(array $auth): void {
         $tid = $auth['tenant_id'];
         $page = max(1,(int)($_GET['page']??1));
@@ -42,6 +131,8 @@ class ActivityController {
         if (in_array($auth['role'], ['sales', 'sale'], true) && !$relType && !$relId) {
             $where[] = '(
                 a.user_id = ? 
+                OR a.approver_id = ?
+                OR FIND_IN_SET(?, a.participant_ids)
                 OR (a.related_type = \'contact\' AND EXISTS (SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND ct.owner_id = ?)) 
                 OR (a.related_type = \'deal\' AND EXISTS (SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (d.owner_id = ? OR ct.owner_id = ?)))
                 OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id = (SELECT team_id FROM users WHERE id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
@@ -51,9 +142,13 @@ class ActivityController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager' && !$relType && !$relId) {
             $where[] = '(
                 a.user_id = ? 
+                OR a.approver_id = ?
+                OR FIND_IN_SET(?, a.participant_ids)
                 OR a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?))
                 OR (a.related_type = \'contact\' AND EXISTS (
                     SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR ct.owner_id IN (
@@ -77,6 +172,8 @@ class ActivityController {
                 ))
                 OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
             )';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -263,59 +360,8 @@ class ActivityController {
         $row=$stmt->fetch(); if(!$row) respond(404,null,'Không tìm thấy',false);
 
         // Access check for sales/manager role
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $allowed = false;
-            if ((int)$row['user_id'] === (int)$auth['user_id']) {
-                $allowed = true;
-            } elseif ($row['related_type'] && $row['related_id']) {
-                $table = $row['related_type'] === 'contact' ? 'contacts' : ($row['related_type'] === 'company' ? 'companies' : 'deals');
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
-                $checkOwner->execute([(int)$row['related_id'], $auth['tenant_id'], $auth['user_id']]);
-                if ($checkOwner->fetch()) {
-                    $allowed = true;
-                }
-            } elseif ($row['tags'] && strpos($row['tags'], 'internal_') === 0) {
-                // Check if creator is in the same team or scope is global
-                $stmtTeamCheck = $this->db->prepare("
-                    SELECT 1 FROM users u 
-                    WHERE u.id = ? 
-                      AND (u.team_id = (SELECT team_id FROM users WHERE id = ?) 
-                           OR ? LIKE '%\"scope\":\"global\"%')
-                ");
-                $stmtTeamCheck->execute([$row['user_id'], $auth['user_id'], $row['body']]);
-                if ($stmtTeamCheck->fetch()) {
-                    $allowed = true;
-                }
-            }
-            if (!$allowed) respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
-        } else if ($auth['role'] === 'manager') {
-            $allowed = false;
-            if ((int)$row['user_id'] === (int)$auth['user_id']) {
-                $allowed = true;
-            } elseif ($row['related_type'] && $row['related_id']) {
-                $table = $row['related_type'] === 'contact' ? 'contacts' : ($row['related_type'] === 'company' ? 'companies' : 'deals');
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
-                    SELECT id FROM users WHERE team_id IN (
-                        SELECT id FROM teams WHERE leader_id = ?
-                    )
-                ))");
-                $checkOwner->execute([(int)$row['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
-                if ($checkOwner->fetch()) {
-                    $allowed = true;
-                }
-            } else {
-                // Check if target user belongs to manager's team
-                $stmtMgrTeam = $this->db->prepare("
-                    SELECT 1 FROM users WHERE id = ? AND team_id IN (
-                        SELECT id FROM teams WHERE leader_id = ?
-                    )
-                ");
-                $stmtMgrTeam->execute([$row['user_id'], $auth['user_id']]);
-                if ($stmtMgrTeam->fetch()) {
-                    $allowed = true;
-                }
-            }
-            if (!$allowed) respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
+        if (!$this->hasAccess($auth, $row)) {
+            respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
         }
 
         respond(200,$row);
@@ -332,57 +378,8 @@ class ActivityController {
         if (!$activity) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
         // Permissions check
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $allowed = false;
-            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
-                $allowed = true;
-            } elseif ($activity['related_type'] && $activity['related_id']) {
-                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
-                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
-                if ($checkOwner->fetch()) {
-                    $allowed = true;
-                }
-            } elseif ($activity['tags'] && strpos($activity['tags'], 'internal_') === 0) {
-                $stmtTeamCheck = $this->db->prepare("
-                    SELECT 1 FROM users u 
-                    WHERE u.id = ? 
-                      AND (u.team_id = (SELECT team_id FROM users WHERE id = ?) 
-                           OR ? LIKE '%\"scope\":\"global\"%')
-                ");
-                $stmtTeamCheck->execute([$activity['user_id'], $auth['user_id'], $activity['body']]);
-                if ($stmtTeamCheck->fetch()) {
-                    $allowed = true;
-                }
-            }
-            if (!$allowed) respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
-        } else if ($auth['role'] === 'manager') {
-            $allowed = false;
-            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
-                $allowed = true;
-            } elseif ($activity['related_type'] && $activity['related_id']) {
-                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
-                    SELECT id FROM users WHERE team_id IN (
-                        SELECT id FROM teams WHERE leader_id = ?
-                    )
-                ))");
-                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
-                if ($checkOwner->fetch()) {
-                    $allowed = true;
-                }
-            } else {
-                $stmtMgrTeam = $this->db->prepare("
-                    SELECT 1 FROM users WHERE id = ? AND team_id IN (
-                        SELECT id FROM teams WHERE leader_id = ?
-                    )
-                ");
-                $stmtMgrTeam->execute([$activity['user_id'], $auth['user_id']]);
-                if ($stmtMgrTeam->fetch()) {
-                    $allowed = true;
-                }
-            }
-            if (!$allowed) respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
+        if (!$this->hasAccess($auth, $activity)) {
+            respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
         }
 
         // Validate approver_id: Sale can only select admin, super_admin, superadmin, director OR their own team manager
@@ -610,24 +607,13 @@ class ActivityController {
 
     public function getComments(array $auth, int $id): void {
         // Verify activity belongs to tenant and user has permission
-        $check = $this->db->prepare("SELECT id, user_id, related_type, related_id FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
         $check->execute([$id, $auth['tenant_id']]);
         $activity = $check->fetch();
         if (!$activity) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
 
-        if ($auth['role'] === 'sales') {
-            $allowed = false;
-            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
-                $allowed = true;
-            } elseif ($activity['related_type'] && $activity['related_id']) {
-                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
-                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
-                if ($checkOwner->fetch()) {
-                    $allowed = true;
-                }
-            }
-            if (!$allowed) respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
+        if (!$this->hasAccess($auth, $activity)) {
+            respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
         }
 
         $stmt = $this->db->prepare("
@@ -650,24 +636,13 @@ class ActivityController {
     public function addComment(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền bình luận', false);
         // Verify activity belongs to tenant and user has permission
-        $check = $this->db->prepare("SELECT id, user_id, related_type, related_id FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check = $this->db->prepare("SELECT * FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
         $check->execute([$id, $auth['tenant_id']]);
         $activity = $check->fetch();
         if (!$activity) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
 
-        if ($auth['role'] === 'sales') {
-            $allowed = false;
-            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
-                $allowed = true;
-            } elseif ($activity['related_type'] && $activity['related_id']) {
-                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
-                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
-                if ($checkOwner->fetch()) {
-                    $allowed = true;
-                }
-            }
-            if (!$allowed) respond(403, null, 'Bạn không có quyền bình luận cho hoạt động này', false);
+        if (!$this->hasAccess($auth, $activity)) {
+            respond(403, null, 'Bạn không có quyền bình luận cho hoạt động này', false);
         }
 
         $b = getBody();
