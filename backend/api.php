@@ -10206,12 +10206,12 @@ switch ($action) {
         $work_start_time = trim($input['work_start_time'] ?? '00:00');
         $work_end_time = trim($input['work_end_time'] ?? '23:59');
         
-        $isSale = $decodedUser['role'] === 'sale';
+        $isSale = ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales');
         $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
         $saleFilterId = isset($input['consultant_id']) && $input['consultant_id'] !== '' ? (int) $input['consultant_id'] : null;
         
         if ($isSale) {
-            $targetId = $decodedUser['id'];
+            $targetId = $currentSaleConsultantId;
         } else if ($isAdmin) {
             $targetId = $saleFilterId;
         } else {

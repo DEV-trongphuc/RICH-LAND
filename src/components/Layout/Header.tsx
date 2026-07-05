@@ -88,7 +88,12 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           setHeaderVacationMode(Boolean(Number(json.vacation_mode)));
         }
         if (json.leads) {
-          const count = json.leads.filter((l: any) => !l.contact_last_contact && l.status !== 'reminder').length;
+          const count = json.leads.filter((l: any) => 
+            Number(l.is_accepted) === 1 && 
+            l.contact_id && 
+            !l.contact_last_contact && 
+            l.status !== 'reminder'
+          ).length;
           setUncontactedCount(count);
           sessionStorage.setItem('sale-uncontacted-count', String(count));
           window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: count }));
@@ -859,6 +864,65 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                       <Activity size={14} />
                       {t('Hoạt động (Nhật ký)')}
                     </button>
+                  </>
+                )}
+
+                {((user?.role as any) === 'sale' || (user?.role as any) === 'sales') && (
+                  <>
+                    <button
+                      onClick={() => {
+                        navigate('/accounts');
+                        setIsProfileMenuOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px 10px',
+                        border: 'none',
+                        background: 'transparent',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        color: 'var(--color-text)',
+                        fontSize: '0.8125rem',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <User size={14} style={{ color: 'var(--color-primary)' }} />
+                      {t('Thông tin cá nhân')}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        navigate('/consultants');
+                        setIsProfileMenuOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px 10px',
+                        border: 'none',
+                        background: 'transparent',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        color: 'var(--color-text)',
+                        fontSize: '0.8125rem',
+                        textAlign: 'left',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <Users size={14} style={{ color: 'var(--color-primary)' }} />
+                      {t('Thông tin Team')}
+                    </button>
+                    <div style={{ borderBottom: '1px solid var(--color-border)', margin: '4px 0' }} />
                   </>
                 )}
 

@@ -682,7 +682,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const editableFields = [
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
-      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range'
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
+      'project_id', 'ttl1_completed', 'ttl1_data'
     ];
 
     const cleanObject = (obj: any) => {
@@ -712,7 +713,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const allowedFields = [
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
-      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at'
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at',
+      'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range', 'project_id', 'ttl1_completed', 'ttl1_data'
     ];
     const payload: Record<string, any> = {};
     allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });

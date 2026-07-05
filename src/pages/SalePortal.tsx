@@ -575,6 +575,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [editBrokerLicense, setEditBrokerLicense] = useState('');
   const [editDegree, setEditDegree] = useState('');
 
+  const [editNationality, setEditNationality] = useState('');
+  const [editMaritalStatus, setEditMaritalStatus] = useState('');
+  const [editPersonalEmail, setEditPersonalEmail] = useState('');
+  const [editHometown, setEditHometown] = useState('');
+  const [editBankBranch, setEditBankBranch] = useState('');
+
+  const [consultantDocs, setConsultantDocs] = useState<any[]>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+
   // Impersonation role calculation for admin viewing sale
   const impersonatedSale = ((user?.role === 'admin' || user?.role === 'superadmin') && saleIdFilter)
     ? data.consultants?.find((c: any) => String(c.id) === String(saleIdFilter))
@@ -589,6 +598,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     consultant_id: impersonatedSale.id,
     id: impersonatedSale.user_id ? Number(impersonatedSale.user_id) : user?.id
   } : user;
+
+  const targetConsultantId = displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
+
+  const fetchConsultantDocs = async () => {
+    if (!targetConsultantId) return;
+    try {
+      const res = await api.get(`/cloud-files?category=consultant_${targetConsultantId}&limit=1000`);
+      if (res.data && res.data.items) {
+        setConsultantDocs(res.data.items);
+      }
+    } catch (err) {
+      console.error("Error fetching consultant documents:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'schedule' && targetConsultantId) {
+      fetchConsultantDocs();
+    }
+  }, [activeTab, targetConsultantId]);
 
   const effectiveRole = displayUser?.role;
 
@@ -1951,6 +1980,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           setEditInsuranceId(erp.insurance_id || '');
           setEditBrokerLicense(erp.broker_license || '');
           setEditDegree(erp.degree || '');
+          setEditNationality(erp.nationality || '');
+          setEditMaritalStatus(erp.marital_status || '');
+          setEditPersonalEmail(erp.personal_email || '');
+          setEditHometown(erp.hometown || '');
+          setEditBankBranch(erp.bank_branch || '');
         } catch (e) {
           setEditAddress(rawAddress);
         }
@@ -1972,6 +2006,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setEditInsuranceId('');
         setEditBrokerLicense('');
         setEditDegree('');
+        setEditNationality('');
+        setEditMaritalStatus('');
+        setEditPersonalEmail('');
+        setEditHometown('');
+        setEditBankBranch('');
       }
 
       setEditBankName(data.consultant_profile.bank_name || '');
@@ -2046,7 +2085,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           tax_id: editTaxId,
           insurance_id: editInsuranceId,
           broker_license: editBrokerLicense,
-          degree: editDegree
+          degree: editDegree,
+          nationality: editNationality,
+          marital_status: editMaritalStatus,
+          personal_email: editPersonalEmail,
+          hometown: editHometown,
+          bank_branch: editBankBranch
         }
       });
 
@@ -6498,6 +6542,57 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         placeholder={t('Nhập số CMND hoặc CCCD')}
                       />
                     </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Quê quán / Quê hương')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editHometown}
+                          onChange={(e) => setEditHometown(e.target.value)}
+                          placeholder={t('VD: Hà Nội, Việt Nam')}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Quốc tịch')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editNationality}
+                          onChange={(e) => setEditNationality(e.target.value)}
+                          placeholder={t('VD: Việt Nam')}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Tình trạng hôn nhân')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: '', label: `-- ${t('Chọn tình trạng')} --` },
+                            { value: 'single', label: t('Độc thân') },
+                            { value: 'married', label: t('Đã kết hôn') },
+                            { value: 'divorced', label: t('Đã ly hôn') },
+                            { value: 'other', label: t('Khác') }
+                          ]}
+                          value={editMaritalStatus}
+                          onChange={val => setEditMaritalStatus(String(val))}
+                          placeholder={t('Chọn tình trạng...')}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Email cá nhân')}</label>
+                        <input
+                          type="email"
+                          className="form-input"
+                          value={editPersonalEmail}
+                          onChange={(e) => setEditPersonalEmail(e.target.value)}
+                          placeholder={t('VD: email@gmail.com')}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -6686,7 +6781,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     <Receipt size={14} /> {t('Thanh toán & Thuế')}
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên ngân hàng')}</label>
                         <input
@@ -6705,6 +6800,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           value={editBankAccount}
                           onChange={(e) => setEditBankAccount(e.target.value)}
                           placeholder={t('Nhập số tài khoản')}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Chi nhánh ngân hàng')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editBankBranch}
+                          onChange={(e) => setEditBankBranch(e.target.value)}
+                          placeholder={t('Nhập chi nhánh')}
                         />
                       </div>
                     </div>
@@ -7168,6 +7273,170 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   })}
                 </div>
               )}
+            </div>
+
+            {/* TÀI LIỆU & HỢP ĐỒNG NHÂN SỰ */}
+            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FileText size={18} color="var(--color-primary)" />
+                  {t('HỒ SƠ & TÀI LIỆU NHÂN SỰ')}
+                </h3>
+                {/* Admin/Manager upload button */}
+                {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager' || user?.role === 'assistant') && (
+                  <label style={{
+                    background: 'var(--color-primary-light)', color: 'var(--color-primary)',
+                    padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', margin: 0
+                  }}>
+                    <Plus size={14} />
+                    {t('Tải lên')}
+                    <input type="file" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !targetConsultantId) return;
+                      setUploadingDoc(true);
+                      try {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('name', file.name);
+                        formData.append('category', `consultant_${targetConsultantId}`);
+                        formData.append('visibility', 'shared');
+                        
+                        const uploadRes = await api.post('/cloud-files', formData, {
+                          headers: { 'Content-Type': 'multipart/form-data' }
+                        });
+                        if (uploadRes.data && uploadRes.data.success) {
+                          toast.success(t('Đã tải tài liệu lên thành công!'));
+                          fetchConsultantDocs();
+                        } else {
+                          toast.error(uploadRes.data.message || t('Lỗi tải tài liệu lên'));
+                        }
+                      } catch (err: any) {
+                        toast.error(t('Lỗi kết nối tải tài liệu: ') + err.message);
+                      } finally {
+                        setUploadingDoc(false);
+                      }
+                    }} style={{ display: 'none' }} />
+                  </label>
+                )}
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                {t('Danh sách tài liệu hợp đồng, quyết định khen thưởng/kỷ luật hoặc hồ sơ nhân sự.')}
+              </p>
+
+              {uploadingDoc && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  <RefreshCw className="spin" size={14} />
+                  {t('Đang tải tài liệu lên...')}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '0.5rem' }}>
+                {consultantDocs.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic', background: 'var(--color-bg)', borderRadius: '8px' }}>
+                    {t('Chưa có tài liệu nào được tải lên.')}
+                  </div>
+                ) : (
+                  consultantDocs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 12px',
+                        background: 'var(--color-bg)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', marginRight: '8px' }}>
+                        <a
+                          href={resolveAttachmentUrl(doc.file_path)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            color: 'var(--color-primary)',
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                            textOverflow: 'ellipsis',
+                            overflow: 'hidden'
+                          }}
+                          className="hover-underline"
+                        >
+                          {doc.name}
+                        </a>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                          {t('Tải lên bởi')} {doc.uploader_name || t('Hệ thống')} • {new Date(doc.created_at).toLocaleDateString('vi-VN')}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        {/* Download link */}
+                        <a
+                          href={resolveAttachmentUrl(doc.file_path)}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--color-primary)',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          className="hover-bg-primary-light"
+                          title={t('Tải xuống')}
+                        >
+                          <ArrowUpRight size={15} />
+                        </a>
+
+                        {/* Admin/Manager delete button */}
+                        {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager' || user?.role === 'assistant') && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (!window.confirm(t('Bạn có chắc chắn muốn xóa tài liệu này?'))) return;
+                              try {
+                                const res = await api.delete(`/cloud-files/${doc.id}`);
+                                if (res.data && res.data.success) {
+                                  toast.success(t('Đã xóa tài liệu thành công!'));
+                                  fetchConsultantDocs();
+                                } else {
+                                  toast.error(res.data.message || t('Lỗi khi xóa tài liệu'));
+                                }
+                              } catch (err: any) {
+                                  toast.error(t('Lỗi kết nối xóa tài liệu: ') + err.message);
+                              }
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--color-danger)',
+                              cursor: 'pointer',
+                              padding: '4px',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            className="hover-bg-danger-light"
+                            title={t('Xóa tài liệu')}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
           </div>
