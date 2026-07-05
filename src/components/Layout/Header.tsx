@@ -83,8 +83,16 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
     }
     try {
       const json = await fetchAPI('get_sale_portal_data');
-      if (json.success && json.vacation_mode !== undefined) {
-        setHeaderVacationMode(Boolean(Number(json.vacation_mode)));
+      if (json.success) {
+        if (json.vacation_mode !== undefined) {
+          setHeaderVacationMode(Boolean(Number(json.vacation_mode)));
+        }
+        if (json.leads) {
+          const count = json.leads.filter((l: any) => !l.contact_last_contact && l.status !== 'reminder').length;
+          setUncontactedCount(count);
+          sessionStorage.setItem('sale-uncontacted-count', String(count));
+          window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: count }));
+        }
       }
     } catch (err) {
       console.error("Error fetching vacation mode in Header:", err);
@@ -103,11 +111,16 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
     const handleCheckInChange = () => {
       fetchHeaderPortalData();
     };
+    const handleContactUpdate = () => {
+      fetchHeaderPortalData();
+    };
     window.addEventListener('vacation-status-changed', handleVacationChange);
     window.addEventListener('checkin-status-changed', handleCheckInChange);
+    window.addEventListener('contact-updated', handleContactUpdate);
     return () => {
       window.removeEventListener('vacation-status-changed', handleVacationChange);
       window.removeEventListener('checkin-status-changed', handleCheckInChange);
+      window.removeEventListener('contact-updated', handleContactUpdate);
     };
   }, [user]);
 

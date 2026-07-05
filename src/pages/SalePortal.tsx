@@ -2503,6 +2503,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   }, [data.leads]);
 
   useEffect(() => {
+    sessionStorage.setItem('sale-uncontacted-count', String(uncontactedCount));
     window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: uncontactedCount }));
   }, [uncontactedCount]);
 

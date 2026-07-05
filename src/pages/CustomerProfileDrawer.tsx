@@ -737,6 +737,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setBaseData(updated);
       setBaseTags(updated.tags || []);
       onUpdate?.(updated);
+      window.dispatchEvent(new CustomEvent('contact-updated'));
       addToast('Đã lưu thông tin khách hàng', 'success');
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Lỗi khi lưu thông tin', 'error');
@@ -921,6 +922,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
       addToast('Cập nhật Form TTL1 thành công!', 'success');
       onUpdate?.({ ...formData, ttl1_completed: completed, ttl1_data: JSON.stringify(updatedData) });
+      window.dispatchEvent(new CustomEvent('contact-updated'));
     } catch (e: any) {
       addToast('Lỗi khi lưu Form TTL1', 'error');
     } finally {
@@ -1456,6 +1458,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         if (freshContact && freshContact.id) {
           setFormData(prev => ({ ...prev, ...freshContact }));
           setBaseData(freshContact);
+          window.dispatchEvent(new CustomEvent('contact-updated'));
         }
       } catch (err) {}
 
