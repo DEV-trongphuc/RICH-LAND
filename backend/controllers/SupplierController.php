@@ -9,6 +9,8 @@ class SupplierController {
         $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
         $offset = ($page - 1) * $limit;
         $search = $_GET['search'] ?? '';
+        $prestige_tier = $_GET['prestige_tier'] ?? '';
+        $cooperation_status = $_GET['cooperation_status'] ?? '';
 
         $where = ['tenant_id = ?', 'deleted_at IS NULL'];
         $params = [$tid];
@@ -19,6 +21,16 @@ class SupplierController {
             $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";
+        }
+
+        if ($prestige_tier) {
+            $where[] = 'prestige_tier = ?';
+            $params[] = $prestige_tier;
+        }
+
+        if ($cooperation_status) {
+            $where[] = 'cooperation_status = ?';
+            $params[] = $cooperation_status;
         }
 
         $w = implode(' AND ', $where);

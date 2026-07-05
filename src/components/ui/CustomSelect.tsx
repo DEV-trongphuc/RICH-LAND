@@ -30,6 +30,7 @@ interface CustomSelectProps {
   multiple?: boolean;
   align?: 'left' | 'right';
   size?: 'sm' | 'md';
+  disabled?: boolean;
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -44,7 +45,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   direction = 'down',
   multiple = false,
   align = 'left',
-  size = 'sm'
+  size = 'sm',
+  disabled = false
 }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -150,8 +152,11 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       {label && <label className={styles.label}>{t(label)}</label>}
       <div
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         style={{
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.625 : 1,
+          backgroundColor: disabled ? 'var(--color-bg-light)' : undefined,
           ...(size === 'sm' ? {
             minHeight: '38px',
             height: '38px',

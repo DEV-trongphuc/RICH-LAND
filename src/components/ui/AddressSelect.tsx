@@ -14,6 +14,7 @@ interface AddressSelectProps {
   label?: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────
@@ -29,6 +30,7 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
   label,
   placeholder = 'Chọn địa chỉ...',
   required,
+  disabled = false,
 }) => {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -99,13 +101,15 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
         </label>
       )}
       <div
-        onClick={handleOpen}
+        onClick={() => !disabled && handleOpen()}
         className="form-input"
         style={{
           display: 'flex', alignItems: 'center', gap: '0.625rem',
-          cursor: 'pointer', userSelect: 'none',
+          cursor: disabled ? 'not-allowed' : 'pointer', userSelect: 'none',
           color: value ? 'var(--color-text)' : 'var(--color-text-muted)',
           minHeight: '2.75rem',
+          opacity: disabled ? 0.8 : 1,
+          backgroundColor: disabled ? 'var(--color-bg-light)' : undefined,
         }}
       >
         <MapPin size={16} style={{ color: value ? 'var(--color-primary)' : 'var(--color-text-muted)', flexShrink: 0 }} />

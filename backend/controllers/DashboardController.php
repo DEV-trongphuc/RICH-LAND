@@ -240,7 +240,9 @@ class DashboardController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-     public function chartRevenue(array $auth): void {
+    }
+
+    public function chartRevenue(array $auth): void {
         $months = (int)($_GET['months'] ?? 8);
 
         $scope = $this->resolveUserScope($auth);

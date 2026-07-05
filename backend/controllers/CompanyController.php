@@ -56,6 +56,9 @@ class CompanyController {
     }
 
     public function store(array $auth): void {
+        if (in_array($auth['role'], ['sales', 'sale', 'viewer'], true)) {
+            respond(403, null, 'Bạn không có quyền thêm công ty mới', false);
+        }
         $b = getBody();
         if (empty($b['name'])) respond(422, null, 'Tên công ty là bắt buộc', false);
         // Verify stage belongs to tenant
@@ -133,6 +136,9 @@ class CompanyController {
     }
 
     public function update(array $auth, int $id): void {
+        if (in_array($auth['role'], ['sales', 'sale', 'viewer'], true)) {
+            respond(403, null, 'Bạn không có quyền cập nhật thông tin công ty', false);
+        }
         $b = getBody();
         $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id'];
         $sets=[]; $params=[];

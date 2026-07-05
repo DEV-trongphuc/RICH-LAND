@@ -89,4 +89,17 @@ if ($action === 'run_tests') {
     exit;
 }
 
-echo json_encode(['success' => true, 'message' => 'Diagnostic endpoint active. Use action=query, action=schema, or action=run_tests.']);
+if ($action === 'run_permission_tests') {
+    $code = file_get_contents(__DIR__ . '/permission_test_runner.php');
+    if ($code === false) {
+        echo json_encode(['success' => false, 'message' => 'Không thể đọc file permission_test_runner.php']);
+        exit;
+    }
+    if (strpos($code, '<?php') === 0) {
+        $code = substr($code, 5);
+    }
+    eval($code);
+    exit;
+}
+
+echo json_encode(['success' => true, 'message' => 'Diagnostic endpoint active. Use action=query, action=schema, action=run_tests, or action=run_permission_tests.']);

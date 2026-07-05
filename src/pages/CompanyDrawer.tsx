@@ -35,10 +35,15 @@ const TABS = [
 
 export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
   const { user: currentUser } = useAuth();
+  const isSale = currentUser && ['sales', 'sale'].includes((currentUser.role || '').toLowerCase());
   const { addToast, showConfirm } = useUIStore();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
+
+  const visibleTabs = useMemo(() => {
+    return isSale ? TABS.filter(t => t.id !== 'settings') : TABS;
+  }, [isSale]);
 
   useEffect(() => {
     if (isOpen) {
@@ -292,7 +297,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             <div className={styles.drawerBody}>
               {/* Sidebar Tabs */}
               <div className={styles.sidebarTabs}>
-                {TABS.map(tab => (
+                {visibleTabs.map(tab => (
                   <button 
                     key={tab.id} 
                     className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
@@ -306,7 +311,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
               {/* Content Area */}
               <div className={styles.contentArea}>
                 {activeTab === 'info' && (
-                  <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <fieldset disabled={isSale} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }} className="animate-fade">
                     <div className="card-panel">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="panel-title" style={{ margin: 0 }}>Hồ sơ Doanh nghiệp</h4>
@@ -485,7 +490,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                         )}
                       </div>
                     </div>
-                  </div>
+                  </fieldset>
                 )}
 
                 {activeTab === 'activities' && (
@@ -790,14 +795,20 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
 
             {/* Footer */}
             <div className={styles.footer}>
-              <button className="btn ghost" onClick={handleClose}>Hủy bỏ</button>
-              <button 
-                className={`btn ${hasChanges ? 'primary' : 'outline'}`} 
-                disabled={!hasChanges}
-                onClick={handleSave}
-              >
-                {hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ'}
-              </button>
+              {isSale ? (
+                <button className="btn secondary" onClick={onClose}>Đóng</button>
+              ) : (
+                <>
+                  <button className="btn ghost" onClick={handleClose}>Hủy bỏ</button>
+                  <button 
+                    className={`btn ${hasChanges ? 'primary' : 'outline'}`} 
+                    disabled={!hasChanges}
+                    onClick={handleSave}
+                  >
+                    {hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ'}
+                  </button>
+                </>
+              )}
             </div>
           </motion.div>
 

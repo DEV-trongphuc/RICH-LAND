@@ -32,7 +32,7 @@ if (in_array($baseAction, [
     'projects', 'deposits', 'cooperation-slips', 'capi', 'check-ins', 
     'cloud-files', 'file-categories', 'tickets', 'suppliers', 'purchase-orders', 
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
-    'users', 'reports', 'quotes', 'invoices', 'expenses', 
+    'users', 'reports', 'quotes', 'invoices', 'expenses', 'products',
     'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'upload', 'teams', 'dashboard'
 ], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action;
