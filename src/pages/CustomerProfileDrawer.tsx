@@ -6742,7 +6742,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <div style={{ position: 'fixed', inset: 0, zIndex: 20000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}
+              style={{ position: 'absolute', inset: 0, background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)' }}
               onClick={() => setPipelineModal({ ...pipelineModal, isOpen: false })}
             />
             <motion.div

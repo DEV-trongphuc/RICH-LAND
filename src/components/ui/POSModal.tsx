@@ -149,7 +149,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)', backgroundColor: 'rgba(0, 0, 0, 0.65)' }}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
         style={{ maxWidth: '1200px', width: '95vw', height: '85vh', maxHeight: '850px', background: 'var(--color-surface)', display: 'flex', overflow: 'hidden', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-2xl)' }} 

@@ -507,7 +507,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
             onClick={() => setHelpModal(null)}
-            style={{ zIndex: 1100, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
+            style={{ zIndex: 1100, background: 'rgba(0, 0, 0, 0.65)', backdropFilter: 'blur(4px)' }}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }} 
