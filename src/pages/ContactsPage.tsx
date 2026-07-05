@@ -1382,15 +1382,19 @@ export const ContactsPage: React.FC = () => {
                         {/* Footer Grid */}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', paddingTop: '0.875rem', borderTop: '1px solid var(--color-border-light)' }}>
                           <div>
-                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Liên lạc cuối</p>
-                            <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: days > 30 ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                              {c.last_contact ? (days === 0 ? 'Hôm nay' : days === 1 ? 'Hôm qua' : `${days} ngày trước`) : '—'}
+                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Ngày tạo</p>
+                            <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {c.created_at ? (() => {
+                                const d = new Date(c.created_at);
+                                const pad = (n: number) => String(n).padStart(2, '0');
+                                return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+                              })() : '—'}
                             </p>
                           </div>
                           <div>
-                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Deal đang mở</p>
-                            <p style={{ fontSize: '0.8125rem', fontWeight: 800, color: (c.open_deal_value || 0) > 0 ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                              {FMT_VND(c.open_deal_value || 0)}
+                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Tương tác cuối</p>
+                            <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {formatTimeAgo(c.last_contact || c.updated_at || c.created_at)}
                             </p>
                           </div>
                         </div>

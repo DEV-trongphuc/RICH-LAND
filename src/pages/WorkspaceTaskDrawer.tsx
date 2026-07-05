@@ -36,6 +36,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 }) => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileOrTablet(window.innerWidth <= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [formData, setFormData] = useState<any>({});
   const [erpMeta, setErpMeta] = useState<any>({
     description: '',
@@ -590,7 +598,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         boxShadow: 'none',
         borderLeft: '1px solid var(--color-border-light)'
       } : {
-        width: 'calc(100vw - var(--sidebar-width, 260px))',
+        width: isMobileOrTablet ? '100vw' : 'calc(100vw - var(--sidebar-width, 260px))',
         maxWidth: '100vw',
         zIndex: 10600,
         background: 'var(--color-bg)',

@@ -39,6 +39,13 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const [headerVacationMode, setHeaderVacationMode] = useState<boolean>(false);
   const [headerCheckIn, setHeaderCheckIn] = useState<any>(null);
@@ -470,12 +477,12 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         
         {/* Sales widgets for receiving data and check-in */}
         {user?.role === 'sale' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px', marginRight: isMobile ? '2px' : '8px' }}>
             {/* Limit Warning Widget */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
+              gap: '4px',
               background: uncontactedCount >= 5 
                 ? 'rgba(239, 68, 68, 0.1)' 
                 : 'var(--color-bg-light)',
@@ -486,21 +493,24 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                 ? 'var(--color-danger)' 
                 : 'var(--color-text)',
               borderRadius: '20px',
-              padding: '4px 12px',
-              height: '32px',
-              fontSize: '0.75rem',
+              padding: isMobile ? '4px 8px' : '4px 12px',
+              height: isMobile ? '30px' : '32px',
+              fontSize: '0.72rem',
               fontWeight: 700,
-              boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+              boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
+              whiteSpace: 'nowrap'
             }}>
               <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
-              <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
+              <span>{isMobile ? '' : 'Chưa tương tác: '}<strong>{uncontactedCount}/5</strong></span>
             </div>
 
             {/* Receiving Data Toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '4px 10px', height: '36px' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: !headerVacationMode ? '#10b981' : '#f59e0b' }}>
-                {!headerVacationMode ? t('Nhận data') : t('Tạm ngưng')}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px' }}>
+              {!isMobile && (
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: !headerVacationMode ? '#10b981' : '#f59e0b', whiteSpace: 'nowrap' }}>
+                  {!headerVacationMode ? t('Nhận data') : t('Tạm ngưng')}
+                </span>
+              )}
               <ToggleSwitch
                 checked={!headerVacationMode}
                 onChange={handleToggleHeaderVacation}
@@ -509,36 +519,38 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
 
             {/* Check-in status / trigger button */}
             {(!headerCheckIn || headerCheckIn.status === 'rejected') ? null : headerCheckIn.status === 'approved' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px', padding: '4px 10px', height: '36px', fontSize: '0.75rem', fontWeight: 700 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)', color: 'var(--color-success)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
                 <CheckCircle2 size={12} />
-                <span>{t('Đã Chấm công')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
+                <span>{isMobile ? 'Đã CC' : t('Đã Chấm công')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: 'var(--color-warning)', borderRadius: '8px', padding: '4px 10px', height: '36px', fontSize: '0.75rem', fontWeight: 700 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: 'var(--color-warning)', borderRadius: '8px', padding: isMobile ? '4px 6px' : '4px 10px', height: isMobile ? '30px' : '36px', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
                 <Clock size={12} />
-                <span>{t('Chờ duyệt trễ')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
+                <span>{isMobile ? 'Chờ duyệt' : t('Chờ duyệt trễ')} ({headerCheckIn.check_in_time.substring(0, 5)})</span>
               </div>
             )}
           </div>
         )}
 
         {/* Version Badge */}
-        <div style={{
-          padding: '4px 10px',
-          background: 'rgba(59, 130, 246, 0.08)',
-          color: '#3b82f6',
-          border: '1px solid rgba(59, 130, 246, 0.18)',
-          borderRadius: '20px',
-          fontSize: '0.75rem',
-          fontWeight: 700,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          marginRight: 4,
-          userSelect: 'none'
-        }}>
-          v{version || '1.5.3'}
-        </div>
+        {!isMobile && (
+          <div style={{
+            padding: '4px 10px',
+            background: 'rgba(59, 130, 246, 0.08)',
+            color: '#3b82f6',
+            border: '1px solid rgba(59, 130, 246, 0.18)',
+            borderRadius: '20px',
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            marginRight: 4,
+            userSelect: 'none'
+          }}>
+            v{version || '1.5.3'}
+          </div>
+        )}
 
 
         {/* Live Activity Feed Button */}

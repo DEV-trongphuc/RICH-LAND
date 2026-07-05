@@ -1708,13 +1708,23 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <Calendar />
           <span className="mobile-bottom-nav-item-label">{t('Lịch biểu')}</span>
         </button>
-        <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/reports-crm' ? 'active' : ''}`}
-          onClick={() => navigate('/reports-crm')}
-        >
-          <BarChart2 />
-          <span className="mobile-bottom-nav-item-label">{t('Báo cáo')}</span>
-        </button>
+        {user?.role === 'sale' ? (
+          <button 
+            className={`mobile-bottom-nav-item ${location.pathname === '/databank' ? 'active' : ''}`}
+            onClick={() => navigate('/databank')}
+          >
+            <Database />
+            <span className="mobile-bottom-nav-item-label">{t('Databank')}</span>
+          </button>
+        ) : (
+          <button 
+            className={`mobile-bottom-nav-item ${location.pathname === '/reports-crm' ? 'active' : ''}`}
+            onClick={() => navigate('/reports-crm')}
+          >
+            <BarChart2 />
+            <span className="mobile-bottom-nav-item-label">{t('Báo cáo')}</span>
+          </button>
+        )}
       </div>
 
       <AIChatbot />

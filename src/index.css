@@ -3732,15 +3732,24 @@ table td.wrap-cell, table th.wrap-cell {
   bottom: 0;
   left: 0;
   right: 0;
-  height: calc(64px + env(safe-area-inset-bottom, 0px));
-  background: var(--color-surface);
-  border-top: 0.5px solid var(--color-border);
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   justify-content: space-around;
   align-items: center;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   z-index: 10000 !important;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.04);
+  transition: background 0.3s, border-color 0.3s;
+}
+
+[data-theme="dark"] .mobile-bottom-nav {
+  background: rgba(18, 18, 18, 0.85);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .mobile-bottom-nav-item {
@@ -3752,32 +3761,64 @@ table td.wrap-cell, table th.wrap-cell {
   height: 100%;
   color: var(--color-text-muted);
   text-decoration: none;
-  gap: 4px;
+  gap: 3px;
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   outline: none;
+  position: relative;
 }
 
 .mobile-bottom-nav-item svg {
-  width: 22px;
-  height: 22px;
-  transition: transform 0.2s;
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.25s;
 }
 
 .mobile-bottom-nav-item:active svg {
-  transform: scale(0.9);
+  transform: scale(0.85);
 }
 
 .mobile-bottom-nav-item-label {
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: -0.0125em;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s;
+  opacity: 0.75;
 }
 
 .mobile-bottom-nav-item.active {
   color: var(--color-primary);
+}
+
+.mobile-bottom-nav-item.active svg {
+  transform: translateY(-4px) scale(1.1);
+  color: var(--color-primary);
+}
+
+.mobile-bottom-nav-item.active .mobile-bottom-nav-item-label {
+  transform: translateY(-1px);
+  opacity: 1;
+  font-weight: 800;
+}
+
+.mobile-bottom-nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  opacity: 0;
+  transform: scale(0);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.25s;
+}
+
+.mobile-bottom-nav-item.active::after {
+  opacity: 1;
+  transform: scale(1);
 }
 
 @media (min-width: 769px) {
