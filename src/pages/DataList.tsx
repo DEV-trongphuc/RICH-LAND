@@ -512,18 +512,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
 
   useEffect(() => {
     if (isActive) {
-      fetchLeads();
-    }
-  }, [searchParams, dateFilter, isActive]);
-
-  useEffect(() => {
-    if (isActive) {
       const saved = localStorage.getItem('richland_global_date') || getDefaultDateFilter();
       if (saved && saved !== dateFilter) {
         setDateFilter(saved);
+      } else {
+        fetchLeads();
       }
     }
-  }, [isActive]);
+  }, [searchParams, dateFilter, isActive]);
 
   useEffect(() => {
     if (!isActive) return;

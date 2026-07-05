@@ -2042,28 +2042,42 @@ switch ($action) {
         $stmtLeads->execute();
         $resLeads = $stmtLeads->get_result();
         $leads = [];
+        $personIds = [];
         while ($row = $resLeads->fetch_assoc()) {
-            $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
-            $takers = [];
-            if ($personId > 0) {
-                $tQuery = "SELECT c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
-                           FROM contacts c
-                           JOIN users u ON c.owner_id = u.id
-                           JOIN consultants cons ON u.email = cons.email
-                           WHERE c.person_id = ? AND c.deleted_at IS NULL";
-                $tStmt = $conn->prepare($tQuery);
-                $tStmt->bind_param("i", $personId);
-                $tStmt->execute();
-                $tRes = $tStmt->get_result();
-                while ($tRow = $tRes->fetch_assoc()) {
-                    $takers[] = $tRow;
-                }
-                $tStmt->close();
-            }
-            $row['takers'] = $takers;
+            $row['takers'] = [];
             $leads[] = $row;
+            $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
+            if ($personId > 0) {
+                $personIds[] = $personId;
+            }
         }
         $stmtLeads->close();
+
+        if (!empty($personIds)) {
+            $personIds = array_unique($personIds);
+            $inClause = implode(',', array_map('intval', $personIds));
+            $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+                       FROM contacts c
+                       JOIN users u ON c.owner_id = u.id
+                       JOIN consultants cons ON u.email = cons.email
+                       WHERE c.person_id IN ($inClause) AND c.deleted_at IS NULL";
+            $tRes = $conn->query($tQuery);
+            if ($tRes) {
+                $takersMap = [];
+                while ($tRow = $tRes->fetch_assoc()) {
+                    $pid = $tRow['person_id'];
+                    unset($tRow['person_id']);
+                    $takersMap[$pid][] = $tRow;
+                }
+                foreach ($leads as &$row) {
+                    $pid = isset($row['person_id']) ? (int)$row['person_id'] : 0;
+                    if (isset($takersMap[$pid])) {
+                        $row['takers'] = $takersMap[$pid];
+                    }
+                }
+                unset($row);
+            }
+        }
 
         // 2. Query rounds
         if ($isSale) {
@@ -2503,26 +2517,40 @@ switch ($action) {
             $limitStr
         ");
         $data = [];
+        $personIds = [];
         while ($row = $res->fetch_assoc()) {
-            $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
-            $takers = [];
-            if ($personId > 0) {
-                $tQuery = "SELECT c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
-                           FROM contacts c
-                           JOIN users u ON c.owner_id = u.id
-                           JOIN consultants cons ON u.email = cons.email
-                           WHERE c.person_id = ? AND c.deleted_at IS NULL";
-                $tStmt = $conn->prepare($tQuery);
-                $tStmt->bind_param("i", $personId);
-                $tStmt->execute();
-                $tRes = $tStmt->get_result();
-                while ($tRow = $tRes->fetch_assoc()) {
-                    $takers[] = $tRow;
-                }
-                $tStmt->close();
-            }
-            $row['takers'] = $takers;
+            $row['takers'] = [];
             $data[] = $row;
+            $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
+            if ($personId > 0) {
+                $personIds[] = $personId;
+            }
+        }
+
+        if (!empty($personIds)) {
+            $personIds = array_unique($personIds);
+            $inClause = implode(',', array_map('intval', $personIds));
+            $tQuery = "SELECT c.person_id, c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+                       FROM contacts c
+                       JOIN users u ON c.owner_id = u.id
+                       JOIN consultants cons ON u.email = cons.email
+                       WHERE c.person_id IN ($inClause) AND c.deleted_at IS NULL";
+            $tRes = $conn->query($tQuery);
+            if ($tRes) {
+                $takersMap = [];
+                while ($tRow = $tRes->fetch_assoc()) {
+                    $pid = $tRow['person_id'];
+                    unset($tRow['person_id']);
+                    $takersMap[$pid][] = $tRow;
+                }
+                foreach ($data as &$row) {
+                    $pid = isset($row['person_id']) ? (int)$row['person_id'] : 0;
+                    if (isset($takersMap[$pid])) {
+                        $row['takers'] = $takersMap[$pid];
+                    }
+                }
+                unset($row);
+            }
         }
         echo json_encode(['success' => true, 'data' => $data, 'total_count' => $totalCount, 'limit' => $responseLimit]);
         break;

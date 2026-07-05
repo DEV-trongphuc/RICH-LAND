@@ -3309,7 +3309,7 @@ function ensurePersonAndContact($conn, $leadId) {
                 WHERE id = ?
             ");
             foreach ($existingContacts as $c) {
-                $stmtUpContact->bind_param("sssssssssi", $firstName, $firstName, $lastName, $lastName, $email, $email, $phone, $phone, $note, $type, $c['id']);
+                $stmtUpContact->bind_param("ssssssssssi", $firstName, $firstName, $lastName, $lastName, $email, $email, $phone, $phone, $note, $type, $c['id']);
                 $stmtUpContact->execute();
             }
             $stmtUpContact->close();
