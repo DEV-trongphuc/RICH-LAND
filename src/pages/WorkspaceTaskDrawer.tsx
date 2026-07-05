@@ -1325,14 +1325,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   const val = Number(e.target.value);
                   setFormData((prev: any) => ({ ...prev, progress: val }));
                 }}
-                onMouseUp={(e) => {
-                  const val = Number((e.target as HTMLInputElement).value);
-                  handleUpdateField('progress', val);
-                }}
-                onTouchEnd={(e) => {
-                  const val = Number((e.target as HTMLInputElement).value);
-                  handleUpdateField('progress', val);
-                }}
                 style={{
                   width: '100%',
                   accentColor: 'var(--color-primary)',
