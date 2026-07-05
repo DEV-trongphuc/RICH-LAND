@@ -1253,7 +1253,7 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div style={{ padding: '1rem', background: 'transparent' }}>
+            <div style={{ padding: isMobile ? '0.5rem 0' : '1rem', background: 'transparent' }}>
               <div className="grid-cards-responsive">
                 {paged.map(c => {
                   const days = AGO_DAYS(c.last_contact);

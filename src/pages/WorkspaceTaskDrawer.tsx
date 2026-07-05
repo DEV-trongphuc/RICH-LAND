@@ -604,9 +604,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         background: 'var(--color-bg)',
         display: 'flex',
         flexDirection: 'column',
-        height: '100%',
         position: 'fixed',
         top: 0,
+        bottom: 0,
         right: 0,
         boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
         x: '100vw'
@@ -614,47 +614,56 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     >
         {/* Drawer Header */}
         <div style={{
-          padding: '1.25rem 1.5rem',
+          padding: isMobileOrTablet ? '0.5rem 0.75rem' : '1.25rem 1.5rem',
           borderBottom: '1px solid var(--color-border-light)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           background: 'var(--color-surface)',
-          zIndex: 10
+          zIndex: 100,
+          position: 'sticky',
+          top: 0,
+          flexShrink: 0
         }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: erpMeta.internal_type === 'announcement' ? 'rgba(163, 20, 34, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-              color: erpMeta.internal_type === 'announcement' ? 'var(--color-primary)' : 'var(--color-success)'
-            }}>
-              {erpMeta.internal_type === 'announcement' ? <AlertCircle size={20} /> : <CheckSquare2 size={20} />}
-            </div>
-            <div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {t("Chi tiết công việc cần làm")}
+          <div style={{ display: 'flex', gap: isMobileOrTablet ? '8px' : '12px', alignItems: 'center', minWidth: 0, flex: 1 }}>
+            {!isMobileOrTablet && (
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: erpMeta.internal_type === 'announcement' ? 'rgba(163, 20, 34, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                color: erpMeta.internal_type === 'announcement' ? 'var(--color-primary)' : 'var(--color-success)',
+                flexShrink: 0
+              }}>
+                {erpMeta.internal_type === 'announcement' ? <AlertCircle size={20} /> : <CheckSquare2 size={20} />}
+              </div>
+            )}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 style={{ fontSize: isMobileOrTablet ? '0.9rem' : '1.1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {t("Chi tiết công việc")}
                 <span className="badge" style={{
                   background: 'rgba(107, 114, 128, 0.1)',
                   color: 'var(--color-text-muted)',
-                  fontSize: '0.65rem',
+                  fontSize: '0.6rem',
                   fontWeight: 800,
-                  padding: '2px 8px',
+                  padding: '1px 6px',
                   borderRadius: '4px',
-                  textTransform: 'uppercase'
-                }}>ID: #{formData.id}</span>
+                  textTransform: 'uppercase',
+                  flexShrink: 0
+                }}>#{formData.id}</span>
               </h3>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                {t('Người tạo:')} <span style={{ fontWeight: 700 }}>{formData.created_by_name || t('Hệ thống / Admin')}</span>
-              </p>
+              {!isMobileOrTablet && (
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                  {t('Người tạo:')} <span style={{ fontWeight: 700 }}>{formData.created_by_name || t('Hệ thống / Admin')}</span>
+                </p>
+              )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
             <button
               onClick={handleManualSave}
               disabled={isSaving || !hasChanges}
@@ -662,12 +671,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 16px',
+                gap: '4px',
+                padding: isMobileOrTablet ? '4px 10px' : '6px 16px',
                 borderRadius: '8px',
-                fontSize: '0.78rem',
+                fontSize: '0.75rem',
                 fontWeight: 700,
-                height: '34px',
+                height: '30px',
                 background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                 borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                 color: hasChanges ? 'white' : '#9ca3af',
@@ -675,8 +684,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 transition: 'all 0.2s ease'
               }}
             >
-              {isSaving ? <RefreshCw className="spin" size={14} /> : <CheckSquare2 size={14} />}
-              <span>{t('Lưu thay đổi')}</span>
+              {isSaving ? <RefreshCw className="spin" size={12} /> : <CheckSquare2 size={12} />}
+              <span>{isMobileOrTablet ? t('Lưu') : t('Lưu thay đổi')}</span>
             </button>
 
             <button 

@@ -1500,7 +1500,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         })));
       }
 
-      if (tabToLoad === 'tasks') {
+      if (tabToLoad === 'tasks' || tabToLoad === 'timeline') {
         const [tasksRes, allTasksRes] = await Promise.all([
           api.get(`/activities?related_type=contact&related_id=${contact.id}`),
           api.get(`/activities?type=task&limit=200`)
@@ -2504,6 +2504,96 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   if (typeof document === 'undefined') return null;
 
+  const pipelineStepperBar = (
+    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden', width: '100%', flexShrink: 0 }}>
+      {!isMobileOrTablet && (
+        <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
+          <ChevronLeft size={14} />
+        </button>
+      )}
+
+      <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: isMobileOrTablet ? '0.625rem 1rem' : '0.625rem 3rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
+        <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
+        {(() => {
+          const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
+          const safeIndex = currentIdx === -1 ? 0 : currentIdx;
+
+          return pipelineStages.map((st, i) => {
+            const isActive = i <= safeIndex;
+            const isCurrent = i === safeIndex;
+            const stColor = overridePurpleColor(st.color);
+            return (
+              <div
+                key={st.id}
+                onClick={() => {
+                  if (isCurrent) return;
+
+                  // Guard: Only owner or admin can change pipeline status
+                  const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
+                  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+                  if (currentUser?.role === 'sale' && !isOwner && !isAdmin) {
+                    addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
+                    return;
+                  }
+                  
+                  // Check interaction guardrail: if transitioning to 'churned' or 'dong_deal' (Đã rời bỏ/Đóng), must have at least 1 activity
+                  if ((st.id === 'churned' || st.id === 'dong_deal') && drawerActivities.length === 0) {
+                    addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
+                    return;
+                  }
+
+                  // Check TTL1 constraint: moving to status index >= 2 (e.g. 'dong_y_gap' / 'Đồng Ý Gặp' or later)
+                  const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(st.id));
+                  if (targetIdx >= 2) {
+                    const count = Object.values(ttl1Data).filter(Boolean).length;
+                    if (count < 4) {
+                      addToast('Chặn chuyển giai đoạn: Yêu cầu hoàn thành tối thiểu 4/5 nhóm thông tin trong Form TTL1!', 'error');
+                      return;
+                    }
+                  }
+                  
+                  setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
+                }}
+                style={{
+                  flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : 'pointer',
+                  display: 'flex', alignItems: 'center', transition: 'all 0.3s'
+                }}
+              >
+                <div style={{
+                  position: 'absolute', left: 0, right: 0, height: '4px',
+                  background: isActive ? stColor : 'var(--color-border-light)',
+                  borderRadius: '2px',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }} />
+
+                <div style={{
+                  position: 'relative', zIndex: 2, flex: 1,
+                  background: isCurrent ? 'var(--color-primary)' : 'var(--color-surface)',
+                  color: isCurrent ? '#fff' : 'var(--color-text-muted)',
+                  border: isCurrent ? '2px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                  padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  whiteSpace: 'nowrap',
+                  boxShadow: isCurrent ? '0 4px 12px rgba(189, 29, 45, 0.2)' : 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}>
+                  {isCurrent && <UserCheck size={12} />}
+                  {st.name}
+                </div>
+              </div>
+            );
+          });
+        })()}
+      </div>
+
+      {!isMobileOrTablet && (
+        <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
+          <ChevronRight size={14} />
+        </button>
+      )}
+    </div>
+  );
+
   return createPortal(
     <>
       <AnimatePresence>
@@ -2698,316 +2788,395 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </AnimatePresence>
 
               {/* ── Header ── */}
-              <div className={styles.profileHeader}>
-                {/* Absolute Close Button */}
-                <button className={styles.closeBtnAbsolute} onClick={handleClose} aria-label="Close drawer">
-                  <X size={20} />
-                </button>
-
-              {/* Not Lead Proposal Banner */}
-              {formData.not_lead_proposed === 1 && (
+              {isMobileOrTablet ? (
+                /* ── Compact Sticky Header for Mobile ── */
                 <div style={{
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  borderBottom: '1px solid rgba(239, 68, 68, 0.2)',
-                  padding: '10px 1.5rem',
+                  position: 'sticky',
+                  top: 0,
+                  zIndex: 150,
                   display: 'flex',
-                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: '12px',
+                  justifyContent: 'space-between',
+                  padding: '0.5rem 1rem',
+                  background: 'var(--color-surface)',
+                  borderBottom: '1px solid var(--color-border-light)',
+                  height: '52px',
+                  boxSizing: 'border-box',
                   width: '100%',
-                  boxSizing: 'border-box'
+                  flexShrink: 0
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-danger)', fontSize: '0.8rem', fontWeight: 600 }}>
-                    <ShieldAlert size={16} />
-                    <span>Khách hàng này được đề xuất loại khỏi phễu (Not Lead) và đang chờ phê duyệt.</span>
-                  </div>
-                  {((currentUser?.role as string) === 'admin' || (currentUser?.role as string) === 'superadmin' || (currentUser?.role as string) === 'ads' || (currentUser?.role as string) === 'content') && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        type="button"
-                        className="btn success sm"
-                        style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px', color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        onClick={async () => {
-                          try {
-                            const res = await api.put(`/contacts/${contact.id}`, { pipeline_status: 'not_lead' });
-                            if (res.data.success) {
-                              setFormData((prev: any) => ({ ...prev, pipeline_status: 'not_lead', not_lead_proposed: 0 }));
-                              addToast('Đã phê duyệt Not Lead thành công!', 'success');
-                              onUpdate?.({ ...formData, pipeline_status: 'not_lead', not_lead_proposed: 0 });
-                            }
-                          } catch (err: any) {
-                            addToast(err.response?.data?.message || 'Lỗi khi phê duyệt', 'error');
-                          }
-                        }}
-                      >
-                        <Check size={12} /> Duyệt
-                      </button>
-                      <button
-                        type="button"
-                        className="btn outline sm"
-                        style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px' }}
-                        onClick={async () => {
-                          try {
-                            const res = await api.put(`/contacts/${contact.id}`, { not_lead_proposed: 0 });
-                            if (res.data.success) {
-                              setFormData((prev: any) => ({ ...prev, not_lead_proposed: 0 }));
-                              addToast('Đã từ chối đề xuất Not Lead!', 'success');
-                              onUpdate?.({ ...formData, not_lead_proposed: 0 });
-                            }
-                          } catch (err: any) {
-                            addToast(err.response?.data?.message || 'Lỗi khi từ chối', 'error');
-                          }
-                        }}
-                      >
-                        Từ chối
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-                <div className={styles.profileHeaderContent}>
-                  {/* Avatar Section */}
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                  <button 
+                    onClick={handleClose} 
+                    style={{ background: 'transparent', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+                  >
+                    <X size={20} />
+                  </button>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0.5rem', overflow: 'hidden' }}>
                     <div
-                      className="avatar-placeholder lg"
                       style={{
                         background: formData.avatar_url 
                           ? `url(${formData.avatar_url}) center/cover` 
                           : `linear-gradient(135deg, ${formData.stage_color || 'var(--color-primary)'} 0%, ${formData.stage_color ? formData.stage_color + 'cc' : '#8a0f1b'} 100%)`,
-                        fontSize: '1.25rem', width: 56, height: 56, borderRadius: '50%',
-                        boxShadow: '0 4px 12px rgba(189, 29, 45, 0.12)',
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        position: 'relative'
-                      }}
-                      onClick={() => {
-                        setTempAvatar(formData.avatar_url || '');
-                        setShowAvatarModal(true);
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '0.65rem',
+                        fontWeight: 800,
+                        flexShrink: 0,
+                        boxShadow: 'var(--shadow-sm)'
                       }}
                     >
                       {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
-                      <div
-                        style={{
-                          position: 'absolute',
-                          inset: 0,
-                          background: 'rgba(0,0,0,0.3)',
-                          opacity: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'opacity 0.2s',
-                          borderRadius: '50%'
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '0'}
-                      >
-                        <Pencil size={16} color="white" />
-                      </div>
                     </div>
-                    <div style={{ position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
-                      <UserCheck size={11} className="text-success" />
-                    </div>
+                    <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {fullName}
+                    </h3>
                   </div>
-
-                  {/* Info Section */}
-                  <div className={styles.profileInfoSection}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                      <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {fullName}
-                        <button
-                          className="btn-icon xs"
-                          style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}
-                          onClick={() => copyToClipboard(fullName, 'name')}
-                          title="Sao chép tên"
-                        >
-                          {copiedField === 'name' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-                        </button>
-                      </h2>
-                      <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 8px', fontSize: '0.6875rem', borderRadius: '6px' }}>
-                        {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '6px', flexWrap: 'wrap' }}>
-                      <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
-                        <Clock size={12} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.created_at)}</strong></span>
-                      </p>
-                      <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
-                        <span style={{ color: 'var(--color-text-muted)' }}>|</span>
-                        <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.updated_at || formData.created_at)}</strong></span>
-                      </p>
-                    </div>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => formData.phone && showCall(formData.phone)}>
-                          <Phone size={12} style={{ color: 'var(--color-primary)' }} />
-                        </div>
-                        <PhoneLink phone={formData.phone} style={{ fontSize: '0.8125rem' }} />
-                        {formData.phone && (
-                          <button
-                            className="btn-icon xs"
-                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
-                            onClick={() => copyToClipboard(formData.phone, 'phone')}
-                            title="Sao chép số điện thoại"
-                          >
-                            {copiedField === 'phone' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-                          </button>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Mail size={12} className="text-muted" />
-                        </div>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
-                        {formData.email && (
-                          <button
-                            className="btn-icon xs"
-                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
-                            onClick={() => copyToClipboard(formData.email, 'email')}
-                            title="Sao chép email"
-                          >
-                            {copiedField === 'email' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-                          </button>
-                        )}
-                      </div>
-                      <div
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
-                        onClick={(e) => showUserCard(e, formData.owner_name)}
-                      >
-                        <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800 }}>
-                          {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
-                        </div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions Section */}
-                  <div className={styles.profileActionsSection}>
-                     {/* Lead Score inline card */}
-                     <div 
-                       onClick={() => setActiveTab('scoring')}
-                       style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                       title="Xem chi tiết Scoring"
-                     >
-                       <LeadScoreRing score={score} size={44} showLabel={true} />
-                     </div>
-
-                    <button
-                      disabled={!hasChanges || isSubmitting}
-                      onClick={handleSave}
-                      className="btn hover-lift"
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '6px', 
-                        padding: '6px 14px', 
-                        borderRadius: '10px', 
-                        height: '36px', 
-                        fontSize: '0.8125rem',
-                        background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                        borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                        color: hasChanges ? 'white' : '#9ca3af',
-                        cursor: hasChanges ? 'pointer' : 'not-allowed',
-                        transition: 'all 0.2s ease'
-                      }}
-                    >
-                      <CheckSquare size={14} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
-                    </button>
-                  </div>
+                  <button
+                    disabled={!hasChanges || isSubmitting}
+                    onClick={handleSave}
+                    className="btn success sm"
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      height: '28px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                      borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                      color: hasChanges ? 'white' : '#9ca3af',
+                      cursor: hasChanges ? 'pointer' : 'not-allowed'
+                    }}
+                  >
+                    <CheckSquare size={12} />
+                    <span>Lưu</span>
+                  </button>
                 </div>
-              </div>
+              ) : (
+                /* ── Desktop Profile Header ── */
+                <div className={styles.profileHeader}>
+                  {/* Absolute Close Button */}
+                  <button className={styles.closeBtnAbsolute} onClick={handleClose} aria-label="Close drawer">
+                    <X size={20} />
+                  </button>
 
-              {/* ── Pipeline Stepper Bar ── */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
-                <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
-                  <ChevronLeft size={14} />
-                </button>
-
-                <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: '0.625rem 3rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
-                  <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
-                  {(() => {
-                    const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.pipeline_status || 'chua_xac_dinh'));
-                    const safeIndex = currentIdx === -1 ? 0 : currentIdx;
-
-                    return pipelineStages.map((st, i) => {
-                      const isActive = i <= safeIndex;
-                      const isCurrent = i === safeIndex;
-                      const stColor = overridePurpleColor(st.color);
-                      return (
-                        <div
-                          key={st.id}
-                          onClick={() => {
-                            if (isCurrent) return;
-
-                            // Guard: Only owner or admin can change pipeline status
-                            const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
-                            const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
-                            if (currentUser?.role === 'sale' && !isOwner && !isAdmin) {
-                              addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
-                              return;
-                            }
-                            
-                            // Check interaction guardrail: if transitioning to 'churned' or 'dong_deal' (Đã rời bỏ/Đóng), must have at least 1 activity
-                            if ((st.id === 'churned' || st.id === 'dong_deal') && drawerActivities.length === 0) {
-                              addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
-                              return;
-                            }
-
-                            // Check TTL1 constraint: moving to status index >= 2 (e.g. 'dong_y_gap' / 'Đồng Ý Gặp' or later)
-                            const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(st.id));
-                            if (targetIdx >= 2) {
-                              const count = Object.values(ttl1Data).filter(Boolean).length;
-                              if (count < 4) {
-                                addToast('Chặn chuyển giai đoạn: Yêu cầu hoàn thành tối thiểu 4/5 nhóm thông tin trong Form TTL1!', 'error');
-                                return;
+                  {/* Not Lead Proposal Banner */}
+                  {formData.not_lead_proposed === 1 && (
+                    <div style={{
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      borderBottom: '1px solid rgba(239, 68, 68, 0.2)',
+                      padding: '10px 1.5rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      width: '100%',
+                      boxSizing: 'border-box'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-danger)', fontSize: '0.8rem', fontWeight: 600 }}>
+                        <ShieldAlert size={16} />
+                        <span>Khách hàng này được đề xuất loại khỏi phễu (Not Lead) và đang chờ phê duyệt.</span>
+                      </div>
+                      {((currentUser?.role as string) === 'admin' || (currentUser?.role as string) === 'superadmin' || (currentUser?.role as string) === 'ads' || (currentUser?.role as string) === 'content') && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            type="button"
+                            className="btn success sm"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px', color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            onClick={async () => {
+                              try {
+                                const res = await api.put(`/contacts/${contact.id}`, { pipeline_status: 'not_lead' });
+                                if (res.data.success) {
+                                  setFormData((prev: any) => ({ ...prev, pipeline_status: 'not_lead', not_lead_proposed: 0 }));
+                                  addToast('Đã phê duyệt Not Lead thành công!', 'success');
+                                  onUpdate?.({ ...formData, pipeline_status: 'not_lead', not_lead_proposed: 0 });
+                                }
+                              } catch (err: any) {
+                                addToast(err.response?.data?.message || 'Lỗi khi phê duyệt', 'error');
                               }
-                            }
-                            
-                            setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
-                          }}
-                          style={{
-                            flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '32px', cursor: isCurrent ? 'default' : 'pointer',
-                            display: 'flex', alignItems: 'center', transition: 'all 0.3s'
-                          }}
-                        >
-                          {/* Connection Line */}
-                          {i < pipelineStages.length - 1 && (
-                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '2px', background: 'var(--color-border-light)', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
-                          )}
-
-                          <div style={{
-                            position: 'relative', zIndex: 2, flex: 1,
-                            background: isCurrent ? 'var(--color-primary)' : 'var(--color-surface)',
-                            color: isCurrent ? '#fff' : 'var(--color-text-muted)',
-                            border: isCurrent ? '2px solid var(--color-primary)' : '1px solid var(--color-border-light)',
-                            padding: '4px 10px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                            whiteSpace: 'nowrap',
-                            boxShadow: isCurrent ? '0 4px 12px rgba(189, 29, 45, 0.2)' : 'none',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                          }}>
-                            {isCurrent && <UserCheck size={12} />}
-                            {st.name}
-                          </div>
+                            }}
+                          >
+                            <Check size={12} /> Duyệt
+                          </button>
+                          <button
+                            type="button"
+                            className="btn outline sm"
+                            style={{ padding: '4px 10px', fontSize: '0.75rem', height: '28px' }}
+                            onClick={async () => {
+                              try {
+                                const res = await api.put(`/contacts/${contact.id}`, { not_lead_proposed: 0 });
+                                if (res.data.success) {
+                                  setFormData((prev: any) => ({ ...prev, not_lead_proposed: 0 }));
+                                  addToast('Đã từ chối đề xuất Not Lead!', 'success');
+                                  onUpdate?.({ ...formData, not_lead_proposed: 0 });
+                                }
+                              } catch (err: any) {
+                                addToast(err.response?.data?.message || 'Lỗi khi từ chối', 'error');
+                              }
+                            }}
+                          >
+                            Từ chối
+                          </button>
                         </div>
-                      );
-                    });
-                  })()}
-                </div>
+                      )}
+                    </div>
+                  )}
 
-                <button className="btn outline sm" style={{ padding: '4px', height: 26, width: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '0.75rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
+                  <div className={styles.profileHeaderContent}>
+                    {/* Avatar Section */}
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div
+                        className="avatar-placeholder lg"
+                        style={{
+                          background: formData.avatar_url 
+                            ? `url(${formData.avatar_url}) center/cover` 
+                            : `linear-gradient(135deg, ${formData.stage_color || 'var(--color-primary)'} 0%, ${formData.stage_color ? formData.stage_color + 'cc' : '#8a0f1b'} 100%)`,
+                          fontSize: '1.25rem', width: 56, height: 56, borderRadius: '50%',
+                          boxShadow: '0 4px 12px rgba(189, 29, 45, 0.12)',
+                          overflow: 'hidden',
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onClick={() => {
+                          setTempAvatar(formData.avatar_url || '');
+                          setShowAvatarModal(true);
+                        }}
+                      >
+                        {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: 'rgba(0,0,0,0.3)',
+                            opacity: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'opacity 0.2s',
+                            borderRadius: '50%'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={e => e.currentTarget.style.opacity = '0'}
+                        >
+                          <Pencil size={16} color="white" />
+                        </div>
+                      </div>
+                      <div style={{ position: 'absolute', bottom: -2, right: -2, width: 22, height: 22, borderRadius: '50%', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
+                        <UserCheck size={11} className="text-success" />
+                      </div>
+                    </div>
+
+                    {/* Info Section */}
+                    <div className={styles.profileInfoSection}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '2px', flexWrap: 'wrap' }}>
+                        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', wordBreak: 'break-word', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {fullName}
+                          <button
+                            className="btn-icon xs"
+                            style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}
+                            onClick={() => copyToClipboard(fullName, 'name')}
+                            title="Sao chép tên"
+                          >
+                            {copiedField === 'name' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                          </button>
+                        </h2>
+                        <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 8px', fontSize: '0.6875rem', borderRadius: '6px' }}>
+                          {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '6px', flexWrap: 'wrap' }}>
+                        <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
+                          <Clock size={12} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.created_at)}</strong></span>
+                        </p>
+                        <p style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--color-text-muted)' }}>|</span>
+                          <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{formatDateTime(formData.updated_at || formData.created_at)}</strong></span>
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => formData.phone && showCall(formData.phone)}>
+                            <Phone size={12} style={{ color: 'var(--color-primary)' }} />
+                          </div>
+                          <PhoneLink phone={formData.phone} style={{ fontSize: '0.8125rem' }} />
+                          {formData.phone && (
+                            <button
+                              className="btn-icon xs"
+                              style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
+                              onClick={() => copyToClipboard(formData.phone, 'phone')}
+                              title="Sao chép số điện thoại"
+                            >
+                              {copiedField === 'phone' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Mail size={12} className="text-muted" />
+                          </div>
+                          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
+                          {formData.email && (
+                            <button
+                              className="btn-icon xs"
+                              style={{ color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: '-2px' }}
+                              onClick={() => copyToClipboard(formData.email, 'email')}
+                              title="Sao chép email"
+                            >
+                              {copiedField === 'email' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                            </button>
+                          )}
+                        </div>
+                        <div
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
+                          onClick={(e) => showUserCard(e, formData.owner_name)}
+                        >
+                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800 }}>
+                            {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions Section */}
+                    <div className={styles.profileActionsSection}>
+                      {/* Lead Score inline card */}
+                      <div 
+                        onClick={() => setActiveTab('scoring')}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Xem chi tiết Scoring"
+                      >
+                        <LeadScoreRing score={score} size={44} showLabel={true} />
+                      </div>
+
+                      <button
+                        disabled={!hasChanges || isSubmitting}
+                        onClick={handleSave}
+                        className="btn hover-lift"
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '6px', 
+                          padding: '6px 14px', 
+                          borderRadius: '10px', 
+                          height: '36px', 
+                          fontSize: '0.8125rem',
+                          background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                          borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
+                          color: hasChanges ? 'white' : '#9ca3af',
+                          cursor: hasChanges ? 'pointer' : 'not-allowed',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <CheckSquare size={14} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Pipeline Stepper Bar (Desktop Only) ── */}
+              {!isMobileOrTablet && pipelineStepperBar}
 
               {/* ── Layout Split: Left Sidebar Tabs & Content ── */}
               <div className={styles.drawerBody}>
+                {isMobileOrTablet && (
+                  <>
+                    {/* Mobile Profile Info Card */}
+                    <div style={{
+                      background: 'linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg-dark) 100%)',
+                      padding: '1.25rem 1rem',
+                      borderBottom: '1px solid var(--color-border-light)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px',
+                      flexShrink: 0
+                    }}>
+                      {/* Row 1: Avatar, Name, Status Badge, Scoring */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div
+                          style={{
+                            background: formData.avatar_url 
+                              ? `url(${formData.avatar_url}) center/cover` 
+                              : `linear-gradient(135deg, ${formData.stage_color || 'var(--color-primary)'} 0%, ${formData.stage_color ? formData.stage_color + 'cc' : '#8a0f1b'} 100%)`,
+                            fontSize: '1.15rem', width: 48, height: 48, borderRadius: '50%',
+                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: 'var(--shadow-md)', flexShrink: 0
+                          }}
+                        >
+                          {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>
+                              {formData.status === 'customer' ? 'VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
+                            </span>
+                            {formData.not_lead_proposed === 1 && (
+                              <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Mã: #{contact?.id || formData.id}</span>
+                          </div>
+                        </div>
+
+                        <div 
+                          onClick={() => setActiveTab('scoring')}
+                          style={{ cursor: 'pointer', flexShrink: 0 }}
+                        >
+                          <LeadScoreRing score={score} size={40} showLabel={true} />
+                        </div>
+                      </div>
+
+                      {/* Row 2: Contact Info Links (Phone, Email) */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '6px 10px', borderRadius: '8px' }}>
+                          <Phone size={12} className="text-primary" style={{ flexShrink: 0 }} />
+                          <PhoneLink phone={formData.phone} style={{ fontSize: '0.75rem', fontWeight: 700 }} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '6px 10px', borderRadius: '8px', overflow: 'hidden' }}>
+                          <Mail size={12} className="text-muted" style={{ flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formData.email}>
+                            {formData.email || 'contact@email.com'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Row 3: Owner, Sync state */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                        <div 
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '6px', cursor: 'pointer' }}
+                          onClick={(e) => showUserCard(e, formData.owner_name)}
+                        >
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 800 }}>
+                            {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
+                        </div>
+
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                          <span>Tạo: {new Date(formData.created_at).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pipeline Stepper Bar (Mobile) */}
+                    {pipelineStepperBar}
+                  </>
+                )}
 
                 {/* Sidebar Tabs */}
-                <div className={styles.sidebarTabs} style={{ gap: '0.25rem', overflowY: 'auto' }}>
+                <div className={styles.sidebarTabs} style={isMobileOrTablet ? { gap: '0.25rem' } : { gap: '0.25rem', overflowY: 'auto' }}>
                   {(() => {
                     const tabGroups = [
                       {
@@ -3136,25 +3305,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {activeTab === 'info' && (
                     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                       {/* Quick Stats Dashboard */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem' }}>
-                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
-                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>DỰ KIẾN DOANH THU</span>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#10b981', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>{FMT(formData.expected_revenue || 0)}</span>
-                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}><span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{formData.win_probability || 0}%</span> xác suất</span>
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobileOrTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: '0.6rem' }}>
+                        <div className="card-panel" style={{ padding: isMobileOrTablet ? '0.5rem 0.6rem' : '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>DỰ KIẾN DOANH THU</span>
+                          <span style={{ fontSize: isMobileOrTablet ? '1rem' : '1.15rem', fontWeight: 800, color: '#10b981', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.expected_revenue || 0)}</span>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}><span style={{ color: 'var(--color-success)', fontWeight: 600 }}>{formData.win_probability || 0}%</span> xác suất</span>
                         </div>
-                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
-                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>DOANH THU THỰC TẾ</span>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-success)', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>{FMT(formData.actual_revenue || 0)}</span>
-                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>{formData.paid_invoice_count || 0} hóa đơn</span>
+                        <div className="card-panel" style={{ padding: isMobileOrTablet ? '0.5rem 0.6rem' : '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>DOANH THU THỰC TẾ</span>
+                          <span style={{ fontSize: isMobileOrTablet ? '1rem' : '1.15rem', fontWeight: 800, color: 'var(--color-success)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.actual_revenue || 0)}</span>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formData.paid_invoice_count || 0} hóa đơn</span>
                         </div>
-                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
-                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>CHI TIÊU</span>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>{FMT(formData.total_spent || 0)}</span>
-                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>{formData.expense_count || 0} khoản chi</span>
+                        <div className="card-panel" style={{ padding: isMobileOrTablet ? '0.5rem 0.6rem' : '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>CHI TIÊU</span>
+                          <span style={{ fontSize: isMobileOrTablet ? '1rem' : '1.15rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formData.expense_count || 0} khoản chi</span>
                         </div>
-                        <div className="card-panel" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px' }}>
-                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>LẦN LIÊN HỆ CUỐI</span>
-                          <span style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.15rem', whiteSpace: 'nowrap' }}>
+                        <div className="card-panel" style={{ padding: isMobileOrTablet ? '0.5rem 0.6rem' : '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', borderRadius: '10px', overflow: 'hidden' }}>
+                          <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>LẦN LIÊN HỆ CUỐI</span>
+                          <span style={{ fontSize: isMobileOrTablet ? '1rem' : '1.15rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {formData.last_contact ? new Date(formData.last_contact).toLocaleDateString('vi-VN') : 'Chưa có'}
                           </span>
                           <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

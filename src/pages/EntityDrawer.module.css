@@ -139,6 +139,8 @@
   }
   .drawerBody {
     flex-direction: column;
+    overflow-y: auto !important;
+    flex: 1;
   }
   .sidebarTabs {
     width: 100%;
@@ -171,6 +173,9 @@
   }
   .contentArea {
     padding: 1rem;
+    overflow-y: visible !important;
+    height: auto !important;
+    flex: none !important;
   }
 }
 
@@ -347,19 +352,23 @@
   }
   .sidebarTabs {
     display: flex !important;
-    gap: 6px !important;
-    padding: 6px !important;
-    background: var(--color-bg-dark) !important;
-    border-radius: 14px !important;
-    margin: 0.5rem 1rem 1rem !important;
-    border: 1px solid var(--color-border-light) !important;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04) !important;
+    gap: 4px !important;
+    padding: 6px 12px !important;
+    background: var(--color-surface) !important;
+    border-bottom: 1px solid var(--color-border-light) !important;
     overflow-x: auto !important;
     white-space: nowrap !important;
-    width: auto !important;
+    width: 100% !important;
     flex-direction: row !important;
     scrollbar-width: none !important;
     height: auto !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    flex-shrink: 0 !important;
   }
   .sidebarTabs::-webkit-scrollbar {
     display: none !important;

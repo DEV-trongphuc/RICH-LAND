@@ -205,7 +205,17 @@
   .page-header {
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 1rem !important;
+    gap: 0.5rem !important;
+    margin-bottom: 1rem !important;
+  }
+  .page-title {
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.01em !important;
+  }
+  .page-subtitle {
+    font-size: 0.75rem !important;
+    margin-top: 1px !important;
   }
 
   .mobile-stack {

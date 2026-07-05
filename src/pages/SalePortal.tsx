@@ -2499,7 +2499,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   });
 
   const uncontactedCount = useMemo(() => {
-    return (data.leads || []).filter((l: any) => !l.contact_last_contact && l.status !== 'reminder').length;
+    return (data.leads || []).filter((l: any) => 
+      Number(l.is_accepted) === 1 && 
+      l.contact_id && 
+      !l.contact_last_contact && 
+      l.status !== 'reminder'
+    ).length;
   }, [data.leads]);
 
   useEffect(() => {
