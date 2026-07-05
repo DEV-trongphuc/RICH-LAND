@@ -8920,6 +8920,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         contact={profileContact}
         initialTab={profileDrawerTab}
         onUpdate={updated => {
+          if (updated === null) {
+            setProfileContact(null);
+            setData((prev: any) => {
+              if (!prev) return prev;
+              const next = { ...prev };
+              if (next.contacts) {
+                next.contacts = next.contacts.filter((c: any) => c.id !== profileContact?.id);
+              }
+              return next;
+            });
+            loadPortalData();
+            fetchWorkspaceTasks();
+            return;
+          }
           setProfileContact(updated);
           loadPortalData();
           fetchWorkspaceTasks();

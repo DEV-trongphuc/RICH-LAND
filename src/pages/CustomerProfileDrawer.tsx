@@ -2425,6 +2425,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           const res = await api.post(`/contacts/${contact.id}/release-databank`);
           if (res.data.success || res.data) {
             addToast(res.data.message || 'Thao tác thành công', 'success');
+            onUpdate?.(null);
             onClose();
           }
         } catch (e: any) {

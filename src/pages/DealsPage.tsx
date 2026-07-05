@@ -331,6 +331,7 @@ export const DealsPage: React.FC = () => {
 
   // Update a single item in the local items state without a full refetch
   const updateItemLocally = (updated: any) => {
+    if (!updated) return;
     setItems(prev => {
       const next: Record<number, any[]> = {};
       Object.keys(prev).forEach(sid => {

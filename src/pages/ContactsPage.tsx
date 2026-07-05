@@ -1230,6 +1230,12 @@ export const ContactsPage: React.FC = () => {
         onClose={() => setProfileContact(null)}
         contact={profileContact}
         onUpdate={updated => {
+          if (updated === null) {
+            setContacts(p => p.filter(c => c.id !== profileContact?.id));
+            setProfileContact(null);
+            fetchData();
+            return;
+          }
           setContacts(p=>p.map(c=>c.id===updated?.id?{...c,...updated,score:calcScore(updated)}:c));
           setProfileContact(prev => prev && prev.id === updated?.id ? { ...prev, ...updated } : prev);
         }}
