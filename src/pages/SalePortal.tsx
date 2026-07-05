@@ -3924,25 +3924,118 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               </div>
                             )}
 
-                            {/* Footer info (Due Date & Progress) */}
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem', paddingTop: '0.375rem', borderTop: '1px solid var(--color-border-light)' }}>
-                              <span style={{ 
-                                fontSize: '0.7rem', 
-                                color: isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '3px',
-                                fontWeight: isOverdue && task.status !== 'done' ? 600 : 'normal'
-                              }}>
-                                <Clock size={10} />
-                                {getDueDateLabel(task.due_date, task.status === 'done', t)}
-                              </span>
-                              
-                              {colId === 'in_progress' && (
-                                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)' }}>
-                                  {progressVal}%
+                            {/* Progress Bar indicator */}
+                            <div style={{ marginTop: '0.375rem', paddingTop: '4px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)' }}>{progressVal}%</span>
+                              </div>
+                              <div style={{ width: '100%', height: '6px', background: '#f3f4f6', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${progressVal}%`, height: '100%', background: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)', transition: 'width 0.3s' }} />
+                              </div>
+                            </div>
+
+                            {/* Footer info (Due Date & Progress & Avatars) */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '0.5rem', paddingTop: '0.375rem', borderTop: '1px solid var(--color-border-light)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ 
+                                  fontSize: '0.7rem', 
+                                  color: isOverdue && task.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '3px',
+                                  fontWeight: isOverdue && task.status !== 'done' ? 600 : 'normal'
+                                }}>
+                                  <Clock size={10} />
+                                  {getDueDateLabel(task.due_date, task.status === 'done', t)}
                                 </span>
-                              )}
+                                
+                                {colId === 'in_progress' && (
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: 'var(--color-warning)' }}>
+                                    {progressVal}%
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Assignee & Participants Avatars */}
+                              {(() => {
+                                const assigneeUser = users.find((u: any) => String(u.id) === String(task.user_id));
+                                const approverUser = task.approver_id ? users.find((u: any) => String(u.id) === String(task.approver_id)) : null;
+                                const participantIds = task.participant_ids ? task.participant_ids.split(',').filter(Boolean) : [];
+                                const participantUsers = participantIds.map((id: string) => users.find((u: any) => String(u.id) === String(id))).filter(Boolean);
+
+                                if (!assigneeUser && !approverUser && participantUsers.length === 0) return null;
+
+                                return (
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }} onClick={(e) => {
+                                    if (participantUsers.length > 0) {
+                                      e.stopPropagation();
+                                      setSelectedTaskParticipants(participantUsers);
+                                      setParticipantsModalOpen(true);
+                                    }
+                                  }}>
+                                    {/* Assignee Avatar */}
+                                    {assigneeUser && (
+                                      <div title={`Chịu trách nhiệm: ${assigneeUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
+                                        <Avatar src={assigneeUser.avatar_url || assigneeUser.avatar} name={assigneeUser.full_name} size={22} />
+                                        <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-primary)', borderRadius: '50%', width: 8, height: 8, border: '1.5px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                                      </div>
+                                    )}
+
+                                    {/* Approver Avatar */}
+                                    {approverUser && (
+                                      <div title={`Người duyệt: ${approverUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
+                                        <Avatar src={approverUser.avatar_url || approverUser.avatar} name={approverUser.full_name} size={22} />
+                                        <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-warning)', borderRadius: '50%', width: 8, height: 8, border: '1.5px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                                      </div>
+                                    )}
+
+                                    {/* Overlapping Participant Avatars */}
+                                    {participantUsers.length > 0 && (
+                                      <div style={{ display: 'flex', alignItems: 'center', marginLeft: '2px', position: 'relative' }}>
+                                        {participantUsers.slice(0, 3).map((pUser: any, pIdx: number) => (
+                                          <div
+                                            key={pUser.id}
+                                            title={`Người liên quan: ${pUser.full_name}`}
+                                            style={{
+                                              marginLeft: pIdx > 0 ? '-6px' : '0px',
+                                              border: '1.5px solid white',
+                                              borderRadius: '50%',
+                                              overflow: 'hidden',
+                                              zIndex: 10 - pIdx,
+                                              display: 'flex'
+                                            }}
+                                          >
+                                            <Avatar src={pUser.avatar_url || pUser.avatar} name={pUser.full_name} size={20} />
+                                          </div>
+                                        ))}
+                                        {participantUsers.length > 3 && (
+                                          <div
+                                            style={{
+                                              marginLeft: '-6px',
+                                              width: '20px',
+                                              height: '20px',
+                                              borderRadius: '50%',
+                                              background: 'var(--color-border)',
+                                              color: 'var(--color-text-muted)',
+                                              fontSize: '0.6rem',
+                                              fontWeight: 800,
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              border: '1.5px solid white',
+                                              zIndex: 5,
+                                              cursor: 'pointer'
+                                            }}
+                                          >
+                                            +{participantUsers.length - 3}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         );
