@@ -426,7 +426,7 @@
 .responsive-sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(4px);
   z-index: 990 !important;
   /* Stand behind mobile sidebar drawer (1000) but in front of sticky page elements */
@@ -1265,7 +1265,7 @@ select:focus {
 .overlay-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(4px);
   z-index: 11000;
   display: flex;
@@ -3681,7 +3681,7 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(4px);
   z-index: 10500 !important;
 }
