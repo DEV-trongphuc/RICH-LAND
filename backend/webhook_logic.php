@@ -3285,21 +3285,56 @@ function ensurePersonAndContact($conn, $leadId) {
             $ownerUserId = $assigned_to; // fallback
         }
 
-        $stmtContact = $conn->prepare("
-            INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?)
-            ON DUPLICATE KEY UPDATE 
-                owner_id = VALUES(owner_id),
-                status = 'lead',
-                security_expires_at = IF(owner_id != VALUES(owner_id), ?, security_expires_at),
-                notes = IF(VALUES(notes) IS NOT NULL AND VALUES(notes) != '', VALUES(notes), notes),
-                customer_type = IF(VALUES(customer_type) IS NOT NULL AND VALUES(customer_type) != '', VALUES(customer_type), customer_type)
-        ");
-        if ($stmtContact) {
-            $createdBy = 1;
-            $stmtContact->bind_param("iiiisssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type, $secExpiresTime);
-            $stmtContact->execute();
-            $stmtContact->close();
+        // Get all active contacts for this person
+        $existingContacts = [];
+        $stmtExist = $conn->prepare("SELECT id, owner_id FROM contacts WHERE person_id = ? AND deleted_at IS NULL");
+        $stmtExist->bind_param("i", $person_id);
+        $stmtExist->execute();
+        $resExist = $stmtExist->get_result();
+        while ($rowExist = $resExist->fetch_assoc()) {
+            $existingContacts[] = $rowExist;
+        }
+        $stmtExist->close();
+
+        if (!empty($existingContacts)) {
+            // Update all existing active contacts (useful for parallel owners)
+            $stmtUpContact = $conn->prepare("
+                UPDATE contacts 
+                SET first_name = IF(? != '' AND (first_name = '' OR first_name IS NULL), ?, first_name),
+                    last_name = IF(? != '' AND (last_name = '' OR last_name IS NULL), ?, last_name),
+                    email = IF(? != '' AND (email = '' OR email IS NULL), ?, email),
+                    phone = IF(? != '' AND (phone = '' OR phone IS NULL), ?, phone),
+                    notes = ?,
+                    customer_type = ?
+                WHERE id = ?
+            ");
+            foreach ($existingContacts as $c) {
+                $stmtUpContact->bind_param("sssssssssi", $firstName, $firstName, $lastName, $lastName, $email, $email, $phone, $phone, $note, $type, $c['id']);
+                $stmtUpContact->execute();
+            }
+            $stmtUpContact->close();
+        }
+
+        // Also check if the primary owner contact exists, if not, create it
+        $hasOwnerContact = false;
+        foreach ($existingContacts as $c) {
+            if ((int)$c['owner_id'] === (int)$ownerUserId) {
+                $hasOwnerContact = true;
+                break;
+            }
+        }
+
+        if (!$hasOwnerContact) {
+            $stmtContact = $conn->prepare("
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?)
+            ");
+            if ($stmtContact) {
+                $createdBy = 1;
+                $stmtContact->bind_param("iiiissssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type);
+                $stmtContact->execute();
+                $stmtContact->close();
+            }
         }
     }
 }
