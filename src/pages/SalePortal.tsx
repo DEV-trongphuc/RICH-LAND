@@ -4469,102 +4469,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const recentLeads = data.leads.slice(0, 5);
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Dashboard header */}
-        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
-            <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
-          </div>
-          <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto', flexWrap: 'wrap' }}>
-            <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
-              <CustomSelect
-                options={[
-                  { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
-                  { value: 'today', label: t('Hôm nay') },
-                  { value: 'yesterday', label: t('Hôm qua') },
-                  { value: 'this_week', label: t('Tuần này') },
-                  { value: 'last_week', label: t('Tuần trước') },
-                  { value: 'two_weeks_ago', label: t('Tuần trước nữa') },
-                  { value: '7_days', label: t('7 ngày qua') },
-                  { value: '30_days', label: t('30 ngày qua') },
-                  { value: 'this_month', label: t('Tháng này') },
-                  { value: 'last_month', label: t('Tháng trước') },
-                  { value: 'this_year', label: t('Năm nay') },
-                  { value: 'custom', label: t('Tùy chọn ngày...') }
-                ]}
-                value={dateMode}
-                onChange={(val) => {
-                  if (val === 'custom') {
-                    setShowCustomDate(true);
-                  } else {
-                    handleDateModeChange(String(val));
-                  }
-                }}
-                width="100%"
-              />
-            </div>
-            {/* Button to open Connection Health Modal */}
-            <button
-              className="btn outline"
-              onClick={() => { }}
-              title={t("Kiểm tra kết nối hệ thống")}
-              style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
-            >
-              <Server size={16} />
-            </button>
-            <button
-              className="btn outline"
-              onClick={() => loadPortalData()}
-              disabled={loading}
-              title={t("Làm mới dữ liệu")}
-              style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'pointer' }}
-            >
-              <RefreshCw size={16} className={loading ? 'spin' : ''} />
-            </button>
-          </div>
-        </div>
-
-        {showCustomDate && (
-          <div className="portal-filters-row" style={{
-            display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-            background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px',
-            padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)', marginTop: '-0.5rem'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Từ ngày')}:</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                style={{
-                  padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--color-border)',
-                  fontSize: '0.85rem', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text)', height: 38
-                }}
-              />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đến ngày')}:</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                style={{
-                  padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--color-border)',
-                  fontSize: '0.85rem', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text)', height: 38
-                }}
-              />
-            </div>
-            <button
-              onClick={loadPortalData}
-              className="btn sm primary"
-              style={{ height: 38, padding: '0 15px', borderRadius: '10px' }}
-            >
-              {t('Áp dụng')}
-            </button>
-          </div>
-        )}
-
+      <>
         <style>{`
           .stat-card {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -4586,6 +4491,101 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             border-color: #ef4444 !important;
           }
         `}</style>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* Dashboard header */}
+          <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h1 className="page-title">{t("Tổng quan Phân bổ Data")}</h1>
+              <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{t("Phân tích hiệu suất giao data theo thời gian thực — Hệ thống đang hoạt động trơn tru.")}</p>
+            </div>
+            <div className="mobile-w-full" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: 'auto', flexWrap: 'wrap' }}>
+              <div className="mobile-flex-1" style={{ position: 'relative', zIndex: 100, width: 200 }}>
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả thời gian'), icon: <Clock size={16} /> },
+                    { value: 'today', label: t('Hôm nay') },
+                    { value: 'yesterday', label: t('Hôm qua') },
+                    { value: 'this_week', label: t('Tuần này') },
+                    { value: 'last_week', label: t('Tuần trước') },
+                    { value: 'two_weeks_ago', label: t('Tuần trước nữa') },
+                    { value: '7_days', label: t('7 ngày qua') },
+                    { value: '30_days', label: t('30 ngày qua') },
+                    { value: 'this_month', label: t('Tháng này') },
+                    { value: 'last_month', label: t('Tháng trước') },
+                    { value: 'this_year', label: t('Năm nay') },
+                    { value: 'custom', label: t('Tùy chọn ngày...') }
+                  ]}
+                  value={dateMode}
+                  onChange={(val) => {
+                    if (val === 'custom') {
+                      setShowCustomDate(true);
+                    } else {
+                      handleDateModeChange(String(val));
+                    }
+                  }}
+                  width="100%"
+                />
+              </div>
+              {/* Button to open Connection Health Modal */}
+              <button
+                className="btn outline"
+                onClick={() => { }}
+                title={t("Kiểm tra kết nối hệ thống")}
+                style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'default' }}
+              >
+                <Server size={16} />
+              </button>
+              <button
+                className="btn outline"
+                onClick={() => loadPortalData()}
+                disabled={loading}
+                title={t("Làm mới dữ liệu")}
+                style={{ width: 38, height: 38, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid var(--color-border)', borderRadius: '8px', background: 'var(--color-surface)', color: 'var(--color-text-light)', cursor: 'pointer' }}
+              >
+                <RefreshCw size={16} className={loading ? 'spin' : ''} />
+              </button>
+            </div>
+          </div>
+
+          {showCustomDate && (
+            <div className="portal-filters-row" style={{
+              display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+              background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px',
+              padding: '1rem 1.5rem', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)', marginTop: '-0.5rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Từ ngày')}:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  style={{
+                    padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--color-border)',
+                    fontSize: '0.85rem', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text)', height: 38
+                  }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đến ngày')}:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  style={{
+                    padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--color-border)',
+                    fontSize: '0.85rem', outline: 'none', background: 'var(--color-surface)', color: 'var(--color-text)', height: 38
+                  }}
+                />
+              </div>
+              <button
+                onClick={loadPortalData}
+                className="btn sm primary"
+                style={{ height: 38, padding: '0 15px', borderRadius: '10px' }}
+              >
+                {t('Áp dụng')}
+              </button>
+            </div>
+          )}
 
         {/* KPI Cards Grid */}
         <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: isMobile ? '0.75rem' : '1.25rem' }}>
@@ -5063,8 +5063,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </div>
         </div>
       </div>
-    );
-  };
+    </>
+  );
+};
 
   const renderDataView = () => {
     return (

@@ -3621,8 +3621,8 @@ button:active,
 }
 
 .page-header {
-  padding: 1.25rem 0 !important; /* Shorter header area, aligned perfectly to the edges */
-  margin-bottom: 1rem !important;
+  padding: 0.5rem 0 !important; /* Shorter header area, aligned perfectly to the edges */
+  margin-bottom: 0.75rem !important;
 }
 
 .page-title {
