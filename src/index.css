@@ -452,7 +452,7 @@
   --color-primary: #BD1D2D;
   --color-primary-hover: #a31422;
   --color-primary-light: rgba(189, 29, 45, 0.08);
-  --sidebar-bg: #1C1C1E; /* Charcoal dark gray sidebar */
+  --sidebar-bg: #121214; /* Deeper charcoal dark gray sidebar */
   --sidebar-hover: rgba(255, 255, 255, 0.08);
   --sidebar-active: #BD1D2D; /* Keep brand color on sidebar active item */
 
