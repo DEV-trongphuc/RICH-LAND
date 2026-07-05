@@ -60,13 +60,19 @@ class SupplierController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO suppliers (tenant_id, created_by, name, contact_name, email, phone, address, tax_code, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO suppliers (
+                tenant_id, created_by, name, contact_name, email, phone, address, tax_code, notes,
+                contact_position, website, scale_capital, typical_projects, focused_type, prestige_tier, cooperation_status, bank_account
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $auth['tenant_id'], $auth['user_id'], $b['name'],
             $b['contact_name'] ?? null, $b['email'] ?? null, $b['phone'] ?? null,
-            $b['address'] ?? null, $b['tax_code'] ?? null, $b['notes'] ?? null
+            $b['address'] ?? null, $b['tax_code'] ?? null, $b['notes'] ?? null,
+            $b['contact_position'] ?? null, $b['website'] ?? null, $b['scale_capital'] ?? null,
+            $b['typical_projects'] ?? null, $b['focused_type'] ?? null, $b['prestige_tier'] ?? null,
+            $b['cooperation_status'] ?? 'active', $b['bank_account'] ?? null
         ]);
         $id = (int)$this->db->lastInsertId();
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Thêm nhà cung cấp mới', 'supplier', $id, $b['name']);
@@ -84,7 +90,7 @@ class SupplierController {
     public function update(array $auth, int $id): void {
         if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền quản lý nhà cung cấp', false);
         $b = getBody();
-        $fields = ['name', 'contact_name', 'email', 'phone', 'address', 'tax_code', 'notes'];
+        $fields = ['name', 'contact_name', 'email', 'phone', 'address', 'tax_code', 'notes', 'contact_position', 'website', 'scale_capital', 'typical_projects', 'focused_type', 'prestige_tier', 'cooperation_status', 'bank_account'];
         $sets = []; $params = [];
         foreach ($fields as $f) {
             if (array_key_exists($f, $b)) {

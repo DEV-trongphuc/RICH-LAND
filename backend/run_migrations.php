@@ -1733,6 +1733,24 @@ try {
         $conn->query("ALTER TABLE notes ADD COLUMN attachment_url VARCHAR(500) DEFAULT NULL");
     }
 
+    // Self-healing check: ensure detailed fields exist in suppliers table
+    $newSupplierCols = [
+        'contact_position' => 'VARCHAR(255) DEFAULT NULL',
+        'website' => 'VARCHAR(255) DEFAULT NULL',
+        'scale_capital' => 'VARCHAR(255) DEFAULT NULL',
+        'typical_projects' => 'TEXT DEFAULT NULL',
+        'focused_type' => 'VARCHAR(255) DEFAULT NULL',
+        'prestige_tier' => 'VARCHAR(50) DEFAULT NULL',
+        'cooperation_status' => "VARCHAR(50) DEFAULT 'active'",
+        'bank_account' => 'VARCHAR(255) DEFAULT NULL'
+    ];
+    foreach ($newSupplierCols as $col => $definition) {
+        $chkCol = $conn->query("SHOW COLUMNS FROM suppliers LIKE '$col'");
+        if ($chkCol && $chkCol->num_rows === 0) {
+            $conn->query("ALTER TABLE suppliers ADD COLUMN `$col` $definition");
+        }
+    }
+
 
 
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");

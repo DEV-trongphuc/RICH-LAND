@@ -31,12 +31,20 @@ class CheckInController {
         
         $params = [$auth['tenant_id']];
 
-        // RLS: Sales can only see their own check-ins
-        if (!$isManager) {
+        // RLS: Sales can only see their own check-ins. Managers see their team's.
+        if ($auth['role'] === 'manager') {
+            $sql .= " AND (u.id = ? OR u.team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            if (isset($_GET['user_id']) && !empty($_GET['user_id'])) {
+                $sql .= " AND c.user_id = ?";
+                $params[] = (int)$_GET['user_id'];
+            }
+        } else if (!$isManager) {
             $sql .= " AND c.user_id = ?";
             $params[] = $auth['user_id'];
         } else {
-            // Admin/Manager filtering
+            // Admin/Assistant/Superadmin filtering
             if (isset($_GET['user_id']) && !empty($_GET['user_id'])) {
                 $sql .= " AND c.user_id = ?";
                 $params[] = (int)$_GET['user_id'];
@@ -198,6 +206,20 @@ class CheckInController {
 
         if ((int)$row['tenant_id'] !== (int)$auth['tenant_id']) {
             respond(403, null, 'Bạn không có quyền thao tác trên dữ liệu này', false);
+        }
+
+        if ($auth['role'] === 'manager') {
+            $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+            $stmtUserTeam->execute([$row['user_id']]);
+            $targetUserTeamId = $stmtUserTeam->fetchColumn();
+
+            $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
+            $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
+            $isTeamMember = $stmtLead->fetch();
+
+            if ((int)$row['user_id'] !== (int)$auth['user_id'] && !$isTeamMember) {
+                respond(403, null, 'Bạn chỉ có quyền phê duyệt chấm công cho nhân viên thuộc nhóm của mình', false);
+            }
         }
 
         // Update

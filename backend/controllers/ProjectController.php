@@ -33,6 +33,16 @@ class ProjectController {
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
+        $stmtProj = $this->db->prepare("SELECT tenant_id FROM projects WHERE id = ?");
+        $stmtProj->execute([$projectId]);
+        $projTenantId = $stmtProj->fetchColumn();
+        if ($projTenantId === false) {
+            respond(404, null, 'Dự án không tồn tại', false);
+        }
+        if ((int)$projTenantId !== (int)$auth['tenant_id']) {
+            respond(403, null, 'Bạn không có quyền truy cập dự án này', false);
+        }
+
         if ($auth['role'] === 'admin' || $auth['role'] === 'superadmin' || $auth['role'] === 'super_admin' || $auth['role'] === 'manager') {
             return;
         }
@@ -219,6 +229,7 @@ class ProjectController {
 
     public function updateRoster(array $auth, int $projectId): void {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        $this->requireProjectAccess($auth, $projectId);
         $b = getBody();
         $userIds = $b['user_ids'] ?? []; // Array of user IDs to include in roster
 
@@ -266,6 +277,7 @@ class ProjectController {
 
     public function uploadDocument(array $auth, int $projectId): void {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        $this->requireProjectAccess($auth, $projectId);
         
         if (empty($_FILES['file'])) {
             respond(400, null, 'Không tìm thấy file tải lên', false);
@@ -309,6 +321,7 @@ class ProjectController {
 
     public function deleteDocument(array $auth, int $projectId, int $docId): void {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        $this->requireProjectAccess($auth, $projectId);
 
         // Fetch document info
         $stmtDoc = $this->db->prepare("SELECT file_path, name FROM project_documents WHERE id = ? AND project_id = ?");

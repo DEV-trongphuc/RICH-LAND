@@ -80,17 +80,45 @@ class FinanceController
             $where[] = 'i.contact_id = ?';
             $params[] = (int)$contactId;
         }
-        if ($auth['role'] === 'sales') {
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
+        // Get team members for manager
+        $userIds = [$uid];
+        if ($isManager) {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+
+        if ($isSale) {
             if ($contactId) {
                 $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
                 $stmtContact->execute([(int)$contactId, $tid]);
                 $ownerId = $stmtContact->fetchColumn();
-                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                if ($ownerId && (int)$ownerId !== $uid) {
                     respond(403, null, 'Bạn không có quyền xem hóa đơn của liên hệ này', false);
                 }
             } else {
                 $where[] = 'i.created_by = ?';
-                $params[] = $auth['user_id'];
+                $params[] = $uid;
+            }
+        } else if ($isManager) {
+            if ($contactId) {
+                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
+                $stmtContact->execute([(int)$contactId, $tid]);
+                $ownerId = $stmtContact->fetchColumn();
+                if ($ownerId && !in_array((int)$ownerId, $userIds, true)) {
+                    respond(403, null, 'Bạn không có quyền xem hóa đơn của liên hệ này', false);
+                }
+            } else {
+                $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+                $where[] = "i.created_by IN ($placeholders)";
+                $params = array_merge($params, $userIds);
             }
         }
         if ($status) {
@@ -154,9 +182,13 @@ class FinanceController
                 $prevWhere[] = 'i.contact_id = ?';
                 $prevParams[] = (int)$contactId;
             }
-            if ($auth['role'] === 'sales') {
+            if ($isSale) {
                 $prevWhere[] = 'i.created_by = ?';
-                $prevParams[] = $auth['user_id'];
+                $prevParams[] = $uid;
+            } else if ($isManager) {
+                $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+                $prevWhere[] = "i.created_by IN ($placeholders)";
+                $prevParams = array_merge($prevParams, $userIds);
             }
             if ($status) {
                 $prevWhere[] = 'i.status=?';
@@ -203,8 +235,12 @@ class FinanceController
             WHERE i.id=? AND i.tenant_id=? AND i.deleted_at IS NULL
         ";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND i.created_by=?";
+            $p[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (i.created_by = ? OR i.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -238,16 +274,30 @@ class FinanceController
 
         $this->db->beginTransaction();
         try {
-            // Verify entities belong to tenant
+            // Verify entities belong to tenant and are accessible
             if (!empty($data['contact_id'])) {
-                $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
-                $c->execute([(int) $data['contact_id'], $tid]);
+                $sqlContact = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
+                $pContact = [(int)$data['contact_id'], $tid];
+                if ($auth['role'] === 'manager') {
+                    $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                    $pContact[] = $uid;
+                    $pContact[] = $uid;
+                }
+                $c = $this->db->prepare($sqlContact);
+                $c->execute($pContact);
                 if (!$c->fetch())
                     $data['contact_id'] = null;
             }
             if (!empty($data['company_id'])) {
-                $c = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=?");
-                $c->execute([(int) $data['company_id'], $tid]);
+                $sqlCompany = "SELECT id FROM companies WHERE id=? AND tenant_id=?";
+                $pCompany = [(int)$data['company_id'], $tid];
+                if ($auth['role'] === 'manager') {
+                    $sqlCompany .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                    $pCompany[] = $uid;
+                    $pCompany[] = $uid;
+                }
+                $c = $this->db->prepare($sqlCompany);
+                $c->execute($pCompany);
                 if (!$c->fetch())
                     $data['company_id'] = null;
             }
@@ -342,30 +392,59 @@ class FinanceController
         }
         if (!$sets) respond(422, null, 'Không có dữ liệu', false);
 
-        // Verify entities belong to tenant
+        // Verify entities belong to tenant and are accessible
         $tid = $auth['tenant_id'];
+        $uid = $auth['user_id'];
         if (isset($data['contact_id']) && $data['contact_id']) {
-            $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
-            $c->execute([(int)$data['contact_id'], $tid]);
-            if (!$c->fetch()) respond(404, null, 'Liên hệ không hợp lệ', false);
+            $sqlContact = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
+            $pContact = [(int)$data['contact_id'], $tid];
+            if ($auth['role'] === 'manager') {
+                $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $pContact[] = $uid;
+                $pContact[] = $uid;
+            }
+            $c = $this->db->prepare($sqlContact);
+            $c->execute($pContact);
+            if (!$c->fetch()) respond(403, null, 'Không có quyền thao tác trên liên hệ này', false);
         }
         if (isset($data['company_id']) && $data['company_id']) {
-            $c = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=?");
-            $c->execute([(int)$data['company_id'], $tid]);
-            if (!$c->fetch()) respond(404, null, 'Công ty không hợp lệ', false);
+            $sqlCompany = "SELECT id FROM companies WHERE id=? AND tenant_id=?";
+            $pCompany = [(int)$data['company_id'], $tid];
+            if ($auth['role'] === 'manager') {
+                $sqlCompany .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $pCompany[] = $uid;
+                $pCompany[] = $uid;
+            }
+            $c = $this->db->prepare($sqlCompany);
+            $c->execute($pCompany);
+            if (!$c->fetch()) respond(403, null, 'Không có quyền thao tác trên công ty này', false);
         }
         if (isset($data['deal_id']) && $data['deal_id']) {
-            $c = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=?");
-            $c->execute([(int)$data['deal_id'], $tid]);
-            if (!$c->fetch()) respond(404, null, 'Deal không hợp lệ', false);
+            $sqlDeal = "SELECT id FROM deals WHERE id=? AND tenant_id=?";
+            $pDeal = [(int)$data['deal_id'], $tid];
+            if ($auth['role'] === 'manager') {
+                $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $pDeal[] = $uid;
+                $pDeal[] = $uid;
+            }
+            $c = $this->db->prepare($sqlDeal);
+            $c->execute($pDeal);
+            if (!$c->fetch()) respond(403, null, 'Không có quyền thao tác trên deal này', false);
         }
         $this->db->beginTransaction();
         try {
             // Check permission and current status with FOR UPDATE to prevent race condition
-            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND created_by=?" : "") . " FOR UPDATE");
-            $cp = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sales')
-                $cp[] = $auth['user_id'];
+            $sqlCheck = "SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=?";
+            $cp = [$id, $tid];
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $sqlCheck .= " AND created_by=?";
+                $cp[] = $uid;
+            } else if ($auth['role'] === 'manager') {
+                $sqlCheck .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $cp[] = $uid;
+                $cp[] = $uid;
+            }
+            $check = $this->db->prepare($sqlCheck . " FOR UPDATE");
             $check->execute($cp);
             $current = $check->fetch();
             if (!$current)
@@ -427,21 +506,35 @@ class FinanceController
 
             $sql = "UPDATE invoices SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
             $p = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sales') {
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
                 $sql .= " AND created_by=?";
+                $p[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $p[] = $auth['user_id'];
                 $p[] = $auth['user_id'];
             }
             $stmt = $this->db->prepare($sql);
 
             // Get details before deletion for side effects (use FOR UPDATE to lock row)
-            $cCheck = $this->db->prepare("SELECT contact_id, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? FOR UPDATE");
-        $cCheck->execute([$id, $auth['tenant_id']]);
-        $inv = $cCheck->fetch();
-        $oldContactId = $inv['contact_id'] ?? null;
+            $sqlCheck = "SELECT contact_id, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=?";
+            $pCheck = [$id, $auth['tenant_id']];
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $sqlCheck .= " AND created_by=?";
+                $pCheck[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $sqlCheck .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $pCheck[] = $auth['user_id'];
+                $pCheck[] = $auth['user_id'];
+            }
+            $cCheck = $this->db->prepare($sqlCheck . " FOR UPDATE");
+            $cCheck->execute($pCheck);
+            $inv = $cCheck->fetch();
+            $oldContactId = $inv['contact_id'] ?? null;
 
-        $stmt->execute($p);
-        if (!$stmt->rowCount())
-            respond(404, null, 'Không tìm thấy hóa đơn hoặc không có quyền', false);
+            $stmt->execute($p);
+            if (!$stmt->rowCount())
+                respond(404, null, 'Không tìm thấy hóa đơn hoặc không có quyền', false);
 
         // REVERSE SIDE EFFECTS
         // 1. Return stock if it was deducted
@@ -469,10 +562,17 @@ class FinanceController
             $this->db->beginTransaction();
 
             // Check if already deducted or already paid
-            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND created_by=?" : "") . " FOR UPDATE");
+            $sqlCheck = "SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=?";
             $cp = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sales')
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $sqlCheck .= " AND created_by=?";
                 $cp[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $sqlCheck .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $cp[] = $auth['user_id'];
+                $cp[] = $auth['user_id'];
+            }
+            $check = $this->db->prepare($sqlCheck . " FOR UPDATE");
             $check->execute($cp);
             $inv = $check->fetch();
 
@@ -483,8 +583,12 @@ class FinanceController
 
             $sql = "UPDATE invoices SET status='paid', paid_at=NOW(), is_inventory_deducted=1 WHERE id=? AND tenant_id=?";
             $p = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sales') {
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
                 $sql .= " AND created_by=?";
+                $p[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $p[] = $auth['user_id'];
                 $p[] = $auth['user_id'];
             }
             $stmt = $this->db->prepare($sql);
@@ -528,9 +632,27 @@ class FinanceController
         $to = $_GET['to'] ?? '';
         $where = ['e.tenant_id=?', 'e.deleted_at IS NULL'];
         $params = [$tid];
-        if ($auth['role'] === 'sales') {
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
+        // Load team members if manager
+        $userIds = [$uid];
+        if ($isManager) {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+
+        if ($isSale) {
             $where[] = 'e.created_by = ?';
-            $params[] = $auth['user_id'];
+            $params[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $where[] = "e.created_by IN ($placeholders)";
+            $params = array_merge($params, $userIds);
         }
         if ($status) {
             $where[] = 'e.status=?';
@@ -608,9 +730,13 @@ class FinanceController
 
             $prevWhere = ['e.tenant_id=?', 'e.deleted_at IS NULL'];
             $prevParams = [$tid];
-            if ($auth['role'] === 'sales') {
+            if ($isSale) {
                 $prevWhere[] = 'e.created_by = ?';
-                $prevParams[] = $auth['user_id'];
+                $prevParams[] = $uid;
+            } else if ($isManager) {
+                $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+                $prevWhere[] = "e.created_by IN ($placeholders)";
+                $prevParams = array_merge($prevParams, $userIds);
             }
             if ($status) {
                 $prevWhere[] = 'e.status=?';
@@ -657,8 +783,12 @@ class FinanceController
     {
         $sql = "SELECT e.*, u.full_name as creator_name, u.avatar_url as creator_avatar, u2.full_name as approver_name, u2.avatar_url as approver_avatar FROM expenses e LEFT JOIN users u ON e.created_by=u.id LEFT JOIN users u2 ON e.approver_id=u2.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND e.created_by=?";
+            $p[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (e.created_by = ? OR e.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -731,10 +861,20 @@ class FinanceController
             if (!empty($entities)) {
                 $sEE = $this->db->prepare("INSERT INTO expense_entities (tenant_id, expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?,?)");
                 foreach ($entities as $ee) {
-                    // Verify entity exists in this tenant
+                    // Verify entity exists in this tenant and is accessible
                     $table = $ee['entity_type'] === 'contact' ? 'contacts' : ($ee['entity_type'] === 'company' ? 'companies' : 'deals');
-                    $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
-                    $check->execute([(int) $ee['entity_id'], $auth['tenant_id']]);
+                    $sqlEnt = "SELECT id FROM $table WHERE id=? AND tenant_id=?";
+                    $pEnt = [(int) $ee['entity_id'], $auth['tenant_id']];
+                    if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                        $sqlEnt .= " AND owner_id = ?";
+                        $pEnt[] = $auth['user_id'];
+                    } else if ($auth['role'] === 'manager') {
+                        $sqlEnt .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                        $pEnt[] = $auth['user_id'];
+                        $pEnt[] = $auth['user_id'];
+                    }
+                    $check = $this->db->prepare($sqlEnt);
+                    $check->execute($pEnt);
                     if (!$check->fetch())
                         continue; // Skip unauthorized/missing entities
 
@@ -816,10 +956,17 @@ class FinanceController
         $this->db->beginTransaction();
         try {
             // Check permission and get current amount if not provided
-            $check = $this->db->prepare("SELECT id, amount FROM expenses WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND created_by=?" : ""));
+            $sqlCheck = "SELECT id, amount FROM expenses WHERE id=? AND tenant_id=?";
             $cp = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sales')
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $sqlCheck .= " AND created_by=?";
                 $cp[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $sqlCheck .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $cp[] = $auth['user_id'];
+                $cp[] = $auth['user_id'];
+            }
+            $check = $this->db->prepare($sqlCheck);
             $check->execute($cp);
             $row = $check->fetch();
             if (!$row)
@@ -845,10 +992,20 @@ class FinanceController
                 $this->db->prepare("DELETE FROM expense_entities WHERE expense_id=?")->execute([$id]);
                 $sEE = $this->db->prepare("INSERT INTO expense_entities (tenant_id, expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?,?)");
                 foreach ($entities as $ee) {
-                    // Verify entity exists in this tenant
+                    // Verify entity exists in this tenant and is accessible
                     $table = $ee['entity_type'] === 'contact' ? 'contacts' : ($ee['entity_type'] === 'company' ? 'companies' : 'deals');
-                    $eCheck = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
-                    $eCheck->execute([(int) $ee['entity_id'], $auth['tenant_id']]);
+                    $sqlEnt = "SELECT id FROM $table WHERE id=? AND tenant_id=?";
+                    $pEnt = [(int) $ee['entity_id'], $auth['tenant_id']];
+                    if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                        $sqlEnt .= " AND owner_id = ?";
+                        $pEnt[] = $auth['user_id'];
+                    } else if ($auth['role'] === 'manager') {
+                        $sqlEnt .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                        $pEnt[] = $auth['user_id'];
+                        $pEnt[] = $auth['user_id'];
+                    }
+                    $eCheck = $this->db->prepare($sqlEnt);
+                    $eCheck->execute($pEnt);
                     if (!$eCheck->fetch())
                         continue;
 
@@ -870,24 +1027,59 @@ class FinanceController
     {
         $where = "ee.entity_type=? AND ee.entity_id=? AND e.tenant_id=?";
         $p = [$type, $id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
+        // Load team members if manager
+        $userIds = [$uid];
+        if ($isManager) {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+
+        if ($isSale) {
             if ($type === 'contact') {
                 $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
-                $stmtContact->execute([$id, $auth['tenant_id']]);
+                $stmtContact->execute([$id, $tid]);
                 $ownerId = $stmtContact->fetchColumn();
-                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                if ($ownerId && (int)$ownerId !== $uid) {
                     respond(403, null, 'Bạn không có quyền xem chi phí của liên hệ này', false);
                 }
             } else if ($type === 'deal') {
                 $stmtDeal = $this->db->prepare("SELECT owner_id FROM deals WHERE id = ? AND tenant_id = ?");
-                $stmtDeal->execute([$id, $auth['tenant_id']]);
+                $stmtDeal->execute([$id, $tid]);
                 $ownerId = $stmtDeal->fetchColumn();
-                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                if ($ownerId && (int)$ownerId !== $uid) {
                     respond(403, null, 'Bạn không có quyền xem chi phí của cơ hội này', false);
                 }
             } else {
                 $where .= " AND e.created_by=?";
-                $p[] = $auth['user_id'];
+                $p[] = $uid;
+            }
+        } else if ($isManager) {
+            if ($type === 'contact') {
+                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
+                $stmtContact->execute([$id, $tid]);
+                $ownerId = $stmtContact->fetchColumn();
+                if ($ownerId && !in_array((int)$ownerId, $userIds, true)) {
+                    respond(403, null, 'Bạn không có quyền xem chi phí của liên hệ này', false);
+                }
+            } else if ($type === 'deal') {
+                $stmtDeal = $this->db->prepare("SELECT owner_id FROM deals WHERE id = ? AND tenant_id = ?");
+                $stmtDeal->execute([$id, $tid]);
+                $ownerId = $stmtDeal->fetchColumn();
+                if ($ownerId && !in_array((int)$ownerId, $userIds, true)) {
+                    respond(403, null, 'Bạn không có quyền xem chi phí của cơ hội này', false);
+                }
+            } else {
+                $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+                $where .= " AND e.created_by IN ($placeholders)";
+                $p = array_merge($p, $userIds);
             }
         }
         $stmt = $this->db->prepare("
@@ -904,11 +1096,16 @@ class FinanceController
 
     public function deleteExpense(array $auth, int $id): void
     {
-        if ($auth['role'] !== 'super_admin' && in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa chi phí', false);
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa chi phí', false);
+        
         $sql = "UPDATE expenses SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] !== 'super_admin' && $auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND created_by = ?";
+            $p[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -923,6 +1120,30 @@ class FinanceController
     {
         if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền duyệt chi phí', false);
         requireRole($auth, ['admin', 'manager', 'super_admin']);
+
+        // Find creator of the expense
+        $stmtExp = $this->db->prepare("SELECT created_by, title, amount FROM expenses WHERE id=? AND tenant_id=?");
+        $stmtExp->execute([$id, $auth['tenant_id']]);
+        $expenseRow = $stmtExp->fetch();
+        if (!$expenseRow) respond(404, null, 'Không tìm thấy chi phí', false);
+
+        if ($auth['role'] === 'manager') {
+            $creatorId = (int)$expenseRow['created_by'];
+            
+            // Check if creator belongs to the manager's team
+            $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+            $stmtUserTeam->execute([$creatorId]);
+            $targetUserTeamId = $stmtUserTeam->fetchColumn();
+
+            $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
+            $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
+            $isTeamMember = $stmtLead->fetch();
+
+            if ($creatorId !== (int)$auth['user_id'] && !$isTeamMember) {
+                respond(403, null, 'Bạn chỉ có quyền phê duyệt chi phí cho nhân viên thuộc nhóm của mình', false);
+            }
+        }
+
         $data = getBody();
         $status = $data['status'] ?? 'approved';
         if ($status === 'approved') {
@@ -962,23 +1183,51 @@ class FinanceController
     public function summary(array $auth): void
     {
         requireRole($auth, ['admin', 'manager', 'super_admin']);
-        $tid = $auth['tenant_id'];
-        $sInv = $this->db->prepare("
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isManager = $role === 'manager';
+
+        // Load team members if manager
+        $userIds = [$uid];
+        if ($isManager) {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+
+        $invSql = "
             SELECT COALESCE(SUM(total),0) as total_revenue,
                    COALESCE(SUM(CASE WHEN status='paid' THEN total ELSE 0 END),0) as total_paid,
                    COUNT(CASE WHEN status='pending' THEN 1 END) as pending_count
-            FROM invoices WHERE tenant_id=?
-        ");
-        $sInv->execute([$tid]);
-        $inv = $sInv->fetch();
+            FROM invoices WHERE tenant_id=? AND deleted_at IS NULL
+        ";
+        $invParams = [$tid];
+        if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $invSql .= " AND created_by IN ($placeholders)";
+            $invParams = array_merge($invParams, $userIds);
+        }
+        $sInv = $this->db->prepare($invSql);
+        $sInv->execute($invParams);
+        $inv = $sInv->fetch() ?: ['total_revenue' => 0, 'total_paid' => 0, 'pending_count' => 0];
 
-        $sExp = $this->db->prepare("
+        $expSql = "
             SELECT COALESCE(SUM(amount),0) as total_expenses,
                    COALESCE(SUM(CASE WHEN status='approved' THEN amount ELSE 0 END),0) as approved_expenses
-            FROM expenses WHERE tenant_id=?
-        ");
-        $sExp->execute([$tid]);
-        $exp = $sExp->fetch();
+            FROM expenses WHERE tenant_id=? AND deleted_at IS NULL
+        ";
+        $expParams = [$tid];
+        if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $expSql .= " AND created_by IN ($placeholders)";
+            $expParams = array_merge($expParams, $userIds);
+        }
+        $sExp = $this->db->prepare($expSql);
+        $sExp->execute($expParams);
+        $exp = $sExp->fetch() ?: ['total_expenses' => 0, 'approved_expenses' => 0];
 
         respond(200, array_merge($inv, $exp));
     }

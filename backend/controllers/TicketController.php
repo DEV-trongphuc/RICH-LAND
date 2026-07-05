@@ -26,6 +26,20 @@ class TicketController {
             $where[] = '(t.created_by = ? OR t.assignee_id = ?)';
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $where[] = '(t.created_by = ? OR t.assignee_id = ? OR t.created_by IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ) OR t.assignee_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
         }
 
         if ($status && $status !== 'all') {
@@ -70,23 +84,40 @@ class TicketController {
     }
 
     public function show(array $auth, int $id): void {
-        $sql = "SELECT t.*, u.full_name as assignee_name
+        if (!$this->checkTicketAccess($auth, $id)) {
+            respond(403, null, 'Bạn không có quyền truy cập ticket này', false);
+        }
+        $stmt = $this->db->prepare("
+            SELECT t.*, u.full_name as assignee_name
             FROM tickets t
             LEFT JOIN users u ON t.assignee_id = u.id
-            WHERE t.id=? AND t.tenant_id=?";
-        $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
-            $sql .= " AND (t.created_by = ? OR t.assignee_id = ?)";
-            $p[] = $auth['user_id'];
-            $p[] = $auth['user_id'];
-        }
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($p);
+            WHERE t.id=? AND t.tenant_id=?
+        ");
+        $stmt->execute([$id, $auth['tenant_id']]);
         $ticket = $stmt->fetch();
         if (!$ticket) respond(404, null, 'Không tìm thấy ticket', false);
         $ticket['related_contacts'] = json_decode($ticket['related_contacts'] ?? '[]');
         $ticket['related_users'] = json_decode($ticket['related_users'] ?? '[]');
         respond(200, $ticket);
+    }
+
+    private function checkTicketAccess(array $auth, int $ticketId): bool {
+        if ($auth['role'] === 'admin') return true;
+        
+        $sql = "SELECT id FROM tickets WHERE id=? AND tenant_id=? AND (created_by = ? OR assignee_id = ?";
+        $params = [$ticketId, $auth['tenant_id'], $auth['user_id'], $auth['user_id']];
+        
+        if ($auth['role'] === 'manager') {
+            $sql .= " OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?))
+                      OR assignee_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        }
+        $sql .= ")";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return (bool)$stmt->fetchColumn();
     }
 
     public function store(array $auth): void {
@@ -250,8 +281,22 @@ class TicketController {
         $oldTicket = $stmtOld->fetch(PDO::FETCH_ASSOC);
         
         $sql = "UPDATE tickets SET " . implode(',', $sets) . " WHERE id=? AND tenant_id=?";
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND (created_by = ? OR assignee_id = ?)";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (created_by = ? OR assignee_id = ? OR created_by IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ) OR assignee_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
@@ -345,33 +390,52 @@ class TicketController {
 
     public function destroy(array $auth, int $id): void {
         if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền xóa ticket', false);
-        $stmt = $this->db->prepare("DELETE FROM tickets WHERE id=? AND tenant_id=?");
-        $stmt->execute([$id, $auth['tenant_id']]);
-        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ticket', false);
+        
+        $sql = "DELETE FROM tickets WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'manager') {
+            $sql .= " AND (created_by = ? OR assignee_id = ? OR created_by IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ) OR assignee_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
+        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ticket hoặc bạn không có quyền', false);
         respond(200, null, 'Đã xóa ticket thành công');
     }
 
     public function getComments(array $auth, int $ticketId): void {
+        if (!$this->checkTicketAccess($auth, $ticketId)) {
+            respond(403, null, 'Bạn không có quyền truy cập ghi chú của ticket này', false);
+        }
         $stmt = $this->db->prepare("
             SELECT tc.*, u.full_name as user_name, u.avatar_url
             FROM ticket_comments tc
             LEFT JOIN users u ON tc.user_id = u.id
-            JOIN tickets t ON tc.ticket_id = t.id
-            WHERE tc.ticket_id = ? AND t.tenant_id = ?
+            WHERE tc.ticket_id = ?
             ORDER BY tc.created_at ASC
         ");
-        $stmt->execute([$ticketId, $auth['tenant_id']]);
+        $stmt->execute([$ticketId]);
         respond(200, $stmt->fetchAll());
     }
 
     public function addComment(array $auth, int $ticketId): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền phản hồi ticket', false);
+        if (!$this->checkTicketAccess($auth, $ticketId)) {
+            respond(403, null, 'Bạn không có quyền phản hồi ticket này', false);
+        }
         $data = getBody();
         if (empty($data['body'])) respond(400, null, 'Nội dung ghi chú không được để trống', false);
-
-        $check = $this->db->prepare("SELECT id FROM tickets WHERE id=? AND tenant_id=?");
-        $check->execute([$ticketId, $auth['tenant_id']]);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy ticket', false);
 
         $stmt = $this->db->prepare("INSERT INTO ticket_comments (ticket_id, user_id, body) VALUES (?, ?, ?)");
         $stmt->execute([$ticketId, $auth['user_id'], $data['body']]);

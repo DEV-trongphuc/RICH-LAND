@@ -25,6 +25,57 @@ class CooperationController {
         }
     }
 
+    private function checkSlipAccess(array $auth, int $id): bool {
+        if (in_array(strtolower($auth['role'] ?? ''), ['admin', 'superadmin', 'super_admin'], true)) {
+            return true;
+        }
+
+        // Fetch slip details
+        $stmtSlip = $this->db->prepare("
+            SELECT cs.created_by, c.owner_id, cs.shares_json, c.tenant_id
+            FROM cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            WHERE cs.id = ?
+        ");
+        $stmtSlip->execute([$id]);
+        $slip = $stmtSlip->fetch();
+        if (!$slip) return false;
+        
+        // Tenant check
+        if ((int)$slip['tenant_id'] !== (int)$auth['tenant_id']) return false;
+
+        $userId = (int)$auth['user_id'];
+        $shares = json_decode($slip['shares_json'] ?? '[]', true) ?: [];
+        $isShareholder = isset($shares[$userId]);
+        $isCreator = (int)$slip['created_by'] === $userId;
+        $isOwner = (int)$slip['owner_id'] === $userId;
+
+        if ($auth['role'] === 'manager') {
+            if ($isCreator || $isOwner || $isShareholder) {
+                return true;
+            }
+            $uidsToCheck = [(int)$slip['created_by'], (int)$slip['owner_id']];
+            foreach ($shares as $u => $p) {
+                $uidsToCheck[] = (int)$u;
+            }
+            $uidsToCheck = array_unique(array_filter($uidsToCheck));
+            if (!empty($uidsToCheck)) {
+                $inUids = implode(',', array_fill(0, count($uidsToCheck), '?'));
+                $stmtTeamCheck = $this->db->prepare("
+                    SELECT 1 FROM users 
+                    WHERE id IN ($inUids) AND team_id IN (SELECT id FROM teams WHERE leader_id = ?)
+                ");
+                $stmtTeamCheck->execute(array_merge($uidsToCheck, [$userId]));
+                if ($stmtTeamCheck->fetch()) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return ($isCreator || $isOwner || $isShareholder);
+    }
+
     public function index(array $auth): void {
         $tid = $auth['tenant_id'];
 
@@ -43,6 +94,20 @@ class CooperationController {
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             // Only show slips where the sales is a shareholder
             $sql .= " AND (JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(? AS CHAR))) OR cs.created_by = ?)";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            // Manager can see their own, or slips of team members
+            $sql .= " AND (
+                JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(? AS CHAR))) 
+                OR cs.created_by = ?
+                OR EXISTS (
+                    SELECT 1 FROM users u2 
+                    WHERE u2.team_id IN (SELECT id FROM teams WHERE leader_id = ?)
+                    AND (JSON_CONTAINS(JSON_KEYS(cs.shares_json), JSON_QUOTE(CAST(u2.id AS CHAR))) OR cs.created_by = u2.id)
+                )
+            )";
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
@@ -192,21 +257,16 @@ class CooperationController {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
         }
 
+        if (!$this->checkSlipAccess($auth, $id)) {
+            respond(403, null, 'Bạn không có quyền cập nhật tỷ lệ cho phiếu hợp tác này', false);
+        }
+
         $allowedStatuses = ['pending_signatures', 'approved', 'pending_manager_approval', 'approved_pending_signatures'];
         if (!in_array($slip['status'], $allowedStatuses)) {
             respond(400, null, 'Không thể cập nhật tỷ lệ trong trạng thái hiện tại', false);
         }
 
-        $userId = $auth['user_id'];
-        $oldShares = json_decode($slip['shares_json'] ?? '[]', true) ?: [];
-        $isShareholder = isset($oldShares[$userId]) || isset($shares[$userId]);
-        $isCreator = $slip['created_by'] == $userId;
-        $isOwner = $slip['owner_id'] == $userId;
-        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager']);
-
-        if (!$isShareholder && !$isCreator && !$isOwner && !$isManagerOrAdmin) {
-            respond(403, null, 'Chỉ chủ sở hữu, thành viên tham gia hoặc quản trị viên mới được cập nhật tỷ lệ', false);
-        }
+        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true);
 
         $sharesJson = json_encode($shares);
         $reason = trim($b['reason'] ?? '');
@@ -415,6 +475,10 @@ class CooperationController {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
         }
 
+        if (!$this->checkSlipAccess($auth, $id)) {
+            respond(403, null, 'Bạn không có quyền phê duyệt phiếu hợp tác này', false);
+        }
+
         if ($slip['status'] !== 'pending_manager_approval') {
             respond(400, null, 'Phiếu chưa được ký đủ chữ ký của các bên để phê duyệt', false);
         }
@@ -452,15 +516,11 @@ class CooperationController {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
         }
 
-        $shares = json_decode($slip['shares_json'] ?? '[]', true) ?: [];
-        $userId = $auth['user_id'];
-        $isShareholder = isset($shares[$userId]);
-        $isCreator = $slip['created_by'] == $userId;
-        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager']);
-
-        if (!$isShareholder && !$isCreator && !$isManagerOrAdmin) {
+        if (!$this->checkSlipAccess($auth, $id)) {
             respond(403, null, 'Bạn không có quyền từ chối hoặc phản hồi phiếu này', false);
         }
+
+        $shares = json_decode($slip['shares_json'] ?? '[]', true) ?: [];
 
         // Return to pending_signatures so sales can update percentages
         $stmt = $this->db->prepare("
@@ -498,10 +558,38 @@ class CooperationController {
             respond(400, null, 'Phiếu hợp tác của khách hàng này đã tồn tại', false);
         }
 
-        // Find owner of contact
-        $stmtC = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ?");
+        // Find owner of contact and check access
+        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id FROM contacts WHERE id = ?");
         $stmtC->execute([$contactId]);
-        $ownerId = (int)$stmtC->fetchColumn();
+        $contactRow = $stmtC->fetch();
+        if (!$contactRow) {
+            respond(404, null, 'Khách hàng không tồn tại', false);
+        }
+        if ((int)$contactRow['tenant_id'] !== (int)$auth['tenant_id']) {
+            respond(403, null, 'Bạn không có quyền truy cập khách hàng này', false);
+        }
+        $ownerId = (int)$contactRow['owner_id'];
+        
+        // Check ownership access
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            if ($ownerId !== (int)$auth['user_id']) {
+                respond(403, null, 'Bạn chỉ có quyền tạo phiếu hợp tác cho khách hàng thuộc sở hữu của mình', false);
+            }
+        } else if ($auth['role'] === 'manager') {
+            // Check if owner belongs to manager's team
+            $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+            $stmtUserTeam->execute([$ownerId]);
+            $targetUserTeamId = $stmtUserTeam->fetchColumn();
+
+            $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
+            $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
+            $isTeamMember = $stmtLead->fetch();
+
+            if ($ownerId !== (int)$auth['user_id'] && !$isTeamMember) {
+                respond(403, null, 'Bạn chỉ có quyền tạo phiếu hợp tác cho khách hàng thuộc quản lý của nhóm mình', false);
+            }
+        }
+
         if ($ownerId <= 0) {
             $ownerId = $auth['user_id'];
         }
@@ -535,7 +623,7 @@ class CooperationController {
         $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
                      ($ownerId && (int)$ownerId === (int)$auth['user_id']);
 
-        if (!$isAllowed) {
+        if (!$this->checkSlipAccess($auth, $id)) {
             respond(403, null, 'Bạn không có quyền tải lên tài liệu cho phiếu hợp tác này', false);
         }
 
@@ -605,7 +693,7 @@ class CooperationController {
         $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
                      ($ownerId && (int)$ownerId === (int)$auth['user_id']);
 
-        if (!$isAllowed) {
+        if (!$this->checkSlipAccess($auth, $id)) {
             respond(403, null, 'Bạn không có quyền xóa tài liệu đính kèm này', false);
         }
 
@@ -664,7 +752,7 @@ class CooperationController {
         $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
                      ((int)$row['owner_id'] === (int)$auth['user_id']);
                      
-        if (!$isAllowed) {
+        if (!$this->checkSlipAccess($auth, $id)) {
             respond(403, null, 'Bạn không có quyền đổi tên tài liệu này', false);
         }
 
@@ -733,10 +821,7 @@ class CooperationController {
             respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
         }
         
-        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
-                     ((int)$row['created_by'] === (int)$auth['user_id']);
-                     
-        if (!$isAllowed) {
+        if (!$this->checkSlipAccess($auth, $id)) {
             respond(403, null, 'Bạn không có quyền xóa phiếu hợp tác này', false);
         }
         

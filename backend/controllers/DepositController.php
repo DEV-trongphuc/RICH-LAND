@@ -21,8 +21,14 @@ class DepositController {
         ";
         $params = [$tid];
 
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND (d.created_by = ? OR c.owner_id = ?)";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $sql .= " AND (d.created_by = ? OR c.owner_id = ? OR d.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)) OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
@@ -83,8 +89,22 @@ class DepositController {
                 respond(404, null, 'Khách hàng không tồn tại', false);
             }
 
-            if ($auth['role'] === 'sales' && $contact['owner_id'] != $auth['user_id']) {
-                respond(403, null, 'Bạn không thể tạo cọc cho khách hàng của người khác', false);
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                if ($contact['owner_id'] != $auth['user_id']) {
+                    respond(403, null, 'Bạn không thể tạo cọc cho khách hàng của người khác', false);
+                }
+            } else if ($auth['role'] === 'manager') {
+                $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+                $stmtUserTeam->execute([$contact['owner_id']]);
+                $targetUserTeamId = $stmtUserTeam->fetchColumn();
+
+                $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
+                $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
+                $isTeamMember = $stmtLead->fetch();
+
+                if ($contact['owner_id'] != $auth['user_id'] && !$isTeamMember) {
+                    respond(403, null, 'Bạn không thể tạo cọc cho khách hàng thuộc quản lý của nhóm khác', false);
+                }
             }
 
             // Insert deposit record
@@ -153,8 +173,22 @@ class DepositController {
         $dep = $stmtDep->fetch();
         if (!$dep) respond(404, null, 'Phiếu cọc không tồn tại', false);
 
-        if ($auth['role'] === 'sales' && $dep['owner_id'] != $auth['user_id']) {
-            respond(403, null, 'Bạn không có quyền cập nhật phiếu cọc của người khác', false);
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            if ($dep['owner_id'] != $auth['user_id']) {
+                respond(403, null, 'Bạn không có quyền cập nhật phiếu cọc của người khác', false);
+            }
+        } else if ($auth['role'] === 'manager') {
+            $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+            $stmtUserTeam->execute([$dep['owner_id']]);
+            $targetUserTeamId = $stmtUserTeam->fetchColumn();
+
+            $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
+            $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
+            $isTeamMember = $stmtLead->fetch();
+
+            if ($dep['owner_id'] != $auth['user_id'] && !$isTeamMember) {
+                respond(403, null, 'Bạn không có quyền cập nhật phiếu cọc thuộc quản lý của nhóm khác', false);
+            }
         }
 
         $fileName = basename($file['name']);
@@ -274,11 +308,30 @@ class DepositController {
 
         $this->db->beginTransaction();
         try {
-            // Fetch deposit info
-            $stmtDep = $this->db->prepare("SELECT contact_id, status FROM deposits WHERE id = ?");
-            $stmtDep->execute([$id]);
+            // Fetch deposit info and check access
+            $stmtDep = $this->db->prepare("
+                SELECT d.contact_id, d.status, c.owner_id, c.tenant_id 
+                FROM deposits d 
+                JOIN contacts c ON d.contact_id = c.id
+                WHERE d.id = ? AND c.tenant_id = ?
+            ");
+            $stmtDep->execute([$id, $auth['tenant_id']]);
             $dep = $stmtDep->fetch();
-            if (!$dep) respond(404, null, 'Phiếu cọc không tồn tại', false);
+            if (!$dep) respond(404, null, 'Phiếu cọc không tồn tại hoặc bạn không có quyền', false);
+
+            if ($auth['role'] === 'manager') {
+                $stmtUserTeam = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+                $stmtUserTeam->execute([$dep['owner_id']]);
+                $targetUserTeamId = $stmtUserTeam->fetchColumn();
+
+                $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
+                $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
+                $isTeamMember = $stmtLead->fetch();
+
+                if ($dep['owner_id'] != $auth['user_id'] && !$isTeamMember) {
+                    respond(403, null, 'Bạn không thể hủy cọc cho khách hàng thuộc quản lý của nhóm khác', false);
+                }
+            }
 
             $contactId = $dep['contact_id'];
 

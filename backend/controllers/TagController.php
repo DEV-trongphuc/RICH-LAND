@@ -87,8 +87,12 @@ class TagController {
 
         $params = [$auth['tenant_id']];
         $where  = 'tenant_id = ? AND deleted_at IS NULL';
-        if ($auth['role'] === 'sales') {
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $where .= ' AND owner_id = ?';
+            $params[] = $auth['user_id'];
+        } else if ($auth['role'] === 'manager') {
+            $where .= ' AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
         if ($from) { $where .= " AND $dateField >= ?"; $params[] = $from . ' 00:00:00'; }

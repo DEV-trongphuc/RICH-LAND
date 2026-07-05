@@ -14,7 +14,7 @@ class WorkflowTaskTemplateController
             respond(403, null, 'Quyền truy cập bị từ chối', false);
         }
 
-        $stmt = $this->db->prepare("
+        $sql = "
             SELECT tpl.*, 
                    ps.name as stage_name, 
                    teams.name as team_name
@@ -22,9 +22,26 @@ class WorkflowTaskTemplateController
             LEFT JOIN pipeline_stages ps ON tpl.stage_id = ps.id
             LEFT JOIN teams ON tpl.team_id = teams.id
             WHERE tpl.tenant_id = ?
-            ORDER BY tpl.stage_id ASC, tpl.id ASC
-        ");
-        $stmt->execute([$auth['tenant_id']]);
+        ";
+        $p = [$auth['tenant_id']];
+
+        if ($auth['role'] === 'manager') {
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE leader_id = ? LIMIT 1");
+            $stmtTeam->execute([$auth['user_id']]);
+            $managerTeamId = $stmtTeam->fetchColumn() ?: null;
+
+            if ($managerTeamId) {
+                $sql .= " AND (tpl.team_id IS NULL OR tpl.team_id = ?)";
+                $p[] = (int)$managerTeamId;
+            } else {
+                $sql .= " AND tpl.team_id IS NULL";
+            }
+        }
+
+        $sql .= " ORDER BY tpl.stage_id ASC, tpl.id ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
         respond(200, $stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
@@ -41,6 +58,17 @@ class WorkflowTaskTemplateController
 
         $stageId = (int)$b['stage_id'];
         $teamId = !empty($b['team_id']) ? (int)$b['team_id'] : null;
+
+        if ($auth['role'] === 'manager') {
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE leader_id = ? LIMIT 1");
+            $stmtTeam->execute([$auth['user_id']]);
+            $managerTeamId = $stmtTeam->fetchColumn() ?: null;
+
+            if ($teamId !== null && (int)$teamId !== (int)$managerTeamId) {
+                respond(403, null, 'Bạn không thể tạo mẫu công việc cho nhóm khác', false);
+            }
+        }
+
         $title = trim($b['title']);
         $description = !empty($b['description']) ? trim($b['description']) : null;
         $priority = !empty($b['priority']) ? $b['priority'] : 'medium';
@@ -98,6 +126,25 @@ class WorkflowTaskTemplateController
 
         $stageId = (int)$b['stage_id'];
         $teamId = !empty($b['team_id']) ? (int)$b['team_id'] : null;
+
+        if ($auth['role'] === 'manager') {
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE leader_id = ? LIMIT 1");
+            $stmtTeam->execute([$auth['user_id']]);
+            $managerTeamId = $stmtTeam->fetchColumn() ?: null;
+
+            $stmtCheckTpl = $this->db->prepare("SELECT team_id FROM workflow_task_templates WHERE id=? AND tenant_id=?");
+            $stmtCheckTpl->execute([$id, $auth['tenant_id']]);
+            $tplTeamId = $stmtCheckTpl->fetchColumn();
+
+            if ($tplTeamId !== null && (int)$tplTeamId !== (int)$managerTeamId) {
+                respond(403, null, 'Bạn không có quyền chỉnh sửa mẫu công việc của nhóm khác', false);
+            }
+
+            if ($teamId !== null && (int)$teamId !== (int)$managerTeamId) {
+                respond(403, null, 'Bạn không thể gán mẫu công việc sang nhóm khác', false);
+            }
+        }
+
         $title = trim($b['title']);
         $description = !empty($b['description']) ? trim($b['description']) : null;
         $priority = !empty($b['priority']) ? $b['priority'] : 'medium';
@@ -145,6 +192,20 @@ class WorkflowTaskTemplateController
     {
         if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
+        }
+
+        if ($auth['role'] === 'manager') {
+            $stmtTeam = $this->db->prepare("SELECT id FROM teams WHERE leader_id = ? LIMIT 1");
+            $stmtTeam->execute([$auth['user_id']]);
+            $managerTeamId = $stmtTeam->fetchColumn() ?: null;
+
+            $stmtCheckTpl = $this->db->prepare("SELECT team_id FROM workflow_task_templates WHERE id=? AND tenant_id=?");
+            $stmtCheckTpl->execute([$id, $auth['tenant_id']]);
+            $tplTeamId = $stmtCheckTpl->fetchColumn();
+
+            if ($tplTeamId !== null && (int)$tplTeamId !== (int)$managerTeamId) {
+                respond(403, null, 'Bạn không có quyền xóa mẫu công việc của nhóm khác', false);
+            }
         }
 
         $stmt = $this->db->prepare("DELETE FROM workflow_task_templates WHERE id = ? AND tenant_id = ?");

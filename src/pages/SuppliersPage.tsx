@@ -22,7 +22,8 @@ export const SuppliersPage: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
   const [formData, setFormData] = useState({
-    name: '', contact_name: '', email: '', phone: '', address: '', tax_code: '', notes: ''
+    name: '', contact_name: '', email: '', phone: '', address: '', tax_code: '', notes: '',
+    contact_position: '', website: '', scale_capital: '', typical_projects: '', focused_type: '', prestige_tier: 'A', cooperation_status: 'active', bank_account: ''
   });
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -69,7 +70,10 @@ export const SuppliersPage: React.FC = () => {
 
   const handleOpenModal = (s: any = null) => {
     setSelectedSupplier(s);
-    setFormData(s || { name: '', contact_name: '', email: '', phone: '', address: '', tax_code: '', notes: '' });
+    setFormData(s || {
+      name: '', contact_name: '', email: '', phone: '', address: '', tax_code: '', notes: '',
+      contact_position: '', website: '', scale_capital: '', typical_projects: '', focused_type: '', prestige_tier: 'A', cooperation_status: 'active', bank_account: ''
+    });
     setShowModal(true);
   };
 
@@ -198,19 +202,41 @@ export const SuppliersPage: React.FC = () => {
                         <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>
                           {s.name}
                         </h3>
-                        <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.65rem', marginTop: '4px', display: 'inline-block' }}>
-                          Chủ đầu tư
-                        </span>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
+                          <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.65rem' }}>
+                            Chủ đầu tư
+                          </span>
+                          {s.prestige_tier && (
+                            <span className="badge sm" style={{
+                              background: s.prestige_tier === 'A' ? 'rgba(16, 185, 129, 0.1)' : s.prestige_tier === 'B' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                              color: s.prestige_tier === 'A' ? '#10b981' : s.prestige_tier === 'B' ? '#3b82f6' : '#6b7280',
+                              fontSize: '0.65rem'
+                            }}>
+                              Hạng {s.prestige_tier}
+                            </span>
+                          )}
+                          {s.cooperation_status && (
+                            <span className="badge sm" style={{
+                              background: s.cooperation_status === 'active' ? 'rgba(16, 185, 129, 0.1)' : s.cooperation_status === 'negotiating' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                              color: s.cooperation_status === 'active' ? '#10b981' : s.cooperation_status === 'negotiating' ? '#f59e0b' : '#ef4444',
+                              fontSize: '0.65rem'
+                            }}>
+                              {s.cooperation_status === 'active' ? 'Đang liên kết' : s.cooperation_status === 'negotiating' ? 'Đang đàm phán' : 'Tạm ngưng'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Details Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginBottom: '1.25rem', padding: '0.75rem 0', borderTop: '1px solid var(--color-border-light)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginBottom: '0.75rem', padding: '0.75rem 0', borderTop: '1px solid var(--color-border-light)' }}>
                     {s.contact_name && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                         <User size={13} style={{ opacity: 0.6 }} />
-                        <span style={{ fontWeight: 600 }}>{s.contact_name}</span>
+                        <span style={{ fontWeight: 600 }}>
+                          {s.contact_name} {s.contact_position ? `(${s.contact_position})` : ''}
+                        </span>
                       </div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
@@ -225,29 +251,26 @@ export const SuppliersPage: React.FC = () => {
                       <MapPin size={13} style={{ opacity: 0.6 }} />
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address || '—'}</span>
                     </div>
+                    {s.website && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <ExternalLink size={13} style={{ opacity: 0.6 }} />
+                        <a href={s.website.startsWith('http') ? s.website : `https://${s.website}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} onClick={e => e.stopPropagation()}>
+                          {s.website}
+                        </a>
+                      </div>
+                    )}
+                    {s.typical_projects && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <Building2 size={13} style={{ opacity: 0.6 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: 'italic' }} title={s.typical_projects}>
+                          Dự án: {s.typical_projects}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div>
-                  {/* Total transaction stats card */}
-                  <div style={{
-                    background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.03) 0%, rgba(249, 115, 22, 0.03) 100%)',
-                    border: '1px solid rgba(189, 29, 45, 0.08)',
-                    borderRadius: '10px',
-                    padding: '8px 12px',
-                    marginBottom: '1rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                      Tổng giá trị giao dịch
-                    </span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>
-                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered || 0)}
-                    </span>
-                  </div>
-
                   {/* Actions */}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
                     <button className="btn ghost sm" onClick={() => handleOpenModal(s)} style={{ padding: '6px', borderRadius: '6px' }}>
@@ -275,107 +298,215 @@ export const SuppliersPage: React.FC = () => {
         <AnimatePresence>
           {showModal && (
             <div className="overlay-backdrop" onClick={() => setShowModal(false)} style={{ zIndex: 1000 }}>
-            <motion.div 
-              className="modal-sheet modal-md shadow-2xl"
-              style={{ maxWidth: '600px', width: '100%' }}
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <h3>{selectedSupplier ? 'Cập nhật đối tác' : 'Thêm chủ đầu tư mới'}</h3>
-                <button className="btn-icon sm" onClick={() => setShowModal(false)}><ArrowUpRight size={18} style={{ transform: 'rotate(45deg)' }} /></button>
-              </div>
-
-              <form onSubmit={handleSubmit}>
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label className="form-label">Tên doanh nghiệp / Chủ đầu tư <span className="text-danger">*</span></label>
-                    <input 
-                      className="form-input" 
-                      placeholder="Ví dụ: Vingroup, Novaland..."
-                      required 
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="grid grid-2">
-                    <div className="form-group">
-                      <label className="form-label">Người liên hệ</label>
-                      <input 
-                        className="form-input" 
-                        placeholder="Họ và tên"
-                        value={formData.contact_name}
-                        onChange={e => setFormData({...formData, contact_name: e.target.value})}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Mã số thuế</label>
-                      <input 
-                        className="form-input" 
-                        placeholder="MST doanh nghiệp"
-                        value={formData.tax_code}
-                        onChange={e => setFormData({...formData, tax_code: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-2">
-                    <div className="form-group">
-                      <label className="form-label">Số điện thoại</label>
-                      <input 
-                        className="form-input" 
-                        placeholder="09xx..."
-                        value={formData.phone}
-                        onChange={e => setFormData({...formData, phone: e.target.value})}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Email</label>
-                      <input 
-                        className="form-input" 
-                        type="email"
-                        placeholder="developer@email.com"
-                        value={formData.email}
-                        onChange={e => setFormData({...formData, email: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <AddressSelect
-                      label="Địa chỉ"
-                      value={formData.address}
-                      onChange={val => setFormData({...formData, address: val})}
-                      placeholder="Chọn địa chỉ chủ đầu tư..."
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Ghi chú thêm</label>
-                    <textarea 
-                      className="form-textarea" 
-                      placeholder="Thông tin thêm về chủ đầu tư..."
-                      value={formData.notes}
-                      onChange={e => setFormData({...formData, notes: e.target.value})}
-                    />
-                  </div>
+              <motion.div 
+                className="modal-sheet modal-lg shadow-2xl"
+                style={{ maxWidth: '900px', width: '100%' }}
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="modal-header">
+                  <h3>{selectedSupplier ? 'Cập nhật đối tác' : 'Thêm chủ đầu tư mới'}</h3>
+                  <button className="btn-icon sm" onClick={() => setShowModal(false)}><ArrowUpRight size={18} style={{ transform: 'rotate(45deg)' }} /></button>
                 </div>
 
-                <div className="modal-footer">
-                  <button type="button" className="btn secondary" onClick={() => setShowModal(false)}>Hủy bỏ</button>
-                  <button type="submit" className="btn primary">
-                    {selectedSupplier ? 'Lưu thay đổi' : 'Tạo chủ đầu tư'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    , document.body)}
+                <form onSubmit={handleSubmit}>
+                  <div className="modal-body" style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+                      {/* Left Column: Enterprise Info */}
+                      <div>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--color-border-light)' }}>
+                          Thông tin doanh nghiệp
+                        </h4>
+                        
+                        <div className="form-group">
+                          <label className="form-label">Tên doanh nghiệp / Chủ đầu tư <span className="text-danger">*</span></label>
+                          <input 
+                            className="form-input" 
+                            placeholder="Ví dụ: Vingroup, Novaland..."
+                            required 
+                            value={formData.name}
+                            onChange={e => setFormData({...formData, name: e.target.value})}
+                          />
+                        </div>
+
+                        <div className="grid grid-2">
+                          <div className="form-group">
+                            <label className="form-label">Mã số thuế</label>
+                            <input 
+                              className="form-input" 
+                              placeholder="MST doanh nghiệp"
+                              value={formData.tax_code || ''}
+                              onChange={e => setFormData({...formData, tax_code: e.target.value})}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Vốn điều lệ / Quy mô</label>
+                            <input 
+                              className="form-input" 
+                              placeholder="Ví dụ: 5.000 tỷ..."
+                              value={formData.scale_capital || ''}
+                              onChange={e => setFormData({...formData, scale_capital: e.target.value})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Website doanh nghiệp</label>
+                          <input 
+                            className="form-input" 
+                            placeholder="https://..."
+                            value={formData.website || ''}
+                            onChange={e => setFormData({...formData, website: e.target.value})}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Phân khúc BĐS tập trung</label>
+                          <input 
+                            className="form-input" 
+                            placeholder="Ví dụ: Căn hộ cao cấp, Đất nền, Nghỉ dưỡng..."
+                            value={formData.focused_type || ''}
+                            onChange={e => setFormData({...formData, focused_type: e.target.value})}
+                          />
+                        </div>
+
+                        <div className="grid grid-2">
+                          <div className="form-group">
+                            <label className="form-label">Phân hạng uy tín</label>
+                            <select 
+                              className="form-input"
+                              value={formData.prestige_tier || 'A'}
+                              onChange={e => setFormData({...formData, prestige_tier: e.target.value})}
+                            >
+                              <option value="A">Hạng A (Rất uy tín)</option>
+                              <option value="B">Hạng B (Uy tín)</option>
+                              <option value="C">Hạng C (Trung bình)</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Trạng thái hợp tác</label>
+                            <select 
+                              className="form-input"
+                              value={formData.cooperation_status || 'active'}
+                              onChange={e => setFormData({...formData, cooperation_status: e.target.value})}
+                            >
+                              <option value="active">Đang liên kết</option>
+                              <option value="negotiating">Đang đàm phán</option>
+                              <option value="suspended">Tạm ngưng</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column: Contact & Transaction Info */}
+                      <div>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: '12px', paddingBottom: '6px', borderBottom: '1px solid var(--color-border-light)' }}>
+                          Thông tin liên hệ & Giao dịch
+                        </h4>
+
+                        <div className="grid grid-2">
+                          <div className="form-group">
+                            <label className="form-label">Người liên hệ</label>
+                            <input 
+                              className="form-input" 
+                              placeholder="Họ và tên"
+                              value={formData.contact_name || ''}
+                              onChange={e => setFormData({...formData, contact_name: e.target.value})}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Chức vụ</label>
+                            <input 
+                              className="form-input" 
+                              placeholder="Ví dụ: GĐ Kinh doanh..."
+                              value={formData.contact_position || ''}
+                              onChange={e => setFormData({...formData, contact_position: e.target.value})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-2">
+                          <div className="form-group">
+                            <label className="form-label">Số điện thoại</label>
+                            <input 
+                              className="form-input" 
+                              placeholder="09xx..."
+                              value={formData.phone || ''}
+                              onChange={e => setFormData({...formData, phone: e.target.value})}
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Email</label>
+                            <input 
+                              className="form-input" 
+                              type="email"
+                              placeholder="developer@email.com"
+                              value={formData.email || ''}
+                              onChange={e => setFormData({...formData, email: e.target.value})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">Tài khoản ngân hàng giao dịch</label>
+                          <input 
+                            className="form-input" 
+                            placeholder="Số TK - Tên NH - Chi nhánh..."
+                            value={formData.bank_account || ''}
+                            onChange={e => setFormData({...formData, bank_account: e.target.value})}
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <AddressSelect
+                            label="Địa chỉ văn phòng"
+                            value={formData.address || ''}
+                            onChange={val => setFormData({...formData, address: val})}
+                            placeholder="Chọn địa chỉ văn phòng..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Full Width Bottom Area */}
+                    <div style={{ marginTop: '20px', borderTop: '1px solid var(--color-border-light)', paddingTop: '20px' }}>
+                      <div className="form-group">
+                        <label className="form-label">Danh sách dự án tiêu biểu</label>
+                        <input 
+                          className="form-input" 
+                          placeholder="Ví dụ: Vinhomes Grand Park, Masteri Centre Point..."
+                          value={formData.typical_projects || ''}
+                          onChange={e => setFormData({...formData, typical_projects: e.target.value})}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Ghi chú thêm</label>
+                        <textarea 
+                          className="form-textarea" 
+                          placeholder="Thông tin thêm về chủ đầu tư..."
+                          value={formData.notes || ''}
+                          onChange={e => setFormData({...formData, notes: e.target.value})}
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="modal-footer">
+                    <button type="button" className="btn secondary" onClick={() => setShowModal(false)}>Hủy bỏ</button>
+                    <button type="submit" className="btn primary">
+                      {selectedSupplier ? 'Lưu thay đổi' : 'Tạo chủ đầu tư'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      , document.body)}
     </div>
   );
 };
