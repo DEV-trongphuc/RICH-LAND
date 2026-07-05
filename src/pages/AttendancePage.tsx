@@ -290,7 +290,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-surface)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--color-surface)', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--color-border)', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {/* Unified month switcher */}
             <div style={{
@@ -359,10 +359,53 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             </button>
           </div>
           
-          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
-            {filterUser === 'all' 
-              ? t('Nhấp chọn một ngày để xem danh sách chi tiết ngày đó.') 
-              : t('Hiển thị lịch chấm công của TVV được chọn.')}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
+            {/* User Select */}
+            {!isSales && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
+                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả nhân viên') },
+                    ...consultants.map(c => ({ value: String(c.id), label: c.name }))
+                  ]}
+                  value={filterUser}
+                  onChange={(val) => setFilterUser(String(val))}
+                  width="100%"
+                />
+              </div>
+            )}
+
+            {/* Status Select */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
+              <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái duyệt')}</label>
+              <CustomSelect
+                options={[
+                  { value: 'all', label: t('Tất cả trạng thái') },
+                  { value: 'approved', label: t('Đã duyệt / Đúng giờ') },
+                  { value: 'pending_approval', label: t('Chờ duyệt đi trễ') },
+                  { value: 'rejected', label: t('Đã từ chối') }
+                ]}
+                value={filterStatus}
+                onChange={(val) => setFilterStatus(String(val))}
+                width="100%"
+              />
+            </div>
+
+            <button
+              onClick={() => {
+                setPeriod('7d');
+                setCustomRange({ from: '2026-06-25', to: '2026-07-01' });
+                setCurrentMonth(7);
+                setCurrentYear(2026);
+                setFilterUser(isSales ? String(user?.id) : 'all');
+                setFilterStatus('all');
+              }}
+              className="btn outline sm"
+              style={{ height: '38px', borderRadius: '8px' }}
+            >
+              {t('Đặt lại bộ lọc')}
+            </button>
           </div>
         </div>
 
@@ -778,10 +821,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       </div>
 
       {/* Filter Bar */}
-      <div className="card" style={{ padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Period Filter (List View only) */}
-          {viewMode === 'list' && (
+      {viewMode === 'list' && (
+        <div className="card" style={{ padding: '1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Period Filter (List View only) */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '220px' }}>
               <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Khoảng thời gian')}</label>
               <PeriodFilter
@@ -798,56 +841,56 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 }}
               />
             </div>
-          )}
 
-          {/* User Select */}
-          {!isSales && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
+            {/* User Select */}
+            {!isSales && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: t('Tất cả nhân viên') },
+                    ...consultants.map(c => ({ value: String(c.id), label: c.name }))
+                  ]}
+                  value={filterUser}
+                  onChange={(val) => setFilterUser(String(val))}
+                  width="100%"
+                />
+              </div>
+            )}
+
+            {/* Status Select */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái duyệt')}</label>
               <CustomSelect
                 options={[
-                  { value: 'all', label: t('Tất cả nhân viên') },
-                  ...consultants.map(c => ({ value: String(c.id), label: c.name }))
+                  { value: 'all', label: t('Tất cả trạng thái') },
+                  { value: 'approved', label: t('Đã duyệt / Đúng giờ') },
+                  { value: 'pending_approval', label: t('Chờ duyệt đi trễ') },
+                  { value: 'rejected', label: t('Đã từ chối') }
                 ]}
-                value={filterUser}
-                onChange={(val) => setFilterUser(String(val))}
+                value={filterStatus}
+                onChange={(val) => setFilterStatus(String(val))}
                 width="100%"
               />
             </div>
-          )}
 
-          {/* Status Select */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
-            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Trạng thái duyệt')}</label>
-            <CustomSelect
-              options={[
-                { value: 'all', label: t('Tất cả trạng thái') },
-                { value: 'approved', label: t('Đã duyệt / Đúng giờ') },
-                { value: 'pending_approval', label: t('Chờ duyệt đi trễ') },
-                { value: 'rejected', label: t('Đã từ chối') }
-              ]}
-              value={filterStatus}
-              onChange={(val) => setFilterStatus(String(val))}
-              width="100%"
-            />
+            <button
+              onClick={() => {
+                setPeriod('7d');
+                setCustomRange({ from: '2026-06-25', to: '2026-07-01' });
+                setCurrentMonth(7);
+                setCurrentYear(2026);
+                setFilterUser(isSales ? String(user?.id) : 'all');
+                setFilterStatus('all');
+              }}
+              className="btn outline sm"
+              style={{ marginTop: '20px', height: '38px', borderRadius: '8px' }}
+            >
+              {t('Đặt lại bộ lọc')}
+            </button>
           </div>
-
-          <button
-            onClick={() => {
-              setPeriod('7d');
-              setCustomRange({ from: '2026-06-25', to: '2026-07-01' });
-              setCurrentMonth(7);
-              setCurrentYear(2026);
-              setFilterUser(isSales ? String(user?.id) : 'all');
-              setFilterStatus('all');
-            }}
-            className="btn outline sm"
-            style={{ marginTop: '20px', height: '38px', borderRadius: '8px' }}
-          >
-            {t('Đặt lại bộ lọc')}
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Main Content Area */}
       {viewMode === 'list' ? (
