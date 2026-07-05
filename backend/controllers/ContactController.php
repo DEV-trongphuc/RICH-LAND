@@ -307,7 +307,7 @@ class ContactController {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b = getBody();
         // 1. Pre-fetch current contact state for lifecycle validation
-        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id, email, phone, mobile FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtCurr->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtCurr->fetch();
         if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -418,7 +418,7 @@ class ContactController {
         
         // Handle company_id specially to allow clearing and name resolution
         if (array_key_exists('company_name', $b)) {
-            $name = trim($b['company_name']);
+            $name = trim((string)($b['company_name'] ?? ''));
             if ($name === '') {
                 $sets[] = "company_id=NULL";
             } else {
@@ -453,32 +453,38 @@ class ContactController {
         if ($phone) {
             require_once __DIR__ . '/../webhook_logic.php';
             $phone = normalizePhone($phone);
-            $personId = $currentContact['person_id'] ?? null;
-            if ($personId) {
-                $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND (person_id IS NULL OR person_id != ?) AND deleted_at IS NULL LIMIT 1");
-                $check->execute([$auth['tenant_id'], $phone, $phone, $id, $personId]);
-            } else {
-                $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND deleted_at IS NULL LIMIT 1");
-                $check->execute([$auth['tenant_id'], $phone, $phone, $id]);
-            }
-            if ($check->fetch()) {
-                respond(422, null, "Số điện thoại '$phone' đã tồn tại ở một khách hàng khác.", false);
+            $currPhone = normalizePhone($currentContact['phone'] ?? $currentContact['mobile'] ?? '');
+            if ($phone !== $currPhone) {
+                $personId = $currentContact['person_id'] ?? null;
+                if ($personId) {
+                    $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND (person_id IS NULL OR person_id != ?) AND deleted_at IS NULL LIMIT 1");
+                    $check->execute([$auth['tenant_id'], $phone, $phone, $id, $personId]);
+                } else {
+                    $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND deleted_at IS NULL LIMIT 1");
+                    $check->execute([$auth['tenant_id'], $phone, $phone, $id]);
+                }
+                if ($check->fetch()) {
+                    respond(422, null, "Số điện thoại '$phone' đã tồn tại ở một khách hàng khác.", false);
+                }
             }
         }
         // Duplicate Email Check (excluding self and other parallel contacts for the same physical Person)
         $email = $b['email'] ?? null;
         if ($email) {
             $email = trim(strtolower($email));
-            $personId = $currentContact['person_id'] ?? null;
-            if ($personId) {
-                $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND (person_id IS NULL OR person_id != ?) AND deleted_at IS NULL LIMIT 1");
-                $checkEmail->execute([$auth['tenant_id'], $email, $id, $personId]);
-            } else {
-                $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND deleted_at IS NULL LIMIT 1");
-                $checkEmail->execute([$auth['tenant_id'], $email, $id]);
-            }
-            if ($checkEmail->fetch()) {
-                respond(422, null, "Email '$email' đã tồn tại ở một khách hàng khác.", false);
+            $currEmail = trim(strtolower($currentContact['email'] ?? ''));
+            if ($email !== $currEmail) {
+                $personId = $currentContact['person_id'] ?? null;
+                if ($personId) {
+                    $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND (person_id IS NULL OR person_id != ?) AND deleted_at IS NULL LIMIT 1");
+                    $checkEmail->execute([$auth['tenant_id'], $email, $id, $personId]);
+                } else {
+                    $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+                    $checkEmail->execute([$auth['tenant_id'], $email, $id]);
+                }
+                if ($checkEmail->fetch()) {
+                    respond(422, null, "Email '$email' đã tồn tại ở một khách hàng khác.", false);
+                }
             }
         }
 

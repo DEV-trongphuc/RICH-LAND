@@ -1406,8 +1406,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (targetTab?: string) => {
     if (!contact?.id) return;
+    const tabToLoad = targetTab || activeTab;
+
     if (DEV_MODE) {
       const state = getFilteredMockState();
       // Load from mock store
@@ -1444,9 +1446,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setLoadingRelated(false);
       return;
     }
+
     setLoadingRelated(true);
     try {
-      // Fetch fresh Contact details
+      // 1. Fetch fresh Contact details
       try {
         const contactRes = await api.get(`/contacts/${contact.id}`);
         const freshContact = contactRes.data.data || contactRes.data;
@@ -1456,174 +1459,195 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         }
       } catch (err) {}
 
-      // Fetch Notes
-      const notesRes = await api.get(`/notes?entity_type=contact&entity_id=${contact.id}`);
-      setNotes((notesRes.data.data || []).map((n: any) => ({
-        id: n.id,
-        text: n.body,
-        time: n.created_at,
-        user: n.user_name || 'Hệ thống',
-        user_id: n.user_id,
-        attachment_url: n.attachment_url,
-        edit_history: n.edit_history
-      })));
-
-      // Fetch Tasks (Activities)
-      const [tasksRes, allTasksRes] = await Promise.all([
-        api.get(`/activities?related_type=contact&related_id=${contact.id}`),
-        api.get(`/activities?type=task&limit=200`)
-      ]);
-      const rawActivities = tasksRes.data.data?.items || tasksRes.data.data || [];
-      const allTasks = allTasksRes.data.data?.items || allTasksRes.data.data || [];
-
-      // Filter tasks that have this contact in their related_contact_ids
-      const secondaryTasks = allTasks.filter((a: any) => {
-        if (a.type !== 'task') return false;
-        if (rawActivities.some((ra: any) => ra.id === a.id)) return false;
-        if (a.body && a.body.startsWith('{"erp_task":')) {
-          try {
-            const parsed = JSON.parse(a.body);
-            const rContactIds = parsed.erp_task?.related_contact_ids || [];
-            return rContactIds.includes(Number(contact.id)) || rContactIds.includes(String(contact.id));
-          } catch (e) {
-            return false;
-          }
+      // 2. Fetch static metadata (Stages, Projects, Companies) only if not already loaded (caching)
+      try {
+        if (stages.length === 0) {
+          const stagesRes = await api.get('/pipeline-stages');
+          setStages(stagesRes.data.data?.items || stagesRes.data.data || []);
         }
-        return false;
-      });
+      } catch (err) {}
 
-      const combinedActivities = [...rawActivities, ...secondaryTasks];
-      setDrawerActivities(combinedActivities);
-      setTasks(combinedActivities.filter((a: any) => a.type === 'task').map((a: any) => {
-        const link = a.body && !a.body.startsWith('{"erp_task":') 
-          ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
-          : '';
-        
-        let description = '';
-        if (a.body) {
-          if (a.body.startsWith('{"erp_task":')) {
-            try {
-              const parsed = JSON.parse(a.body);
-              description = parsed.erp_task?.description || '';
-            } catch (e) {
-              description = a.body;
-            }
-          } else {
-            description = a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+      if (tabToLoad === 'info') {
+        try {
+          if (projectsList.length === 0) {
+            const projectsRes = await api.get('/projects');
+            setProjectsList(projectsRes.data.data || projectsRes.data || []);
           }
-        }
-        return {
-          id: a.id,
-          title: a.subject,
-          done: a.status === 'done',
-          priority: a.priority,
-          due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—',
-          due_date: a.due_date ? a.due_date.slice(0, 10) : '',
-          link,
-          description,
-          user_id: a.user_id,
-          user_name: a.user_name || 'Hệ thống',
-          tags: a.tags || '',
-          participant_ids: a.participant_ids || '',
-          progress: a.progress || 0,
-          require_approval: a.require_approval || 0,
-          approver_id: a.approver_id,
-          approval_status: a.approval_status
-        };
-      }));
+        } catch (err) {}
 
-      // Fetch Pipeline Stages
-      try {
-        const stagesRes = await api.get('/pipeline-stages');
-        setStages(stagesRes.data.data?.items || stagesRes.data.data || []);
-      } catch (err) {}
-
-      // Fetch Projects
-      try {
-        const projectsRes = await api.get('/projects');
-        setProjectsList(projectsRes.data.data || projectsRes.data || []);
-      } catch (err) {}
-
-      // Fetch Companies
-      try {
-        const companiesRes = await api.get('/companies?limit=2000');
-        setCompaniesList(companiesRes.data.data?.items || companiesRes.data.data || []);
-      } catch (err) {}
-
-      // Fetch Deposits instead of Deals
-      const depositsRes = await api.get('/deposits');
-      const depositsList = (depositsRes.data.data || []).filter((d: any) => Number(d.contact_id) === Number(contact.id)).map((d: any) => ({
-        id: d.id,
-        title: `${d.project_name} - Căn ${d.unit_code}`,
-        value: d.price,
-        stage: d.status === 'pending_admin' ? 'Chờ duyệt cọc' : d.status === 'approved' ? 'Đặt cọc thành công' : d.status === 'cancelled' ? 'Bể cọc / Hủy' : d.status,
-        stage_id: d.status,
-        prob: 100,
-        close: d.created_at,
-        description: d.cancelled_reason || '',
-        priority: 'high',
-        stage_color: d.status === 'approved' ? '#10b981' : d.status === 'cancelled' ? '#ef4444' : '#f59e0b',
-        unit_code: d.unit_code,
-        price: d.price,
-        expected_commission: d.expected_commission,
-        project_name: d.project_name,
-        project_id: d.project_id,
-        milestones: d.milestones || []
-      }));
-      setDeals(depositsList);
-
-      // Auto-sync contact expected_revenue & win_probability based on current deposits
-      const totalRev = depositsList.length > 0 ? depositsList.reduce((sum, d) => sum + (Number(d.value) || 0), 0) : 0;
-      const avgProb = depositsList.length > 0 ? Math.round(depositsList.reduce((total, d) => total + (Number(d.prob) || 0), 0) / depositsList.length) : 0;
-      if (totalRev !== Number(formData.expected_revenue || 0) || avgProb !== Number(formData.win_probability || 0)) {
-        api.put(`/contacts/${contact.id}`, {
-          expected_revenue: totalRev,
-          win_probability: avgProb
-        }).then(() => {
-          setFormData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
-          setBaseData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
-        }).catch(err => console.error("Error syncing contact metrics:", err));
+        try {
+          if (companiesList.length === 0) {
+            const companiesRes = await api.get('/companies?limit=2000');
+            setCompaniesList(companiesRes.data.data?.items || companiesRes.data.data || []);
+          }
+        } catch (err) {}
       }
 
-      // Fetch Invoices
-      const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
-      const invData = invoicesRes.data.data;
-      setDrawerInvoices(Array.isArray(invData) ? invData : (invData?.items || []));
+      // 3. Tab-specific lazy data fetching
+      if (tabToLoad === 'timeline') {
+        const notesRes = await api.get(`/notes?entity_type=contact&entity_id=${contact.id}`);
+        setNotes((notesRes.data.data || []).map((n: any) => ({
+          id: n.id,
+          text: n.body,
+          time: n.created_at,
+          user: n.user_name || 'Hệ thống',
+          user_id: n.user_id,
+          attachment_url: n.attachment_url,
+          edit_history: n.edit_history
+        })));
+      }
 
-      // Fetch Quotes
-      const quotesRes = await api.get(`/quotes?contact_id=${contact.id}`);
-      const qData = quotesRes.data.data;
-      setDrawerQuotes(Array.isArray(qData) ? qData : (qData?.items || []));
+      if (tabToLoad === 'tasks') {
+        const [tasksRes, allTasksRes] = await Promise.all([
+          api.get(`/activities?related_type=contact&related_id=${contact.id}`),
+          api.get(`/activities?type=task&limit=200`)
+        ]);
+        const rawActivities = tasksRes.data.data?.items || tasksRes.data.data || [];
+        const allTasks = allTasksRes.data.data?.items || allTasksRes.data.data || [];
 
-      // Fetch Expenses
-      const expensesRes = await api.get(`/expenses/entity/contact/${contact.id}`);
-      const expData = expensesRes.data.data;
-      setDrawerExpenses(Array.isArray(expData) ? expData : (expData?.items || []));
+        // Filter tasks that have this contact in their related_contact_ids
+        const secondaryTasks = allTasks.filter((a: any) => {
+          if (a.type !== 'task') return false;
+          if (rawActivities.some((ra: any) => ra.id === a.id)) return false;
+          if (a.body && a.body.startsWith('{"erp_task":')) {
+            try {
+              const parsed = JSON.parse(a.body);
+              const rContactIds = parsed.erp_task?.related_contact_ids || [];
+              return rContactIds.includes(Number(contact.id)) || rContactIds.includes(String(contact.id));
+            } catch (e) {
+              return false;
+            }
+          }
+          return false;
+        });
 
-      // Fetch Tickets
-      const ticketsRes = await api.get(`/tickets?contact_id=${contact.id}`);
-      const tData = ticketsRes.data.data;
-      setDrawerTickets(Array.isArray(tData) ? tData : (tData?.items || []));
+        const combinedActivities = [...rawActivities, ...secondaryTasks];
+        setDrawerActivities(combinedActivities);
+        setTasks(combinedActivities.filter((a: any) => a.type === 'task').map((a: any) => {
+          const link = a.body && !a.body.startsWith('{"erp_task":') 
+            ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
+            : '';
+          
+          let description = '';
+          if (a.body) {
+            if (a.body.startsWith('{"erp_task":')) {
+              try {
+                const parsed = JSON.parse(a.body);
+                description = parsed.erp_task?.description || '';
+              } catch (e) {
+                description = a.body;
+              }
+            } else {
+              description = a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+            }
+          }
+          return {
+            id: a.id,
+            title: a.subject,
+            done: a.status === 'done',
+            priority: a.priority,
+            due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—',
+            due_date: a.due_date ? a.due_date.slice(0, 10) : '',
+            link,
+            description,
+            user_id: a.user_id,
+            user_name: a.user_name || 'Hệ thống',
+            tags: a.tags || '',
+            participant_ids: a.participant_ids || '',
+            progress: a.progress || 0,
+            require_approval: a.require_approval || 0,
+            approver_id: a.approver_id,
+            approval_status: a.approval_status
+          };
+        }));
+      }
 
-      // Fetch Documents (Cloud Files)
-      const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`);
-      const docsData = docsRes.data.data?.items || [];
-      setDocs(docsData.map((d: any) => ({
-        id: d.id,
-        name: d.name,
-        date: new Date(d.created_at).toLocaleDateString('vi-VN'),
-        size: (d.file_size / 1024 / 1024).toFixed(1) + ' MB',
-        type: d.name.split('.').pop() || 'file',
-        path: d.file_path,
-        category: d.category
-      })));
+      if (tabToLoad === 'deals' || tabToLoad === 'cooperation') {
+        const depositsRes = await api.get(`/deposits?contact_id=${contact.id}`);
+        const depositsList = (depositsRes.data.data || []).map((d: any) => ({
+          id: d.id,
+          title: `${d.project_name} - Căn ${d.unit_code}`,
+          value: d.price,
+          stage: d.status === 'pending_admin' ? 'Chờ duyệt cọc' : d.status === 'approved' ? 'Đặt cọc thành công' : d.status === 'cancelled' ? 'Bể cọc / Hủy' : d.status,
+          stage_id: d.status,
+          prob: 100,
+          close: d.created_at,
+          description: d.cancelled_reason || '',
+          priority: 'high',
+          stage_color: d.status === 'approved' ? '#10b981' : d.status === 'cancelled' ? '#ef4444' : '#f59e0b',
+          unit_code: d.unit_code,
+          price: d.price,
+          expected_commission: d.expected_commission,
+          project_name: d.project_name,
+          project_id: d.project_id,
+          milestones: d.milestones || []
+        }));
+        setDeals(depositsList);
 
+        // Auto-sync contact expected_revenue & win_probability based on current deposits
+        const totalRev = depositsList.length > 0 ? depositsList.reduce((sum, d) => sum + (Number(d.value) || 0), 0) : 0;
+        const avgProb = depositsList.length > 0 ? Math.round(depositsList.reduce((total, d) => total + (Number(d.prob) || 0), 0) / depositsList.length) : 0;
+        if (totalRev !== Number(formData.expected_revenue || 0) || avgProb !== Number(formData.win_probability || 0)) {
+          api.put(`/contacts/${contact.id}`, {
+            expected_revenue: totalRev,
+            win_probability: avgProb
+          }).then(() => {
+            setFormData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
+            setBaseData(prev => ({ ...prev, expected_revenue: totalRev, win_probability: avgProb }));
+          }).catch(err => console.error("Error syncing contact metrics:", err));
+        }
+      }
+
+      if (tabToLoad === 'invoices') {
+        const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
+        const invData = invoicesRes.data.data;
+        setDrawerInvoices(Array.isArray(invData) ? invData : (invData?.items || []));
+      }
+
+      if (tabToLoad === 'quotes') {
+        const quotesRes = await api.get(`/quotes?contact_id=${contact.id}`);
+        const qData = quotesRes.data.data;
+        setDrawerQuotes(Array.isArray(qData) ? qData : (qData?.items || []));
+      }
+
+      if (tabToLoad === 'expenses') {
+        const expensesRes = await api.get(`/expenses/entity/contact/${contact.id}`);
+        const expData = expensesRes.data.data;
+        setDrawerExpenses(Array.isArray(expData) ? expData : (expData?.items || []));
+      }
+
+      if (tabToLoad === 'tickets') {
+        const ticketsRes = await api.get(`/tickets?contact_id=${contact.id}`);
+        const tData = ticketsRes.data.data;
+        setDrawerTickets(Array.isArray(tData) ? tData : (tData?.items || []));
+      }
+
+      if (tabToLoad === 'docs') {
+        const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`);
+        const docsData = docsRes.data.data?.items || [];
+        setDocs(docsData.map((d: any) => ({
+          id: d.id,
+          name: d.name,
+          date: new Date(d.created_at).toLocaleDateString('vi-VN'),
+          size: (d.file_size / 1024 / 1024).toFixed(1) + ' MB',
+          type: d.name.split('.').pop() || 'file',
+          path: d.file_path,
+          category: d.category
+        })));
+      }
     } catch (e: any) {
-      console.error("Error fetching drawer data:", e);
+      console.error("Error fetching tab data:", e);
     } finally {
       setLoadingRelated(false);
     }
-  }, [contact?.id]);
+  }, [contact?.id, activeTab, stages.length, projectsList.length, companiesList.length]);
+
+  // Sync data whenever active tab, contact, or open status changes
+  useEffect(() => {
+    if (isOpen && contact?.id) {
+      fetchData(activeTab);
+    }
+  }, [activeTab, isOpen, contact?.id, fetchData]);
 
   useEffect(() => {
     if (contact) {
@@ -1665,14 +1689,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setActiveTab(initialTab || 'info');
         setPrevContactId(contact.id);
       }
-
-      if (isOpen && (isNewContact || timeline.length === 0)) {
-        fetchData();
-      }
     } else {
       setPrevContactId(null);
     }
-  }, [contact, isOpen, fetchData, prevContactId, initialTab]);
+  }, [contact, prevContactId, initialTab]);
 
   useEffect(() => {
     if (isOpen) {

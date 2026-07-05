@@ -27,6 +27,11 @@ class DepositController {
             $params[] = $auth['user_id'];
         }
 
+        if (isset($_GET['contact_id'])) {
+            $sql .= " AND d.contact_id = ?";
+            $params[] = (int)$_GET['contact_id'];
+        }
+
         $sql .= " ORDER BY d.created_at DESC";
         
         $stmt = $this->db->prepare($sql);
