@@ -102,6 +102,25 @@ const calcScore = (c: any) => {
   return Math.min(100, Math.max(0, s));
 };
 
+const formatTimeAgo = (dateStr?: string) => {
+  if (!dateStr) return '—';
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  if (isNaN(diffMs)) return '—';
+  if (diffMs < 0) return 'Vừa xong';
+  
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Vừa xong';
+  if (diffMins < 60) return `${diffMins} phút trước`;
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} ngày trước`;
+};
+
 const SEGMENTS = [];
 
 const SOURCE_OPTIONS = [
@@ -251,10 +270,11 @@ export const ContactsPage: React.FC = () => {
     { id: 'contact', label: 'Liên lạc cuối', visible: true },
     { id: 'deal', label: 'Deal hiện tại', visible: false },
     { id: 'owner', label: 'Sale phụ trách', visible: true },
-    { id: 'distribution', label: 'Nguồn phân bổ', visible: true },
-    { id: 'ticket_action', label: 'Vé đền bù (Ticket)', visible: true },
+    { id: 'distribution', label: 'Nguồn phân bổ', visible: false },
+    { id: 'ticket_action', label: 'Vé đền bù (Ticket)', visible: false },
     { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
     { id: 'created_at', label: 'Ngày tạo', visible: true },
+    { id: 'interaction', label: 'Tương tác', visible: true },
     { id: 'score', label: 'Lead Score', visible: true },
   ]);
   const [showColumns, setShowColumns] = useState(false);
@@ -959,6 +979,7 @@ export const ContactsPage: React.FC = () => {
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
                     )}
                     {columns.find(c => c.id === 'created_at')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
+                    {columns.find(c => c.id === 'interaction')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Tương tác</th>}
                     {columns.find(c => c.id === 'score')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Score</th>}
                     <th style={{ width: 120, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}></th>
                   </tr>
@@ -1029,7 +1050,20 @@ export const ContactsPage: React.FC = () => {
                         )} */}
                         {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                            <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
+                            {c.stage_name ? (
+                              <span 
+                                className="badge" 
+                                style={{ 
+                                  backgroundColor: `${c.stage_color}1a`, 
+                                  color: c.stage_color || 'var(--color-primary)', 
+                                  border: `1px solid ${c.stage_color}33`
+                                }}
+                              >
+                                {c.stage_name}
+                              </span>
+                            ) : (
+                              <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
+                            )}
                           </td>
                         )}
                         {columns.find(col => col.id === 'contact')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
@@ -1140,6 +1174,13 @@ export const ContactsPage: React.FC = () => {
                                 return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                               })() : '—'}
                             </p>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'interaction')?.visible && (
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                              {formatTimeAgo(c.last_contact || c.updated_at || c.created_at)}
+                            </span>
                           </td>
                         )}
                         {columns.find(col => col.id === 'score')?.visible && (
