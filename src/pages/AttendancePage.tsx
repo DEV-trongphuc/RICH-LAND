@@ -24,7 +24,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
 
   // View mode switcher: list or calendar (default to calendar for quick overview, list for embed mode)
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>(() => {
-    return embedMode ? 'list' : 'calendar';
+    return 'calendar';
   });
   const [currentMonth, setCurrentMonth] = useState<number>(7); // July 2026 default
   const [currentYear, setCurrentYear] = useState<number>(2026);
