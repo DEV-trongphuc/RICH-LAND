@@ -42,7 +42,8 @@ import {
   Calendar,
   BarChart2,
   Fingerprint,
-  Camera
+  Camera,
+  CheckSquare
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -1683,13 +1684,23 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <Users />
           <span className="mobile-bottom-nav-item-label">{t('Khách hàng')}</span>
         </button>
-        <button 
-          className={`mobile-bottom-nav-item ${location.pathname === '/data' ? 'active' : ''}`}
-          onClick={() => navigate('/data')}
-        >
-          <Database />
-          <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
-        </button>
+        {user?.role === 'sale' ? (
+          <button 
+            className={`mobile-bottom-nav-item ${location.pathname === '/workspace' ? 'active' : ''}`}
+            onClick={() => navigate('/workspace')}
+          >
+            <CheckSquare />
+            <span className="mobile-bottom-nav-item-label">{t('Bàn làm việc')}</span>
+          </button>
+        ) : (
+          <button 
+            className={`mobile-bottom-nav-item ${location.pathname === '/data' ? 'active' : ''}`}
+            onClick={() => navigate('/data')}
+          >
+            <Database />
+            <span className="mobile-bottom-nav-item-label">{t('Kho Data')}</span>
+          </button>
+        )}
         <button 
           className={`mobile-bottom-nav-item ${location.pathname === '/calendar' ? 'active' : ''}`}
           onClick={() => navigate('/calendar')}

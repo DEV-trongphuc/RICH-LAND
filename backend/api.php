@@ -2004,7 +2004,7 @@ switch ($action) {
         $sqlLeads = "
             SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
                    l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
-                   l.is_accepted, l.accepted_at, l.last_interaction_date,
+                   l.is_accepted, l.accepted_at, l.last_interaction_date, l.person_id,
                    r.round_name,
                    c.name as sale_name, c.email as sale_email, c.avatar as sale_avatar,
                    dr.status as report_status, dr.id as report_id, dr.reason as report_reason, dr.reject_reason as report_reject_reason, dr.created_at as report_created_at,
@@ -2043,6 +2043,24 @@ switch ($action) {
         $resLeads = $stmtLeads->get_result();
         $leads = [];
         while ($row = $resLeads->fetch_assoc()) {
+            $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
+            $takers = [];
+            if ($personId > 0) {
+                $tQuery = "SELECT c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+                           FROM contacts c
+                           JOIN users u ON c.owner_id = u.id
+                           JOIN consultants cons ON u.email = cons.email
+                           WHERE c.person_id = ? AND c.deleted_at IS NULL";
+                $tStmt = $conn->prepare($tQuery);
+                $tStmt->bind_param("i", $personId);
+                $tStmt->execute();
+                $tRes = $tStmt->get_result();
+                while ($tRow = $tRes->fetch_assoc()) {
+                    $takers[] = $tRow;
+                }
+                $tStmt->close();
+            }
+            $row['takers'] = $takers;
             $leads[] = $row;
         }
         $stmtLeads->close();
@@ -2349,7 +2367,7 @@ switch ($action) {
 
         $dateConditionSubQuery = str_replace('dl.received_at', 'received_at', $dateCondition);
 
-        $extraCondition = "1=1";
+        $extraCondition = "(p.is_public IS NULL OR p.is_public = 0) AND dl.status != 'released_to_kho' AND dl.status != 'databank'";
         $isFilteringActive = false;
 
         if (isset($_GET['status']) && $_GET['status'] !== 'all') {
@@ -2391,8 +2409,13 @@ switch ($action) {
             $extraCondition .= " AND dl.status != 'silent'";
         }
 
+        // Security check for Sale role: can only view their own logs
+        if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
+            $extraCondition .= " AND dl.assigned_to = " . (int)$currentSaleConsultantId;
+        }
+
         // Get total count first with all active filters
-        $joinLeads = (strpos($extraCondition, 'l.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id" : "";
+        $joinLeads = (strpos($extraCondition, 'l.') !== false || strpos($extraCondition, 'p.') !== false) ? "LEFT JOIN leads l ON dl.lead_id = l.id LEFT JOIN persons p ON l.person_id = p.id" : "";
         $joinConsultants = (strpos($extraCondition, 'c.') !== false) ? "LEFT JOIN consultants c ON dl.assigned_to = c.id" : "";
         $joinRounds = (strpos($extraCondition, 'dr.') !== false) ? "LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id" : "";
 
@@ -2484,7 +2507,7 @@ switch ($action) {
             $personId = isset($row['person_id']) ? (int)$row['person_id'] : 0;
             $takers = [];
             if ($personId > 0) {
-                $tQuery = "SELECT c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
+                $tQuery = "SELECT c.id as contact_id, c.owner_id as id, cons.name, cons.avatar, c.created_at as claimed_at 
                            FROM contacts c
                            JOIN users u ON c.owner_id = u.id
                            JOIN consultants cons ON u.email = cons.email
@@ -14197,15 +14220,32 @@ switch ($action) {
             $projectId = $projRes ? $projRes['project_id'] : NULL;
             $stmtProj->close();
 
+            // Fetch latest lead details to fill the contact
+            $sourceVal = 'databank';
+            $noteVal = '';
+            $typeVal = '';
+            $stmtLead = $conn->prepare("SELECT source, type, note FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+            if ($stmtLead) {
+                $stmtLead->bind_param("i", $personId);
+                $stmtLead->execute();
+                $lRow = $stmtLead->get_result()->fetch_assoc();
+                if ($lRow) {
+                    $sourceVal = !empty($lRow['source']) ? $lRow['source'] : 'databank';
+                    $noteVal = $lRow['note'] ?? '';
+                    $typeVal = $lRow['type'] ?? '';
+                }
+                $stmtLead->close();
+            }
+
             $createdBy = $saleUserId;
             $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
             $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
             $stmtIns = $conn->prepare("
-                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'databank', 'lead', 'chua_xac_dinh', ?)
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?)
             ");
-            $stmtIns->bind_param("iiiisssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $secExpiresTime);
+            $stmtIns->bind_param("iiiissssssss", $personId, $projectId, $saleUserId, $createdBy, $firstName, $lastName, $person['email'], $person['phone'], $sourceVal, $secExpiresTime, $noteVal, $typeVal);
             $stmtIns->execute();
             $newContactId = $conn->insert_id;
             $stmtIns->close();
@@ -14333,7 +14373,8 @@ switch ($action) {
         break;
 
     case 'release_to_databank':
-        if (!$decodedUser || !in_array($decodedUser['role'], ['admin', 'superadmin', 'manager', 'assistant'])) {
+        $isSale = isset($decodedUser['role']) && ($decodedUser['role'] === 'sale');
+        if (!$decodedUser || (!in_array($decodedUser['role'], ['admin', 'superadmin', 'manager', 'assistant']) && !$isSale)) {
             respond(403, null, 'Unauthorized: Quyền truy cập bị từ chối', false);
         }
         require_once __DIR__ . '/webhook_logic.php';
@@ -14368,6 +14409,36 @@ switch ($action) {
 
             if ($personId <= 0) {
                 throw new Exception("Không tìm thấy thông tin định danh Person tương ứng.");
+            }
+
+            // If user is sale, verify they are allowed to release
+            if ($isSale) {
+                $stmtCheck = $conn->prepare("SELECT assigned_to FROM leads WHERE id = ?");
+                $stmtCheck->bind_param("i", $leadId);
+                $stmtCheck->execute();
+                $checkRow = $stmtCheck->get_result()->fetch_assoc();
+                $stmtCheck->close();
+
+                $allowed = false;
+                if ($checkRow) {
+                    if ((int)$checkRow['assigned_to'] === (int)$currentSaleConsultantId) {
+                        $allowed = true;
+                    }
+                }
+                
+                if (!$allowed && $personId > 0) {
+                    $stmtTaker = $conn->prepare("SELECT id FROM contacts WHERE person_id = ? AND owner_id = ? AND deleted_at IS NULL");
+                    $stmtTaker->bind_param("ii", $personId, $decodedUser['user_id']);
+                    $stmtTaker->execute();
+                    if ($stmtTaker->get_result()->num_rows > 0) {
+                        $allowed = true;
+                    }
+                    $stmtTaker->close();
+                }
+
+                if (!$allowed) {
+                    throw new Exception("Bạn không có quyền nhả khách hàng này.");
+                }
             }
 
             // Find real lead_id for this person to avoid foreign key failures

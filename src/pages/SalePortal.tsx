@@ -314,6 +314,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [activeDetailLead, setActiveDetailLead] = useState<any>(null);
   const [timeline, setTimeline] = useState<any[]>([]);
   const [loadingTimeline, setLoadingTimeline] = useState(false);
+  const [isReleasingLead, setIsReleasingLead] = useState(false);
   const [profileContact, setProfileContact] = useState<any>(null);
   const [profileDrawerTab, setProfileDrawerTab] = useState<string>('info');
 
@@ -1495,6 +1496,47 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     } catch (e) {
       console.error("Error loading pending coops for signing:", e);
     }
+  };
+
+  const handleReleaseToDatabank = (leadId: number, contactId?: number) => {
+    showConfirm({
+      title: t('Nhả khách về Kho chung'),
+      message: t('Bạn có chắc chắn muốn nhả khách hàng này về Kho chung (Databank)? Việc này sẽ thu hồi quyền sở hữu của các tư vấn viên hiện tại.'),
+      confirmText: t('Nhả về Kho chung'),
+      cancelText: t('Hủy'),
+      isDanger: true,
+      onConfirm: async () => {
+        setIsReleasingLead(true);
+        try {
+          let res;
+          if (contactId) {
+            res = await fetchAPI(`contacts/${contactId}/release-databank`, {
+              method: 'POST'
+            });
+            if (res && !res.hasOwnProperty('success')) {
+              res = { success: true, message: res.message || t('Đã nhả về Kho chung thành công!') };
+            }
+          } else {
+            res = await fetchAPI('release_to_databank', {
+              method: 'POST',
+              body: JSON.stringify({ lead_id: leadId })
+            });
+          }
+          if (res.success || res.action) {
+            toast.success(res.message || t('Đã nhả về Kho chung thành công!'));
+            setDetailModalOpen(false);
+            setActiveDetailLead(null);
+            loadPortalData();
+          } else {
+            toast.error(res.message || t('Lỗi khi nhả về Kho chung.'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi kết nối') + ': ' + e.message);
+        } finally {
+          setIsReleasingLead(false);
+        }
+      }
+    });
   };
 
   // Fetch portal data when token is valid
@@ -8629,7 +8671,37 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginTop: '20px', borderTop: '1px solid var(--color-border)', paddingTop: '12px' }}>
+            {(() => {
+              const myTaker = activeDetailLead.takers && activeDetailLead.takers.find((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id));
+              const isAssignee = Number(activeDetailLead.assigned_to) === Number(user?.consultant_id) || Number(activeDetailLead.assigned_to) === Number(user?.id);
+              const isClaimer = !!myTaker || isAssignee;
+              const canRelease = isClaimer && activeDetailLead.status !== 'databank' && activeDetailLead.status !== 'released_to_kho' && activeDetailLead.is_public !== 1 && Number(activeDetailLead.is_public) !== 1;
+
+              return canRelease ? (
+                <button
+                  onClick={() => handleReleaseToDatabank(activeDetailLead.lead_id || activeDetailLead.id, myTaker?.contact_id)}
+                  disabled={isReleasingLead}
+                  title={t("Nhả về Kho chung (Databank)")}
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#10b981',
+                    boxShadow: '0 2px 6px rgba(16, 185, 129, 0.05)',
+                    borderRadius: '8px',
+                    padding: '8px 20px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <RefreshCw size={14} className={isReleasingLead ? 'spin' : ''} />
+                  {isReleasingLead ? t('Đang nhả...') : t('Nhả Kho')}
+                </button>
+              ) : null;
+            })()}
             <button
               onClick={() => setDetailModalOpen(false)}
               style={{

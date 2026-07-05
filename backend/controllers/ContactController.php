@@ -106,11 +106,31 @@ class ContactController {
                        ELSE comp.name 
                    END as company_name,
                    u.full_name as owner_name,
-                   ps.name as stage_name, ps.color as stage_color
+                   ps.name as stage_name, ps.color as stage_color,
+                   dl.received_at as distributed_at,
+                   dl.status as dl_status,
+                   dl.round_id as dl_round_id,
+                   r.round_name,
+                   dl.id as log_id,
+                   l.id as lead_id,
+                   dr.status as report_status,
+                   dr.id as report_id,
+                   dr.reason as report_reason
             FROM contacts c
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
+            LEFT JOIN leads l ON l.person_id = c.person_id
+            LEFT JOIN (
+                SELECT dl1.* FROM distribution_logs dl1
+                INNER JOIN (
+                    SELECT lead_id, assigned_to, MAX(id) as max_id 
+                    FROM distribution_logs 
+                    GROUP BY lead_id, assigned_to
+                ) dl2 ON dl1.id = dl2.max_id
+            ) dl ON dl.lead_id = l.id AND dl.assigned_to = c.owner_id
+            LEFT JOIN distribution_rounds r ON dl.round_id = r.id
+            LEFT JOIN data_reports dr ON dr.lead_id = l.id AND dr.consultant_id = c.owner_id
             WHERE $whereStr
             ORDER BY c.$sortBy $order
             LIMIT $limit OFFSET $offset
@@ -833,6 +853,16 @@ class ContactController {
 
         $personId = $contact['person_id'];
 
+        // Get current consultant ID
+        $stmtC = $this->db->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+        $stmtC->execute([$auth['email'] ?? '']);
+        $consultantId = $stmtC->fetchColumn();
+
+        // Get latest lead ID for this person
+        $stmtLead = $this->db->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+        $stmtLead->execute([$personId]);
+        $leadId = $stmtLead->fetchColumn();
+
         // 2. Count active contacts for this Person
         $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL");
         $stmtCount->execute([$personId, $tid]);
@@ -854,6 +884,20 @@ class ContactController {
             ");
             $stmtRelease->execute([$defaultStageId, $id, $tid]);
 
+            // Also update persons to be public
+            $stmtPerson = $this->db->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+            $stmtPerson->execute([$personId]);
+
+            // Also update leads to set assigned_to = NULL
+            if ($leadId) {
+                $stmtLeadUpdate = $this->db->prepare("UPDATE leads SET assigned_to = NULL WHERE id = ?");
+                $stmtLeadUpdate->execute([$leadId]);
+
+                // Log distribution log for releasing to databank
+                $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
+                $stmtLog->execute([$leadId, null, null, 'released_to_kho', 'Tư vấn viên chủ động trả về Databank chung (do chỉ có 1 Sale chăm sóc)']);
+            }
+
             // Log activity & interaction
             logActivity($this->db, $tid, $auth['user_id'], 'RELEASE_TO_DATABANK', 'contact', $id, "Trả khách hàng về Databank chung (do chỉ có 1 Sale chăm sóc)");
             logInteraction($this->db, $tid, $auth['user_id'], 'system', 'Đã trả khách hàng về Databank chung', null, 'contact', $id);
@@ -864,6 +908,12 @@ class ContactController {
             // Just soft-delete this sale's contact row!
             $stmtDelete = $this->db->prepare("UPDATE contacts SET deleted_at = NOW() WHERE id = ? AND tenant_id = ?");
             $stmtDelete->execute([$id, $tid]);
+
+            // Log distribution log for removing parallel contact
+            if ($leadId && $consultantId) {
+                $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
+                $stmtLog->execute([$leadId, $consultantId, null, 'released_to_kho', 'Tư vấn viên xóa khỏi danh sách cá nhân (trả về Databank song song)']);
+            }
 
             // Log activity & interaction
             logActivity($this->db, $tid, $auth['user_id'], 'REMOVE_PARALLEL_CONTACT', 'contact', $id, "Xóa liên hệ khỏi danh sách cá nhân (do trả về Databank song song)");

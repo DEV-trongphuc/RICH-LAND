@@ -668,15 +668,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [baseTags, setBaseTags] = useState<string[]>(contact?.tags || []);
 
   const hasChanges = useMemo(() => {
-    if (!contact) return false;
+    if (!contact || !formData || !formData.id) return false;
     
+    // Allowed fields that are editable in the form
+    const editableFields = [
+      'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
+      'mobile', 'job_title', 'department', 'source', 'status', 'notes',
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range'
+    ];
+
     const cleanObject = (obj: any) => {
       const clean: any = {};
-      Object.keys(obj || {}).forEach(key => {
-        if (['created_at', 'updated_at', 'deleted_at', 'owner_name', 'stage_name', 'stage_color', 'actual_revenue', 'paid_invoice_count', 'expense_count'].includes(key)) {
-          return;
-        }
-        const val = obj[key];
+      editableFields.forEach(key => {
+        const val = obj ? obj[key] : undefined;
         clean[key] = (val === null || val === undefined) ? '' : val;
       });
       return clean;

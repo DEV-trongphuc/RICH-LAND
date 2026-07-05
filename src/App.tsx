@@ -142,7 +142,7 @@ const AppTabs = () => {
       <div style={{ display: currentPath === '/data' ? 'block' : 'none' }} className={currentPath === '/data' ? 'page-enter-active' : ''}>
         {visitedPaths.includes('/data') && (
           <Suspense fallback={<PageLoader />}>
-            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="data" /> : <DataList />}
+            {user?.role === 'sale' ? <Navigate to="/contacts" replace /> : <DataList />}
           </Suspense>
         )}
       </div>

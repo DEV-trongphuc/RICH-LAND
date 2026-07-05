@@ -654,7 +654,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [isSavingLeadFields, setIsSavingLeadFields] = useState(false);
   const [isReleasingLead, setIsReleasingLead] = useState(false);
 
-  const handleReleaseToDatabank = (leadId: number) => {
+  const handleReleaseToDatabank = (leadId: number, contactId?: number) => {
     showConfirm({
       title: t('Nhả khách về Kho chung'),
       message: t('Bạn có chắc chắn muốn nhả khách hàng này về Kho chung (Databank)? Việc này sẽ thu hồi quyền sở hữu của các tư vấn viên hiện tại.'),
@@ -664,11 +664,21 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
       onConfirm: async () => {
         setIsReleasingLead(true);
         try {
-          const res = await fetchAPI('release_to_databank', {
-            method: 'POST',
-            body: JSON.stringify({ lead_id: leadId })
-          });
-          if (res.success) {
+          let res;
+          if (contactId) {
+            res = await fetchAPI(`contacts/${contactId}/release-databank`, {
+              method: 'POST'
+            });
+            if (res && !res.hasOwnProperty('success')) {
+              res = { success: true, message: res.message || t('Đã nhả về Kho chung thành công!') };
+            }
+          } else {
+            res = await fetchAPI('release_to_databank', {
+              method: 'POST',
+              body: JSON.stringify({ lead_id: leadId })
+            });
+          }
+          if (res.success || res.action) {
             toast.success(res.message || t('Đã nhả về Kho chung thành công!'));
             setSelectedLead(null);
             fetchLeads();
@@ -2709,35 +2719,45 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                       </button>
                     )}
 
-                    {isAdmin && selectedLead.status !== 'databank' && selectedLead.status !== 'released_to_kho' && selectedLead.status !== 'databank_claim' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && !isAdminEditingLead && (
-                      <button
-                        onClick={() => handleReleaseToDatabank(selectedLead.lead_id || selectedLead.id)}
-                        disabled={isReleasingLead}
-                        title={t("Nhả về Kho chung (Databank)")}
-                        className="detail-action-btn"
-                        style={{
-                          background: 'rgba(16, 185, 129, 0.08)',
-                          border: '1px solid rgba(16, 185, 129, 0.3)',
-                          color: '#10b981',
-                          boxShadow: '0 2px 6px rgba(16, 185, 129, 0.05)'
-                        }}
-                        onMouseOver={e => {
-                          e.currentTarget.style.background = '#10b981';
-                          e.currentTarget.style.color = '#ffffff';
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = '0 6px 15px rgba(16, 185, 129, 0.2)';
-                        }}
-                        onMouseOut={e => {
-                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
-                          e.currentTarget.style.color = '#10b981';
-                          e.currentTarget.style.transform = 'none';
-                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(16, 185, 129, 0.05)';
-                        }}
-                      >
-                        <RefreshCw size={14} className={isReleasingLead ? 'animate-spin' : ''} />
-                        {isReleasingLead ? t('Đang nhả...') : t('Nhả Kho')}
-                      </button>
-                    )}
+                    {(() => {
+                      const myTaker = selectedLead.takers && selectedLead.takers.find((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id));
+                      const isClaimer = !!myTaker;
+                      const canRelease = isAdmin ? (
+                        selectedLead.status !== 'databank' && selectedLead.status !== 'released_to_kho' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1 && !isAdminEditingLead
+                      ) : (
+                        isClaimer && selectedLead.status !== 'databank' && selectedLead.status !== 'released_to_kho' && selectedLead.is_public !== 1 && Number(selectedLead.is_public) !== 1
+                      );
+
+                      return canRelease ? (
+                        <button
+                          onClick={() => handleReleaseToDatabank(selectedLead.lead_id || selectedLead.id, myTaker?.contact_id)}
+                          disabled={isReleasingLead}
+                          title={t("Nhả về Kho chung (Databank)")}
+                          className="detail-action-btn"
+                          style={{
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            color: '#10b981',
+                            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.05)'
+                          }}
+                          onMouseOver={e => {
+                            e.currentTarget.style.background = '#10b981';
+                            e.currentTarget.style.color = '#ffffff';
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 15px rgba(16, 185, 129, 0.2)';
+                          }}
+                          onMouseOut={e => {
+                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
+                            e.currentTarget.style.color = '#10b981';
+                            e.currentTarget.style.transform = 'none';
+                            e.currentTarget.style.boxShadow = '0 2px 6px rgba(16, 185, 129, 0.05)';
+                          }}
+                        >
+                          <RefreshCw size={14} className={isReleasingLead ? 'animate-spin' : ''} />
+                          {isReleasingLead ? t('Đang nhả...') : t('Nhả Kho')}
+                        </button>
+                      ) : null;
+                    })()}
 
                     {user?.role === 'sale' && 
                      (selectedLead.is_public === 1 || Number(selectedLead.is_public) === 1 || selectedLead.status === 'released_to_kho' || selectedLead.status === 'databank_claim' || selectedLead.status === 'databank') &&

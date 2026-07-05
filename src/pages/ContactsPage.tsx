@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -11,6 +11,7 @@ import { TagDisplay } from '../components/ui/TagInput';
 import { Pagination } from '../components/ui/Pagination';
 import { ColumnCustomizer, type ColumnDef } from '../components/ui/ColumnCustomizer';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
+import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
@@ -250,11 +251,61 @@ export const ContactsPage: React.FC = () => {
     { id: 'contact', label: 'Liên lạc cuối', visible: true },
     { id: 'deal', label: 'Deal hiện tại', visible: false },
     { id: 'owner', label: 'Sale phụ trách', visible: true },
+    { id: 'distribution', label: 'Nguồn phân bổ', visible: true },
+    { id: 'ticket_action', label: 'Vé đền bù (Ticket)', visible: true },
     { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
     { id: 'created_at', label: 'Ngày tạo', visible: true },
     { id: 'score', label: 'Lead Score', visible: true },
   ]);
   const [showColumns, setShowColumns] = useState(false);
+
+  // Report data/Ticket states
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [selectedContactForReport, setSelectedContactForReport] = useState<any>(null);
+  const [reportReasonType, setReportReasonType] = useState('Số điện thoại không đúng / Thuê bao');
+  const [reportDetails, setReportDetails] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  const handleOpenReportModal = (contact: any) => {
+    setSelectedContactForReport(contact);
+    setReportReasonType('Số điện thoại không đúng / Thuê bao');
+    setReportDetails('');
+    setReportModalOpen(true);
+  };
+
+  const handleSubmitReport = async () => {
+    if (!selectedContactForReport || submittingReport) return;
+    setSubmittingReport(true);
+    try {
+      const finalReason = reportReasonType === 'Lý do khác...'
+        ? `Lý do khác: ${reportDetails}`
+        : reportReasonType;
+
+      const payload = {
+        lead_id: selectedContactForReport.lead_id,
+        sale_id: selectedContactForReport.owner_id,
+        round_id: selectedContactForReport.dl_round_id,
+        reason: finalReason
+      };
+
+      const res = await api.post('/api.php?action=submit_report', payload);
+      if (res.data.success) {
+        if (res.data.auto_approved) {
+          addToast('Báo cáo lỗi đã được HỆ THỐNG TỰ ĐỘNG PHÊ DUYỆT & ĐỀN BÙ thành công!', 'success');
+        } else {
+          addToast('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.', 'success');
+        }
+        setReportModalOpen(false);
+        fetchData();
+      } else {
+        addToast(res.data.message || 'Gửi báo lỗi thất bại', 'error');
+      }
+    } catch (err: any) {
+      addToast('Lỗi kết nối: ' + (err.message || ''), 'error');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
 
   const [total, setTotal] = useState(0);
 
@@ -902,6 +953,8 @@ export const ContactsPage: React.FC = () => {
                     )}
                     {columns.find(c => c.id === 'deal')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Deal đang mở</th>}
                     {columns.find(c => c.id === 'owner')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Sale phụ trách</th>}
+                    {columns.find(c => c.id === 'distribution')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Phân bổ</th>}
+                    {columns.find(c => c.id === 'ticket_action')?.visible && <th style={{ padding: '1rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Ticket báo lỗi</th>}
                     {columns.find(c => c.id === 'updated_at')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
                     )}
@@ -1017,6 +1070,59 @@ export const ContactsPage: React.FC = () => {
                                   </span>
                                 </div>
                               </div>
+                            )}
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'distribution')?.visible && (
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+                            {c.log_id && c.dl_status !== 'databank_claim' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)', whiteSpace: 'nowrap' }}>
+                                  {c.round_name || 'Chia data'}
+                                </span>
+                                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                  {c.distributed_at ? new Date(c.distributed_at).toLocaleString('vi-VN') : '—'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                                {c.dl_status === 'databank_claim' ? 'Claim Databank' : 'Cá nhân'}
+                              </span>
+                            )}
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'ticket_action')?.visible && (
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                            {c.log_id && c.dl_status !== 'databank_claim' ? (
+                              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+                                {c.report_status === 'pending' && (
+                                  <span className="badge warning" title="Ticket chờ duyệt">
+                                    Chờ duyệt
+                                  </span>
+                                )}
+                                {c.report_status === 'approved' && (
+                                  <span className="badge success" title="Ticket đã duyệt bù">
+                                    Đã bù
+                                  </span>
+                                )}
+                                {c.report_status === 'approved_no_comp' && (
+                                  <span className="badge" style={{ background: '#dbeafe', color: '#2563eb', border: '1px solid rgba(37, 99, 235, 0.2)' }} title="Ticket duyệt lỗi không bù">
+                                    Lỗi không bù
+                                  </span>
+                                )}
+                                {c.report_status === 'rejected' && (
+                                  <span className="badge danger" title="Từ chối">
+                                    Từ chối
+                                  </span>
+                                )}
+                                {(!c.report_status || c.report_status === 'rejected') && (
+                                  <button onClick={() => handleOpenReportModal(c)} className="btn sm danger" style={{ height: 28, padding: '0 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <AlertCircle size={11} /> Báo lỗi
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>
                             )}
                           </td>
                         )}
@@ -1241,6 +1347,73 @@ export const ContactsPage: React.FC = () => {
         }}
       />
       
+      {reportModalOpen && selectedContactForReport && (
+        <CustomModal
+          isOpen={reportModalOpen}
+          onClose={() => setReportModalOpen(false)}
+          title="Báo cáo dữ liệu lỗi / Trùng lặp"
+        >
+          <div style={{ padding: '0.5rem 0' }}>
+            <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Lý do báo lỗi (Chọn mẫu có sẵn)</label>
+              <CustomSelect
+                options={[
+                  { value: 'Số điện thoại không đúng / Thuê bao', label: 'Số điện thoại không đúng / Thuê bao' },
+                  { value: 'Không có nhu cầu mua dự án nào (rác)', label: 'Không có nhu cầu mua dự án nào (rác)' },
+                  { value: 'Trùng số với Sale khác', label: 'Trùng số với Sale khác' },
+                  { value: 'Khách hàng từ chối làm việc ngay lập tức', label: 'Khách hàng từ chối làm việc ngay lập tức' },
+                  { value: 'Lý do khác...', label: 'Lý do khác...' }
+                ]}
+                value={reportReasonType}
+                onChange={(val) => setReportReasonType(String(val))}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Nội dung chi tiết báo cáo</label>
+              <textarea
+                className="form-input"
+                rows={4}
+                placeholder="Nhập chi tiết lý do báo lỗi, bằng chứng cuộc gọi/hình ảnh (nếu có)..."
+                value={reportDetails}
+                onChange={e => setReportDetails(e.target.value)}
+                style={{ resize: 'none', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1.5rem' }}>
+              <button
+                className="btn outline"
+                onClick={() => setReportModalOpen(false)}
+                disabled={submittingReport}
+                style={{ borderRadius: '8px', padding: '8px 16px' }}
+              >
+                Hủy
+              </button>
+              <button
+                className="btn primary"
+                onClick={handleSubmitReport}
+                disabled={submittingReport}
+                style={{
+                  background: 'var(--color-danger)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo lỗi'}
+              </button>
+            </div>
+          </div>
+        </CustomModal>
+      )}
+
       <ImportExportModal 
         isOpen={showImportExport} 
         onClose={() => setShowImportExport(false)} 

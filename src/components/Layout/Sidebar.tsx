@@ -34,7 +34,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     title: 'KHÁCH HÀNG',
     items: [
       { name: 'Khách hàng', href: '/contacts', icon: Users },
-      { name: 'Kho Data', href: '/data', icon: Database },
+      { name: 'Kho Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Công việc', href: '/activities', icon: CheckSquare, hideForRoles: ['sale'] },
       { name: 'Lịch biểu & Chấm công', href: '/calendar', icon: Calendar },

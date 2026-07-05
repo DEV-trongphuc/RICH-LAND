@@ -3190,7 +3190,7 @@ function sendNewLeadApiNotificationToAdmins($conn, $connData, $leadId, $customer
 
 function ensurePersonAndContact($conn, $leadId) {
     // 1. Get lead info
-    $stmt = $conn->prepare("SELECT phone, email, name, source, note, assigned_to, is_accepted, target_round_id FROM leads WHERE id = ?");
+    $stmt = $conn->prepare("SELECT phone, email, name, source, type, note, assigned_to, is_accepted, target_round_id FROM leads WHERE id = ?");
     if (!$stmt) return;
     $stmt->bind_param("i", $leadId);
     $stmt->execute();
@@ -3207,6 +3207,7 @@ function ensurePersonAndContact($conn, $leadId) {
     $assigned_to = $lead['assigned_to'] ?? null;
     $is_accepted = (int)($lead['is_accepted'] ?? 0);
     $source = $lead['source'] ?? 'other';
+    $type = $lead['type'] ?? '';
     $note = $lead['note'] ?? '';
 
     // 2. Ensure Person
@@ -3285,16 +3286,18 @@ function ensurePersonAndContact($conn, $leadId) {
         }
 
         $stmtContact = $conn->prepare("
-            INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?)
+            INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?)
             ON DUPLICATE KEY UPDATE 
                 owner_id = VALUES(owner_id),
                 status = 'lead',
-                security_expires_at = IF(owner_id != VALUES(owner_id), ?, security_expires_at)
+                security_expires_at = IF(owner_id != VALUES(owner_id), ?, security_expires_at),
+                notes = IF(VALUES(notes) IS NOT NULL AND VALUES(notes) != '', VALUES(notes), notes),
+                customer_type = IF(VALUES(customer_type) IS NOT NULL AND VALUES(customer_type) != '', VALUES(customer_type), customer_type)
         ");
         if ($stmtContact) {
             $createdBy = 1;
-            $stmtContact->bind_param("iiiisssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $secExpiresTime);
+            $stmtContact->bind_param("iiiisssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type, $secExpiresTime);
             $stmtContact->execute();
             $stmtContact->close();
         }
