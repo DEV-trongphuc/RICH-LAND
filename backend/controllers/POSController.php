@@ -37,11 +37,21 @@ class POSController {
         }
 
         if ($customerId) {
-            // Verify customer belongs to tenant
-            $checkCust = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
-            $checkCust->execute([$customerId, $tid]);
+            // Verify customer belongs to tenant and is accessible by the user's role
+            $sqlCust = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
+            $pCust = [$customerId, $tid];
+            if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                $sqlCust .= " AND owner_id=?";
+                $pCust[] = $uid;
+            } else if ($auth['role'] === 'manager') {
+                $sqlCust .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $pCust[] = $uid;
+                $pCust[] = $uid;
+            }
+            $checkCust = $this->db->prepare($sqlCust);
+            $checkCust->execute($pCust);
             if (!$checkCust->fetch()) {
-                respond(403, null, "Khách hàng không hợp lệ hoặc không thuộc quyền quản lý", false);
+                respond(403, null, "Khách hàng không hợp lệ hoặc bạn không có quyền thao tác trên khách hàng này", false);
             }
         }
 

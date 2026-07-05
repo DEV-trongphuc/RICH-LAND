@@ -85,10 +85,10 @@ class DealController {
         $companyId = $_GET['company_id'] ?? '';
 
         $where=['d.tenant_id=?', 'd.deleted_at IS NULL']; $params=[$tid];
-        if (in_array($auth['role'], ['sales', 'sale'], true) && !$contactId && !$companyId) {
+        if (in_array($auth['role'], ['sales', 'sale'], true)) {
             $where[] = 'd.owner_id = ?';
             $params[] = $auth['user_id'];
-        } else if ($auth['role'] === 'manager' && !$contactId && !$companyId) {
+        } else if ($auth['role'] === 'manager') {
             $where[] = '(d.owner_id = ? OR d.owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?

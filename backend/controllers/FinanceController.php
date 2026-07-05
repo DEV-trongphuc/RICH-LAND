@@ -72,6 +72,8 @@ class FinanceController
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
         $contactId = $_GET['contact_id'] ?? '';
+        $from = $_GET['from'] ?? '';
+        $to = $_GET['to'] ?? '';
         $where = ['i.tenant_id=?', 'i.deleted_at IS NULL'];
         $params = [$tid];
         if ($contactId) {
@@ -94,6 +96,14 @@ class FinanceController
         if ($status) {
             $where[] = 'i.status=?';
             $params[] = $status;
+        }
+        if ($from) {
+            $where[] = 'i.issue_date >= ?';
+            $params[] = $from;
+        }
+        if ($to) {
+            $where[] = 'i.issue_date <= ?';
+            $params[] = $to;
         }
         if ($search) {
             $where[] = '(i.invoice_number LIKE ? OR ct.first_name LIKE ? OR ct.last_name LIKE ?)';

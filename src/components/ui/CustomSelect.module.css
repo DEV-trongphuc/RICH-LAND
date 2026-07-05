@@ -19,35 +19,34 @@
   padding: 0.625rem 0.875rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
   color: var(--color-text);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  min-height: 44px;
-  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fluid);
+  min-height: 38px;
+  box-shadow: var(--shadow-xs);
 }
 
 .trigger:hover {
-  border-color: var(--color-primary-light);
-  background: #f8fafc;
+  border-color: var(--color-text-muted);
 }
 
 :global([data-theme="dark"]) .trigger:hover {
   background: rgba(255, 255, 255, 0.02);
-  border-color: rgba(189, 29, 45, 0.4);
+  border-color: var(--color-text-light);
 }
 
 .trigger.open {
   border-color: var(--color-primary);
-  background: white;
-  box-shadow: 0 0 0 4px rgba(163, 20, 34, 0.1);
+  background: var(--color-surface);
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
 }
 
 :global([data-theme="dark"]) .trigger.open {
   background: var(--color-surface);
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px rgba(189, 29, 45, 0.2);
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
 }
 
 .triggerContent {
@@ -87,10 +86,12 @@
   width: 100%;
   min-width: max-content;
   max-width: 320px;
-  background: white;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
   z-index: 1000;
   overflow: hidden;
   display: flex;
@@ -98,9 +99,11 @@
 }
 
 :global([data-theme="dark"]) .dropdown {
-  background: var(--color-surface);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(189, 29, 45, 0.08);
+  background: rgba(28, 28, 30, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-xl), 0 4px 12px rgba(255, 69, 58, 0.08);
 }
 
 .searchBox {

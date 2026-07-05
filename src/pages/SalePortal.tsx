@@ -3597,16 +3597,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     padding: '1.25rem',
                     background: 'var(--color-surface)',
                     border: isOverdue && task.status !== 'done' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
-                    borderRadius: '12px',
+                    borderRadius: 'var(--radius-lg)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '0.75rem',
-                    boxShadow: isOverdue && task.status !== 'done' ? '0 0 10px rgba(239, 68, 68, 0.12)' : '0 4px 18px -4px rgba(0, 0, 0, 0.04)',
-                    transition: 'all 0.2s',
+                    gap: '0.875rem',
+                    boxShadow: isOverdue && task.status !== 'done' ? 'var(--shadow-md), 0 0 12px rgba(239, 68, 68, 0.08)' : 'var(--shadow-sm)',
+                    transition: 'all var(--transition-fluid)',
                     cursor: 'pointer',
                     position: 'relative'
                   }}
-                  className="hover-lift"
+                  className="hover-lift active-press"
                   onClick={() => {
                     const parsed = parseDescriptionAndChecklist(description);
                     const parsedTask = {
@@ -3635,62 +3635,84 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     setSelectedTaskForDetails(parsedTask);
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
-                    <h3 style={{ fontWeight: 700, fontSize: '0.925rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
-                      {task.subject}
-                    </h3>
+                  {/* Top Tags & Priority */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {task.tags && task.tags.split(',').filter(Boolean).map((tag: string) => {
+                        return (
+                          <span 
+                            key={tag} 
+                            style={{ 
+                              fontSize: '0.68rem', 
+                              padding: '2px 8px', 
+                              borderRadius: '20px', 
+                              background: 'var(--color-bg)', 
+                              color: 'var(--color-text-light)', 
+                              fontWeight: 700 
+                            }}
+                          >
+                            #{tag.trim()}
+                          </span>
+                        );
+                      })}
+                    </div>
                     {task.priority === 'high' && (
-                      <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)', flexShrink: 0 }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 8px', borderRadius: '20px', background: 'var(--color-danger-light)', color: 'var(--color-danger)', flexShrink: 0 }}>
                         {t('Khẩn cấp')}
                       </span>
                     )}
                   </div>
 
-                  {description && (
-                    <p style={{
-                      fontSize: '0.8rem',
-                      color: 'var(--color-text-muted)',
-                      margin: 0,
-                      lineHeight: 1.4,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
-                      {description}
-                    </p>
-                  )}
+                  {/* Title & Description */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.35 }}>
+                      {task.subject}
+                    </h3>
+                    {description && (
+                      <p style={{
+                        fontSize: '0.8rem',
+                        color: 'var(--color-text-muted)',
+                        margin: 0,
+                        lineHeight: 1.45,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {description}
+                      </p>
+                    )}
+                  </div>
 
                   {/* Progress Bar indicator */}
                   <div style={{ marginTop: 'auto', paddingTop: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                       <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
-                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-primary)' }}>{progressVal}%</span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{progressVal}%</span>
                     </div>
-                    <div style={{ width: '100%', height: '8px', background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
-                      <div style={{ width: `${progressVal}%`, height: '100%', background: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)', transition: 'width 0.3s' }} />
+                    <div style={{ width: '100%', height: '12px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
+                      <div 
+                        style={{ 
+                          width: `${progressVal}%`, 
+                          height: '100%', 
+                          background: progressVal === 100 
+                            ? 'var(--color-success)' 
+                            : 'linear-gradient(90deg, #BD1D2D, #F97316)', 
+                          borderRadius: '99px',
+                          transition: 'width 0.4s var(--transition-fluid)' 
+                        }} 
+                      />
                     </div>
                   </div>
 
-                  {/* Tags */}
-                  {task.tags && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {task.tags.split(',').filter(Boolean).map((tag: string) => (
-                        <span key={tag} style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.06)', color: '#059669', fontWeight: 600 }}>
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <hr style={{ border: 0, borderTop: '1px solid var(--color-border-light)', margin: 0 }} />
+                  <div style={{ borderTop: '1px solid var(--color-border-light)', margin: '4px 0' }} />
 
                   {/* Footer metadata */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {task.due_date && (
-                        <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', color: dateBadgeColor, background: dateBadgeBg, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '3px 8px', borderRadius: '20px', color: dateBadgeColor, background: dateBadgeBg, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           <Calendar size={11} /> {getDueDateLabel(task.due_date, task.status === 'done', t)}
                           {isOverdue && task.status !== 'done' && <ShieldAlert size={10} style={{ marginLeft: 2 }} />}
                         </span>
@@ -3699,8 +3721,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       {task.related_type === 'contact' && task.related_id && (
                         <span
                           style={{
-                            fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px',
-                            color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', gap: '4px'
+                            fontSize: '0.7rem', fontWeight: 700, padding: '3px 8px', borderRadius: '20px',
+                            color: 'var(--color-primary)', background: 'var(--color-primary-light)', display: 'inline-flex', alignItems: 'center', gap: '4px'
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -3731,7 +3753,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {assigneeUser && (
                             <div title={`Chịu trách nhiệm: ${assigneeUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
                               <Avatar src={assigneeUser.avatar_url || assigneeUser.avatar} name={assigneeUser.full_name} size={24} />
-                              <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-primary)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                              <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-primary)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
                             </div>
                           )}
 
@@ -3739,7 +3761,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           {approverUser && (
                             <div title={`Người duyệt: ${approverUser.full_name}`} style={{ position: 'relative', display: 'flex' }}>
                               <Avatar src={approverUser.avatar_url || approverUser.avatar} name={approverUser.full_name} size={24} />
-                              <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-warning)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
+                              <span style={{ position: 'absolute', bottom: -2, right: -2, background: 'var(--color-warning)', borderRadius: '50%', width: 10, height: 10, border: '1.5px solid var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
                             </div>
                           )}
 
@@ -3752,7 +3774,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                   title={`Người liên quan: ${pUser.full_name}`}
                                   style={{
                                     marginLeft: pIdx > 0 ? '-8px' : '0px',
-                                    border: '1.5px solid white',
+                                    border: '1.5px solid var(--color-surface)',
                                     borderRadius: '50%',
                                     overflow: 'hidden',
                                     zIndex: 10 - pIdx,
@@ -3776,7 +3798,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    border: '1.5px solid white',
+                                    border: '1.5px solid var(--color-surface)',
                                     zIndex: 5,
                                     cursor: 'pointer'
                                   }}
@@ -4009,8 +4031,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             {task.tags && (
                               <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '6px' }}>
                                 {task.tags.split(',').filter(Boolean).map((tag: string) => (
-                                  <span key={tag} style={{ fontSize: '0.6rem', padding: '0px 4px', borderRadius: '4px', background: 'rgba(16,185,129,0.06)', color: '#059669', fontWeight: 600 }}>
-                                    #{tag}
+                                  <span 
+                                    key={tag} 
+                                    style={{ 
+                                      fontSize: '0.65rem', 
+                                      padding: '2px 8px', 
+                                      borderRadius: '20px', 
+                                      background: 'var(--color-bg)', 
+                                      color: 'var(--color-text-light)', 
+                                      fontWeight: 700 
+                                    }}
+                                  >
+                                    #{tag.trim()}
                                   </span>
                                 ))}
                               </div>
@@ -4018,12 +4050,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                             {/* Progress Bar indicator */}
                             <div style={{ marginTop: '0.375rem', paddingTop: '4px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                 <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ:</span>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-primary)' }}>{progressVal}%</span>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{progressVal}%</span>
                               </div>
-                              <div style={{ width: '100%', height: '6px', background: '#f3f4f6', borderRadius: '3px', overflow: 'hidden' }}>
-                                <div style={{ width: `${progressVal}%`, height: '100%', background: progressVal === 100 ? 'var(--color-success)' : 'var(--color-primary)', transition: 'width 0.3s' }} />
+                              <div style={{ width: '100%', height: '12px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
+                                <div style={{ width: `${progressVal}%`, height: '100%', background: progressVal === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, #BD1D2D, #F97316)', borderRadius: '99px', transition: 'width 0.4s var(--transition-fluid)' }} />
                               </div>
                             </div>
 

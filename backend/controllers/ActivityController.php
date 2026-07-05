@@ -381,6 +381,17 @@ class ActivityController {
             respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
         }
 
+        // Block non-approvers and non-admins from approving or rejecting tasks
+        if (isset($b['approval_status']) && $b['approval_status'] !== $activity['approval_status']) {
+            $isApprover = $activity['approver_id'] && (int)$auth['user_id'] === (int)$activity['approver_id'];
+            $isAdmin = in_array(strtolower($auth['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'director', 'manager'], true);
+            $isClearingOrSubmitting = in_array($b['approval_status'], ['pending', null, ''], true) || ($b['approval_status'] === 'rejected' && $isAdmin); // Allow rejection for admin
+            
+            if (!$isApprover && !$isAdmin && !$isClearingOrSubmitting) {
+                respond(403, null, 'Bạn không có quyền phê duyệt hoặc từ chối công việc này', false);
+            }
+        }
+
         // Validate approver_id: Sale can only select admin, super_admin, superadmin, director OR their own team manager
         $approver_id = isset($b['approver_id']) ? (empty($b['approver_id']) ? null : (int)$b['approver_id']) : (empty($activity['approver_id']) ? null : (int)$activity['approver_id']);
         if ($approver_id && isset($b['approver_id']) && (int)$b['approver_id'] !== (int)$activity['approver_id'] && (in_array($auth['role'], ['sales', 'sale'], true))) {

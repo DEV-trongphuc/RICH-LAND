@@ -32,7 +32,8 @@ export const CustomRadio: React.FC<CustomRadioProps> = ({ checked, onChange, lab
         />
         <motion.div
           animate={{ 
-            borderColor: checked ? 'var(--color-primary)' : 'var(--color-border)'
+            borderColor: checked ? 'var(--color-primary)' : 'var(--color-border)',
+            boxShadow: checked ? '0 0 0 3px var(--color-primary-glow)' : 'none'
           }}
           style={{
             width: 18,
@@ -43,7 +44,7 @@ export const CustomRadio: React.FC<CustomRadioProps> = ({ checked, onChange, lab
             alignItems: 'center',
             justifyContent: 'center',
             background: 'var(--color-surface)',
-            transition: 'border-color 0.2s'
+            transition: 'border-color var(--transition), box-shadow var(--transition)'
           }}
         >
           <AnimatePresence>
@@ -52,6 +53,11 @@ export const CustomRadio: React.FC<CustomRadioProps> = ({ checked, onChange, lab
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 600,
+                  damping: 22
+                }}
                 style={{
                   width: 10,
                   height: 10,

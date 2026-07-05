@@ -210,63 +210,101 @@ export const CompaniesPage: React.FC = () => {
               <motion.div
                 key={co.id}
                 className="card card-hover"
-                style={{ padding: '1.25rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                style={{
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  minHeight: '260px',
+                  borderRadius: '16px',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border-light)',
+                  boxShadow: 'var(--shadow-sm)',
+                  cursor: 'pointer'
+                }}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 onClick={() => openEdit(co)}
               >
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3" style={{ minWidth: 0, flex: 1 }}>
-                      <Avatar name={co.name} src={co.logo_url} size={40} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                      <Avatar name={co.name} src={co.logo_url} size={42} />
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={co.name}>{co.name}</p>
-                        <p className="text-xs text-light" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={co.industry}>{co.industry}{co.city ? ` · ${co.city}` : ''}</p>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.name}>
+                          {co.name}
+                        </h3>
+                        <p className="text-xs text-light" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                          {co.industry || 'Chưa xác định'}{co.city ? ` · ${co.city}` : ''}
+                        </p>
                       </div>
                     </div>
-                    <span className={`badge ${ST_CLASS[co.status] || 'info'}`} style={{ flexShrink: 0 }}>{ST_LABEL[co.status] || co.status}</span>
+                    <span className={`badge ${ST_CLASS[co.status] || 'info'}`} style={{ flexShrink: 0, fontSize: '0.65rem' }}>
+                      {ST_LABEL[co.status] || co.status}
+                    </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1rem', marginBottom: '1.25rem', marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
-                    {co.phone ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                        <Phone size={12} className="text-light" style={{ flexShrink: 0 }} />
-                        <PhoneLink phone={co.phone} style={{ fontSize: '0.75rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
+                  {/* Details Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginBottom: '1.25rem', padding: '0.75rem 0', borderTop: '1px solid var(--color-border-light)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                      <Phone size={13} style={{ opacity: 0.6 }} />
+                      <span>{co.phone || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                      <Mail size={13} style={{ opacity: 0.6 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.email || '—'}</span>
+                    </div>
+                    {co.website && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                        <Globe size={13} style={{ opacity: 0.6 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.website}</span>
                       </div>
-                    ) : <div />}
-                    {co.email ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }} title={co.email}>
-                        <Mail size={12} className="text-light" style={{ flexShrink: 0 }} />
-                        <span className="text-xs text-light" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.email}</span>
-                      </div>
-                    ) : <div />}
-                    {co.website ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }} title={co.website}>
-                        <Globe size={12} className="text-light" style={{ flexShrink: 0 }} />
-                        <span className="text-xs text-light" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.website}</span>
-                      </div>
-                    ) : <div />}
-                    {co.expected_revenue > 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                        <DollarSign size={12} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
-                        <span className="text-xs font-black" style={{ color: 'var(--color-success)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {new Intl.NumberFormat('vi-VN').format(co.expected_revenue)} đ
-                        </span>
-                      </div>
-                    ) : <div />}
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between" style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
-                  <div className="flex gap-2 items-center">
-                    <span className="flex items-center gap-1 text-xs text-light" title="Người liên hệ"><Users size={12} />{co.contact_count || 0}</span>
-                    <span className="flex items-center gap-1 text-xs text-light" title="Quy mô"><Briefcase size={12} />{co.size || '1-10'} nv</span>
-                    {co.stage_name && <span className="badge sm" style={{ background: (co.stage_color || '#a31422') + '15', color: co.stage_color || '#a31422', fontSize: '0.65rem' }}>{co.stage_name}</span>}
+                <div>
+                  {/* Expected Revenue stats card */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, rgba(59, 130, 246, 0.03) 100%)',
+                    border: '1px solid rgba(16, 185, 129, 0.08)',
+                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Doanh thu dự kiến
+                    </span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-success)' }}>
+                      {co.expected_revenue > 0 ? `${new Intl.NumberFormat('vi-VN').format(co.expected_revenue)} đ` : '0 đ'}
+                    </span>
                   </div>
-                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                    <button className="btn ghost sm" onClick={() => openEdit(co)} style={{ padding: '4px' }}><Pencil size={13} /></button>
-                    <button className="btn ghost sm" style={{ color: 'var(--color-danger)', padding: '4px' }} onClick={() => confirmDelete(co)}><Trash2 size={13} /></button>
+
+                  {/* Actions & Info Footer */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }} title="Người liên hệ">
+                        <Users size={12} />
+                        {co.contact_count || 0}
+                      </span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }} title="Quy mô">
+                        <Briefcase size={12} />
+                        {co.size || '1-10'} nv
+                      </span>
+                      {co.stage_name && (
+                        <span className="badge sm" style={{ background: (co.stage_color || '#BD1D2D') + '15', color: co.stage_color || '#BD1D2D', fontSize: '0.625rem', padding: '1px 5px' }}>
+                          {co.stage_name}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
+                      <button className="btn ghost sm" onClick={() => openEdit(co)} style={{ padding: '6px', borderRadius: '6px' }}><Pencil size={13} /></button>
+                      <button className="btn ghost sm text-danger" style={{ color: 'var(--color-danger)', padding: '6px', borderRadius: '6px' }} onClick={() => confirmDelete(co)}><Trash2 size={13} /></button>
+                    </div>
                   </div>
                 </div>
               </motion.div>

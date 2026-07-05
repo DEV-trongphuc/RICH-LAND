@@ -2,18 +2,32 @@
 // SearchController — Global search across contacts, companies, deals, notes
 class SearchController {
     private PDO $db;
-    public function __construct(PDO $db) { $this->db = $db; }    public function global(array $auth): void {
+    public function __construct(PDO $db) { $this->db = $db; }    
+    public function global(array $auth): void {
         $q   = trim($_GET['q'] ?? '');
         if (strlen($q) < 2) respond(200, ['results' => []]);
 
-        $tid  = $auth['tenant_id'];
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
         $like = "%{$q}%";
         $results = [];
 
         // Contacts
         $sqlC = "SELECT id, CONCAT(first_name,' ',last_name) as label, email as sublabel, 'contact' as type, status FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND (CONCAT(first_name,' ',last_name) LIKE ? OR email LIKE ? OR phone LIKE ?)";
         $pC = [$tid, $like, $like, $like];
-        if ($auth['role'] === 'sales') { $sqlC .= " AND owner_id=?"; $pC[] = $auth['user_id']; }
+        if ($isSale) { 
+            $sqlC .= " AND owner_id=?"; 
+            $pC[] = $uid; 
+        } else if ($isManager) {
+            $sqlC .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $pC[] = $uid;
+            $pC[] = $uid;
+        }
         $s = $this->db->prepare($sqlC . " LIMIT 10");
         $s->execute($pC);
         foreach ($s->fetchAll() as $r) $results[] = $r;
@@ -21,18 +35,20 @@ class SearchController {
         // Companies
         $sqlComp = "SELECT id, name as label, city as sublabel, 'company' as type, status FROM companies WHERE tenant_id=? AND deleted_at IS NULL AND (name LIKE ? OR email LIKE ?)";
         $pComp = [$tid, $like, $like];
-        if ($auth['role'] === 'sales') { $sqlComp .= " AND owner_id=?"; $pComp[] = $auth['user_id']; }
+        if ($isSale) { 
+            $sqlComp .= " AND owner_id=?"; 
+            $pComp[] = $uid; 
+        }
         $s = $this->db->prepare($sqlComp . " LIMIT 10");
         $s->execute($pComp);
         foreach ($s->fetchAll() as $r) $results[] = $r;
 
-        // Notes (filtered by entity access for sales)
+        // Notes (filtered by entity access)
         $sqlN = "SELECT n.id, SUBSTRING(n.body,1,80) as label, n.entity_type as sublabel, 'note' as type, 'note' as status 
                  FROM notes n 
                  WHERE n.tenant_id=? AND n.body LIKE ?";
         $pN = [$tid, $like];
-        if ($auth['role'] === 'sales') {
-            // Only search notes on entities owned by the salesperson OR created by them
+        if ($isSale) {
             $sqlN .= " AND (n.user_id=? OR EXISTS (
                 SELECT 1 FROM contacts c WHERE c.id=n.entity_id AND n.entity_type='contact' AND c.owner_id=?
                 UNION ALL
@@ -40,10 +56,23 @@ class SearchController {
                 UNION ALL
                 SELECT 1 FROM deals d WHERE d.id=n.entity_id AND n.entity_type='deal' AND d.owner_id=?
             ))";
-            $pN[] = $auth['user_id'];
-            $pN[] = $auth['user_id'];
-            $pN[] = $auth['user_id'];
-            $pN[] = $auth['user_id'];
+            $pN[] = $uid;
+            $pN[] = $uid;
+            $pN[] = $uid;
+            $pN[] = $uid;
+        } else if ($isManager) {
+            $sqlN .= " AND (n.user_id=? OR EXISTS (
+                SELECT 1 FROM contacts c WHERE c.id=n.entity_id AND n.entity_type='contact' AND (c.owner_id=? OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))
+                UNION ALL
+                SELECT 1 FROM companies co WHERE co.id=n.entity_id AND n.entity_type='company'
+                UNION ALL
+                SELECT 1 FROM deals d WHERE d.id=n.entity_id AND n.entity_type='deal' AND (d.owner_id=? OR d.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))
+            ))";
+            $pN[] = $uid;
+            $pN[] = $uid;
+            $pN[] = $uid;
+            $pN[] = $uid;
+            $pN[] = $uid;
         }
         $s = $this->db->prepare($sqlN . " LIMIT 5");
         $s->execute($pN);
@@ -56,6 +85,12 @@ class SearchController {
         $q  = strtolower(trim($_GET['q'] ?? ''));
         $tid = $auth['tenant_id'];
 
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
         // Parse smart queries
         $results = ['type' => 'contacts', 'items' => []];
 
@@ -66,9 +101,13 @@ class SearchController {
             
             $saleFilter = "";
             $params = [$tid, $tid, $days];
-            if ($auth['role'] === 'sales') {
+            if ($isSale) {
                 $saleFilter = " AND c.owner_id = ?";
-                $params[] = $auth['user_id'];
+                $params[] = $uid;
+            } else if ($isManager) {
+                $saleFilter = " AND (c.owner_id = ? OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $params[] = $uid;
+                $params[] = $uid;
             }
 
             $s = $this->db->prepare("
@@ -92,9 +131,13 @@ class SearchController {
 
             $saleFilter = "";
             $params = [$tid, $val];
-            if ($auth['role'] === 'sales') {
+            if ($isSale) {
                 $saleFilter = " AND c.owner_id = ?";
-                $params[] = $auth['user_id'];
+                $params[] = $uid;
+            } else if ($isManager) {
+                $saleFilter = " AND (c.owner_id = ? OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $params[] = $uid;
+                $params[] = $uid;
             }
 
             $s = $this->db->prepare("

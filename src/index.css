@@ -71,7 +71,8 @@
 .responsive-table-wrap {
   overflow-x: auto !important;
   -webkit-overflow-scrolling: touch !important;
-  /* Premium momentum touch scrolling on mobile/tablet */
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .sticky-column {
@@ -456,12 +457,14 @@
   /* Brand Specific (Primary Brand Red) */
   --color-brand: #BD1D2D;
   --color-brand-hover: #a31422;
-  --color-brand-light: rgba(189, 29, 45, 0.08);
+  --color-brand-light: rgba(189, 29, 45, 0.12);
+  --color-brand-glow: rgba(189, 29, 45, 0.15);
 
   /* Primary (Standardized to Brand Red for Main Brand Actions) */
   --color-primary: #BD1D2D;
   --color-primary-hover: #a31422;
-  --color-primary-light: rgba(189, 29, 45, 0.08);
+  --color-primary-light: rgba(189, 29, 45, 0.12);
+  --color-primary-glow: rgba(189, 29, 45, 0.16);
   --sidebar-bg: #121214; /* Deeper charcoal dark gray sidebar */
   --sidebar-hover: rgba(255, 255, 255, 0.08);
   --sidebar-active: #BD1D2D; /* Keep brand color on sidebar active item */
@@ -493,24 +496,26 @@
   --score-cold: #AEAEB2;
 
   /* Premium Shadows (Sleek and flat/crisp iOS style) */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.03);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.06);
-  --shadow-primary: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02), 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.04), 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.05), 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 24px 50px rgba(0, 0, 0, 0.06), 0 0 2px rgba(0, 0, 0, 0.04);
+  --shadow-primary: 0 8px 20px rgba(189, 29, 45, 0.1);
 
   /* Shape (High Bo-Tròn) */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px; /* Highly rounded cards */
-  --radius-2xl: 28px; /* Extra rounded items */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px; /* Highly rounded cards */
+  --radius-2xl: 36px; /* Extra rounded items */
   --radius-full: 999px; /* Pills/Circles */
 
   /* Transitions */
-  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fluid: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Skeleton loaders */
   --skeleton-base: #E5E5EA;
@@ -521,12 +526,14 @@
   /* Brand Specific (for critical elements only) */
   --color-brand: #FF453A;
   --color-brand-hover: #FF3B30;
-  --color-brand-light: rgba(255, 69, 58, 0.12);
+  --color-brand-light: rgba(255, 69, 58, 0.16);
+  --color-brand-glow: rgba(255, 69, 58, 0.24);
 
   /* Primary (Standardized to Brand Red for Main Brand Actions in Dark Mode) */
   --color-primary: #FF453A;
   --color-primary-hover: #FF3B30;
-  --color-primary-light: rgba(255, 69, 58, 0.12);
+  --color-primary-light: rgba(255, 69, 58, 0.16);
+  --color-primary-glow: rgba(255, 69, 58, 0.24);
   --sidebar-bg: #000000;
   --sidebar-hover: rgba(255, 255, 255, 0.05);
   --sidebar-active: #FF453A;
@@ -558,12 +565,12 @@
   --score-cold: #48484A;
 
   /* Elevated Dark Theme Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.5);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 12px 24px rgba(0, 0, 0, 0.6);
-  --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.7);
-  --shadow-primary: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.45), 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-xl: 0 24px 50px rgba(0, 0, 0, 0.5), 0 0 2px rgba(255, 255, 255, 0.04);
+  --shadow-primary: 0 8px 20px rgba(255, 69, 58, 0.2);
 
   /* Skeleton loaders */
   --skeleton-base: #2C2C2E;
@@ -595,8 +602,8 @@ html {
 
 /* Custom premium thin scrollbar styles */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -604,28 +611,28 @@ html {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 9999px;
-  border: 3px solid transparent;
+  border: 2px solid transparent;
   background-clip: content-box;
-  transition: background 0.2s;
+  transition: background var(--transition);
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-  border: 3px solid transparent;
+  background: rgba(0, 0, 0, 0.28);
+  border: 2px solid transparent;
   background-clip: content-box;
 }
 
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border: 3px solid transparent;
+  background: rgba(255, 255, 255, 0.28);
+  border: 2px solid transparent;
   background-clip: content-box;
 }
 
@@ -678,12 +685,12 @@ select {
   font-weight: 500;
   outline: none;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all var(--transition-fluid);
 }
 
 select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-light);
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
 }
 
 ul {
@@ -1017,7 +1024,6 @@ td {
 tbody tr {
   transition: all 0.15s ease;
   cursor: pointer;
-  border-bottom: 0.5px solid var(--color-border-light);
 }
 
 tbody tr:hover {
@@ -1059,14 +1065,22 @@ tbody tr:hover .row-actions {
 select {
   width: 100%;
   padding: 0 1rem;
-  height: 44px;
+  height: 42px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: 0.875rem;
   outline: none;
-  transition: border-color var(--transition), box-shadow var(--transition);
+  transition: all var(--transition-fluid);
+  box-shadow: var(--shadow-xs);
+}
+
+.form-input:hover:not(:focus):not(:disabled),
+.form-textarea:hover:not(:focus):not(:disabled),
+.form-control:hover:not(:focus):not(:disabled),
+select:hover:not(:focus):not(:disabled) {
+  border-color: var(--color-text-muted);
 }
 
 textarea.form-input,
@@ -1089,14 +1103,14 @@ textarea.form-control {
 .form-control:focus,
 select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light);
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
 }
 
 [data-theme="dark"] .form-input,
 [data-theme="dark"] .form-textarea,
 [data-theme="dark"] .form-control,
 [data-theme="dark"] select {
-  background: #060913;
+  background: rgba(255, 255, 255, 0.02);
   border-color: var(--color-border);
 }
 
@@ -1105,7 +1119,7 @@ select:focus {
 [data-theme="dark"] .form-control:focus,
 [data-theme="dark"] select:focus {
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-light), 0 0 12px rgba(167, 139, 250, 0.1);
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
 }
 
 [data-theme="dark"] select {
@@ -3867,4 +3881,45 @@ table td.wrap-cell, table th.wrap-cell {
   .grid-cards-responsive {
     grid-template-columns: repeat(3, 1fr);
   }
+}
+
+/* Custom premium progress slider like iOS/ColorOS */
+.progress-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  border-radius: 99px;
+  outline: none;
+  cursor: pointer;
+  border: none !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: all var(--transition-fluid);
+}
+
+.progress-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8px;
+  height: 18px;
+  border-radius: 99px;
+  background: #ffffff;
+  box-shadow: -1px 0 2px rgba(0, 0, 0, 0.1), 1px 0 2px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.progress-slider::-webkit-slider-thumb:hover {
+  transform: scaleX(1.4);
+}
+
+.progress-slider::-moz-range-thumb {
+  width: 8px;
+  height: 18px;
+  border-radius: 99px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  border: none;
 }

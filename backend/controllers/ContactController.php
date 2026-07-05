@@ -763,9 +763,20 @@ class ContactController {
         if (empty($ids)) respond(400, null, 'Danh sách ID không hợp lệ', false);
         
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $sql = "UPDATE contacts SET deleted_at=NOW() WHERE tenant_id=? AND id IN ($placeholders)";
+        $where = "tenant_id=? AND id IN ($placeholders)";
         $params = array_merge([$auth['tenant_id']], $ids);
         
+        if ($auth['role'] === 'manager') {
+            $where .= " AND (owner_id=? OR owner_id IN (
+                SELECT id FROM users WHERE team_id IN (
+                    SELECT id FROM teams WHERE leader_id = ?
+                )
+            ))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        }
+        
+        $sql = "UPDATE contacts SET deleted_at=NOW() WHERE $where";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         

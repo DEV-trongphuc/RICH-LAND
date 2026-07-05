@@ -440,17 +440,14 @@ export const FilesPage: React.FC = () => {
               </div>
             ) : total === 0 ? (
               <div style={{ flex: 1, display: 'flex', minHeight: '400px', width: '100%' }}>
-                <div style={{ flex: 1, background: 'var(--color-surface)', padding: '4rem', borderRadius: 'var(--radius-2xl)', border: '2px dashed var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                  <div style={{ width: '96px', height: '96px', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
-                    <Folder size={48} style={{ color: 'var(--color-text-muted)' }} />
-                  </div>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Thư mục này đang trống</h3>
-                  <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: 1.5 }}>
-                    Bắt đầu tổ chức tài liệu bằng cách tải lên tệp đầu tiên. Dung lượng lưu trữ của bạn được giới hạn ở mức <strong>10 GB</strong>.
-                  </p>
-                  <button className="btn primary" style={{ padding: '12px 24px', fontSize: '1rem', borderRadius: 'var(--radius-lg)' }} onClick={() => fileInputRef.current?.click()}>
-                    <Upload size={18} style={{ marginRight: '8px' }} /> Tải lên ngay
-                  </button>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
+                  <EmptyCard 
+                    icon={<Folder />}
+                    title="Thư mục này đang trống"
+                    description="Bắt đầu tổ chức tài liệu bằng cách tải lên tệp đầu tiên. Dung lượng lưu trữ của bạn được giới hạn ở mức 10 GB."
+                    actionText="Tải lên ngay"
+                    onAction={() => fileInputRef.current?.click()}
+                  />
                 </div>
               </div>
             ) : (

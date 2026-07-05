@@ -17,7 +17,9 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.82); /* dark semi-transparent */
+  background-color: rgba(0, 0, 0, 0.35); /* lighter backdrop */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .modal {
@@ -27,16 +29,17 @@
   max-height: 85vh;
   background-color: var(--color-surface);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-xl);
   display: flex;
   flex-direction: column;
   z-index: 1001;
   overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 :global([data-theme="dark"]) .modal {
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4), 0 0 40px rgba(189, 29, 45, 0.05);
+  box-shadow: var(--shadow-xl), 0 0 45px rgba(255, 69, 58, 0.05);
 }
 
 .header {

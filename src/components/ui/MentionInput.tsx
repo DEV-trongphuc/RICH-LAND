@@ -147,6 +147,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
         ref={textareaRef}
         value={value}
         onChange={handleChange}
+        className={`form-textarea ${props.className || ''}`}
         {...props}
         style={{ width: '100%', ...props.style }}
       />

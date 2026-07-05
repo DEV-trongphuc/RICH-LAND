@@ -6,6 +6,7 @@ import { useUIStore } from '../store/uiStore';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban } from 'lucide-react';
+import { EmptyCard } from '../components/ui/EmptyCard';
 
 interface Deposit {
   id: number;
@@ -306,14 +307,13 @@ export default function DepositsPage() {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách đặt cọc...</div>
       ) : deposits.length === 0 ? (
-        <div className="card" style={{ padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <CreditCard size={48} style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }} />
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Chưa có phiếu cọc nào</h3>
-          <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC.</p>
-          <button className="btn primary" onClick={() => setIsCreateOpen(true)}>
-            <Plus size={16} /> Tạo phiếu cọc mới
-          </button>
-        </div>
+        <EmptyCard
+          icon={<CreditCard />}
+          title="Chưa có phiếu cọc nào"
+          description="Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC."
+          actionText="Tạo phiếu cọc mới"
+          onAction={() => setIsCreateOpen(true)}
+        />
       ) : (
         <div className="card" style={{ padding: 0, borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
           <div className="table-wrap">

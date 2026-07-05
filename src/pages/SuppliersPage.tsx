@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Truck, Plus, Search, MoreHorizontal, Mail, Phone, MapPin, 
   Trash2, Pencil, ExternalLink, Filter, Download, User, Hash,
-  ArrowUpRight
+  ArrowUpRight, Building2
 } from 'lucide-react';
 import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
@@ -163,43 +163,99 @@ export const SuppliersPage: React.FC = () => {
             {filtered.map(s => (
               <motion.div 
                 key={s.id} 
-                className="card hover-lift p-4 relative overflow-hidden"
+                className="card hover-lift relative overflow-hidden"
+                style={{
+                  padding: '1.25rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  minHeight: '260px',
+                  borderRadius: '16px',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border-light)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="avatar-placeholder" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', borderRadius: '50%' }}>
-                      <Truck size={18} />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-base leading-tight">{s.name}</h3>
-                      <p className="text-xs text-light flex items-center gap-1 mt-1"><User size={12} /> {s.contact_name || 'Chưa có thông tin'}</p>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '12px',
+                        background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.08), rgba(249, 115, 22, 0.08))',
+                        color: 'var(--color-primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <Building2 size={20} />
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.name}>
+                          {s.name}
+                        </h3>
+                        <span className="badge sm" style={{ background: '#f3f4f6', color: '#6b7280', fontSize: '0.65rem', marginTop: '4px', display: 'inline-block' }}>
+                          Chủ đầu tư
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <button className="btn-icon sm"><MoreHorizontal size={16} /></button>
+
+                  {/* Details Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px', marginBottom: '1.25rem', padding: '0.75rem 0', borderTop: '1px solid var(--color-border-light)' }}>
+                    {s.contact_name && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                        <User size={13} style={{ opacity: 0.6 }} />
+                        <span style={{ fontWeight: 600 }}>{s.contact_name}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                      <Phone size={13} style={{ opacity: 0.6 }} />
+                      <span>{s.phone || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                      <Mail size={13} style={{ opacity: 0.6 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.email || '—'}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                      <MapPin size={13} style={{ opacity: 0.6 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.address || '—'}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="space-y-2.5 mb-5">
-                  <div className="flex items-center gap-2 text-sm text-light">
-                    <Phone size={14} className="opacity-50" /> <span>{s.phone || '—'}</span>
+                <div>
+                  {/* Total transaction stats card */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.03) 0%, rgba(249, 115, 22, 0.03) 100%)',
+                    border: '1px solid rgba(189, 29, 45, 0.08)',
+                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Tổng giá trị giao dịch
+                    </span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+                      {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered || 0)}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-light">
-                    <Mail size={14} className="opacity-50" /> <span className="truncate">{s.email || '—'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-light">
-                    <MapPin size={14} className="opacity-50" /> <span className="truncate">{s.address || '—'}</span>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border-light)]">
-                  <div>
-                    <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Tổng giá trị giao dịch</p>
-                    <p className="font-bold text-primary text-base">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered || 0)}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button className="btn-icon sm" onClick={() => handleOpenModal(s)}><Pencil size={14} /></button>
-                    <button className="btn-icon sm text-danger" onClick={() => handleDelete(s.id)}><Trash2 size={14} /></button>
+                  {/* Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                    <button className="btn ghost sm" onClick={() => handleOpenModal(s)} style={{ padding: '6px', borderRadius: '6px' }}>
+                      <Pencil size={13} />
+                    </button>
+                    <button className="btn ghost sm text-danger" onClick={() => handleDelete(s.id)} style={{ padding: '6px', borderRadius: '6px' }}>
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
               </motion.div>

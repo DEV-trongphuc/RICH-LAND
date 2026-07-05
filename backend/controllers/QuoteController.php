@@ -4,7 +4,6 @@ class QuoteController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
-        $tid    = $auth['tenant_id'];
         $page   = max(1, (int)($_GET['page']   ?? 1));
         $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
         $offset = ($page - 1) * $limit;
@@ -14,6 +13,22 @@ class QuoteController {
         $from   = $_GET['from'] ?? '';
         $to     = $_GET['to'] ?? '';
         
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
+        // Load team members if manager
+        $userIds = [$uid];
+        if ($isManager) {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+
         $where  = ['q.tenant_id = ?'];
         $params = [$tid];
 
@@ -22,17 +37,30 @@ class QuoteController {
             $params[] = (int)$contactId;
         }
 
-        if ($auth['role'] === 'sales') {
+        if ($isSale) {
             if ($contactId) {
                 $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
                 $stmtContact->execute([(int)$contactId, $tid]);
                 $ownerId = $stmtContact->fetchColumn();
-                if ($ownerId && (int)$ownerId !== (int)$auth['user_id']) {
+                if ($ownerId && (int)$ownerId !== $uid) {
                     respond(403, null, 'Bạn không có quyền xem báo giá của liên hệ này', false);
                 }
             } else {
                 $where[] = 'q.created_by = ?';
-                $params[] = $auth['user_id'];
+                $params[] = $uid;
+            }
+        } else if ($isManager) {
+            if ($contactId) {
+                $stmtContact = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ? AND tenant_id = ?");
+                $stmtContact->execute([(int)$contactId, $tid]);
+                $ownerId = $stmtContact->fetchColumn();
+                if ($ownerId && !in_array((int)$ownerId, $userIds, true)) {
+                    respond(403, null, 'Bạn không có quyền xem báo giá của liên hệ này', false);
+                }
+            } else {
+                $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+                $where[] = "q.created_by IN ($placeholders)";
+                $params = array_merge($params, $userIds);
             }
         }
 
@@ -90,21 +118,48 @@ class QuoteController {
     }
     public function store(array $auth): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền tạo báo giá', false);
-        $tid = $auth['tenant_id'];
+        
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
         $b=getBody(); if(empty($b['title'])) respond(422,null,'Tiêu đề là bắt buộc',false);
         if (($b['total'] ?? 0) < 0) respond(422, null, 'Tổng tiền báo giá không được âm', false);
         
-        // Verify contact belongs to tenant
+        // Verify contact belongs to tenant and is accessible
         if (!empty($b['contact_id'])) {
-            $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
-            $c->execute([(int)$b['contact_id'], $tid]);
+            $sqlContact = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
+            $pContact = [(int)$b['contact_id'], $tid];
+            if ($isSale) {
+                $sqlContact .= " AND owner_id=?";
+                $pContact[] = $uid;
+            } else if ($isManager) {
+                $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $pContact[] = $uid;
+                $pContact[] = $uid;
+            }
+            $c = $this->db->prepare($sqlContact);
+            $c->execute($pContact);
             if (!$c->fetch()) $b['contact_id'] = null;
         }
 
-        // Verify deal belongs to tenant
+        // Verify deal belongs to tenant and is accessible
         if (!empty($b['deal_id'])) {
-            $d = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=?");
-            $d->execute([(int)$b['deal_id'], $tid]);
+            $sqlDeal = "SELECT id FROM deals WHERE id=? AND tenant_id=?";
+            $pDeal = [(int)$b['deal_id'], $tid];
+            if ($isSale) {
+                $sqlDeal .= " AND owner_id=?";
+                $pDeal[] = $uid;
+            } else if ($isManager) {
+                $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $pDeal[] = $uid;
+                $pDeal[] = $uid;
+            }
+            $d = $this->db->prepare($sqlDeal);
+            $d->execute($pDeal);
             if (!$d->fetch()) $b['deal_id'] = null;
         }
 
@@ -112,7 +167,7 @@ class QuoteController {
         $qNum = 'QT-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(2)));
         $validUntil = empty($b['valid_until']) ? null : $b['valid_until'];
         $this->db->prepare("INSERT INTO quotes (tenant_id,deal_id,contact_id,created_by,quote_number,title,status,subtotal,discount,tax,total,valid_until,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
-            ->execute([$tid,$b['deal_id']??null,$b['contact_id']??null,$auth['user_id'],$qNum,$b['title'],$b['status']??'draft',$b['subtotal']??0,$b['discount']??0,$b['tax']??0,$b['total']??0,$validUntil,$b['notes']??null]);
+            ->execute([$tid,$b['deal_id']??null,$b['contact_id']??null,$uid,$qNum,$b['title'],$b['status']??'draft',$b['subtotal']??0,$b['discount']??0,$b['tax']??0,$b['total']??0,$validUntil,$b['notes']??null]);
         $qid=(int)$this->db->lastInsertId();
         if(!empty($b['items'])) {
             $ins=$this->db->prepare("INSERT INTO quote_items (quote_id,product_id,name,description,quantity,unit_price,discount,subtotal,sort_order) VALUES (?,?,?,?,?,?,?,?,?)");
@@ -137,17 +192,28 @@ class QuoteController {
 
         // Log interaction if sent
         if (($b['status'] ?? 'draft') === 'sent' && !empty($b['contact_id'])) {
-            logInteraction($this->db, $tid, $auth['user_id'], 'email', "Gửi Báo giá #$qNum", "Báo giá \"{$b['title']}\" đã được gửi cho khách hàng.", 'quote', $qid);
+            logInteraction($this->db, $tid, $uid, 'email', "Gửi Báo giá #$qNum", "Báo giá \"{$b['title']}\" đã được gửi cho khách hàng.", 'quote', $qid);
         }
 
         $this->show($auth,$qid);
     }
     public function show(array $auth,int $id): void {
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
         $sql = "SELECT q.*,u.full_name as created_by_name FROM quotes q LEFT JOIN users u ON q.created_by=u.id WHERE q.id=? AND q.tenant_id=?";
-        $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
+        $p = [$id, $tid];
+        if ($isSale) {
             $sql .= " AND q.created_by=?";
-            $p[] = $auth['user_id'];
+            $p[] = $uid;
+        } else if ($isManager) {
+            $sql .= " AND (q.created_by = ? OR q.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $p[] = $uid;
+            $p[] = $uid;
         }
         $stmt=$this->db->prepare($sql);
         $stmt->execute($p); $q=$stmt->fetch();
@@ -159,6 +225,14 @@ class QuoteController {
     }
     public function update(array $auth,int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật báo giá', false);
+        
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
         $b=getBody(); $fields=['title','status','subtotal','discount','tax','total','valid_until','notes','terms'];
         $sets=[];$params=[];
         foreach($fields as $f){
@@ -172,28 +246,51 @@ class QuoteController {
             }
         }
         if($sets){
-            $tid = $auth['tenant_id'];
             if (isset($b['contact_id']) && $b['contact_id']) {
-                $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
-                $c->execute([(int)$b['contact_id'], $tid]);
-                if (!$c->fetch()) respond(404, null, 'Liên hệ không hợp lệ', false);
+                $sqlContact = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
+                $pContact = [(int)$b['contact_id'], $tid];
+                if ($isSale) {
+                    $sqlContact .= " AND owner_id=?";
+                    $pContact[] = $uid;
+                } else if ($isManager) {
+                    $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                    $pContact[] = $uid;
+                    $pContact[] = $uid;
+                }
+                $c = $this->db->prepare($sqlContact);
+                $c->execute($pContact);
+                if (!$c->fetch()) respond(403, null, 'Không có quyền thao tác trên liên hệ này', false);
             }
             if (isset($b['deal_id']) && $b['deal_id']) {
-                $c = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=?");
-                $c->execute([(int)$b['deal_id'], $tid]);
-                if (!$c->fetch()) respond(404, null, 'Deal không hợp lệ', false);
+                $sqlDeal = "SELECT id FROM deals WHERE id=? AND tenant_id=?";
+                $pDeal = [(int)$b['deal_id'], $tid];
+                if ($isSale) {
+                    $sqlDeal .= " AND owner_id=?";
+                    $pDeal[] = $uid;
+                } else if ($isManager) {
+                    $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                    $pDeal[] = $uid;
+                    $pDeal[] = $uid;
+                }
+                $c = $this->db->prepare($sqlDeal);
+                $c->execute($pDeal);
+                if (!$c->fetch()) respond(403, null, 'Không có quyền thao tác trên deal này', false);
             }
             
             // Get old status to check for transition
             $old = $this->db->prepare("SELECT status, contact_id, quote_number, title FROM quotes WHERE id=? AND tenant_id=?");
-            $old->execute([$id, $auth['tenant_id']]);
+            $old->execute([$id, $tid]);
             $oldData = $old->fetch();
 
             $sql = "UPDATE quotes SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
-            $params[]=$id;$params[]=$auth['tenant_id'];
-            if ($auth['role'] === 'sales') {
+            $params[]=$id;$params[]=$tid;
+            if ($isSale) {
                 $sql .= " AND created_by=?";
-                $params[] = $auth['user_id'];
+                $params[] = $uid;
+            } else if ($isManager) {
+                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $params[] = $uid;
+                $params[] = $uid;
             }
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
@@ -204,29 +301,38 @@ class QuoteController {
                 $cid = $b['contact_id'] ?? $oldData['contact_id'];
                 $qNum = $oldData['quote_number'];
                 $title = $b['title'] ?? $oldData['title'];
-                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'email', "Gửi Báo giá #$qNum", "Báo giá \"$title\" đã được gửi cho khách hàng.", 'quote', $id);
+                logInteraction($this->db, $tid, $uid, 'email', "Gửi Báo giá #$qNum", "Báo giá \"$title\" đã được gửi cho khách hàng.", 'quote', $id);
             }
         }
         respond(200,null,'Đã cập nhật báo giá');
     }
     public function convert(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
-        $tid = $auth['tenant_id'];
-        $uid = $auth['user_id'];
+        
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
         
         $this->db->beginTransaction();
         try {
             // 1. Get quote and items with permission check
             $sql = "SELECT * FROM quotes WHERE id=? AND tenant_id=?";
             $p = [$id, $tid];
-            if ($auth['role'] === 'sales') {
+            if ($isSale) {
                 $sql .= " AND created_by=?";
+                $p[] = $uid;
+            } else if ($isManager) {
+                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $p[] = $uid;
                 $p[] = $uid;
             }
             $stmt = $this->db->prepare($sql . " FOR UPDATE");
             $stmt->execute($p);
             $q = $stmt->fetch();
-            if (!$q) throw new Exception('Không tìm thấy báo giá');
+            if (!$q) throw new Exception('Không tìm thấy báo giá hoặc bạn không có quyền');
             if ($q['status'] === 'invoiced') throw new Exception('Báo giá này đã được chuyển thành hóa đơn trước đó');
 
             $itemsStmt = $this->db->prepare("SELECT * FROM quote_items WHERE quote_id=?");
@@ -268,9 +374,26 @@ class QuoteController {
     }
 
     public function destroy(array $auth,int $id): void {
-        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa báo giá', false);
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+        
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+
+        if ($isSale) {
+            respond(403, null, 'Bạn không có quyền xóa báo giá', false);
+        }
+
         $sql = "DELETE FROM quotes WHERE id=? AND tenant_id=?";
-        $p = [$id, $auth['tenant_id']];
+        $p = [$id, $tid];
+        if ($isManager) {
+            $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $p[] = $uid;
+            $p[] = $uid;
+        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);

@@ -82,6 +82,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   // Pinned/Campaign specific state
   const [isPinned, setIsPinned] = useState(false);
   const [campaignTarget, setCampaignTarget] = useState('');
+  
+  // Validation and approval modals state
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showApprovalSuccessModal, setShowApprovalSuccessModal] = useState<string | null>(null);
 
   // Participants modal state
   const [showParticipantsModal, setShowParticipantsModal] = useState(false);
@@ -247,8 +251,26 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const handleManualSave = async () => {
     if (!task) return;
+    
+    // Validation: Require approval must have an approver selected
+    if (formData.require_approval === 1 && !formData.approver_id) {
+      setShowValidationModal(true);
+      return;
+    }
+
     setIsSaving(true);
     try {
+      const isJustSubmittedForApproval = 
+        formData.progress === 100 &&
+        formData.require_approval === 1 &&
+        formData.approver_id &&
+        formData.approval_status === 'pending' &&
+        (task.progress !== 100 || task.approval_status !== 'pending');
+
+      const approverName = isJustSubmittedForApproval
+        ? users.find(u => Number(u.id) === Number(formData.approver_id))?.full_name || 'Người duyệt'
+        : null;
+
       const bodyPayload = JSON.stringify({ erp_task: erpMeta });
       let finalTags = formData.tags || '';
 
@@ -279,6 +301,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         user_id: formData.user_id,
         require_approval: formData.require_approval,
         approver_id: formData.approver_id,
+        approval_status: formData.approval_status,
         participant_ids: formData.participant_ids
       };
 
@@ -287,12 +310,25 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         toast.success(t('Đã lưu tất cả thay đổi thành công!'));
         setOriginalHash(currentHash);
         onUpdate();
+        
+        if (isJustSubmittedForApproval && approverName) {
+          toast.success(t('Đã gửi thông báo email thành công!'));
+          setShowApprovalSuccessModal(approverName);
+        }
       }
     } catch (e: any) {
       toast.error(t('Lỗi lưu thay đổi: ') + e.message);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCloseDrawer = () => {
+    if (formData.require_approval === 1 && !formData.approver_id) {
+      setShowValidationModal(true);
+      return;
+    }
+    onClose();
   };
 
   const handleUpdateField = async (field: string, value: any) => {
@@ -581,6 +617,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const hasChanges = originalHash !== currentHash;
 
+  const isApproverOrAdmin = currentUser && (
+    Number(currentUser.id) === Number(formData.approver_id) ||
+    ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes((currentUser.role || '').toLowerCase())
+  );
+
   const content = (
     <motion.div 
       className={styles.drawer}
@@ -689,7 +730,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </button>
 
             <button 
-              onClick={onClose} 
+              onClick={handleCloseDrawer} 
               className="hover-lift"
               style={{
                 background: 'var(--color-bg)',
@@ -1284,7 +1325,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     )}
                   </span>
                 </div>
-                {formData.approval_status === 'pending' && (
+                {formData.approval_status === 'pending' && isApproverOrAdmin && (
                   <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                     <button
                       className="btn primary"
@@ -1340,16 +1381,21 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 value={formData.progress || 0}
                 onChange={(e) => {
                   const val = Number(e.target.value);
-                  setFormData((prev: any) => ({ ...prev, progress: val }));
+                  setFormData((prev: any) => {
+                    const next: any = { ...prev, progress: val };
+                    if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
+                      next.approval_status = 'pending';
+                    } else if (val < 100) {
+                      next.approval_status = null;
+                    }
+                    return next;
+                  });
                 }}
+                className="progress-slider"
                 style={{
-                  width: '100%',
-                  accentColor: 'var(--color-primary)',
-                  cursor: 'pointer',
-                  height: '6px',
-                  borderRadius: '3px',
-                  outline: 'none',
-                  background: 'linear-gradient(to right, var(--color-primary) 0%, var(--color-primary) ' + (formData.progress || 0) + '%, #e5e7eb ' + (formData.progress || 0) + '%, #e5e7eb 100%)'
+                  background: (formData.progress || 0) === 100
+                    ? 'var(--color-success)'
+                    : 'linear-gradient(to right, #BD1D2D 0%, #F97316 ' + (formData.progress || 0) + '%, var(--color-border-light) ' + (formData.progress || 0) + '%, var(--color-border-light) 100%)'
                 }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
@@ -1370,7 +1416,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   type="button"
                   onClick={() => {
                     const next = formData.require_approval === 1 ? 0 : 1;
-                    handleUpdateField('require_approval', next);
+                    setFormData((prev: any) => {
+                      const nextData = { ...prev, require_approval: next };
+                      if (next === 0) {
+                        nextData.approver_id = null;
+                        nextData.approval_status = null;
+                      }
+                      return nextData;
+                    });
                   }}
                   style={{
                     width: '38px',
@@ -1408,7 +1461,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     }))}
                     value={formData.approver_id ? String(formData.approver_id) : ''}
                     onChange={val => {
-                      handleUpdateField('approver_id', val ? Number(val) : null);
+                      const nextVal = val ? Number(val) : null;
+                      setFormData((prev: any) => {
+                        const nextData = { ...prev, approver_id: nextVal };
+                        if (prev.progress === 100 && nextVal) {
+                          nextData.approval_status = 'pending';
+                        }
+                        return nextData;
+                      });
                     }}
                     placeholder={t('Chọn người phê duyệt...')}
                     searchable
@@ -1793,7 +1853,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         <>
           <motion.div 
             className="drawer-backdrop" 
-            onClick={onClose}
+            onClick={handleCloseDrawer}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1806,6 +1866,121 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             }}
           />
           {content}
+
+          {/* Validation Warning Modal */}
+          <AnimatePresence>
+            {showValidationModal && (
+              <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20000 }} onClick={() => setShowValidationModal(false)}>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ 
+                    background: 'var(--color-surface)', 
+                    width: '90%', 
+                    maxWidth: '420px', 
+                    borderRadius: 'var(--radius-xl)', 
+                    padding: '2rem', 
+                    boxShadow: 'var(--shadow-2xl)', 
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: '1rem'
+                  }}
+                >
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    color: 'var(--color-danger)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <AlertCircle size={28} />
+                  </div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                    {t('Thiếu thông tin người phê duyệt')}
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.45 }}>
+                    {t('Bạn đã kích hoạt chức năng "Yêu cầu phê duyệt" cho công việc này, nhưng chưa phân công Người phê duyệt. Vui lòng chọn người phê duyệt trước khi lưu hoặc đóng cửa sổ.')}
+                  </p>
+                  <button 
+                    className="btn primary" 
+                    onClick={() => setShowValidationModal(false)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 700 }}
+                  >
+                    {t('Đã hiểu, quay lại chọn')}
+                  </button>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* Approval Success Modal */}
+          <AnimatePresence>
+            {showApprovalSuccessModal && (
+              <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20000 }} onClick={() => setShowApprovalSuccessModal(null)}>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={e => e.stopPropagation()}
+                  style={{ 
+                    background: 'var(--color-surface)', 
+                    width: '90%', 
+                    maxWidth: '440px', 
+                    borderRadius: 'var(--radius-xl)', 
+                    padding: '2rem', 
+                    boxShadow: 'var(--shadow-2xl)', 
+                    border: '1px solid var(--color-border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: '1.25rem'
+                  }}
+                >
+                  <div style={{
+                    width: '58px',
+                    height: '58px',
+                    borderRadius: '50%',
+                    background: 'rgba(16, 185, 129, 0.08)',
+                    color: 'var(--color-success)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <CheckSquare2 size={30} />
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)' }}>
+                      {t('Đã gửi yêu cầu phê duyệt!')}
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-success)', fontWeight: 700, margin: 0 }}>
+                      {t('Tiến độ đạt 100%')}
+                    </p>
+                  </div>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                    {t('Hệ thống đã gửi thông báo khẩn cấp và email xác nhận đến Người phê duyệt:')}
+                    <br />
+                    <strong style={{ color: 'var(--color-text)', display: 'inline-block', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                      {showApprovalSuccessModal}
+                    </strong>
+                    <br />
+                    {t('Trạng thái công việc được chuyển sang "Đang chờ duyệt". Bạn sẽ nhận được thông báo ngay khi có kết quả phê duyệt.')}
+                  </p>
+                  <button 
+                    className="btn primary" 
+                    onClick={() => setShowApprovalSuccessModal(null)}
+                    style={{ width: '100%', padding: '10px', borderRadius: '10px', fontWeight: 700 }}
+                  >
+                    {t('Đóng')}
+                  </button>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>,

@@ -10,9 +10,24 @@ class NoteController {
 
         $sql = "SELECT id FROM $table WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
-            $sql .= " AND owner_id=?";
-            $p[] = $auth['user_id'];
+        if ($type === 'contact' || $type === 'deal') {
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $sql .= " AND owner_id=?";
+                $p[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $sql .= " AND (owner_id=? OR owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ))";
+                $p[] = $auth['user_id'];
+                $p[] = $auth['user_id'];
+            }
+        } else if ($type === 'company') {
+            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+                $sql .= " AND owner_id=?";
+                $p[] = $auth['user_id'];
+            }
         }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Pagination } from '../components/ui/Pagination';
 import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1019,263 +1020,270 @@ export const DealsPage: React.FC = () => {
         />
       )}
 
-
-
       {/* Transition Modal */}
-      <AnimatePresence>
-        {transitionModal && transitionModal.isOpen && (
-          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11000 }} onClick={() => setTransitionModal(null)}>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
-              onClick={e => e.stopPropagation()}
-              style={{ background: 'var(--color-surface)', width: '90%', maxWidth: transitionModal.isCancellation ? '480px' : '400px', borderRadius: 'var(--radius-xl)', padding: '1.75rem', boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)' }}
-            >
-              {transitionModal.isCancellation ? (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem', color: 'var(--color-danger)' }}>
-                    <AlertTriangle size={22} />
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Xác Nhận Nghiệp Vụ Bể Cọc</h3>
-                  </div>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.4 }}>
-                    Bạn đang chuyển Deal này ra khỏi giai đoạn <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> (Báo bể cọc). 
-                    Vui lòng xác nhận tình trạng doanh thu thực tế của Deal:
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
-                    {/* Option 1: No Revenue */}
-                    <button
-                      type="button"
-                      onClick={() => setTransitionModal({ ...transitionModal, hasRevenue: 'no' })}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                        padding: '12px 16px',
-                        border: `1.5px solid ${transitionModal.hasRevenue === 'no' ? 'var(--color-primary)' : 'var(--color-border-light)'}`,
-                        background: transitionModal.hasRevenue === 'no' ? 'var(--color-primary-light)' : 'transparent',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 0.2s',
-                        width: '100%'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '16px', height: '16px', borderRadius: '50%', border: '2px solid var(--color-primary)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          {transitionModal.hasRevenue === 'no' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)' }} />}
-                        </div>
-                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: transitionModal.hasRevenue === 'no' ? 'var(--color-primary)' : 'var(--color-text)' }}>Chưa phát sinh doanh thu</span>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '24px' }}>
-                        Khách hàng hủy cọc trước khi công ty thực thu bất kỳ dòng tiền/phí môi giới nào. Lead sẽ bị hạ cấp và khởi động lại bảo mật.
-                      </span>
-                    </button>
-
-                    {/* Option 2: Has Revenue */}
-                    <button
-                      type="button"
-                      onClick={() => setTransitionModal({ ...transitionModal, hasRevenue: 'yes' })}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                        padding: '12px 16px',
-                        border: `1.5px solid ${transitionModal.hasRevenue === 'yes' ? 'var(--color-danger)' : 'var(--color-border-light)'}`,
-                        background: transitionModal.hasRevenue === 'yes' ? 'rgba(239, 68, 68, 0.04)' : 'transparent',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 0.2s',
-                        width: '100%'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '16px', height: '16px', borderRadius: '50%', border: '2px solid var(--color-danger)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                          {transitionModal.hasRevenue === 'yes' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-danger)' }} />}
-                        </div>
-                        <span style={{ fontWeight: 700, fontSize: '0.9rem', color: transitionModal.hasRevenue === 'yes' ? 'var(--color-danger)' : 'var(--color-text)' }}>Đã có doanh thu (Đóng đợt 1)</span>
-                      </div>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '24px' }}>
-                        Công ty đã thu phí đợt 1 thành công. Theo quy định, khách hàng phải được giữ nguyên trạng thái Đặt Cọc.
-                      </span>
-                    </button>
-                  </div>
-
-                  {transitionModal.hasRevenue === 'yes' && (
-                    <div className="vibrate-alert" style={{
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      border: '1.5px solid rgba(239, 68, 68, 0.2)',
-                      borderRadius: '12px',
-                      padding: '12px 16px',
-                      marginBottom: '1.5rem',
-                      display: 'flex',
-                      gap: '8px',
-                      alignItems: 'flex-start'
-                    }}>
-                      <ShieldAlert size={18} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: '2px' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-danger)' }}>Hành động bị chặn!</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', lineHeight: 1.35 }}>
-                          Không cho phép hạ cấp trạng thái. Do giao dịch đã đóng đợt 1, hệ thống bắt buộc giữ nguyên Deal ở cột Đặt Cọc.
-                        </span>
-                      </div>
+      {createPortal(
+        <AnimatePresence>
+          {transitionModal && transitionModal.isOpen && (
+            <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 11000 }} onClick={() => setTransitionModal(null)}>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                onClick={e => e.stopPropagation()}
+                style={{ background: 'var(--color-surface)', width: '90%', maxWidth: transitionModal.isCancellation ? '480px' : '400px', borderRadius: 'var(--radius-xl)', padding: '1.75rem', boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)' }}
+              >
+                {transitionModal.isCancellation ? (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem', color: 'var(--color-danger)' }}>
+                      <AlertTriangle size={22} />
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>Xác Nhận Nghiệp Vụ Bể Cọc</h3>
                     </div>
-                  )}
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.4 }}>
+                      Bạn đang di chuyển Deal này ra khỏi giai đoạn <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> (Báo bể cọc). 
+                      Vui lòng xác nhận tình trạng doanh thu thực tế của Deal:
+                    </p>
 
-                  {transitionModal.hasRevenue === 'no' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1.5rem' }}>
+                      {/* Option 1: No Revenue */}
+                      <button
+                        type="button"
+                        onClick={() => setTransitionModal({ ...transitionModal, hasRevenue: 'no' })}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          padding: '12px 16px',
+                          border: `1.5px solid ${transitionModal.hasRevenue === 'no' ? 'var(--color-primary)' : 'var(--color-border-light)'}`,
+                          background: transitionModal.hasRevenue === 'no' ? 'var(--color-primary-light)' : 'transparent',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.2s',
+                          width: '100%'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{
+                            width: '16px', height: '16px', borderRadius: '50%', border: '2px solid var(--color-primary)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {transitionModal.hasRevenue === 'no' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-primary)' }} />}
+                          </div>
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: transitionModal.hasRevenue === 'no' ? 'var(--color-primary)' : 'var(--color-text)' }}>Chưa phát sinh doanh thu</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '24px' }}>
+                          Khách hàng hủy cọc trước khi công ty thực thu bất kỳ dòng tiền/phí môi giới nào. Lead sẽ bị hạ cấp và khởi động lại bảo mật.
+                        </span>
+                      </button>
+
+                      {/* Option 2: Has Revenue */}
+                      <button
+                        type="button"
+                        onClick={() => setTransitionModal({ ...transitionModal, hasRevenue: 'yes' })}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          padding: '12px 16px',
+                          border: `1.5px solid ${transitionModal.hasRevenue === 'yes' ? 'var(--color-danger)' : 'var(--color-border-light)'}`,
+                          background: transitionModal.hasRevenue === 'yes' ? 'rgba(239, 68, 68, 0.04)' : 'transparent',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.2s',
+                          width: '100%'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{
+                            width: '16px', height: '16px', borderRadius: '50%', border: '2px solid var(--color-danger)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {transitionModal.hasRevenue === 'yes' && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-danger)' }} />}
+                          </div>
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: transitionModal.hasRevenue === 'yes' ? 'var(--color-danger)' : 'var(--color-text)' }}>Đã có doanh thu (Đóng đợt 1)</span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', paddingLeft: '24px' }}>
+                          Công ty đã thu phí đợt 1 thành công. Theo quy định, khách hàng phải được giữ nguyên trạng thái Đặt Cọc.
+                        </span>
+                      </button>
+                    </div>
+
+                    {transitionModal.hasRevenue === 'yes' && (
+                      <div className="vibrate-alert" style={{
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1.5px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: '12px',
+                        padding: '12px 16px',
+                        marginBottom: '1.5rem',
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'flex-start'
+                      }}>
+                        <ShieldAlert size={18} style={{ color: 'var(--color-danger)', flexShrink: 0, marginTop: '2px' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--color-danger)' }}>Hành động bị chặn!</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-danger)', lineHeight: 1.35 }}>
+                            Không cho phép hạ cấp trạng thái. Do giao dịch đã đóng đợt 1, hệ thống bắt buộc giữ nguyên Deal ở cột Đặt Cọc.
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {transitionModal.hasRevenue === 'no' && (
+                      <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="form-label">Lý do bể cọc (Audit Trail) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                        <textarea 
+                          className="form-input" 
+                          rows={3} 
+                          placeholder="Nhập lý do chi tiết để lưu lịch sử kiểm tra..."
+                          value={transitionModal.note}
+                          onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
+                          style={{ minHeight: '90px', padding: '10px 14px', lineHeight: 1.4, resize: 'vertical' }}
+                          autoFocus
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {(() => {
+                      const fromIndex = stages.findIndex(s => s.id === transitionModal.fromStage);
+                      const toIndex = stages.findIndex(s => s.id === transitionModal.toStage);
+                      const skipped = (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex + 1)
+                        ? stages.slice(fromIndex + 1, toIndex).map(s => s.name)
+                        : (fromIndex !== -1 && toIndex !== -1 && fromIndex > toIndex + 1)
+                        ? stages.slice(toIndex + 1, fromIndex).map(s => s.name)
+                        : [];
+                      return (
+                        <>
+                          <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật Pipeline</h3>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
+                            Từ <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> 
+                            {' '}➔{' '}
+                            <strong style={{ color: stages.find(s => s.id === transitionModal.toStage)?.color }}>{stages.find(s => s.id === transitionModal.toStage)?.name}</strong>
+                          </p>
+
+                          {skipped.length > 0 && (
+                            <div style={{
+                              background: 'rgba(239, 68, 68, 0.08)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              borderRadius: '12px',
+                              padding: '1rem',
+                              marginBottom: '1.25rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '4px'
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.875rem' }}>
+                                <AlertCircle size={16} /> Nhảy cóc giai đoạn!
+                              </div>
+                              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                                Bạn đang di chuyển qua nhiều giai đoạn. Bỏ qua các bước: <strong style={{ color: 'var(--color-text)' }}>{skipped.join(', ')}</strong>.
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+                    
                     <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                      <label className="form-label">Lý do bể cọc (Audit Trail) <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <label className="form-label">Ghi chú Audit Trail <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                       <textarea 
                         className="form-input" 
                         rows={3} 
-                        placeholder="Nhập lý do chi tiết để lưu lịch sử kiểm tra..."
+                        placeholder="Ghi chú bắt buộc lý do chuyển..."
                         value={transitionModal.note}
                         onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
-                        style={{ minHeight: '90px', padding: '10px 14px', lineHeight: 1.4, resize: 'vertical' }}
+                        style={{ minHeight: '120px', padding: '12px 16px', lineHeight: 1.5, resize: 'vertical' }}
                         autoFocus
                       />
                     </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {(() => {
-                    const fromIndex = stages.findIndex(s => s.id === transitionModal.fromStage);
-                    const toIndex = stages.findIndex(s => s.id === transitionModal.toStage);
-                    const skipped = (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex + 1)
-                      ? stages.slice(fromIndex + 1, toIndex).map(s => s.name)
-                      : (fromIndex !== -1 && toIndex !== -1 && fromIndex > toIndex + 1)
-                      ? stages.slice(toIndex + 1, fromIndex).map(s => s.name)
-                      : [];
-                    return (
-                      <>
-                        <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật Pipeline</h3>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
-                          Từ <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> 
-                          {' '}➔{' '}
-                          <strong style={{ color: stages.find(s => s.id === transitionModal.toStage)?.color }}>{stages.find(s => s.id === transitionModal.toStage)?.name}</strong>
-                        </p>
-
-                        {skipped.length > 0 && (
-                          <div style={{
-                            background: 'rgba(239, 68, 68, 0.08)',
-                            border: '1px solid rgba(239, 68, 68, 0.3)',
-                            borderRadius: '12px',
-                            padding: '1rem',
-                            marginBottom: '1.25rem',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-danger)', fontWeight: 700, fontSize: '0.875rem' }}>
-                              <AlertCircle size={16} /> Nhảy cóc giai đoạn!
-                            </div>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                              Bạn đang di chuyển qua nhiều giai đoạn. Bỏ qua các bước: <strong style={{ color: 'var(--color-text)' }}>{skipped.join(', ')}</strong>.
-                            </p>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                  
-                  <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                    <label className="form-label">Ghi chú Audit Trail <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                    <textarea 
-                      className="form-input" 
-                      rows={3} 
-                      placeholder="Ghi chú bắt buộc lý do chuyển..."
-                      value={transitionModal.note}
-                      onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
-                      style={{ minHeight: '120px', padding: '12px 16px', lineHeight: 1.5, resize: 'vertical' }}
-                      autoFocus
-                    />
-                  </div>
-                </>
-              )}
-              
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button className="btn outline" onClick={() => setTransitionModal(null)}>Hủy</button>
-                <button 
-                  className="btn primary" 
-                  onClick={handleConfirmTransition}
-                  disabled={
-                    transitionModal.isCancellation 
-                      ? (transitionModal.hasRevenue === 'yes' || !transitionModal.hasRevenue || !transitionModal.note.trim())
-                      : !transitionModal.note.trim()
-                  }
-                >
-                  Lưu cập nhật
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                  </>
+                )}
+                
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button className="btn outline" onClick={() => setTransitionModal(null)}>Hủy</button>
+                  <button 
+                    className="btn primary" 
+                    onClick={handleConfirmTransition}
+                    disabled={
+                      transitionModal.isCancellation 
+                        ? (transitionModal.hasRevenue === 'yes' || !transitionModal.hasRevenue || !transitionModal.note.trim())
+                        : !transitionModal.note.trim()
+                    }
+                  >
+                    Lưu cập nhật
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Bulk Move Modal */}
-      <AnimatePresence>
-        {showBulkMove && (
-          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setShowBulkMove(false)}>
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
-              onClick={e => e.stopPropagation()}
-            >
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Chuyển {selected.size} thẻ sang...</h3>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label className="form-label">Chọn giai đoạn đích</label>
-                <CustomSelect 
-                  options={stages.map(s => ({ value: String(s.id), label: s.name }))} 
-                  value={targetStageId} 
-                  onChange={v => setTargetStageId(v as string)} 
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn outline" style={{ flex: 1 }} onClick={() => setShowBulkMove(false)}>Hủy</button>
-                <button className="btn primary" style={{ flex: 1 }} onClick={bulkMove} disabled={!targetStageId}>Xác nhận chuyển</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {showBulkMove && (
+            <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setShowBulkMove(false)}>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
+                onClick={e => e.stopPropagation()}
+              >
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Chuyển {selected.size} thẻ sang...</h3>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label className="form-label">Chọn giai đoạn đích</label>
+                  <CustomSelect 
+                    options={stages.map(s => ({ value: String(s.id), label: s.name }))} 
+                    value={targetStageId} 
+                    onChange={v => setTargetStageId(v as string)} 
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button className="btn outline" style={{ flex: 1 }} onClick={() => setShowBulkMove(false)}>Hủy</button>
+                  <button className="btn primary" style={{ flex: 1 }} onClick={bulkMove} disabled={!targetStageId}>Xác nhận chuyển</button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Stage Picker for Mobile Quick Move */}
-      <AnimatePresence>
-        {stagePickerItem && (
-          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 11000 }} onClick={() => setStagePickerItem(null)}>
-            <motion.div 
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-              onClick={e => e.stopPropagation()}
-              style={{ background: 'var(--color-surface)', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '1.5rem', maxHeight: '80vh', overflowY: 'auto' }}
-            >
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>Chọn giai đoạn mới</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {stages.filter(s => s.id !== stagePickerItem.fromStageId).map(s => (
-                  <button
-                    key={s.id}
-                    className="btn outline"
-                    style={{ width: '100%', justifyContent: 'flex-start', borderLeftWidth: '6px', borderLeftColor: s.color || 'var(--color-primary)' }}
-                    onClick={() => {
-                      openStageTransitionModal(stagePickerItem.id, stagePickerItem.fromStageId, s.id);
-                      setStagePickerItem(null);
-                    }}
-                  >
-                    {s.name}
-                  </button>
-                ))}
-              </div>
-              <button className="btn ghost" style={{ width: '100%', marginTop: '1rem', fontWeight: 700 }} onClick={() => setStagePickerItem(null)}>Đóng</button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {createPortal(
+        <AnimatePresence>
+          {stagePickerItem && (
+            <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 11000 }} onClick={() => setStagePickerItem(null)}>
+              <motion.div 
+                initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                onClick={e => e.stopPropagation()}
+                style={{ background: 'var(--color-surface)', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '1.5rem', maxHeight: '80vh', overflowY: 'auto' }}
+              >
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>Chọn giai đoạn mới</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {stages.filter(s => s.id !== stagePickerItem.fromStageId).map(s => (
+                    <button
+                      key={s.id}
+                      className="btn outline"
+                      style={{ width: '100%', justifyContent: 'flex-start', borderLeftWidth: '6px', borderLeftColor: s.color || 'var(--color-primary)' }}
+                      onClick={() => {
+                        openStageTransitionModal(stagePickerItem.id, stagePickerItem.fromStageId, s.id);
+                        setStagePickerItem(null);
+                      }}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+                <button className="btn ghost" style={{ width: '100%', marginTop: '1rem', fontWeight: 700 }} onClick={() => setStagePickerItem(null)}>Đóng</button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
     </div>
   );

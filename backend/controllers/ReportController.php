@@ -10,21 +10,27 @@ class ReportController
     public function sales(array $auth): void
     {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem báo cáo', false);
-        $tid = $auth['tenant_id'];
+        
+        $scope = $this->resolveUserScope($auth);
+        $isSale = $scope['isSale'];
+        $isManager = $scope['isManager'];
+        $userIds = $scope['userIds'];
+        $uid = $scope['uid'];
+        $tid = $scope['tid'];
+
         $from = $_GET['from'] ?? date('Y-m-d', strtotime('-11 months'));
         $to = $_GET['to'] ?? date('Y-m-d');
         
         $saleFilterInv = "";
-        $saleFilterDeal = "";
         $pInv = [$tid, $from, $to];
-        $pOwner = [$tid];
         
-        if ($auth['role'] === 'sales') {
+        if ($isSale) {
             $saleFilterInv = " AND created_by=?";
-            $pInv[] = $auth['user_id'];
-            
-            $saleFilterDeal = " AND d.owner_id=?";
-            $pOwner[] = $auth['user_id'];
+            $pInv[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $saleFilterInv = " AND created_by IN ($placeholders)";
+            $pInv = array_merge($pInv, $userIds);
         }
 
         // Revenue by month (from Invoices)
@@ -40,8 +46,16 @@ class ReportController
         $revs = $stmt->fetchAll(PDO::FETCH_UNIQUE|PDO::FETCH_ASSOC);
 
         // Expenses by month
-        $saleFilterExp = ($auth['role'] === 'sales') ? " AND created_by=?" : "";
-        $pExp = [$tid, $from, $to]; if($auth['role'] === 'sales') $pExp[] = $auth['user_id'];
+        $saleFilterExp = "";
+        $pExp = [$tid, $from, $to];
+        if ($isSale) {
+            $saleFilterExp = " AND created_by=?";
+            $pExp[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $saleFilterExp = " AND created_by IN ($placeholders)";
+            $pExp = array_merge($pExp, $userIds);
+        }
         
         $stmtE = $this->db->prepare("
             SELECT DATE_FORMAT(date,'%Y-%m') as month,
@@ -71,13 +85,14 @@ class ReportController
         $toTs = $to . ' 23:59:59';
 
         $pOwnerList = [$fromTs, $toTs, $tid];
-        if ($auth['role'] === 'sales') {
-            $pOwnerList[] = $auth['user_id'];
-        }
-
-        $pDeals = [$tid, $fromTs, $toTs];
-        if ($auth['role'] === 'sales') {
-            $pDeals[] = $auth['user_id'];
+        $ownerFilter = "";
+        if ($isSale) {
+            $ownerFilter = " AND u.id=?";
+            $pOwnerList[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $ownerFilter = " AND u.id IN ($placeholders)";
+            $pOwnerList = array_merge($pOwnerList, $userIds);
         }
 
         // Performance by Owner: Split between Won Revenue and Pipeline Value (Filtered by selected range)
@@ -89,17 +104,33 @@ class ReportController
             FROM users u
             LEFT JOIN deals d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL AND d.created_at BETWEEN ? AND ?
             LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
-            WHERE u.tenant_id = ? ".($auth['role'] === 'sales' ? " AND u.id=?" : "")."
+            WHERE u.tenant_id = ? $ownerFilter
             GROUP BY u.id
             ORDER BY revenue DESC
         ");
         $stmt2->execute($pOwnerList);
 
+        $dealFilterSimple = "";
+        $dealFilterAlias = "";
+        $dealParams = [];
+        if ($isSale) {
+            $dealFilterSimple = " AND owner_id=?";
+            $dealFilterAlias = " AND d.owner_id=?";
+            $dealParams[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $dealFilterSimple = " AND owner_id IN ($placeholders)";
+            $dealFilterAlias = " AND d.owner_id IN ($placeholders)";
+            $dealParams = $userIds;
+        }
+
+        $pDeals = array_merge([$tid, $fromTs, $toTs], $dealParams);
+
         $sDeals = $this->db->prepare("
             SELECT COUNT(*) as total_deals,
                    COALESCE(SUM(value),0) as total_revenue
             FROM deals
-            WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? ".($auth['role'] === 'sales' ? " AND owner_id=?" : "")."
+            WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? $dealFilterSimple
         ");
         $sDeals->execute($pDeals);
         $dealStats = $sDeals->fetch(PDO::FETCH_ASSOC);
@@ -108,12 +139,12 @@ class ReportController
             SELECT COUNT(*) 
             FROM deals d 
             JOIN pipeline_stages ps ON d.stage_id=ps.id 
-            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 AND COALESCE(d.actual_close_date, d.created_at) BETWEEN ? AND ? ".($auth['role'] === 'sales' ? " AND d.owner_id=?" : "")."
+            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 AND COALESCE(d.actual_close_date, d.created_at) BETWEEN ? AND ? $dealFilterAlias
         ");
         $sWon->execute($pDeals);
         $wonCount = (int)$sWon->fetchColumn();
 
-        $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? ".($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
+        $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ? $dealFilterSimple");
         $sContacts->execute($pDeals);
 
         // 1. Calculate Inventory Loss Value (EXPORT_INTERNAL)
@@ -155,7 +186,13 @@ class ReportController
     public function pipeline(array $auth): void
     {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem báo cáo', false);
-        $tid = $auth['tenant_id'];
+        $scope = $this->resolveUserScope($auth);
+        $isSale = $scope['isSale'];
+        $isManager = $scope['isManager'];
+        $userIds = $scope['userIds'];
+        $uid = $scope['uid'];
+        $tid = $scope['tid'];
+
         $from = ($_GET['from'] ?? date('Y-m-01')) . ' 00:00:00';
         $to = ($_GET['to'] ?? date('Y-m-t')) . ' 23:59:59';
 
@@ -164,53 +201,84 @@ class ReportController
         $sFirst->execute([$tid]);
         $firstStageId = (int)$sFirst->fetchColumn();
 
+        $dealFilter = ""; $dealParams = [];
+        if ($isSale) {
+            $dealFilter = " AND d.owner_id = ?";
+            $dealParams[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $dealFilter = " AND d.owner_id IN ($placeholders)";
+            $dealParams = $userIds;
+        }
+
+        $contactFilter = ""; $contactParams = [];
+        if ($isSale) {
+            $contactFilter = " AND c.owner_id = ?";
+            $contactParams[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $contactFilter = " AND c.owner_id IN ($placeholders)";
+            $contactParams = $userIds;
+        }
+
+        $companyFilter = ""; $companyParams = [];
+        if ($isSale) {
+            $companyFilter = " AND cp.owner_id = ?";
+            $companyParams[] = $uid;
+        }
+
         $stmt = $this->db->prepare("
             SELECT ps.name as stage, ps.color, 
                    (
-                      (SELECT COUNT(*) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = :first_stage_id1) AND d.deleted_at IS NULL AND d.tenant_id = :tid1 AND d.created_at BETWEEN :f1 AND :t1 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid1" : "").") +
-                      (SELECT COUNT(*) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = :first_stage_id2) AND c.deleted_at IS NULL AND c.tenant_id = :tid2 AND c.created_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid2" : "").") +
-                      (SELECT COUNT(*) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = :first_stage_id3) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 AND cp.created_at BETWEEN :f3 AND :t3 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid3" : "").")
+                      (SELECT COUNT(*) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = ?) AND d.deleted_at IS NULL AND d.tenant_id = ? AND d.created_at BETWEEN ? AND ? $dealFilter) +
+                      (SELECT COUNT(*) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = ?) AND c.deleted_at IS NULL AND c.tenant_id = ? AND c.created_at BETWEEN ? AND ? $contactFilter) +
+                      (SELECT COUNT(*) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = ?) AND cp.deleted_at IS NULL AND cp.tenant_id = ? AND cp.created_at BETWEEN ? AND ? $companyFilter)
                    ) as count,
                    (
-                      (SELECT COALESCE(SUM(value),0) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = :first_stage_id4) AND d.deleted_at IS NULL AND d.tenant_id = :tid4 AND d.created_at BETWEEN :f4 AND :t4 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid4" : "").") +
-                      (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = :first_stage_id5) AND c.deleted_at IS NULL AND c.tenant_id = :tid5 AND c.created_at BETWEEN :f5 AND :t5 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid5" : "").") +
-                      (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = :first_stage_id6) AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 AND cp.created_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid6" : "").")
+                      (SELECT COALESCE(SUM(value),0) FROM deals d WHERE (d.stage_id = ps.id OR (d.stage_id IS NULL OR d.stage_id = 0 OR d.stage_id = '0') AND ps.id = ?) AND d.deleted_at IS NULL AND d.tenant_id = ? AND d.created_at BETWEEN ? AND ? $dealFilter) +
+                      (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE (c.stage_id = ps.id OR (c.stage_id IS NULL OR c.stage_id = 0 OR c.stage_id = '0') AND ps.id = ?) AND c.deleted_at IS NULL AND c.tenant_id = ? AND c.created_at BETWEEN ? AND ? $contactFilter) +
+                      (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE (cp.stage_id = ps.id OR (cp.stage_id IS NULL OR cp.stage_id = 0 OR cp.stage_id = '0') AND ps.id = ?) AND cp.deleted_at IS NULL AND cp.tenant_id = ? AND cp.created_at BETWEEN ? AND ? $companyFilter)
                    ) as total_value
             FROM pipeline_stages ps 
-            WHERE ps.tenant_id = :tid_main
+            WHERE ps.tenant_id = ?
             GROUP BY ps.id ORDER BY ps.order_index
         ");
 
+        $p = array_merge(
+            [$firstStageId, $tid, $from, $to], $dealParams,
+            [$firstStageId, $tid, $from, $to], $contactParams,
+            [$firstStageId, $tid, $from, $to], $companyParams,
+            [$firstStageId, $tid, $from, $to], $dealParams,
+            [$firstStageId, $tid, $from, $to], $contactParams,
+            [$firstStageId, $tid, $from, $to], $companyParams,
+            [$tid]
+        );
 
-
-        $p = [
-            'first_stage_id1' => $firstStageId, 'first_stage_id2' => $firstStageId, 'first_stage_id3' => $firstStageId,
-            'first_stage_id4' => $firstStageId, 'first_stage_id5' => $firstStageId, 'first_stage_id6' => $firstStageId,
-            'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid,
-            'f1' => $from, 'f2' => $from, 'f3' => $from, 'f4' => $from, 'f5' => $from, 'f6' => $from,
-            't1' => $to, 't2' => $to, 't3' => $to, 't4' => $to, 't5' => $to, 't6' => $to,
-            'tid_main' => $tid
-        ];
-
-        if ($auth['role'] === 'sales') {
-            $p['uid1'] = $auth['user_id']; $p['uid2'] = $auth['user_id']; $p['uid3'] = $auth['user_id'];
-            $p['uid4'] = $auth['user_id']; $p['uid5'] = $auth['user_id']; $p['uid6'] = $auth['user_id'];
-        }
         $stmt->execute($p);
         respond(200, $stmt->fetchAll());
     }
 
     public function customers(array $auth): void
     {
-        $tid = $auth['tenant_id'];
+        $scope = $this->resolveUserScope($auth);
+        $isSale = $scope['isSale'];
+        $isManager = $scope['isManager'];
+        $userIds = $scope['userIds'];
+        $uid = $scope['uid'];
+        $tid = $scope['tid'];
+
         $from = $_GET['from'] ?? date('Y-m-d', strtotime('-30 days'));
         $to = $_GET['to'] ?? date('Y-m-d');
         
         $saleFilter = "";
         $params = [$tid];
-        if ($auth['role'] === 'sales') {
+        if ($isSale) {
             $saleFilter = " AND owner_id=?";
-            $params[] = $auth['user_id'];
+            $params[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $saleFilter = " AND owner_id IN ($placeholders)";
+            $params = array_merge($params, $userIds);
         }
 
         // By Source
@@ -224,8 +292,7 @@ class ReportController
         $byStatus = $s2->fetchAll();
 
         // Growth trend
-        $pTrend = array_merge([$tid], [$from . ' 00:00:00', $to . ' 23:59:59']);
-        if ($auth['role'] === 'sales') $pTrend[] = $auth['user_id'];
+        $pTrend = array_merge([$tid], [$from . ' 00:00:00', $to . ' 23:59:59'], array_slice($params, 1));
         
         $s3 = $this->db->prepare("
             SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count 
@@ -261,13 +328,22 @@ class ReportController
 
     public function companies(array $auth): void
     {
-        $tid = $auth['tenant_id'];
+        $scope = $this->resolveUserScope($auth);
+        $isSale = $scope['isSale'];
+        $isManager = $scope['isManager'];
+        $userIds = $scope['userIds'];
+        $uid = $scope['uid'];
+        $tid = $scope['tid'];
 
         $saleFilter = "";
         $params = [$tid];
-        if ($auth['role'] === 'sales') {
+        if ($isSale) {
             $saleFilter = " AND owner_id=?";
-            $params[] = $auth['user_id'];
+            $params[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $saleFilter = " AND owner_id IN ($placeholders)";
+            $params = array_merge($params, $userIds);
         }
 
         // By Industry
@@ -291,15 +367,25 @@ class ReportController
 
     public function expenses(array $auth): void
     {
-        $tid = $auth['tenant_id'];
+        $scope = $this->resolveUserScope($auth);
+        $isSale = $scope['isSale'];
+        $isManager = $scope['isManager'];
+        $userIds = $scope['userIds'];
+        $uid = $scope['uid'];
+        $tid = $scope['tid'];
+
         $from = $_GET['from'] ?? date('Y-m-01');
         $to = $_GET['to'] ?? date('Y-m-t');
 
         $saleFilter = "";
         $params = [$tid, $from, $to];
-        if ($auth['role'] === 'sales') {
+        if ($isSale) {
             $saleFilter = " AND created_by=?";
-            $params[] = $auth['user_id'];
+            $params[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $saleFilter = " AND created_by IN ($placeholders)";
+            $params = array_merge($params, $userIds);
         }
 
         // By Category
@@ -323,7 +409,13 @@ class ReportController
 
     public function activities(array $auth): void
     {
-        $tid = $auth['tenant_id'];
+        $scope = $this->resolveUserScope($auth);
+        $isSale = $scope['isSale'];
+        $isManager = $scope['isManager'];
+        $userIds = $scope['userIds'];
+        $uid = $scope['uid'];
+        $tid = $scope['tid'];
+
         $from = $_GET['from'] ?? date('Y-m-01');
         $to = $_GET['to'] ?? date('Y-m-t');
 
@@ -335,9 +427,13 @@ class ReportController
             WHERE a.tenant_id=? AND a.created_at BETWEEN ? AND ?
         ";
         $params = [$tid, $from . ' 00:00:00', $to . ' 23:59:59'];
-        if ($auth['role'] === 'sales') {
+        if ($isSale) {
             $sql .= " AND a.user_id=?";
-            $params[] = $auth['user_id'];
+            $params[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $sql .= " AND a.user_id IN ($placeholders)";
+            $params = array_merge($params, $userIds);
         }
         $sql .= " GROUP BY u.id, a.type ORDER BY user_name ASC";
 
@@ -348,9 +444,13 @@ class ReportController
         // Global type breakdown
         $sql2 = "SELECT type, COUNT(*) as total FROM activities WHERE tenant_id=? AND created_at BETWEEN ? AND ?";
         $p2 = [$tid, $from . ' 00:00:00', $to . ' 23:59:59'];
-        if ($auth['role'] === 'sales') {
+        if ($isSale) {
             $sql2 .= " AND user_id=?";
-            $p2[] = $auth['user_id'];
+            $p2[] = $uid;
+        } else if ($isManager) {
+            $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+            $sql2 .= " AND user_id IN ($placeholders)";
+            $p2 = array_merge($p2, $userIds);
         }
         $sql2 .= " GROUP BY type";
         $stmt2 = $this->db->prepare($sql2);
@@ -403,5 +503,30 @@ class ReportController
             'stats' => $batchStats,
             'loss_by_reason' => $lossByReason
         ]);
+    }
+
+    private function resolveUserScope(array $auth): array {
+        $role = $auth['role'] ?? '';
+        $uid = (int)($auth['user_id'] ?? 0);
+        $tid = (int)($auth['tenant_id'] ?? 0);
+        
+        $isSale = $role === 'sales' || $role === 'sale';
+        $isManager = $role === 'manager';
+        
+        $userIds = [$uid];
+        if ($isManager) {
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->execute([$uid]);
+            $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
+        }
+        
+        return [
+            'isSale' => $isSale,
+            'isManager' => $isManager,
+            'userIds' => $userIds,
+            'uid' => $uid,
+            'tid' => $tid
+        ];
     }
 }

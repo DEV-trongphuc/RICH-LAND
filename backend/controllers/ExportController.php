@@ -37,9 +37,7 @@ class ExportController {
         // Prepare Base Columns
         $baseColumns = [];
         $sql = "";
-        $params = [$auth['tenant_id']];
-        $saleFilter = (in_array($auth['role'], ['sales', 'sale'], true)) ? " AND t.owner_id = ?" : "";
-        if ($saleFilter && !in_array($type, ['product', 'inventory'])) $params[] = $auth['user_id'];
+        $params = [];
 
         if ($type === 'contact') {
             $baseColumns = ['id' => 'ID', 'first_name' => 'Tên', 'last_name' => 'Họ', 'email' => 'Email', 'phone' => 'Số điện thoại', 'mobile' => 'Di động', 'job_title' => 'Chức danh', 'department' => 'Phòng ban', 'source' => 'Nguồn', 'status' => 'Trạng thái', 'company_name' => 'Công ty', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];
@@ -60,9 +58,17 @@ class ExportController {
             $where  = ['t.tenant_id = ?', 't.deleted_at IS NULL'];
             $params = [$auth['tenant_id']];
 
-            // Role-based visibility: Sale can only see their own contacts
+            // Role-based visibility: Sale can only see their own contacts, Manager can see team
             if (in_array($auth['role'], ['sales', 'sale'], true)) {
                 $where[] = 't.owner_id = ?';
+                $params[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $where[] = '(t.owner_id = ? OR t.owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ))';
+                $params[] = $auth['user_id'];
                 $params[] = $auth['user_id'];
             }
 
@@ -111,12 +117,36 @@ class ExportController {
         } elseif ($type === 'company') {
             $baseColumns = ['id' => 'ID', 'name' => 'Tên công ty', 'tax_id' => 'Mã số thuế', 'industry' => 'Ngành nghề', 'email' => 'Email', 'phone' => 'Số điện thoại', 'website' => 'Website', 'address' => 'Địa chỉ', 'city' => 'Tỉnh/Thành phố', 'size' => 'Quy mô', 'status' => 'Trạng thái', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];
             
+            $where = ['t.tenant_id = ?', 't.deleted_at IS NULL'];
+            $params = [$auth['tenant_id']];
+            if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                $where[] = 't.owner_id = ?';
+                $params[] = $auth['user_id'];
+            }
+            $whereStr = implode(' AND ', $where);
+            
             $sql = "SELECT t.*, u.full_name as owner_name 
                     FROM companies t 
                     LEFT JOIN users u ON t.owner_id = u.id 
-                    WHERE t.tenant_id = ? AND t.deleted_at IS NULL $saleFilter ORDER BY t.created_at DESC";
+                    WHERE $whereStr ORDER BY t.created_at DESC";
         } elseif ($type === 'deal') {
             $baseColumns = ['id' => 'ID', 'title' => 'Tên Deal', 'value' => 'Giá trị', 'currency' => 'Tiền tệ', 'probability' => 'Xác suất (%)', 'expected_close_date' => 'Ngày dự kiến đóng', 'priority' => 'Độ ưu tiên', 'contact_name' => 'Người liên hệ', 'company_name' => 'Công ty', 'stage_name' => 'Giai đoạn', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];
+            
+            $where = ['t.tenant_id = ?', 't.deleted_at IS NULL'];
+            $params = [$auth['tenant_id']];
+            if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                $where[] = 't.owner_id = ?';
+                $params[] = $auth['user_id'];
+            } else if ($auth['role'] === 'manager') {
+                $where[] = '(t.owner_id = ? OR t.owner_id IN (
+                    SELECT id FROM users WHERE team_id IN (
+                        SELECT id FROM teams WHERE leader_id = ?
+                    )
+                ))';
+                $params[] = $auth['user_id'];
+                $params[] = $auth['user_id'];
+            }
+            $whereStr = implode(' AND ', $where);
             
             $sql = "SELECT t.*, CONCAT(c.first_name, ' ', c.last_name) as contact_name, co.name as company_name, u.full_name as owner_name, ps.name as stage_name
                     FROM deals t 
@@ -124,12 +154,14 @@ class ExportController {
                     LEFT JOIN companies co ON t.company_id = co.id 
                     LEFT JOIN users u ON t.owner_id = u.id 
                     LEFT JOIN pipeline_stages ps ON t.stage_id = ps.id
-                    WHERE t.tenant_id = ? AND t.deleted_at IS NULL $saleFilter ORDER BY t.created_at DESC";
+                    WHERE $whereStr ORDER BY t.created_at DESC";
         } elseif ($type === 'product') {
             $baseColumns = ['id' => 'ID', 'name' => 'Tên sản phẩm', 'sku' => 'SKU', 'category' => 'Danh mục', 'unit' => 'Đơn vị', 'price' => 'Giá bán', 'cost' => 'Giá vốn', 'description' => 'Mô tả', 'created_at' => 'Ngày tạo'];
+            $params = [$auth['tenant_id']];
             $sql = "SELECT t.* FROM products t WHERE t.tenant_id = ? AND t.deleted_at IS NULL ORDER BY t.name ASC";
         } elseif ($type === 'inventory') {
             $baseColumns = ['id' => 'ID', 'product_name' => 'Sản phẩm', 'sku' => 'SKU', 'batch_code' => 'Mã lô', 'import_date' => 'Ngày nhập', 'expiry_date' => 'Hạn sử dụng', 'import_price' => 'Giá nhập', 'initial_qty' => 'Số lượng ban đầu', 'current_qty' => 'Tồn kho hiện tại', 'status' => 'Trạng thái'];
+            $params = [$auth['tenant_id']];
             $sql = "SELECT b.*, p.name as product_name, p.sku 
                     FROM batches b 
                     JOIN products p ON b.product_id = p.id 

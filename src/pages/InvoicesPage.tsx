@@ -13,6 +13,7 @@ import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
+import { EmptyCard } from '../components/ui/EmptyCard';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
@@ -423,7 +424,15 @@ export const InvoicesPage: React.FC = () => {
                 })}
               </AnimatePresence>
               {!loading && items.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không có hóa đơn nào trong kỳ này</td></tr>
+                <tr className="empty-row">
+                  <td colSpan={7} style={{ padding: '2rem 1rem' }}>
+                    <EmptyCard
+                      icon={<FileText />}
+                      title="Không tìm thấy Hóa đơn nào"
+                      description="Hệ thống không tìm thấy bất kỳ hóa đơn nào khớp với bộ lọc hoặc khoảng thời gian hiện tại."
+                    />
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
