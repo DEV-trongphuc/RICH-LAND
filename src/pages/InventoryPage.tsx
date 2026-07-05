@@ -268,6 +268,16 @@ export default function InventoryPage() {
     expiringSoon: batches.filter(b => b.expiry_date && new Date(b.expiry_date) <= new Date(now + 30 * 24 * 60 * 60 * 1000) && b.current_qty > 0).length
   };
 
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    params.set('type', 'inventory');
+    params.set('token', localStorage.getItem('token') || '');
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (statusFilter && statusFilter !== 'all') params.set('stock_status', statusFilter);
+    window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
+    addToast('Đang tải xuống danh sách căn hộ theo bộ lọc hiện tại...', 'info');
+  };
+
   return (
     <div className="page-container anim-fade-up">
       <div className="page-header">
@@ -283,6 +293,11 @@ export default function InventoryPage() {
             <button style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'history' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'history' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')} className={activeTab === 'history' ? '' : 'hover-lift'}>Lịch sử giao dịch</button>
             <button style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'purchase_orders' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')} className={activeTab === 'purchase_orders' ? '' : 'hover-lift'}>Hợp đồng/Bảng hàng</button>
           </div>
+
+          <button className="btn outline" onClick={handleExport} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px', gap: '0.4rem' }} title="Xuất Excel/CSV">
+            <Download size={14} />
+            <span className="hide-on-mobile"> Xuất file</span>
+          </button>
 
           {!isSale && (
             <>

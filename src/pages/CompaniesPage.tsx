@@ -390,7 +390,12 @@ export const CompaniesPage: React.FC = () => {
         onExport={(format) => {
           const authRaw = localStorage.getItem('minth-auth');
           const authToken = authRaw ? JSON.parse(authRaw)?.state?.accessToken : '';
-          window.open(`${api.defaults.baseURL}/export?type=company&token=${authToken}`, '_blank');
+          const params = new URLSearchParams();
+          params.set('type', 'company');
+          params.set('token', authToken || localStorage.getItem('token') || '');
+          if (debouncedSearch) params.set('search', debouncedSearch);
+          if (statusFilter) params.set('status', statusFilter);
+          window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
         }}
       />
     </div>

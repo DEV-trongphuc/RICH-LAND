@@ -191,7 +191,16 @@ export const DealsPage: React.FC = () => {
   };
 
   const bulkExport = () => {
-    window.open(`${api.defaults.baseURL}/export?type=deal&token=${localStorage.getItem('token')}`, '_blank');
+    const params = new URLSearchParams();
+    params.set('type', pipelineView === 'contacts' ? 'contact' : (pipelineView === 'companies' ? 'company' : 'deal'));
+    params.set('token', localStorage.getItem('token') || '');
+    if (debouncedSearch) params.set('search', debouncedSearch);
+    if (filterAssignee) params.set('owner_id', filterAssignee);
+    if (filterStage) params.set('stage_id', filterStage);
+    if (filterDateFrom) params.set('from', filterDateFrom);
+    if (filterDateTo) params.set('to', filterDateTo);
+
+    window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
     addToast('Đang tải xuống dữ liệu Export...', 'info');
   };
 
@@ -507,7 +516,15 @@ export const DealsPage: React.FC = () => {
         entityName={pipelineView === 'deals' ? 'Cơ hội' : (pipelineView === 'contacts' ? 'Liên hệ' : 'Công ty')}
         onExport={() => {
             const type = pipelineView === 'deals' ? 'deal' : (pipelineView === 'contacts' ? 'contact' : 'company');
-            window.open(`${api.defaults.baseURL}/export?type=${type}&token=${localStorage.getItem('token')}`, '_blank');
+            const params = new URLSearchParams();
+            params.set('type', type);
+            params.set('token', localStorage.getItem('token') || '');
+            if (debouncedSearch) params.set('search', debouncedSearch);
+            if (filterAssignee) params.set('owner_id', filterAssignee);
+            if (filterStage) params.set('stage_id', filterStage);
+            if (filterDateFrom) params.set('from', filterDateFrom);
+            if (filterDateTo) params.set('to', filterDateTo);
+            window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
         }}
       />
 

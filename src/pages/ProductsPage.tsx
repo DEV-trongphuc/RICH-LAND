@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pagination } from '../components/ui/Pagination';
-import { Plus, Package, Pencil, Trash2, X, Loader2, Search, Layers } from 'lucide-react';
+import { Plus, Package, Pencil, Trash2, X, Loader2, Search, Layers, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
@@ -132,6 +132,15 @@ export const ProductsPage: React.FC = () => {
     }
   };
 
+  const handleExport = () => {
+    const params = new URLSearchParams();
+    params.set('type', 'product');
+    params.set('token', localStorage.getItem('token') || '');
+    if (search) params.set('search', search);
+    window.open(`${api.defaults.baseURL}/export?${params.toString()}`, '_blank');
+    addToast('Đang xuất danh sách sản phẩm theo bộ lọc hiện tại...', 'info');
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -143,6 +152,10 @@ export const ProductsPage: React.FC = () => {
           <button className="btn secondary" onClick={() => setShowCatModal(true)} title="Quản lý danh mục">
             <Layers size={16} />
             <span className="hide-on-mobile"> Quản lý danh mục</span>
+          </button>
+          <button className="btn outline" onClick={handleExport} title="Xuất Excel/CSV">
+            <Download size={16} />
+            <span className="hide-on-mobile"> Xuất file</span>
           </button>
           <button className="btn primary" onClick={() => { setEditItem(null); setForm(EMPTY); setShowModal(true); }} title="Thêm sản phẩm">
             <Plus size={16} />
