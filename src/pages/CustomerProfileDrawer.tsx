@@ -552,6 +552,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   const { t } = useLanguage();
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileOrTablet(window.innerWidth <= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -3000,7 +3008,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       if (allowedTabs.length === 0) return null;
 
                       return (
-                        <div key={groupIdx} className={styles.tabGroup} style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
+                        <div key={groupIdx} className={styles.tabGroup} style={isMobileOrTablet ? {} : { display: 'flex', flexDirection: 'column', gap: '0.15rem', marginBottom: groupIdx !== tabGroups.length - 1 ? '0.75rem' : 0 }}>
                           <div className={styles.tabGroupTitle} style={{ 
                             padding: '0.375rem 0.5rem', 
                             fontSize: '0.65rem', 
@@ -3017,7 +3025,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               key={tab.id}
                               className={`${styles.sidebarTabBtn} ${activeTab === tab.id ? styles.sidebarTabActive : ''}`}
                               onClick={() => setActiveTab(tab.id)}
-                              style={{ padding: '11px 0.875rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
+                              style={isMobileOrTablet ? {} : { padding: '11px 0.875rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: '8px' }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {tab.icon}

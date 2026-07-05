@@ -702,10 +702,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         </div>
 
         {/* Drawer Body - 2 Columns Layout */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'auto', padding: '1.5rem 1.5rem 4.5rem 1.5rem', gap: '1.5rem', background: 'var(--color-bg)' }} className="custom-scrollbar">
+        <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'column' : 'row', flex: 1, overflowY: 'auto', padding: isMobileOrTablet ? '1rem 1rem 5rem 1rem' : '1.5rem 1.5rem 4.5rem 1.5rem', gap: isMobileOrTablet ? '1rem' : '1.5rem', background: 'var(--color-bg)' }} className="custom-scrollbar">
           
           {/* Left Column (3/5) */}
-          <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+          <div style={{ flex: isMobileOrTablet ? 'none' : 3, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : '1.5rem', minWidth: 0 }}>
             
             {/* Tên công việc */}
             <div className="card" style={cardStyle}>
@@ -1119,7 +1119,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           </div>
 
           {/* Right Column (2/5) */}
-          <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
+          <div style={{ flex: isMobileOrTablet ? 'none' : 2, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : '1.5rem', minWidth: 0 }}>
             
             {/* Khách hàng liên quan */}
             <div className="card" style={cardStyle}>

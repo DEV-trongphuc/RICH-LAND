@@ -359,6 +359,7 @@
     width: auto !important;
     flex-direction: row !important;
     scrollbar-width: none !important;
+    height: auto !important;
   }
   .sidebarTabs::-webkit-scrollbar {
     display: none !important;
