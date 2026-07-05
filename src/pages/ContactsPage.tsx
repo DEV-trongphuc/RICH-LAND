@@ -1273,10 +1273,12 @@ export const ContactsPage: React.FC = () => {
                         left: 0,
                         right: 0,
                         height: '4px',
-                        background: c.status === 'lead' ? 'var(--color-primary)' :
+                        background: c.stage_color || (
+                                    c.status === 'lead' ? 'var(--color-primary)' :
                                     c.status === 'qualified' ? 'var(--color-warning)' :
                                     c.status === 'customer' ? 'var(--color-success)' :
                                     'var(--color-text-muted)'
+                                    )
                       }} />
 
                       {/* Header Section */}
@@ -1319,9 +1321,26 @@ export const ContactsPage: React.FC = () => {
                       {/* Status Badges & Score */}
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                          <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`} style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
-                            {STATUS_LABEL[c.status] || c.status}
-                          </span>
+                          {c.stage_name ? (
+                            <span 
+                              className="badge" 
+                              style={{ 
+                                borderRadius: '8px', 
+                                padding: '4px 8px', 
+                                fontSize: '0.72rem', 
+                                fontWeight: 700,
+                                backgroundColor: `${c.stage_color}1a`, 
+                                color: c.stage_color || 'var(--color-primary)', 
+                                border: `1px solid ${c.stage_color}33`
+                              }}
+                            >
+                              {c.stage_name}
+                            </span>
+                          ) : (
+                            <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`} style={{ borderRadius: '8px', padding: '4px 8px', fontSize: '0.72rem', fontWeight: 700 }}>
+                              {STATUS_LABEL[c.status] || c.status}
+                            </span>
+                          )}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>Đánh giá:</span>
                             <span style={{ 
