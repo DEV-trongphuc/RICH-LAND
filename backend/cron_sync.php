@@ -2148,10 +2148,17 @@ function assignParallelLeads($conn) {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, ?, ?, ?)
             ");
             $createdBy = 1;
-            $stmtIns->bind_param("iiiisssssssss", $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime, $row['notes'], $row['customer_type']);
+            $stmtIns->bind_param("iiiissssssss", $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime, $row['notes'], $row['customer_type']);
             $stmtIns->execute();
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();
+
+            // Insert matching lead record to satisfy foreign key constraint on distribution_logs.lead_id
+            $stmtLead = $conn->prepare("INSERT IGNORE INTO leads (id, person_id, phone, email, name, source, status) VALUES (?, ?, NULL, ?, ?, ?, 'assigned')");
+            $leadName = trim($row['first_name'] . ' ' . $row['last_name']);
+            $stmtLead->bind_param("issss", $secondContactId, $personId, $row['email'], $leadName, $row['source']);
+            $stmtLead->execute();
+            $stmtLead->close();
             
             $updRound = $conn->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?");
             $updRound->bind_param("ii", $secondSaleId, $roundId);

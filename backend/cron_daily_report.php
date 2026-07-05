@@ -62,7 +62,7 @@ function runDailyReportCron($conn)
         ");
         
         $stmtLog = $conn->prepare("
-            INSERT INTO audit_logs (tenant_id, user_id, action, related_type, related_id, description, ip_address) 
+            INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, ip_address) 
             VALUES (?, 0, 'TEMPERATURE_DECAY', 'contact', ?, ?, '127.0.0.1')
         ");
 
@@ -74,7 +74,7 @@ function runDailyReportCron($conn)
             $stmtUpdateDecay->execute();
             
             $logMsg = "Nhiệt độ khách hàng tự động giảm từ '$currTemp' về '$nextTemp' do quá $decayDays ngày không có tương tác.";
-            $stmtLog->bind_param("iiss", $c['tenant_id'], $c['id'], $logMsg);
+            $stmtLog->bind_param("iis", $c['tenant_id'], $c['id'], $logMsg);
             $stmtLog->execute();
         }
         $stmtUpdateDecay->close();

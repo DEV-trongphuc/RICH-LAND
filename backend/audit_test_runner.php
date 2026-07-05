@@ -1004,6 +1004,10 @@ try {
        ->execute([$sale2UserId, '[E2E] TVV Phụ ' . $suffix, "sale2_$suffix@richland.net"]);
     $db->prepare("UPDATE consultants SET vacation_mode = 0 WHERE id = ?")->execute([$sale2UserId]);
     
+    $todayStr = date('Y-m-d');
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, status) VALUES (?, ?, 'approved')")
+       ->execute([$sale2UserId, $todayStr]);
+
     $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, compensation_count, current_turn_remaining, is_active) VALUES (?, ?, 2, 0, 1, 1)")
        ->execute([$roundId, $sale2UserId]);
 
@@ -1858,6 +1862,152 @@ try {
     assertTest("Phase 19: Automated Workflow Templates & Stage Transition Tasks", $wfSuccess, "Template ID: $tplId, Spawned Task: " . ($spawnedTask ? 'Yes' : 'No'));
 
     // ─────────────────────────────────────────────────────────────────
+    // TEST 81: ensurePersonAndContact copies note & type
+    // ─────────────────────────────────────────────────────────────────
+    $test81Phone = '0908818181';
+    $db->prepare("DELETE FROM leads WHERE phone = ?")->execute([$test81Phone]);
+    $db->prepare("DELETE FROM contacts WHERE phone = ?")->execute([$test81Phone]);
+    $db->prepare("DELETE FROM persons WHERE phone = ?")->execute([$test81Phone]);
+
+    $db->prepare("
+        INSERT INTO leads (phone, email, name, source, type, note, is_accepted, assigned_to, target_round_id)
+        VALUES (?, 'test81@richland.com', 'Test 81 Webhook Copy', 'facebook', 'Căn hộ 2 phòng ngủ', 'Khách hàng muốn xem dự án vào chủ nhật', 1, ?, 265)
+    ")->execute([$test81Phone, $saleUserId]);
+    $test81LeadId = (int)$db->lastInsertId();
+
+    require_once __DIR__ . '/webhook_logic.php';
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $mysqliConn->set_charset("utf8mb4");
+    ensurePersonAndContact($mysqliConn, $test81LeadId);
+    $mysqliConn->close();
+
+    $stmtC81 = $db->prepare("SELECT notes, customer_type FROM contacts WHERE phone = ? LIMIT 1");
+    $stmtC81->execute([$test81Phone]);
+    $c81Row = $stmtC81->fetch(PDO::FETCH_ASSOC);
+
+    $test81Success = ($c81Row && $c81Row['notes'] === 'Khách hàng muốn xem dự án vào chủ nhật' && $c81Row['customer_type'] === 'Căn hộ 2 phòng ngủ');
+    assertTest("TEST 81: Webhook Copy note & type", $test81Success, "Notes: " . ($c81Row['notes'] ?? 'NULL') . ", Customer Type: " . ($c81Row['customer_type'] ?? 'NULL'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 82: claim_public_lead copies note & type
+    // ─────────────────────────────────────────────────────────────────
+    $test82Phone = '0908828282';
+    $db->prepare("DELETE FROM leads WHERE phone = ?")->execute([$test82Phone]);
+    $db->prepare("DELETE FROM contacts WHERE phone = ?")->execute([$test82Phone]);
+    $db->prepare("DELETE FROM persons WHERE phone = ?")->execute([$test82Phone]);
+
+    $db->prepare("INSERT INTO persons (phone, email, full_name, is_public) VALUES (?, 'test82@richland.com', 'Test 82 Databank Claim', 1)")->execute([$test82Phone]);
+    $test82PersonId = (int)$db->lastInsertId();
+
+    $db->prepare("
+        INSERT INTO leads (person_id, phone, email, name, source, type, note)
+        VALUES (?, ?, 'test82@richland.com', 'Test 82 Databank Claim', 'facebook', 'Căn hộ 3 phòng ngủ', 'Cần tư vấn hỗ trợ lãi suất ngân hàng')
+    ")->execute([$test82PersonId, $test82Phone]);
+
+    $firstName = 'Test 82';
+    $lastName = 'Claim';
+    $secExpiresTime = date('Y-m-d H:i:s', strtotime('+3 hours'));
+    
+    $stmtLead82 = $db->prepare("SELECT source, type, note FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
+    $stmtLead82->execute([$test82PersonId]);
+    $lRow82 = $stmtLead82->fetch(PDO::FETCH_ASSOC);
+    $sourceVal82 = $lRow82['source'] ?? 'databank';
+    $noteVal82 = $lRow82['note'] ?? '';
+    $typeVal82 = $lRow82['type'] ?? '';
+
+    $stmtIns82 = $db->prepare("
+        INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
+        VALUES (?, NULL, ?, ?, ?, ?, 'test82@richland.com', ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?)
+    ");
+    $stmtIns82->execute([$test82PersonId, $saleUserId, $saleUserId, $firstName, $lastName, $test82Phone, $sourceVal82, $secExpiresTime, $noteVal82, $typeVal82]);
+    
+    $stmtC82 = $db->prepare("SELECT notes, customer_type FROM contacts WHERE phone = ? LIMIT 1");
+    $stmtC82->execute([$test82Phone]);
+    $c82Row = $stmtC82->fetch(PDO::FETCH_ASSOC);
+
+    $test82Success = ($c82Row && $c82Row['notes'] === 'Cần tư vấn hỗ trợ lãi suất ngân hàng' && $c82Row['customer_type'] === 'Căn hộ 3 phòng ngủ');
+    assertTest("TEST 82: Databank claim copy note & type", $test82Success, "Notes: " . ($c82Row['notes'] ?? 'NULL') . ", Customer Type: " . ($c82Row['customer_type'] ?? 'NULL'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 83: assignParallelLeads copies notes & customer_type
+    // ─────────────────────────────────────────────────────────────────
+    $test83Phone = '0908838383';
+    $db->prepare("DELETE FROM leads WHERE phone = ?")->execute([$test83Phone]);
+    $db->prepare("DELETE FROM contacts WHERE phone = ?")->execute([$test83Phone]);
+    $db->prepare("DELETE FROM persons WHERE phone = ?")->execute([$test83Phone]);
+
+    $db->prepare("INSERT INTO persons (phone, email, full_name, is_public) VALUES (?, 'test83@richland.com', 'Test 83 Parallel', 1)")->execute([$test83Phone]);
+    $test83PersonId = (int)$db->lastInsertId();
+
+    $secExpiresPast = date('Y-m-d H:i:s', strtotime('-1 hour'));
+    $db->prepare("
+        INSERT INTO contacts (person_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at, notes, customer_type)
+        VALUES (?, ?, ?, 'Test 83', 'Parallel', 'test83@richland.com', ?, 'R3_Fb', 'lead', 'chua_xac_dinh', 0, DATE_SUB(NOW(), INTERVAL 1 HOUR), 'Note gốc song song', 'Type gốc song song')
+    ")->execute([$test83PersonId, $saleUserId, $saleUserId, $test83Phone]);
+    $test83OriginalContactId = (int)$db->lastInsertId();
+
+    // Clear any potential conflicting lead/log first
+    $db->prepare("DELETE FROM distribution_logs WHERE lead_id = ?")->execute([$test83OriginalContactId]);
+    $db->prepare("DELETE FROM leads WHERE id = ?")->execute([$test83OriginalContactId]);
+
+    // Insert lead with the EXACT same ID as the contact ID
+    $db->prepare("
+        INSERT INTO leads (id, person_id, phone, email, name, source, status)
+        VALUES (?, ?, ?, 'test83@richland.com', 'Test 83 Parallel', 'R3_Fb', 'assigned')
+    ")->execute([$test83OriginalContactId, $test83PersonId, $test83Phone]);
+
+    $db->prepare("
+        INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message)
+        VALUES (?, ?, ?, 'assigned', 'E2E assign')
+    ")->execute([$test83OriginalContactId, $saleUserId, $roundId]);
+
+    require_once __DIR__ . '/cron_sync.php';
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $mysqliConn->set_charset("utf8mb4");
+    assignParallelLeads($mysqliConn);
+    $mysqliConn->close();
+
+    $stmtC83 = $db->prepare("SELECT notes, customer_type FROM contacts WHERE person_id = ? AND owner_id != ? LIMIT 1");
+    $stmtC83->execute([$test83PersonId, $saleUserId]);
+    $c83Row = $stmtC83->fetch(PDO::FETCH_ASSOC);
+
+    $test83Success = ($c83Row && $c83Row['notes'] === 'Note gốc song song' && $c83Row['customer_type'] === 'Type gốc song song');
+    assertTest("TEST 83: Parallel assign copy notes & type", $test83Success, "Notes: " . ($c83Row['notes'] ?? 'NULL') . ", Customer Type: " . ($c83Row['customer_type'] ?? 'NULL'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 84: Block support ticket on databank claim
+    // ─────────────────────────────────────────────────────────────────
+    $test84Phone = '0908848484';
+    $db->prepare("DELETE FROM leads WHERE phone = ?")->execute([$test84Phone]);
+    $db->prepare("DELETE FROM contacts WHERE phone = ?")->execute([$test84Phone]);
+    $db->prepare("DELETE FROM persons WHERE phone = ?")->execute([$test84Phone]);
+
+    $db->prepare("INSERT INTO persons (phone, email, full_name, is_public) VALUES (?, 'test84@richland.com', 'Test 84 Block Ticket', 0)")->execute([$test84Phone]);
+    $test84PersonId = (int)$db->lastInsertId();
+
+    $db->prepare("
+        INSERT INTO leads (person_id, phone, email, name, source, status)
+        VALUES (?, ?, 'test84@richland.com', 'Test 84 Block Ticket', 'facebook', 'databank_claim')
+    ")->execute([$test84PersonId, $test84Phone]);
+    $test84LeadId = (int)$db->lastInsertId();
+
+    $db->prepare("
+        INSERT INTO contacts (person_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at)
+        VALUES (?, ?, ?, 'Test 84', 'Block Ticket', 'test84@richland.com', ?, 'databank', 'lead', 'chua_xac_dinh', 0, NULL)
+    ")->execute([$test84PersonId, $saleUserId, $saleUserId, $test84Phone]);
+    $test84ContactId = (int)$db->lastInsertId();
+
+    $db->prepare("
+        INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message)
+        VALUES (?, ?, 1, 'databank_claim', 'Public Claim')
+    ")->execute([$test84LeadId, $saleUserId]);
+
+    $logStatus84 = $db->query("SELECT status FROM distribution_logs WHERE lead_id = $test84LeadId AND assigned_to = $saleUserId LIMIT 1")->fetchColumn();
+    $reportBlocked84 = ($logStatus84 === 'databank_claim');
+
+    assertTest("TEST 84: Block report on databank claim", $reportBlocked84, "Report Blocked: " . ($reportBlocked84 ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)
     // We intentionally do not delete these records so they are visible in the CRM frontend UI.
     $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId, $viewerUserId)")->fetchColumn();
@@ -1865,7 +2015,7 @@ try {
     assertTest("Phase 18: DB Persistence Verification", (int)$userCount === 6, "Persisted test users count: $userCount");
 
 } catch (Throwable $e) {
-    assertTest("E2E Audit Runner Exception", false, $e->getMessage() . " on line " . $e->getLine());
+    assertTest("E2E Audit Runner Exception", false, $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine());
 }
 
 echo json_encode(['success' => true, 'results' => $results]);
