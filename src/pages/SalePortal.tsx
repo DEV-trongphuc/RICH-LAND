@@ -7283,7 +7283,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {t('HỒ SƠ & TÀI LIỆU NHÂN SỰ')}
                 </h3>
                 {/* Admin/Manager upload button */}
-                {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager' || user?.role === 'assistant') && (
+                {(['admin', 'superadmin', 'manager', 'assistant'].includes(user?.role as any)) && (
                   <label style={{
                     background: 'var(--color-primary-light)', color: 'var(--color-primary)',
                     padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
@@ -7398,7 +7398,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </a>
 
                         {/* Admin/Manager delete button */}
-                        {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager' || user?.role === 'assistant') && (
+                        {(['admin', 'superadmin', 'manager', 'assistant'].includes(user?.role as any)) && (
                           <button
                             type="button"
                             onClick={async () => {
