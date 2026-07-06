@@ -244,7 +244,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     ) : (
                       option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>
                     )}
-                    <div className={styles.optionText} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', flex: 1 }}>
+                    <div className={styles.optionText} style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', flex: 1 }}>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span className={styles.optionMainLabel}>{t(option.label)}</span>
                         {option.sublabel && <span className={styles.optionSublabel}>{t(option.sublabel)}</span>}

@@ -696,7 +696,7 @@ export default function CooperationSlipsPage() {
         </div>
 
         {/* Filter Status */}
-        <div style={{ width: '185px' }}>
+        <div style={{ width: '225px' }}>
           <CustomSelect
             value={statusFilter}
             onChange={val => setStatusFilter(String(val))}
