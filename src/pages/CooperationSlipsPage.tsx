@@ -10,6 +10,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
 import { useLocation } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
+import { CopyButton } from '../components/ui/CopyButton';
 
 interface CooperationSlip {
   id: number;
@@ -821,8 +822,9 @@ export default function CooperationSlipsPage() {
                         }}>
                           ID: #{slip.id}
                         </span>
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'inline-flex', alignItems: 'center' }}>
                           Căn: <span style={{ color: 'var(--color-primary)' }}>{slip.unit_code || '—'}</span>
+                          {slip.unit_code && <CopyButton text={slip.unit_code} />}
                         </h3>
                         <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
                         <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-light)' }}>

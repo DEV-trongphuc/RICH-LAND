@@ -13,6 +13,7 @@ import { TableSkeleton } from '../components/ui/Skeleton';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { useAuth } from '../contexts/AuthContext';
+import { CopyButton } from '../components/ui/CopyButton';
 
 const AccountsInner = () => {
   const { t } = useLanguage();
@@ -754,6 +755,7 @@ const AccountsInner = () => {
                             <Shield size={14} />
                           )}
                           <span>{acc.email || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa có email')}</span>}</span>
+                          {acc.email && <CopyButton text={acc.email} />}
                           {acc.email && (
                             Number(acc.is_confirmed) === 1 ? (
                               <span style={{ fontSize: '0.7rem', color: 'var(--color-success)', background: 'var(--color-success-light)', padding: '2px 6px', borderRadius: 12, fontWeight: 700 }}>{t('Đã xác thực')}</span>
@@ -780,6 +782,7 @@ const AccountsInner = () => {
                             }}>
                               <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Đã liên kết')}
                             </span>
+                            <CopyButton text={acc.zalo_chat_id} />
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
