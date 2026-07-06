@@ -258,8 +258,10 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
           />
           <motion.div 
             className={styles.drawer}
-            initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+            initial={{ x: '100%', opacity: 0, filter: 'blur(6px)' }}
+            animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
+            exit={{ x: '100%', opacity: 0, filter: 'blur(6px)' }}
+            transition={{ type: 'spring', damping: 30, stiffness: 220 }}
           >
             {/* Header */}
             <div className={styles.header}>
