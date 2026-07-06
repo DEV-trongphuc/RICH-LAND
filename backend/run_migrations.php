@@ -1818,7 +1818,13 @@ try {
           `is_confirmed`, 
           `confirm_token`, 
           `last_login_at` AS `last_login`, 
-          `avatar_url` AS `avatar` 
+          `avatar_url` AS `avatar`,
+          `dob`,
+          `gender`,
+          `citizen_id`,
+          `address`,
+          `bank_name`,
+          `bank_account`
         FROM `users`
     ");
     $logMsg("Đã cập nhật VIEW accounts để hỗ trợ mọi roles đăng nhập", "success");

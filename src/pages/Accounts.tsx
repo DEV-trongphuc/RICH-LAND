@@ -45,7 +45,13 @@ const AccountsInner = () => {
     email: '',
     zalo_chat_id: '',
     role: 'viewer',
-    avatar: ''
+    avatar: '',
+    dob: '',
+    gender: '',
+    citizen_id: '',
+    address: '',
+    bank_name: '',
+    bank_account: ''
   });
 
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -165,6 +171,8 @@ const AccountsInner = () => {
   };
 
   const [activeTab, setActiveTab] = useState<'accounts' | 'logs'>('accounts');
+  const [accountsPage, setAccountsPage] = useState(1);
+  const ACCOUNTS_PER_PAGE = 10;
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsPage, setLogsPage] = useState(1);
@@ -242,21 +250,55 @@ const AccountsInner = () => {
         email: acc.email || '',
         zalo_chat_id: acc.zalo_chat_id || '',
         role: acc.role || 'sale',
-        avatar: acc.avatar || ''
+        avatar: acc.avatar || '',
+        dob: acc.dob || '',
+        gender: acc.gender || '',
+        citizen_id: acc.citizen_id || '',
+        address: acc.address || '',
+        bank_name: acc.bank_name || '',
+        bank_account: acc.bank_account || ''
       });
     }
   }, [accounts, isSale]);
 
   const openAddModal = () => {
     setEditingAccount(null);
-    setFormData({ username: '', password: '', name: '', email: '', zalo_chat_id: '', role: 'viewer', avatar: '' });
+    setFormData({
+      username: '',
+      password: '',
+      name: '',
+      email: '',
+      zalo_chat_id: '',
+      role: 'viewer',
+      avatar: '',
+      dob: '',
+      gender: '',
+      citizen_id: '',
+      address: '',
+      bank_name: '',
+      bank_account: ''
+    });
     setQuickMsgText('');
     setModalOpen(true);
   };
 
   const openEditModal = (acc: any) => {
     setEditingAccount(acc);
-    setFormData({ username: acc.username, password: '', name: acc.name, email: acc.email || '', zalo_chat_id: acc.zalo_chat_id || '', role: acc.role, avatar: acc.avatar || '' });
+    setFormData({
+      username: acc.username,
+      password: '',
+      name: acc.name,
+      email: acc.email || '',
+      zalo_chat_id: acc.zalo_chat_id || '',
+      role: acc.role,
+      avatar: acc.avatar || '',
+      dob: acc.dob || '',
+      gender: acc.gender || '',
+      citizen_id: acc.citizen_id || '',
+      address: acc.address || '',
+      bank_name: acc.bank_name || '',
+      bank_account: acc.bank_account || ''
+    });
     setQuickMsgText('');
     setModalOpen(true);
   };
@@ -412,6 +454,9 @@ const AccountsInner = () => {
   const totalLogPages = Math.ceil(logs.length / LOGS_PER_PAGE);
   const paginatedLogs = logs.slice((logsPage - 1) * LOGS_PER_PAGE, logsPage * LOGS_PER_PAGE);
 
+  const totalAccountsPages = Math.ceil(accounts.length / ACCOUNTS_PER_PAGE);
+  const paginatedAccounts = accounts.slice((accountsPage - 1) * ACCOUNTS_PER_PAGE, accountsPage * ACCOUNTS_PER_PAGE);
+
   if (isSale) {
     return (
       <div style={{ animation: 'fadeIn 0.3s ease-out', maxWidth: '600px', margin: '2rem auto', padding: '1.5rem' }}>
@@ -482,6 +527,76 @@ const AccountsInner = () => {
                 value={formData.zalo_chat_id}
                 onChange={e => setFormData({ ...formData, zalo_chat_id: e.target.value })}
                 placeholder={t('Ví dụ: 123456789')}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Ngày sinh')}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={formData.dob}
+                onChange={e => setFormData({ ...formData, dob: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Giới tính')}</label>
+              <CustomSelect
+                options={[
+                  { value: '', label: t('Chọn giới tính') },
+                  { value: 'Nam', label: t('Nam') },
+                  { value: 'Nữ', label: t('Nữ') },
+                  { value: 'Khác', label: t('Khác') }
+                ]}
+                value={formData.gender}
+                onChange={val => setFormData({ ...formData, gender: val.toString() })}
+                width="100%"
+                direction="down"
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Số CCCD')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('Nhập số CCCD')}
+                value={formData.citizen_id}
+                onChange={e => setFormData({ ...formData, citizen_id: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Địa chỉ')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('Nhập địa chỉ tạm trú/thường trú')}
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Tên ngân hàng')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('VD: Vietcombank')}
+                value={formData.bank_name}
+                onChange={e => setFormData({ ...formData, bank_name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Số tài khoản')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('Nhập số tài khoản')}
+                value={formData.bank_account}
+                onChange={e => setFormData({ ...formData, bank_account: e.target.value })}
               />
             </div>
 
@@ -579,6 +694,7 @@ const AccountsInner = () => {
           {loading ? (
             <TableSkeleton cols={6} rows={5} />
           ) : (
+            <>
             <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
                 <thead>
@@ -592,7 +708,7 @@ const AccountsInner = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {accounts.map(acc => (
+                  {paginatedAccounts.map(acc => (
                     <tr key={acc.id} onClick={() => openEditModal(acc)} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }} className="table-row-hover">
                       <td data-label={t('Tên người dùng')} style={{ padding: '1rem 1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -700,6 +816,61 @@ const AccountsInner = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Accounts Pagination */}
+            {!loading && totalAccountsPages > 1 && (
+              <div className="responsive-pagination" style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+                  {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(accountsPage - 1) * ACCOUNTS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(accountsPage * ACCOUNTS_PER_PAGE, accounts.length)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{accounts.length}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <button 
+                    onClick={() => setAccountsPage(prev => Math.max(prev - 1, 1))}
+                    disabled={accountsPage === 1}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: accountsPage === 1 ? 'var(--color-bg)' : 'var(--color-surface)', color: accountsPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: accountsPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {Array.from({ length: Math.min(5, totalAccountsPages) }, (_, i) => {
+                      let startPage = 1;
+                      if (totalAccountsPages > 5) {
+                        if (accountsPage > 3) {
+                          startPage = accountsPage - 2;
+                          if (startPage + 4 > totalAccountsPages) {
+                            startPage = totalAccountsPages - 4;
+                          }
+                        }
+                      }
+                      const pageNum = startPage + i;
+                      return (
+                         <button
+                           key={pageNum}
+                           onClick={() => setAccountsPage(pageNum)}
+                           style={{ 
+                             width: 32, height: 32, borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+                             border: accountsPage === pageNum ? 'none' : '1px solid var(--color-border)',
+                             background: accountsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                             color: accountsPage === pageNum ? 'white' : 'var(--color-text)',
+                             cursor: 'pointer'
+                           }}
+                         >
+                           {pageNum}
+                         </button>
+                      );
+                    })}
+                  </div>
+                  <button 
+                    onClick={() => setAccountsPage(prev => Math.min(prev + 1, totalAccountsPages))}
+                    disabled={accountsPage === totalAccountsPages || totalAccountsPages === 0}
+                    style={{ padding: '6px', borderRadius: 6, border: '1px solid var(--color-border)', background: accountsPage === totalAccountsPages || totalAccountsPages === 0 ? 'var(--color-bg)' : 'var(--color-surface)', color: accountsPage === totalAccountsPages || totalAccountsPages === 0 ? 'var(--color-text-muted)' : 'var(--color-text)', cursor: accountsPage === totalAccountsPages || totalAccountsPages === 0 ? 'not-allowed' : 'pointer' }}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       ) : (
@@ -1214,6 +1385,70 @@ const AccountsInner = () => {
                 onChange={val => setFormData({ ...formData, role: val.toString() })}
                 width="100%"
                 direction="up"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('Ngày sinh')}</label>
+              <input
+                type="date"
+                className="form-input"
+                value={formData.dob}
+                onChange={e => setFormData({ ...formData, dob: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('Giới tính')}</label>
+              <CustomSelect
+                options={[
+                  { value: '', label: t('Chọn giới tính') },
+                  { value: 'Nam', label: t('Nam') },
+                  { value: 'Nữ', label: t('Nữ') },
+                  { value: 'Khác', label: t('Khác') }
+                ]}
+                value={formData.gender}
+                onChange={val => setFormData({ ...formData, gender: val.toString() })}
+                width="100%"
+                direction="up"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('Số CCCD')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('Nhập số CCCD')}
+                value={formData.citizen_id}
+                onChange={e => setFormData({ ...formData, citizen_id: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('Tên ngân hàng')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('VD: Vietcombank')}
+                value={formData.bank_name}
+                onChange={e => setFormData({ ...formData, bank_name: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('Số tài khoản')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('Nhập số tài khoản')}
+                value={formData.bank_account}
+                onChange={e => setFormData({ ...formData, bank_account: e.target.value })}
+              />
+            </div>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">{t('Địa chỉ')}</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={t('Nhập địa chỉ tạm trú/thường trú')}
+                value={formData.address}
+                onChange={e => setFormData({ ...formData, address: e.target.value })}
               />
             </div>
           </div>

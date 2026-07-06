@@ -9271,12 +9271,12 @@ switch ($action) {
 
     case 'get_accounts':
         if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin') {
-            $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar FROM accounts WHERE id = ?");
+            $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account FROM accounts WHERE id = ?");
             $stmt->bind_param("i", $decodedUser['id']);
             $stmt->execute();
             $res = $stmt->get_result();
         } else {
-            $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar FROM accounts ORDER BY created_at DESC");
+            $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account FROM accounts ORDER BY created_at DESC");
         }
         $data = [];
         while ($row = $res->fetch_assoc())
@@ -10198,6 +10198,13 @@ switch ($action) {
             if ($avatar === '')
                 $avatar = null;
 
+            $dob = !empty($input['dob']) ? trim($input['dob']) : null;
+            $gender = !empty($input['gender']) ? trim($input['gender']) : null;
+            $citizen_id = !empty($input['citizen_id']) ? trim($input['citizen_id']) : null;
+            $address = !empty($input['address']) ? trim($input['address']) : null;
+            $bank_name = !empty($input['bank_name']) ? trim($input['bank_name']) : null;
+            $bank_account = !empty($input['bank_account']) ? trim($input['bank_account']) : null;
+
             // FEATURE: Email bắt buộc cho tất cả tài khoản không phải Super Admin (id=1)
             if ($id !== 1) {
                 if (empty($email)) {
@@ -10216,11 +10223,11 @@ switch ($action) {
 
             if (!empty($password)) {
                 $hash = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=? WHERE id=?");
-                $stmt->bind_param("sssssssi", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $id);
+                $stmt = $conn->prepare("UPDATE accounts SET username=?, password_hash=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
+                $stmt->bind_param("sssssssssssssi", $username, $hash, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=? WHERE id=?");
-                $stmt->bind_param("ssssssi", $username, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $id);
+                $stmt = $conn->prepare("UPDATE accounts SET username=?, name=?, role=?, email=?, zalo_chat_id=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
+                $stmt->bind_param("ssssssssssssi", $username, $name, $role, $dbEmail, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $id);
             }
 
             if ($stmt->execute()) {
@@ -10246,15 +10253,22 @@ switch ($action) {
             $avatar = null;
         $userId = $decodedUser['id'];
 
+        $dob = !empty($input['dob']) ? trim($input['dob']) : null;
+        $gender = !empty($input['gender']) ? trim($input['gender']) : null;
+        $citizen_id = !empty($input['citizen_id']) ? trim($input['citizen_id']) : null;
+        $address = !empty($input['address']) ? trim($input['address']) : null;
+        $bank_name = !empty($input['bank_name']) ? trim($input['bank_name']) : null;
+        $bank_account = !empty($input['bank_account']) ? trim($input['bank_account']) : null;
+
         if (empty($name)) {
             echo json_encode(['success' => false, 'message' => 'Tên không được để trống']);
             break;
         }
 
-        $upd = $conn->prepare("UPDATE accounts SET name = ?, avatar = ? WHERE id = ?");
-        $upd->bind_param("ssi", $name, $avatar, $userId);
+        $upd = $conn->prepare("UPDATE accounts SET name = ?, avatar = ?, dob = ?, gender = ?, citizen_id = ?, address = ?, bank_name = ?, bank_account = ? WHERE id = ?");
+        $upd->bind_param("ssssssssi", $name, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $userId);
         if ($upd->execute()) {
-            logAdminAction($conn, $userId, 'UPDATE_PROFILE', ['name' => $name, 'avatar' => $avatar]);
+            logAdminAction($conn, $userId, 'UPDATE_PROFILE', ['name' => $name, 'avatar' => $avatar, 'dob' => $dob, 'gender' => $gender, 'citizen_id' => $citizen_id, 'address' => $address, 'bank_name' => $bank_name, 'bank_account' => $bank_account]);
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật hồ sơ']);
