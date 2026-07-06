@@ -11,7 +11,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 154;
+$targetVersion = 155;
 $currentVersion = 0;
 
 // Query current DB version
@@ -1924,6 +1924,8 @@ try {
         $safeAddIndex($conn, 'mail_queue', 'idx_mail_queue_status_created', '`status`, `created_at`');
         $safeAddIndex($conn, 'audit_logs', 'idx_audit_logs_action_created', '`action`, `created_at`');
         $safeAddIndex($conn, 'audit_logs', 'idx_audit_logs_resource_id', '`resource`, `resource_id`');
+        $safeAddIndex($conn, 'activities', 'idx_activities_composite', '`related_type`, `related_id`, `status`');
+        $safeAddIndex($conn, 'contacts', 'idx_contacts_composite', '`person_id`, `owner_id`, `deleted_at`');
 
         // Self-healing check: ensure edit_history exists in notes
         $chkNoteEditHistory = $conn->query("SHOW COLUMNS FROM notes LIKE 'edit_history'");
@@ -1966,7 +1968,7 @@ try {
 
         $logMsg("Hoàn thành tự tạo các INDEX hiệu năng.", "success");
 
-        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '154') ON DUPLICATE KEY UPDATE setting_value = '154'");
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '155') ON DUPLICATE KEY UPDATE setting_value = '155'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 

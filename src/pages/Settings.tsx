@@ -9,7 +9,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
-import { CardSkeleton } from '../components/ui/Skeleton';
+import { CardSkeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import * as XLSX from 'xlsx';
 
@@ -101,7 +101,7 @@ const SettingsInner = () => {
   const [testing, setTesting] = useState(false);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai' | 'workflow'>('processing');
+  const [activeTab, setActiveTab] = useState<'processing' | 'communications' | 'report' | 'duplicate_check' | 'ai' | 'workflow' | 'database'>('processing');
 
   const tabOptions = [
     { value: 'processing', label: t('Cấu hình Xử lý'), icon: <SettingsIcon size={16} /> },
@@ -109,7 +109,8 @@ const SettingsInner = () => {
     { value: 'report', label: t('Báo cáo'), icon: <BarChart2 size={16} /> },
     { value: 'duplicate_check', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={16} /> },
     { value: 'ai', label: t('Cấu hình Trợ lý AI'), icon: <Zap size={16} /> },
-    { value: 'workflow', label: t('Mẫu Quy trình'), icon: <Activity size={16} /> }
+    { value: 'workflow', label: t('Mẫu Quy trình'), icon: <Activity size={16} /> },
+    { value: 'database', label: t('Bảo trì Database'), icon: <Database size={16} /> }
   ];
 
   // States for Gemini API Connection
@@ -199,6 +200,56 @@ const SettingsInner = () => {
   const [starvationPreventionEnabled, setStarvationPreventionEnabled] = useState(false);
   const [starvationMaxLeadsPerHour, setStarvationMaxLeadsPerHour] = useState(3);
   const [dbVersion, setDbVersion] = useState('');
+  const [dbTables, setDbTables] = useState<any[]>([]);
+  const [loadingDb, setLoadingDb] = useState(false);
+  const [dbActionRunning, setDbActionRunning] = useState(false);
+  const [dbLogs, setDbLogs] = useState<string[]>([]);
+
+  const fetchDbStats = async () => {
+    setLoadingDb(true);
+    try {
+      const res = await fetchAPI('get_db_stats');
+      if (res.success) {
+        setDbTables(res.tables || []);
+      } else {
+        toast.error(res.message || 'Không thể tải thống kê Database');
+      }
+    } catch (err: any) {
+      toast.error('Lỗi kết nối cơ sở dữ liệu');
+    }
+    setLoadingDb(false);
+  };
+
+  const runDbAction = async (actionType: 'optimize' | 'clean_orphans' | 'fix_indexes') => {
+    setDbActionRunning(true);
+    setDbLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Bắt đầu thực thi tác vụ: ${actionType === 'optimize' ? 'Tối ưu hóa bảng' : actionType === 'clean_orphans' ? 'Dọn dẹp bản ghi mồ côi' : 'Khôi phục Index'}...`]);
+    try {
+      const res = await fetchAPI('optimize_db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_type: actionType })
+      });
+      if (res.success) {
+        const results = res.results || [];
+        setDbLogs(prev => [
+          ...prev,
+          ...results.map((r: string) => `[${new Date().toLocaleTimeString()}] ${r}`),
+          `[${new Date().toLocaleTimeString()}] Hoàn thành tác vụ thành công!`
+        ]);
+        toast.success('Thực hiện tác vụ hoàn tất!');
+        fetchDbStats();
+      } else {
+        const errMsg = res.message || 'Lỗi khi thực hiện tác vụ';
+        setDbLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] LỖI: ${errMsg}`]);
+        toast.error(errMsg);
+      }
+    } catch (err: any) {
+      const errMsg = err.message || 'Lỗi kết nối';
+      setDbLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] LỖI KẾT NỐI: ${errMsg}`]);
+      toast.error('Lỗi kết nối API');
+    }
+    setDbActionRunning(false);
+  };
   const [reportErrorReasons, setReportErrorReasons] = useState<{ reason: string; note: string }[]>([]);
 
   const handleAddReasonRow = () => {
@@ -543,6 +594,9 @@ const SettingsInner = () => {
   useEffect(() => {
     if (activeTab === 'workflow') {
       fetchWorkflowData();
+    }
+    if (activeTab === 'database') {
+      fetchDbStats();
     }
   }, [activeTab]);
 
@@ -1117,6 +1171,20 @@ const SettingsInner = () => {
         >
           <Zap size={16} /> {t('Cấu hình Trợ lý AI')}
         </button>
+        <button
+          onClick={() => setActiveTab('workflow')}
+          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'workflow' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'workflow' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'workflow' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
+          className={activeTab === 'workflow' ? '' : 'hover-lift'}
+        >
+          <Activity size={16} /> {t('Mẫu Quy trình')}
+        </button>
+        <button
+          onClick={() => setActiveTab('database')}
+          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'database' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'database' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'database' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
+          className={activeTab === 'database' ? '' : 'hover-lift'}
+        >
+          <Database size={16} /> {t('Bảo trì Database')}
+        </button>
       </div>
 
       {loading ? (
@@ -1128,7 +1196,7 @@ const SettingsInner = () => {
         </div>
       ) : (
         <div className="responsive-flex-row" style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
-          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai' || activeTab === 'workflow') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
+          <div style={{ flex: (activeTab === 'duplicate_check' || activeTab === 'ai' || activeTab === 'workflow' || activeTab === 'database') ? 1 : 2, display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0, width: '100%' }}>
             {/* AI Assistant Tab Content */}
             <div style={{ display: activeTab === 'ai' ? 'block' : 'none' }} className="subtab-enter-active">
               <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1329,6 +1397,136 @@ const SettingsInner = () => {
                     </table>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* ===== TAB: DATABASE MAINTENANCE ===== */}
+            <div style={{ display: activeTab === 'database' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ display: 'inline-flex', background: 'rgba(189,29,45,0.1)', color: 'var(--color-primary)', padding: 8, borderRadius: 10 }}>
+                      <Database size={20} />
+                    </span>
+                    {t('Bảo trì & Tối ưu Cơ sở dữ liệu')}
+                  </h3>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '6px 0 0' }}>
+                    {t('Xem thống kê lưu trữ của các bảng, dọn dẹp dung lượng phân mảnh và kiểm tra tính toàn vẹn của dữ liệu hệ thống.')}
+                  </p>
+                </div>
+
+                {/* 1. Quick Stats Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                  <div className="card-panel" style={{ padding: '1.25rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tổng số bảng')}</span>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '6px 0 0', color: 'var(--color-text)' }}>{dbTables.length} {t('Bảng')}</h2>
+                  </div>
+                  <div className="card-panel" style={{ padding: '1.25rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tổng số dòng')}</span>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '6px 0 0', color: 'var(--color-text)' }}>
+                      {dbTables.reduce((acc, t) => acc + t.rows, 0).toLocaleString()}
+                    </h2>
+                  </div>
+                  <div className="card-panel" style={{ padding: '1.25rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Tổng dung lượng')}</span>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '6px 0 0', color: 'var(--color-text)' }}>
+                      {(dbTables.reduce((acc, t) => acc + t.data_size + t.index_size, 0) / 1024 / 1024).toFixed(2)} MB
+                    </h2>
+                  </div>
+                  <div className="card-panel" style={{ padding: '1.25rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: 12 }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{t('Dung lượng phân mảnh')}</span>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: '6px 0 0', color: dbTables.reduce((acc, t) => acc + t.overhead, 0) > 0 ? 'var(--color-primary)' : '#059669' }}>
+                      {(dbTables.reduce((acc, t) => acc + t.overhead, 0) / 1024 / 1024).toFixed(2)} MB
+                    </h2>
+                  </div>
+                </div>
+
+                {/* 2. Action Toolbar */}
+                <div className="card-panel" style={{ padding: '1.5rem', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: 16, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 800, margin: 0, textTransform: 'uppercase', color: 'var(--color-text-light)' }}>{t('Bộ công cụ Bảo trì')}</h4>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      disabled={dbActionRunning || loadingDb}
+                      onClick={() => runDbAction('optimize')}
+                      style={{ background: '#BD1D2D', borderColor: '#BD1D2D' }}
+                    >
+                      {dbActionRunning ? <Activity size={16} className="spin" /> : <RefreshCw size={16} />}
+                      {t('Tối ưu hóa bảng')}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn outline"
+                      disabled={dbActionRunning || loadingDb}
+                      onClick={() => runDbAction('clean_orphans')}
+                    >
+                      <Trash2 size={16} />
+                      {t('Dọn bản ghi mồ côi')}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn outline"
+                      disabled={dbActionRunning || loadingDb}
+                      onClick={() => runDbAction('fix_indexes')}
+                    >
+                      <Shield size={16} />
+                      {t('Khôi phục Index')}
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Log Output Console */}
+                {dbLogs.length > 0 && (
+                  <div style={{ padding: '1.25rem', background: '#0f172a', borderRadius: 12, border: '1px solid #1e293b', fontFamily: 'monospace', fontSize: '0.8125rem', color: '#38bdf8', maxHeight: '250px', overflowY: 'auto' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #1e293b', paddingBottom: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, color: '#94a3b8' }}>CONSOLE OUTPUT</span>
+                      <button type="button" onClick={() => setDbLogs([])} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>[CLEAR LOGS]</button>
+                    </div>
+                    {dbLogs.map((log, idx) => (
+                      <div key={idx} style={{ marginBottom: 4, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>
+                        {log}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 4. Table Size Breakdown */}
+                <div>
+                  <h4 style={{ fontSize: '0.9rem', fontWeight: 800, marginBottom: '1rem', textTransform: 'uppercase', color: 'var(--color-text-light)' }}>{t('Chi tiết dung lượng các bảng')}</h4>
+                  {loadingDb ? (
+                    <TableSkeleton rows={5} />
+                  ) : (
+                    <div className="table-responsive" style={{ border: '1px solid var(--color-border)', borderRadius: 12, overflow: 'hidden' }}>
+                      <table className="table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ background: 'var(--color-bg-light)', borderBottom: '1px solid var(--color-border)' }}>
+                            <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 800 }}>{t('Tên bảng')}</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800 }}>{t('Số dòng')}</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800 }}>{t('Dung lượng Data')}</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800 }}>{t('Dung lượng Index')}</th>
+                            <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800 }}>{t('Phân mảnh (Overhead)')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dbTables.map((tbl) => (
+                            <tr key={tbl.name} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                              <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--color-text)' }}>{tbl.name}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'right' }}>{tbl.rows.toLocaleString()}</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'right' }}>{(tbl.data_size / 1024).toFixed(1)} KB</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'right' }}>{(tbl.index_size / 1024).toFixed(1)} KB</td>
+                              <td style={{ padding: '12px 16px', textAlign: 'right', color: tbl.overhead > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                                {tbl.overhead > 0 ? `${(tbl.overhead / 1024).toFixed(1)} KB` : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

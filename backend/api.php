@@ -8374,6 +8374,87 @@ switch ($action) {
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 
+    case 'get_db_stats':
+        if (empty($decodedUser['role']) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin')) {
+            echo json_encode(['success' => false, 'message' => 'Quyền truy cập bị từ chối. Chỉ dành cho Admin.']);
+            break;
+        }
+        try {
+            $dbName = $_ENV['DB_NAME'] ?? $dbname;
+            $res = $conn->query("
+                SELECT 
+                    TABLE_NAME AS name, 
+                    TABLE_ROWS AS rows, 
+                    DATA_LENGTH AS data_size, 
+                    INDEX_LENGTH AS index_size, 
+                    DATA_FREE AS overhead 
+                FROM information_schema.TABLES 
+                WHERE TABLE_SCHEMA = '$dbName'
+                ORDER BY (DATA_LENGTH + INDEX_LENGTH) DESC
+            ");
+            $tables = [];
+            if ($res) {
+                while ($row = $res->fetch_assoc()) {
+                    $tables[] = [
+                        'name' => $row['name'],
+                        'rows' => (int) $row['rows'],
+                        'data_size' => (int) $row['data_size'],
+                        'index_size' => (int) $row['index_size'],
+                        'overhead' => (int) $row['overhead']
+                    ];
+                }
+            }
+            echo json_encode(['success' => true, 'tables' => $tables]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
+    case 'optimize_db':
+        if (empty($decodedUser['role']) || ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin')) {
+            echo json_encode(['success' => false, 'message' => 'Quyền truy cập bị từ chối. Chỉ dành cho Admin.']);
+            break;
+        }
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $actionType = $input['action_type'] ?? 'optimize';
+        try {
+            $logResults = [];
+            if ($actionType === 'optimize') {
+                $tablesToOptimize = ['leads', 'contacts', 'cooperation_slips', 'deposits', 'zalo_queue', 'mail_queue', 'activities', 'audit_logs', 'users', 'persons'];
+                foreach ($tablesToOptimize as $tbl) {
+                    $conn->query("OPTIMIZE TABLE `$tbl`");
+                    $logResults[] = "Đã tối ưu hóa bảng `$tbl` thành công.";
+                }
+            } else if ($actionType === 'clean_orphans') {
+                $conn->query("DELETE rc FROM round_consultants rc LEFT JOIN distribution_rounds r ON rc.round_id = r.id WHERE r.id IS NULL");
+                $orphansRc = $conn->affected_rows;
+                $logResults[] = "Đã dọn dẹp $orphansRc phân bổ vòng mồ côi (round_consultants).";
+
+                $conn->query("DELETE rc FROM round_consultants rc LEFT JOIN users u ON rc.consultant_id = u.id WHERE u.id IS NULL");
+                $orphansRcUsers = $conn->affected_rows;
+                $logResults[] = "Đã dọn dẹp $orphansRcUsers nhân viên mồ côi trong vòng phân bổ.";
+
+                $conn->query("DELETE pr FROM project_roster pr LEFT JOIN projects p ON pr.project_id = p.id WHERE p.id IS NULL");
+                $orphansPr = $conn->affected_rows;
+                $logResults[] = "Đã dọn dẹp $orphansPr dự án mồ côi trong danh sách bán hàng.";
+
+                $conn->query("DELETE fm FROM field_mappings fm LEFT JOIN sheet_connections sc ON fm.connection_id = sc.id WHERE sc.id IS NULL");
+                $orphansFm = $conn->affected_rows;
+                $logResults[] = "Đã dọn dẹp $orphansFm ánh xạ cột mồ côi (field_mappings).";
+            } else if ($actionType === 'fix_indexes') {
+                ob_start();
+                require_once __DIR__ . '/run_migrations.php';
+                ob_clean();
+                $logResults[] = "Đã tự động kiểm tra và tái kích hoạt các INDEX tối ưu hiệu năng cơ sở dữ liệu.";
+            }
+
+            logAdminAction($conn, $decodedUser['id'], 'DB_MAINTENANCE', ['action_type' => $actionType, 'results' => $logResults]);
+            echo json_encode(['success' => true, 'results' => $logResults]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        break;
+
     case 'save_settings':
         $input = json_decode(file_get_contents('php://input'), true);
         if (!$input) {
