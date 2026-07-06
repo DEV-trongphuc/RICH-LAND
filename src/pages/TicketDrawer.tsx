@@ -73,6 +73,21 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
     }
   }, [ticket]);
 
+  const [isVisible, setIsVisible] = useState(isOpen);
+  const [animateIn, setAnimateIn] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      const timer = setTimeout(() => setAnimateIn(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setAnimateIn(false);
+      const timer = setTimeout(() => setIsVisible(false), 420);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   if (!ticket) return null;
 
   const handleSend = async () => {
@@ -103,21 +118,6 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       }
     });
   };
-
-  const [isVisible, setIsVisible] = useState(isOpen);
-  const [animateIn, setAnimateIn] = useState(isOpen);
-
-  useEffect(() => {
-    if (isOpen) {
-      setIsVisible(true);
-      const timer = setTimeout(() => setAnimateIn(true), 10);
-      return () => clearTimeout(timer);
-    } else {
-      setAnimateIn(false);
-      const timer = setTimeout(() => setIsVisible(false), 420);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen]);
 
   if (!isVisible) return null;
   if (typeof document === 'undefined') return null;

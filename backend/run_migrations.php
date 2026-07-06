@@ -1824,7 +1824,9 @@ try {
           `citizen_id`,
           `address`,
           `bank_name`,
-          `bank_account`
+          `bank_account`,
+          `phone`,
+          `is_active`
         FROM `users`
     ");
     $logMsg("Đã cập nhật VIEW accounts để hỗ trợ mọi roles đăng nhập", "success");

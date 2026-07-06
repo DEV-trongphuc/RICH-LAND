@@ -46,6 +46,8 @@ const AccountsInner = () => {
     zalo_chat_id: '',
     role: 'viewer',
     avatar: '',
+    phone: '',
+    is_active: '1',
     dob: '',
     gender: '',
     citizen_id: '',
@@ -251,6 +253,8 @@ const AccountsInner = () => {
         zalo_chat_id: acc.zalo_chat_id || '',
         role: acc.role || 'sale',
         avatar: acc.avatar || '',
+        phone: acc.phone || '',
+        is_active: String(acc.is_active ?? '1'),
         dob: acc.dob || '',
         gender: acc.gender || '',
         citizen_id: acc.citizen_id || '',
@@ -271,6 +275,8 @@ const AccountsInner = () => {
       zalo_chat_id: '',
       role: 'viewer',
       avatar: '',
+      phone: '',
+      is_active: '1',
       dob: '',
       gender: '',
       citizen_id: '',
@@ -292,6 +298,8 @@ const AccountsInner = () => {
       zalo_chat_id: acc.zalo_chat_id || '',
       role: acc.role,
       avatar: acc.avatar || '',
+      phone: acc.phone || '',
+      is_active: String(acc.is_active ?? '1'),
       dob: acc.dob || '',
       gender: acc.gender || '',
       citizen_id: acc.citizen_id || '',
@@ -465,6 +473,11 @@ const AccountsInner = () => {
             {t('Thông tin cá nhân & Tài khoản')}
           </h2>
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <style>{`
+              .password-input-with-icon {
+                padding-left: 36px !important;
+              }
+            `}</style>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1rem', position: 'relative' }}>
               <div style={{ position: 'relative', width: '96px', height: '96px' }}>
                 <Avatar src={formData.avatar} name={formData.name || 'User'} size={96} />
@@ -516,6 +529,17 @@ const AccountsInner = () => {
                 value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 required
+              />
+            </div>
+
+            <div>
+              <label className="form-label">{t('Số điện thoại')}</label>
+              <input
+                type="tel"
+                className="form-input"
+                placeholder="VD: 0901234567"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
               />
             </div>
 
@@ -602,13 +626,16 @@ const AccountsInner = () => {
 
             <div>
               <label className="form-label">{t('Mật khẩu mới')}</label>
-              <input
-                type="password"
-                className="form-input"
-                value={formData.password}
-                onChange={e => setFormData({ ...formData, password: e.target.value })}
-                placeholder={t('Để trống nếu không muốn đổi')}
-              />
+              <div style={{ position: 'relative' }}>
+                <KeyRound size={16} style={{ position: 'absolute', left: 12, top: 9, color: 'var(--color-text-muted)' }} />
+                <input
+                  type="password"
+                  className="form-input password-input-with-icon"
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
+                  placeholder={t('Để trống nếu không muốn đổi')}
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
@@ -1239,7 +1266,12 @@ const AccountsInner = () => {
       <CustomModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editingAccount ? t('Sửa Tài khoản') : t('Thêm Tài khoản Mới')} width="680px">
         {modalOpen && (
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Avatar Upload Area */}
+            <style>{`
+              .password-input-with-icon {
+                padding-left: 36px !important;
+              }
+            `}</style>
+            {/* Avatar Upload Area */}
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -1348,6 +1380,16 @@ const AccountsInner = () => {
               />
             </div>
             <div className="form-group">
+              <label className="form-label">{t('Số điện thoại')}</label>
+              <input
+                type="tel"
+                className="form-input"
+                placeholder="VD: 0901234567"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
+            <div className="form-group">
               <label className="form-label">Zalo Bot Chat ID <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.8rem' }}>{t('(chỉ có thể hủy liên kết)')}</span></label>
               <input
                 className="form-input"
@@ -1360,11 +1402,10 @@ const AccountsInner = () => {
             <div className="form-group">
               <label className="form-label">{editingAccount ? t('Mật khẩu mới (Để trống nếu không đổi)') : t('Mật khẩu')} {editingAccount ? '' : <span style={{ color: 'var(--color-danger)' }}>*</span>}</label>
               <div style={{ position: 'relative' }}>
-                <KeyRound size={16} style={{ position: 'absolute', left: 12, top: 13, color: 'var(--color-text-muted)' }} />
+                <KeyRound size={16} style={{ position: 'absolute', left: 12, top: 9, color: 'var(--color-text-muted)' }} />
                 <input 
                   type="password"
-                  className="form-input" 
-                  style={{ paddingLeft: 36 }}
+                  className="form-input password-input-with-icon" 
                   placeholder={editingAccount ? t('Nhập để đổi mật khẩu mới') : t('Tối thiểu 6 ký tự')} 
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
@@ -1383,6 +1424,19 @@ const AccountsInner = () => {
                 ]}
                 value={formData.role}
                 onChange={val => setFormData({ ...formData, role: val.toString() })}
+                width="100%"
+                direction="up"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('Trạng thái')}</label>
+              <CustomSelect 
+                options={[
+                  { value: '1', label: t('Hoạt động') },
+                  { value: '0', label: t('Khóa tài khoản') }
+                ]}
+                value={formData.is_active}
+                onChange={val => setFormData({ ...formData, is_active: val.toString() })}
                 width="100%"
                 direction="up"
               />
@@ -1441,16 +1495,17 @@ const AccountsInner = () => {
                 onChange={e => setFormData({ ...formData, bank_account: e.target.value })}
               />
             </div>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">{t('Địa chỉ')}</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder={t('Nhập địa chỉ tạm trú/thường trú')}
-                value={formData.address}
-                onChange={e => setFormData({ ...formData, address: e.target.value })}
-              />
-            </div>
+          </div>
+
+          <div className="form-group" style={{ marginTop: '0.25rem' }}>
+            <label className="form-label">{t('Địa chỉ')}</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder={t('Nhập địa chỉ tạm trú/thường trú')}
+              value={formData.address}
+              onChange={e => setFormData({ ...formData, address: e.target.value })}
+            />
           </div>
 
           {editingAccount && editingAccount.zalo_chat_id && (
