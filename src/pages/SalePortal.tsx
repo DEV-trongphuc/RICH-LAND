@@ -343,6 +343,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsTasks, setWsTasks] = useState<any[]>([]);
   const [wsTeamId, setWsTeamId] = useState('');
   const [wsUserId, setWsUserId] = useState('');
+  const [wsActivityType, setWsActivityType] = useState('task');
+  const [wsRelatedType, setWsRelatedType] = useState('');
   const [teamsList, setTeamsList] = useState<any[]>([]);
   const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([]);
 
@@ -1013,7 +1015,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setLoadingWsTasks(true);
     try {
-      let url = '/activities?type=task&limit=100';
+      let url = '/activities?limit=100';
+      if (wsActivityType && wsActivityType !== 'all') {
+        url += `&type=${wsActivityType}`;
+      }
+      if (wsRelatedType) {
+        url += `&related_type=${wsRelatedType}`;
+      }
       if (wsPriority) url += `&priority=${wsPriority}`;
       if (wsStatus) url += `&status=${wsStatus}`;
       
@@ -1098,7 +1106,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (activeTab === 'workspace') {
       fetchWorkspaceTasks();
     }
-  }, [activeTab, wsPriority, wsStatus, wsDatePreset, wsStartDate, wsEndDate, wsTeamId, wsUserId]);
+  }, [activeTab, wsPriority, wsStatus, wsDatePreset, wsStartDate, wsEndDate, wsTeamId, wsUserId, wsActivityType, wsRelatedType]);
 
   useEffect(() => {
     if (activeTab === 'workspace') {
@@ -3416,20 +3424,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               >
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-                  gap: '12px',
-                  paddingTop: '0.5rem',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+                  gap: '14px',
+                  paddingTop: '0.75rem',
                   borderTop: '1px solid var(--color-border-light)'
                 }}>
                   {/* Priority Filter */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Độ ưu tiên</label>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Độ ưu tiên')}</label>
                     <CustomSelect
                       options={[
-                        { value: '', label: 'Tất cả độ ưu tiên' },
-                        { value: 'high', label: 'Cao' },
-                        { value: 'medium', label: 'Trung bình' },
-                        { value: 'low', label: 'Thấp' }
+                        { value: '', label: t('Tất cả độ ưu tiên') },
+                        { value: 'high', label: t('Cao') },
+                        { value: 'medium', label: t('Trung bình') },
+                        { value: 'low', label: t('Thấp') }
                       ]}
                       value={wsPriority}
                       onChange={val => setWsPriority(String(val))}
@@ -3438,12 +3446,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                   {/* Status Filter */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Trạng thái</label>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Trạng thái')}</label>
                     <CustomSelect
                       options={[
-                        { value: 'planned', label: 'Chưa hoàn thành' },
-                        { value: '', label: 'Tất cả trạng thái' },
-                        { value: 'done', label: 'Đã hoàn thành' }
+                        { value: 'planned', label: t('Chưa hoàn thành') },
+                        { value: '', label: t('Tất cả trạng thái') },
+                        { value: 'done', label: t('Đã hoàn thành') }
                       ]}
                       value={wsStatus}
                       onChange={val => setWsStatus(String(val))}
@@ -3452,27 +3460,86 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                   {/* Date Preset Filter */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Thời gian hạn</label>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Thời gian hạn')}</label>
                     <CustomSelect
                       options={[
-                        { value: 'all', label: 'Tất cả thời gian' },
-                        { value: 'today', label: 'Hôm nay' },
-                        { value: 'tomorrow', label: 'Ngày mai' },
-                        { value: 'week', label: 'Tuần này' },
-                        { value: '7_days', label: '7 ngày qua' },
-                        { value: '30_days', label: '30 ngày qua' },
-                        { value: 'this_month', label: 'Tháng này' },
-                        { value: 'last_month', label: 'Tháng trước' },
-                        { value: 'overdue', label: 'Quá hạn' },
-                        { value: 'custom', label: 'Tùy chỉnh ngày...' }
+                        { value: 'all', label: t('Tất cả thời gian') },
+                        { value: 'today', label: t('Hôm nay') },
+                        { value: 'tomorrow', label: t('Ngày mai') },
+                        { value: 'week', label: t('Tuần này') },
+                        { value: '7_days', label: t('7 ngày qua') },
+                        { value: '30_days', label: t('30 ngày qua') },
+                        { value: 'this_month', label: t('Tháng này') },
+                        { value: 'last_month', label: t('Tháng trước') },
+                        { value: 'overdue', label: t('Quá hạn') },
+                        { value: 'custom', label: t('Tùy chỉnh ngày...') }
                       ]}
                       value={wsDatePreset}
                       onChange={val => setWsDatePreset(String(val))}
                     />
                   </div>
+
+                  {/* Activity Type Filter */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Phân loại công việc')}</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'task', label: t('Nhiệm vụ (Tasks)') },
+                        { value: 'all', label: t('Tất cả phân loại') },
+                        { value: 'call', label: t('Cuộc gọi (Calls)') },
+                        { value: 'email', label: t('Emails') },
+                        { value: 'meeting', label: t('Cuộc gặp') },
+                        { value: 'note', label: t('Ghi chú') }
+                      ]}
+                      value={wsActivityType}
+                      onChange={val => setWsActivityType(String(val))}
+                    />
+                  </div>
+
+                  {/* Related Type Filter */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Liên quan đến')}</label>
+                    <CustomSelect
+                      options={[
+                        { value: '', label: t('Tất cả đối tượng') },
+                        { value: 'contact', label: t('Khách hàng (Contacts)') },
+                        { value: 'company', label: t('Pháp nhân (Companies)') },
+                        { value: 'deal', label: t('Giao dịch (Deals)') }
+                      ]}
+                      value={wsRelatedType}
+                      onChange={val => setWsRelatedType(String(val))}
+                    />
+                  </div>
+
+                  {/* Team filter (Admin/Manager only) */}
+                  {['admin', 'superadmin', 'super_admin', 'manager'].includes(currentUser?.role || '') && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Nhóm')}</label>
+                      <CustomSelect
+                        options={teamOptions}
+                        value={wsTeamId}
+                        onChange={val => { setWsTeamId(String(val)); setWsUserId(''); }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Consultant filter (Admin/Manager only) */}
+                  {['admin', 'superadmin', 'super_admin', 'manager'].includes(currentUser?.role || '') && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{t('Nhân viên')}</label>
+                      <CustomSelect
+                        options={consultantOptions}
+                        value={wsUserId}
+                        onChange={val => setWsUserId(String(val))}
+                        showAvatars
+                        searchable
+                        align="right"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* Custom Date Pickers inside Advanced Filters */}
+                {/* Custom Date Pickers */}
                 {wsDatePreset === 'custom' && (
                   <div style={{
                     display: 'flex',
@@ -3483,7 +3550,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     borderTop: '1px dashed var(--color-border-light)'
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Từ ngày:</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Từ ngày:')}</span>
                       <input
                         type="date"
                         className="form-input"
@@ -3493,7 +3560,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       />
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Đến ngày:</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Đến ngày:')}</span>
                       <input
                         type="date"
                         className="form-input"
@@ -3505,42 +3572,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   </div>
                 )}
 
-                {/* Team / Consultant filters inside Advanced Filters */}
-                {['admin', 'superadmin', 'super_admin', 'manager'].includes(currentUser?.role || '') && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '16px',
-                    padding: '0.75rem 0 0 0',
-                    marginTop: '0.5rem',
-                    borderTop: '1px dashed var(--color-border-light)',
-                    flexWrap: 'wrap'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nhóm:</span>
-                      <div style={{ width: '180px' }}>
-                        <CustomSelect
-                          options={teamOptions}
-                          value={wsTeamId}
-                          onChange={val => { setWsTeamId(String(val)); setWsUserId(''); }}
-                        />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Nhân viên:</span>
-                      <div style={{ width: '180px' }}>
-                        <CustomSelect
-                          options={consultantOptions}
-                          value={wsUserId}
-                          onChange={val => setWsUserId(String(val))}
-                          showAvatars
-                          searchable
-                          align="right"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* Clear Filter Toolbar */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '1px dashed var(--color-border-light)',
+                  gap: '8px'
+                }}>
+                  <button
+                    type="button"
+                    className="btn outline sm"
+                    onClick={() => {
+                      setWsPriority('');
+                      setWsStatus('planned');
+                      setWsDatePreset('all');
+                      setWsStartDate('');
+                      setWsEndDate('');
+                      setWsTeamId('');
+                      setWsUserId('');
+                      setWsActivityType('task');
+                      setWsRelatedType('');
+                      setWsSearch('');
+                      toast.success(t('Đã reset toàn bộ bộ lọc'));
+                    }}
+                    style={{ fontSize: '0.75rem', padding: '6px 12px' }}
+                  >
+                    {t('Xóa bộ lọc')}
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
