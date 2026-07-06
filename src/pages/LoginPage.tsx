@@ -10,15 +10,36 @@ import { useMockStore } from '../store/mockStore';
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
-  const mockUsers = useMockStore(state => state.users);
-  const [form, setForm] = useState({ email: 'admin@richland.crm', password: 'password' });
+  const devLoginAccounts = [
+    { name: 'Super Admin', email: 'superadmin@richland.net', password: 'superadmin123', role: 'superadmin' },
+    { name: 'Admin', email: 'admin@richland.net', password: 'admin123', role: 'admin' },
+    { name: 'Director (Giám đốc KD)', email: 'director@richland.net', password: 'director123', role: 'director' },
+    { name: 'Manager (Trưởng nhóm)', email: 'manager@richland.net', password: 'manager123', role: 'manager' },
+    { name: 'Sale (Hải Đăng)', email: 'haidang@richland.net', password: 'sale123', role: 'sales' },
+    { name: 'Assistant (Trợ lý)', email: 'assistant@richland.net', password: 'assistant123', role: 'assistant' },
+    { name: 'Viewer (Người xem)', email: 'viewer@richland.net', password: 'viewer123', role: 'viewer' },
+  ];
+
+  const [form, setForm] = useState({ email: 'admin@richland.net', password: 'admin123' });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleMockLogin = (user: any) => {
-    setAuth(user, 'mock_access_token', 'mock_refresh_token');
-    navigate('/');
+  const handleDevLogin = async (account: typeof devLoginAccounts[0]) => {
+    setLoading(true);
+    setError('');
+    try {
+      const { data } = await api.post('/auth/login', {
+        email: account.email,
+        password: account.password
+      });
+      setAuth(data.data.user, data.data.access_token, data.data.refresh_token);
+      navigate('/');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Đăng nhập dev thất bại. Vui lòng chạy run_migrations.php.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,22 +122,23 @@ export const LoginPage: React.FC = () => {
         {DEV_MODE && (
           <div className={styles.devModeSection}>
             <p className={styles.devModeTitle}>
-              DEV MODE: Đăng nhập nhanh theo Role
+              DEV MODE: Đăng nhập nhanh theo Role (Real DB Account)
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {mockUsers.map((u: any) => (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
+              {devLoginAccounts.map((acc) => (
                 <button
-                  key={u.id}
+                  key={acc.email}
                   type="button"
                   className={styles.mockUserBtn}
-                  onClick={() => handleMockLogin(u)}
+                  onClick={() => handleDevLogin(acc)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', fontSize: '0.8rem', width: '100%', height: 'auto' }}
                 >
-                  <div className={styles.mockUserAvatar}>
-                    {u.avatar ? <img src={u.avatar} alt="" /> : <User size={14} />}
+                  <div className={styles.mockUserAvatar} style={{ flexShrink: 0 }}>
+                    <User size={12} />
                   </div>
-                  <div className={styles.mockUserText}>
-                    <div className="name">{u.full_name}</div>
-                    <div className="role">Role: {u.role}</div>
+                  <div className={styles.mockUserText} style={{ textAlign: 'left' }}>
+                    <div className="name" style={{ fontWeight: 600, fontSize: '0.78rem' }}>{acc.name}</div>
+                    <div className="role" style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>Role: {acc.role}</div>
                   </div>
                 </button>
               ))}

@@ -1755,6 +1755,27 @@ try {
 
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
 
+    //    // Seed default users for Developer Quick Login (All Roles)
+    $devUsers = [
+        ['id' => 998, 'username' => 'superadmin', 'email' => 'superadmin@richland.net', 'password' => 'superadmin123', 'name' => 'Super Admin Richland', 'role' => 'superadmin'],
+        ['id' => 999, 'username' => 'admin', 'email' => 'admin@richland.net', 'password' => 'admin123', 'name' => 'Admin Richland', 'role' => 'admin'],
+        ['id' => 1000, 'username' => 'haidang', 'email' => 'haidang@richland.net', 'password' => 'sale123', 'name' => 'Nguyễn Hải Đăng (Sale)', 'role' => 'sales'],
+        ['id' => 1001, 'username' => 'director', 'email' => 'director@richland.net', 'password' => 'director123', 'name' => 'Giám đốc kinh doanh Richland', 'role' => 'director'],
+        ['id' => 1002, 'username' => 'manager', 'email' => 'manager@richland.net', 'password' => 'manager123', 'name' => 'Trưởng nhóm Richland', 'role' => 'manager'],
+        ['id' => 1003, 'username' => 'assistant', 'email' => 'assistant@richland.net', 'password' => 'assistant123', 'name' => 'Trợ lý Richland', 'role' => 'assistant'],
+        ['id' => 1004, 'username' => 'viewer', 'email' => 'viewer@richland.net', 'password' => 'viewer123', 'name' => 'Người xem Richland', 'role' => 'viewer'],
+    ];
+
+    foreach ($devUsers as $du) {
+        $pHash = password_hash($du['password'], PASSWORD_BCRYPT);
+        $conn->query("
+            INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
+            VALUES ({$du['id']}, 1, '{$du['username']}', '{$du['email']}', '$pHash', '{$du['name']}', '{$du['role']}', 1)
+            ON DUPLICATE KEY UPDATE password_hash = '$pHash', role = '{$du['role']}', username = '{$du['username']}', full_name = '{$du['name']}'
+        ");
+    }
+    $logMsg("Da khoi tao/cap nhat tai khoan cho tat ca cac quyen de Dev Quick Login", "success");
+
     // 7. night_shift_registrations table
     $conn->query("
         CREATE TABLE IF NOT EXISTS `night_shift_registrations` (
@@ -1831,23 +1852,7 @@ try {
     ");
     $logMsg("Đã cập nhật VIEW consultants để hỗ trợ các trường ERP mới", "success");
 
-    // Seed default Admin & Sale users for Developer Quick Login
-    $adminEmail = 'admin@richland.net';
-    $adminPassHash = password_hash('admin123', PASSWORD_BCRYPT);
-    $conn->query("
-        INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
-        VALUES (999, 1, 'admin', '$adminEmail', '$adminPassHash', 'Admin Richland', 'admin', 1)
-        ON DUPLICATE KEY UPDATE password_hash = '$adminPassHash', role = 'admin', username = 'admin', full_name = 'Admin Richland'
-    ");
-    $logMsg("Đã khởi tạo/cập nhật tài khoản Admin thực cho Dev Quick Login", "success");
-
-    $saleEmail = 'haidang@richland.net';
-    $salePassHash = password_hash('sale123', PASSWORD_BCRYPT);
-    $conn->query("
-        INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
-        VALUES (1000, 1, 'haidang', '$saleEmail', '$salePassHash', 'Nguyễn Hải Đăng', 'sales', 1)
-        ON DUPLICATE KEY UPDATE password_hash = '$salePassHash', role = 'sales', username = 'haidang', full_name = 'Nguyễn Hải Đăng'
-    ");
+    // Dev quick login users seeded above
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_day', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '10')");
