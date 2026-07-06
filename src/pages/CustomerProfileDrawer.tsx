@@ -20,6 +20,7 @@ import { compressToWebP } from '../utils/imageCompress';
 import { TicketDrawer } from './TicketDrawer';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { numberToText } from '../utils/numberToText';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
@@ -3838,13 +3839,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                           <div className="form-group">
                             <label className="form-label">Dự kiến doanh thu</label>
-                            <div style={{ position: 'relative' }}>
-                              <input className="form-input" type="number" placeholder="0" style={{ paddingRight: '40px' }} value={formData.expected_revenue || ''} onChange={e => {
-                                const val = e.target.value;
-                                setFormData((prev: any) => ({ ...prev, expected_revenue: val }));
-                              }} />
-                              <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>VNĐ</span>
-                            </div>
+                            <CurrencyInput
+                              value={formData.expected_revenue || 0}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, expected_revenue: val }))}
+                              placeholder="VD: 1.500.000.000"
+                            />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Xác suất chốt (%)</label>

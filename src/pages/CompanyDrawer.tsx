@@ -16,6 +16,7 @@ import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 import { numberToText } from '../utils/numberToText';
 import { useAuth } from '../contexts/AuthContext';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 
 interface CompanyDrawerProps {
   isOpen: boolean;
@@ -402,19 +403,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                           <input className="form-input" placeholder="VD: Công nghệ, Xây dựng..." value={formData?.industry || ''} onChange={e => setFormData((prev: any) => ({ ...prev, industry: e.target.value }))} />
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Doanh thu dự kiến (VND)</label>
-                          <input 
-                            className="form-input" 
-                            type="number" 
-                            placeholder="Nhập giá trị..." 
-                            value={formData?.expected_revenue || ''} 
-                            onChange={e => setFormData((prev: any) => ({ ...prev, expected_revenue: e.target.value }))} 
+                          <label className="form-label">Doanh thu dự kiến</label>
+                          <CurrencyInput
+                            value={formData?.expected_revenue || 0}
+                            onChange={val => setFormData((prev: any) => ({ ...prev, expected_revenue: val }))}
+                            placeholder="VD: 1.500.000.000"
                           />
-                          {formData?.expected_revenue && Number(formData.expected_revenue) > 0 && (
-                            <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
-                              {numberToText(Number(formData.expected_revenue))}
-                            </div>
-                          )}
                         </div>
                       </div>
 
@@ -894,13 +888,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     </div>
                     <div className="grid grid-2">
                         <div className="form-group">
-                          <label className="form-label">Giá trị dự kiến (VND)</label>
-                          <input className="form-input" type="number" placeholder="0" value={dealForm.value} onChange={e => setDealForm(prev => ({ ...prev, value: e.target.value }))} />
-                          {dealForm.value && Number(dealForm.value) > 0 && (
-                            <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
-                              {numberToText(Number(dealForm.value))}
-                            </div>
-                          )}
+                          <label className="form-label">Giá trị dự kiến</label>
+                          <CurrencyInput
+                            value={dealForm.value || 0}
+                            onChange={val => setDealForm(prev => ({ ...prev, value: String(val) }))}
+                            placeholder="VD: 1.500.000.000"
+                          />
                         </div>
                       <div className="form-group">
                         <label className="form-label">Giai đoạn</label>
