@@ -109,14 +109,14 @@ export const ActivitiesPage: React.FC = () => {
   const teamOptions = useMemo(() => {
     return [
       { value: '', label: 'Tất cả Nhóm' },
-      ...teamsList.map(t => ({ value: String(t.id), label: t.name }))
+      ...teamsList.map(t => ({ value: String(t.id), label: t.name, avatar: undefined }))
     ];
   }, [teamsList]);
 
   const consultantOptions = useMemo(() => {
     return [
       { value: '', label: 'Tất cả Nhân viên' },
-      ...consultantsList.map(u => ({ value: String(u.id), label: u.name, avatar: u.avatar || u.avatar_url }))
+      ...consultantsList.map(u => ({ value: String(u.id), label: u.name, avatar: (u as any).avatar || (u as any).avatar_url }))
     ];
   }, [consultantsList]);
 

@@ -2609,10 +2609,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             />
             <motion.div
               className={styles.drawer}
-              initial={{ x: '100vw', opacity: 0, filter: 'blur(6px)' }}
+              initial={{ x: '160px', opacity: 0, filter: 'blur(4px)' }}
               animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
-              exit={{ x: '100vw', opacity: 0, filter: 'blur(6px)' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 220 }}
+              exit={{ x: '160px', opacity: 0, filter: 'blur(4px)' }}
+              transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.42 }}
               style={{ x: '100vw' }}
             >
               <AnimatePresence>

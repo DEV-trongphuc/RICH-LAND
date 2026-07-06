@@ -625,10 +625,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const content = (
     <motion.div 
       className={styles.drawer}
-      initial={embedMode ? {} : { x: '100vw', opacity: 0, filter: 'blur(6px)' }}
+      initial={embedMode ? {} : { x: '160px', opacity: 0, filter: 'blur(4px)' }}
       animate={embedMode ? {} : { x: 0, opacity: 1, filter: 'blur(0px)' }}
-      exit={embedMode ? {} : { x: '100vw', opacity: 0, filter: 'blur(6px)' }}
-      transition={{ type: 'spring', damping: 30, stiffness: 220 }}
+      exit={embedMode ? {} : { x: '160px', opacity: 0, filter: 'blur(4px)' }}
+      transition={embedMode ? {} : { type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.42 }}
       style={embedMode ? {
         width: '100%',
         background: 'var(--color-bg)',

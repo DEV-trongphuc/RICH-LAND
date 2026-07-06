@@ -71,10 +71,10 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
             />
             <motion.div
               className={styles.drawer}
-              initial={{ x: '100%', opacity: 0, filter: 'blur(6px)' }}
+              initial={{ x: '160px', opacity: 0, filter: 'blur(4px)' }}
               animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
-              exit={{ x: '100%', opacity: 0, filter: 'blur(6px)' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 220 }}
+              exit={{ x: '160px', opacity: 0, filter: 'blur(4px)' }}
+              transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.42 }}
             >
               {/* Header */}
               <div className={styles.header}>
