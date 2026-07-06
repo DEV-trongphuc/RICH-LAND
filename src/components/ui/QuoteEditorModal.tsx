@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FileText, Search, Trash2, CheckCircle2, Package, Plus, X, 
@@ -43,14 +44,16 @@ interface QuoteEditorProps {
   quote?: any; // If editing
   onSuccess: () => void;
   initialContact?: Contact | null;
+  isViewer?: boolean;
+  onEdit?: () => void;
 }
 
 export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({ 
-  isOpen, onClose, quote, onSuccess, initialContact 
+  isOpen, onClose, quote, onSuccess, initialContact, isViewer: isViewerProp, onEdit
 }) => {
   const { addToast } = useUIStore();
   const { user: currentUser } = useAuth();
-  const isViewer = currentUser?.role === 'viewer';
+  const isViewer = isViewerProp || currentUser?.role === 'viewer';
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -147,6 +150,17 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
     }
   }, [quote, deals]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   const filteredProducts = useMemo(() => {
     if (!showProductDropdown) return [];
     const prodList = Array.isArray(products) ? products : [];
@@ -228,17 +242,17 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', zIndex: 9999, overflowY: 'auto' }}>
+  return createPortal(
+    <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, zIndex: 9999, overflow: 'hidden', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       <AnimatePresence>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
           className="modal-sheet"
-          style={{ width: '95%', maxWidth: '1100px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: 'auto' }}
+          style={{ width: '100%', height: '100%', maxWidth: 'none', maxHeight: 'none', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', margin: 0, background: 'var(--color-bg)' }}
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="modal-header">
+          <div className="modal-header" style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}>
             <div className="flex items-center gap-4">
               <div style={{ background: 'var(--color-primary)', color: '#fff', width: 48, height: 48, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(163, 20, 34, 0.25)' }}>
                 <FileText size={24} />
@@ -251,12 +265,12 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
             <button className="btn-icon sm" onClick={onClose}><X size={20} /></button>
           </div>
 
-          <div className="modal-body" style={{ background: 'var(--color-bg)', padding: '1.5rem 2rem 4rem', flex: 1, overflowY: 'auto' }}>
+          <div className="modal-body" style={{ background: 'var(--color-bg)', padding: '1.5rem 2rem 1.5rem', flex: 1, overflowY: 'auto', maxHeight: 'none' }}>
             <fieldset disabled={isViewer} style={{ border: 'none', padding: 0, margin: 0, width: '100%', display: 'contents' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.5rem', alignItems: 'stretch', minHeight: 'calc(100vh - 180px)' }}>
               
               {/* Left Column */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', height: '100%' }}>
                 {/* Section 1: Basic Info */}
                 <div className="card" style={{ padding: '1.5rem', border: '1px solid var(--color-border-light)' }}>
                   <h3 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '6px' }}><FileType size={14} /> Thông tin chung</h3>
@@ -559,22 +573,22 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', flex: 1 }}>
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <label className="form-label">Ghi chú gửi khách</label>
                     <textarea 
                       className="form-textarea"
-                      style={{ minHeight: '90px' }}
+                      style={{ flex: 1, minHeight: '120px', resize: 'none' }}
                       placeholder="Lời nhắn hoặc ghi chú đặc biệt..."
                       value={form.notes}
                       onChange={e => setForm({ ...form, notes: e.target.value })}
                     />
                   </div>
-                  <div className="form-group">
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                     <label className="form-label">Điều khoản áp dụng</label>
                     <textarea 
                       className="form-textarea"
-                      style={{ minHeight: '90px' }}
+                      style={{ flex: 1, minHeight: '120px', resize: 'none' }}
                       value={form.terms}
                       onChange={e => setForm({ ...form, terms: e.target.value })}
                     />
@@ -583,7 +597,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
               </div>
 
               {/* Right Column: Financials - Sticky */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
                 <div className="card overflow-hidden" style={{ border: '1px solid var(--color-border-light)', borderRadius: '20px' }}>
                   {/* Panel header */}
                   <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface)' }}>
@@ -644,7 +658,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                     {/* Total */}
                     <div style={{ background: 'var(--color-primary-light)', borderRadius: '12px', padding: '0.875rem 1rem' }}>
                       <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Tổng cộng báo giá</div>
-                      <div style={{ fontSize: '1.625rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>{FMT(total)}</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{FMT(total)}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Đã bao gồm thuế & chiết khấu</div>
                       {total > 0 && (
                         <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 700, fontStyle: 'italic', marginTop: '10px', lineHeight: 1.4, borderTop: '1px solid rgba(189, 29, 45, 0.1)', paddingTop: '8px' }}>
@@ -774,19 +788,34 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
             </fieldset>
           </div>
 
-          <div className="modal-footer">
-             <button className="btn ghost font-bold text-muted" onClick={onClose}>Hủy bỏ</button>
-             <button 
-               className="btn primary" 
-               style={{ minWidth: '220px', boxShadow: isViewer ? 'none' : '0 10px 20px -5px rgba(163, 20, 34, 0.4)', background: isViewer ? 'var(--color-border)' : 'var(--color-primary)', color: isViewer ? 'var(--color-text-muted)' : 'white' }}
-               onClick={handleSave}
-               disabled={loading || isViewer}
-             >
-               {loading ? <Loader2 className="animate-spin" /> : (isViewer ? 'Bạn không có quyền chỉnh sửa' : (quote ? 'Cập nhật thay đổi' : 'Xác nhận & Lưu báo giá'))}
+          <div className="modal-footer" style={{ padding: '0.75rem 2rem', background: 'var(--color-bg)', borderTop: 'none', borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}>
+             <button className="btn ghost font-bold text-muted" onClick={onClose}>
+               {isViewerProp ? 'Đóng' : 'Hủy bỏ'}
              </button>
+             {isViewerProp ? (
+               currentUser?.role !== 'viewer' && onEdit && (
+                 <button 
+                   className="btn primary" 
+                   style={{ minWidth: '220px', background: 'var(--color-primary)', color: 'white' }}
+                   onClick={onEdit}
+                 >
+                   Chỉnh sửa báo giá
+                 </button>
+               )
+             ) : (
+               <button 
+                 className="btn primary" 
+                 style={{ minWidth: '220px', boxShadow: isViewer ? 'none' : '0 10px 20px -5px rgba(163, 20, 34, 0.4)', background: isViewer ? 'var(--color-border)' : 'var(--color-primary)', color: isViewer ? 'var(--color-text-muted)' : 'white' }}
+                 onClick={handleSave}
+                 disabled={loading || isViewer}
+               >
+                 {loading ? <Loader2 className="animate-spin" /> : (isViewer ? 'Bạn không có quyền chỉnh sửa' : (quote ? 'Cập nhật thay đổi' : 'Xác nhận & Lưu báo giá'))}
+               </button>
+             )}
           </div>
         </motion.div>
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body
   );
 };

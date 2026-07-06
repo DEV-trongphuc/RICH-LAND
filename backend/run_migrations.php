@@ -1912,6 +1912,19 @@ try {
         $safeAddIndex($conn, 'leads', 'idx_leads_email', 'email');
         $safeAddIndex($conn, 'leads', 'idx_leads_created_at', 'created_at');
 
+        // Added high-performance indexes for scale (100k+ rows)
+        $safeAddIndex($conn, 'leads', 'idx_leads_status_created_at', '`status`, `created_at`');
+        $safeAddIndex($conn, 'leads', 'idx_leads_assigned_status', '`assigned_to`, `status`');
+        $safeAddIndex($conn, 'leads', 'idx_leads_assigned_accepted', '`assigned_to`, `is_accepted`');
+        $safeAddIndex($conn, 'lead_offers', 'idx_lead_offers_status_expires', '`status`, `expires_at`');
+        $safeAddIndex($conn, 'lead_offers', 'idx_lead_offers_user_status', '`user_id`, `status`');
+        $safeAddIndex($conn, 'cooperation_slips', 'idx_coop_slips_status_created', '`status`, `created_at`');
+        $safeAddIndex($conn, 'deposits', 'idx_deposits_status_created', '`status`, `created_at`');
+        $safeAddIndex($conn, 'zalo_queue', 'idx_zalo_queue_status_created', '`status`, `created_at`');
+        $safeAddIndex($conn, 'mail_queue', 'idx_mail_queue_status_created', '`status`, `created_at`');
+        $safeAddIndex($conn, 'audit_logs', 'idx_audit_logs_action_created', '`action`, `created_at`');
+        $safeAddIndex($conn, 'audit_logs', 'idx_audit_logs_resource_id', '`resource`, `resource_id`');
+
         // Self-healing check: ensure edit_history exists in notes
         $chkNoteEditHistory = $conn->query("SHOW COLUMNS FROM notes LIKE 'edit_history'");
         if ($chkNoteEditHistory && $chkNoteEditHistory->num_rows === 0) {

@@ -19,6 +19,7 @@ import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
+import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 10;
 
@@ -37,6 +38,7 @@ export const QuotesPage: React.FC = () => {
   const [period, setPeriod] = useState<Period>('this_month');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState('');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -64,8 +66,8 @@ export const QuotesPage: React.FC = () => {
       const state = getFilteredMockState();
       let list = [...state.quotes];
 
-      if (search) {
-        const s = search.toLowerCase();
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
         list = list.filter(q => q.quote_number.toLowerCase().includes(s) || q.title.toLowerCase().includes(s) || q.contact_name?.toLowerCase().includes(s));
       }
 
@@ -94,7 +96,7 @@ export const QuotesPage: React.FC = () => {
         from: dateRange.from,
         to: dateRange.to,
         status: statusFilter,
-        search: search
+        search: debouncedSearch
       };
       const r = await api.get('/quotes', { params });
       const data = r.data.data;
@@ -108,7 +110,7 @@ export const QuotesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, dateRange, statusFilter, search]);
+  }, [page, dateRange, statusFilter, debouncedSearch]);
 
   useEffect(() => { fetchQuotes(); }, [fetchQuotes]);
 
@@ -450,65 +452,23 @@ export const QuotesPage: React.FC = () => {
       />
 
       {/* Preview Modal */}
-      <CustomModal 
-        isOpen={!!previewItem} 
+      <QuoteEditorModal 
+        isOpen={!!previewItem}
         onClose={() => setPreviewItem(null)}
-        title={`Chi tiết báo giá: ${previewItem?.quote_number || ''}`}
-      >
-        {previewItem && (
-          <div className="p-2">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="text-xl font-bold mb-1">{previewItem.title}</h2>
-                <div className="flex items-center gap-2 text-sm text-light">
-                  <User size={14} /> {previewItem.contact_name || 'Khách lẻ'}
-                  {previewItem.company_name && <span>• {previewItem.company_name}</span>}
-                </div>
-              </div>
-              <div className={`badge ${STATUS_CONFIG[previewItem.status]?.class || 'info'}`}>
-                {STATUS_CONFIG[previewItem.status]?.icon} {STATUS_CONFIG[previewItem.status]?.label}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8 mb-8">
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Mã báo giá</label>
-                  <p className="font-mono font-bold text-primary">{previewItem.quote_number}</p>
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Ngày tạo</label>
-                  <p className="font-bold">{fmtDate(previewItem.created_at)}</p>
-                </div>
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Hạn hiệu lực</label>
-                  <p className={`font-bold ${new Date(previewItem.valid_until) < new Date() ? 'text-danger' : ''}`}>
-                    {fmtDate(previewItem.valid_until)}
-                  </p>
-                </div>
-              </div>
-              <div className="bg-primary-light rounded-2xl p-6 flex flex-col justify-center">
-                <label className="text-[10px] uppercase tracking-widest text-primary block mb-1">Tổng cộng (Đã thuế)</label>
-                <p className="text-3xl font-bold text-primary tracking-tighter">{FMT(previewItem.total)}</p>
-              </div>
-            </div>
-
-            {previewItem.notes && (
-              <div className="mb-6">
-                <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Ghi chú</label>
-                <div className="bg-bg p-4 rounded-xl text-sm italic">{previewItem.notes}</div>
-              </div>
-            )}
-
-            <div className="flex gap-3 justify-end mt-8 border-t pt-6">
-              <button className="btn outline" onClick={() => setPreviewItem(null)}>Đóng</button>
-              <button className="btn primary" onClick={() => { handleOpenEditor(previewItem); setPreviewItem(null); }}>
-                <Pencil size={18} /> Chỉnh sửa báo giá
-              </button>
-            </div>
-          </div>
-        )}
-      </CustomModal>
+        quote={previewItem}
+        isViewer={true}
+        onEdit={() => {
+          const itemToEdit = previewItem;
+          setPreviewItem(null);
+          setTimeout(() => {
+            handleOpenEditor(itemToEdit);
+          }, 150);
+        }}
+        onSuccess={() => {
+          setPreviewItem(null);
+          fetchQuotes();
+        }}
+      />
     </div>
   );
 };

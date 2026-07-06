@@ -1509,6 +1509,31 @@ ALTER TABLE `deposits`
 ALTER TABLE `notifications`
   ADD KEY `idx_notifications_user_unread` (`user_id`, `is_read`);
 
+ALTER TABLE `leads`
+  ADD KEY `idx_leads_status_created_at` (`status`, `created_at`),
+  ADD KEY `idx_leads_assigned_status` (`assigned_to`, `status`),
+  ADD KEY `idx_leads_assigned_accepted` (`assigned_to`, `is_accepted`);
+
+ALTER TABLE `lead_offers`
+  ADD KEY `idx_lead_offers_status_expires` (`status`, `expires_at`),
+  ADD KEY `idx_lead_offers_user_status` (`user_id`, `status`);
+
+ALTER TABLE `cooperation_slips`
+  ADD KEY `idx_coop_slips_status_created` (`status`, `created_at`);
+
+ALTER TABLE `deposits`
+  ADD KEY `idx_deposits_status_created` (`status`, `created_at`);
+
+ALTER TABLE `zalo_queue`
+  ADD KEY `idx_zalo_queue_status_created` (`status`, `created_at`);
+
+ALTER TABLE `mail_queue`
+  ADD KEY `idx_mail_queue_status_created` (`status`, `created_at`);
+
+ALTER TABLE `audit_logs`
+  ADD KEY `idx_audit_logs_action_created` (`action`, `created_at`),
+  ADD KEY `idx_audit_logs_resource_id` (`resource`, `resource_id`);
+
 
 -- ────────────────────────────────────────────────────────
 -- INITIAL SEED DATA

@@ -8,6 +8,8 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
+import { useLocation } from 'react-router-dom';
+import { Pagination } from '../components/ui/Pagination';
 
 interface CooperationSlip {
   id: number;
@@ -102,8 +104,25 @@ export default function CooperationSlipsPage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => getDateRange('30d'));
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSale, setFilterSale] = useState('all');
+  const location = useLocation();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [changeReason, setChangeReason] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterSale, dateRange, statusFilter]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const statusParam = searchParams.get('status');
+    if (statusParam) {
+      setStatusFilter(statusParam);
+    } else {
+      setStatusFilter('all');
+    }
+  }, [location.search]);
 
   // Signature Modal state
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
@@ -227,7 +246,7 @@ export default function CooperationSlipsPage() {
     }));
   };
 
-  const isManager = (user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'manager';
+  const isManager = ['admin', 'superadmin', 'super_admin', 'manager', 'assistant'].includes(String(user?.role).toLowerCase());
 
   const filteredSlips = React.useMemo(() => {
     return slips.filter(slip => {
@@ -279,6 +298,13 @@ export default function CooperationSlipsPage() {
       return true;
     });
   }, [slips, searchQuery, filterSale, dateRange, statusFilter, user?.id, isManager]);
+
+  const paginatedSlips = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredSlips.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredSlips, currentPage]);
+
+  const totalPages = Math.ceil(filteredSlips.length / ITEMS_PER_PAGE);
 
   const handleDeleteSlip = async (slipId: number) => {
     setCustomConfirm({
@@ -651,8 +677,9 @@ export default function CooperationSlipsPage() {
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Vui lòng thay đổi từ khóa hoặc bộ lọc để tìm lại.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {filteredSlips.map(slip => {
+        <>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '580px', overflowY: 'auto', paddingRight: '6px' }}>
+          {paginatedSlips.map(slip => {
             const hasSigned = slip.shareholders.find(s => String(s.user_id) === String(user?.id))?.signed;
             const isShareholder = slip.shareholders.some(s => String(s.user_id) === String(user?.id));
             const allSigned = slip.shareholders.every(s => s.signed);
@@ -680,7 +707,8 @@ export default function CooperationSlipsPage() {
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   background: 'var(--color-surface)',
                   position: 'relative',
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  flexShrink: 0
                 }}
                 onClick={() => toggleSlip(slip.id)}
               >
@@ -1091,6 +1119,17 @@ export default function CooperationSlipsPage() {
             );
           })}
         </div>
+        {totalPages > 1 && (
+          <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+            <Pagination 
+              total={filteredSlips.length}
+              page={currentPage}
+              pageSize={ITEMS_PER_PAGE}
+              onChange={setCurrentPage}
+            />
+          </div>
+        )}
+        </>
       )}
 
       {/* Signature Modal */}

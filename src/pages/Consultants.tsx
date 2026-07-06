@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2 } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -120,6 +120,10 @@ const ConsultantsInner = () => {
   const [teamFormData, setTeamFormData] = useState({ name: '', branch: '', leader_id: '' });
   const [confirmDeleteTeamOpen, setConfirmDeleteTeamOpen] = useState(false);
   const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
+  
+  const [consultantsPage, setConsultantsPage] = useState(1);
+  const [teamsPage, setTeamsPage] = useState(1);
+  const ITEMS_PER_PAGE = 8;
 
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
   const [formData, setFormData] = useState<{
@@ -524,6 +528,28 @@ const ConsultantsInner = () => {
   const leaveCount = users.filter(u => u.status === 'leave').length;
   const inactiveCount = users.filter(u => u.status === 'inactive').length;
 
+  const paginatedUsers = React.useMemo(() => {
+    const startIndex = (consultantsPage - 1) * ITEMS_PER_PAGE;
+    return users.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [users, consultantsPage, ITEMS_PER_PAGE]);
+
+  const consultantsTotalPages = Math.ceil(users.length / ITEMS_PER_PAGE);
+
+  const paginatedTeams = React.useMemo(() => {
+    const startIndex = (teamsPage - 1) * ITEMS_PER_PAGE;
+    return teams.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [teams, teamsPage, ITEMS_PER_PAGE]);
+
+  const teamsTotalPages = Math.ceil(teams.length / ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    setConsultantsPage(1);
+  }, [users.length]);
+
+  useEffect(() => {
+    setTeamsPage(1);
+  }, [teams.length]);
+
   return (
     <div>
       {/* Header */}
@@ -636,16 +662,16 @@ const ConsultantsInner = () => {
       {/* Main Content Area */}
       {activeTab === 'consultants' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0, maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+          <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, maxHeight: '480px', overflowY: 'auto' }}>
             <table className="mobile-table-compact">
               <thead>
                 <tr>
-                  <th>{t('Tên TVV')}</th>
-                  <th>{t('Email')}</th>
-                  <th>{t('Nhóm (Team)')}</th>
-                  <th>{t('Zalo Bot')}</th>
-                  <th>{t('Trạng thái')}</th>
-                  {!isSale && <th style={{ textAlign: 'right' }}>{t('Thao tác')}</th>}
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên TVV')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Email')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Nhóm (Team)')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
+                  {!isSale && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -664,7 +690,7 @@ const ConsultantsInner = () => {
                     </div>
                   </td>
                 </tr>
-              ) : users.map((u) => {
+              ) : paginatedUsers.map((u) => {
                 return (
                   <tr
                     key={u.id}
@@ -849,18 +875,85 @@ const ConsultantsInner = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Consultants Pagination */}
+        {consultantsTotalPages > 1 && (
+          <div style={{ 
+            padding: '1rem 1.25rem', 
+            borderTop: '1px solid var(--color-border-light)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            background: 'var(--color-surface)',
+            borderBottomLeftRadius: '16px',
+            borderBottomRightRadius: '16px'
+          }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+              Hiển thị <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{(consultantsPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{Math.min(consultantsPage * ITEMS_PER_PAGE, users.length)}</span> trên <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{users.length}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button 
+                onClick={() => setConsultantsPage(prev => Math.max(prev - 1, 1))} 
+                disabled={consultantsPage === 1} 
+                className="btn sm outline" 
+                style={{ height: 32, width: 32, padding: 0, minWidth: 32, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: consultantsPage === 1 ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(() => {
+                  const maxVisible = 5;
+                  let start = Math.max(1, consultantsPage - Math.floor(maxVisible / 2));
+                  let end = Math.min(consultantsTotalPages, start + maxVisible - 1);
+                  if (end - start + 1 < maxVisible) {
+                    start = Math.max(1, end - maxVisible + 1);
+                  }
+                  const pageNumbers = [];
+                  for (let p = start; p <= end; p++) {
+                    pageNumbers.push(p);
+                  }
+                  return pageNumbers.map((pageNum) => (
+                    <button
+                      key={pageNum}
+                      onClick={() => setConsultantsPage(pageNum)}
+                      style={{
+                        width: 32, height: 32, borderRadius: 8, fontSize: '0.8125rem', fontWeight: 700,
+                        border: consultantsPage === pageNum ? 'none' : '1px solid var(--color-border-light)',
+                        background: consultantsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                        color: consultantsPage === pageNum ? 'white' : 'var(--color-text-muted)',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                      className={consultantsPage === pageNum ? '' : 'hover-lift'}
+                    >
+                      {pageNum}
+                    </button>
+                  ));
+                })()}
+              </div>
+              <button 
+                onClick={() => setConsultantsPage(prev => Math.min(prev + 1, consultantsTotalPages))} 
+                disabled={consultantsPage === consultantsTotalPages} 
+                className="btn sm outline" 
+                style={{ height: 32, width: 32, padding: 0, minWidth: 32, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: consultantsPage === consultantsTotalPages ? 'not-allowed' : 'pointer' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       ) : activeTab === 'teams' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0, maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+          <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, maxHeight: '480px', overflowY: 'auto' }}>
             <table className="mobile-table-compact">
               <thead>
                 <tr>
-                  <th>{t('Tên Nhóm')}</th>
-                  <th>{t('Chi nhánh')}</th>
-                  <th>{t('Trưởng nhóm')}</th>
-                  <th>{t('Số thành viên')}</th>
-                  <th style={{ textAlign: 'right' }}>{t('Thao tác')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên Nhóm')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Chi nhánh')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trưởng nhóm')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Số thành viên')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -876,7 +969,7 @@ const ConsultantsInner = () => {
                       </div>
                     </td>
                   </tr>
-                ) : teams.map((team) => (
+                ) : paginatedTeams.map((team) => (
                   <tr key={team.id} className="table-row-hover" style={{ cursor: isSale ? 'default' : 'pointer' }} onClick={() => !isSale && openEditTeamModal(team)}>
                     <td data-label={t('Tên Nhóm')}>
                       <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{team.name}</span>
@@ -912,6 +1005,73 @@ const ConsultantsInner = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Teams Pagination */}
+          {teamsTotalPages > 1 && (
+            <div style={{ 
+              padding: '1rem 1.25rem', 
+              borderTop: '1px solid var(--color-border-light)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              background: 'var(--color-surface)',
+              borderBottomLeftRadius: '16px',
+              borderBottomRightRadius: '16px'
+            }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                Hiển thị <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{(teamsPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{Math.min(teamsPage * ITEMS_PER_PAGE, teams.length)}</span> trên <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{teams.length}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  onClick={() => setTeamsPage(prev => Math.max(prev - 1, 1))} 
+                  disabled={teamsPage === 1} 
+                  className="btn sm outline" 
+                  style={{ height: 32, width: 32, padding: 0, minWidth: 32, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: teamsPage === 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(() => {
+                    const maxVisible = 5;
+                    let start = Math.max(1, teamsPage - Math.floor(maxVisible / 2));
+                    let end = Math.min(teamsTotalPages, start + maxVisible - 1);
+                    if (end - start + 1 < maxVisible) {
+                      start = Math.max(1, end - maxVisible + 1);
+                    }
+                    const pageNumbers = [];
+                    for (let p = start; p <= end; p++) {
+                      pageNumbers.push(p);
+                    }
+                    return pageNumbers.map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        onClick={() => setTeamsPage(pageNum)}
+                        style={{
+                          width: 32, height: 32, borderRadius: 8, fontSize: '0.8125rem', fontWeight: 700,
+                          border: teamsPage === pageNum ? 'none' : '1px solid var(--color-border-light)',
+                          background: teamsPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                          color: teamsPage === pageNum ? 'white' : 'var(--color-text-muted)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s'
+                        }}
+                        className={teamsPage === pageNum ? '' : 'hover-lift'}
+                      >
+                        {pageNum}
+                      </button>
+                    ));
+                  })()}
+                </div>
+                <button 
+                  onClick={() => setTeamsPage(prev => Math.min(prev + 1, teamsTotalPages))} 
+                  disabled={teamsPage === teamsTotalPages} 
+                  className="btn sm outline" 
+                  style={{ height: 32, width: 32, padding: 0, minWidth: 32, borderRadius: '8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: teamsPage === teamsTotalPages ? 'not-allowed' : 'pointer' }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', width: '100%' }}>
@@ -964,7 +1124,7 @@ const ConsultantsInner = () => {
                     <span>{t('Tổng nhân sự:')}</span>
                     <strong style={{ color: 'var(--color-text)', fontSize: '0.95rem' }}>{totalMembers}</strong>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
                     {bTeams.map(team => (
                       <div key={team.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--color-bg)', borderRadius: 10, fontSize: '0.8rem', border: '1px solid var(--color-border-light)' }}>
                         <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{team.name}</span>

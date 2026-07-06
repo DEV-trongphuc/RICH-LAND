@@ -731,7 +731,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               )}
               {pendingCoopsCount > 0 && (
                 <button
-                  onClick={() => navigate('/cooperation-slips')}
+                  onClick={() => navigate('/cooperation-slips?status=pending_me')}
                   className="btn outline sm"
                   style={{ borderRadius: '20px', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'rgba(163, 20, 34, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
                 >
@@ -1625,26 +1625,38 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                         >
                           &lt;
                         </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                          <button
-                            key={pageNum}
-                            onClick={() => setConsultantPage(pageNum)}
-                            style={{
-                              height: 28,
-                              minWidth: 28,
-                              padding: 0,
-                              borderRadius: '6px',
-                              fontWeight: 700,
-                              fontSize: '0.75rem',
-                              border: consultantPage === pageNum ? 'none' : '1px solid var(--color-border-light)',
-                              background: consultantPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
-                              color: consultantPage === pageNum ? 'white' : 'var(--color-text)',
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {pageNum}
-                          </button>
-                        ))}
+                        {(() => {
+                          const maxVisible = 5;
+                          let start = Math.max(1, consultantPage - Math.floor(maxVisible / 2));
+                          let end = Math.min(totalPages, start + maxVisible - 1);
+                          if (end - start + 1 < maxVisible) {
+                            start = Math.max(1, end - maxVisible + 1);
+                          }
+                          const pageNumbers = [];
+                          for (let p = start; p <= end; p++) {
+                            pageNumbers.push(p);
+                          }
+                          return pageNumbers.map((pageNum) => (
+                            <button
+                              key={pageNum}
+                              onClick={() => setConsultantPage(pageNum)}
+                              style={{
+                                height: 28,
+                                minWidth: 28,
+                                padding: 0,
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '0.75rem',
+                                border: consultantPage === pageNum ? 'none' : '1px solid var(--color-border-light)',
+                                background: consultantPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                                color: consultantPage === pageNum ? 'white' : 'var(--color-text)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              {pageNum}
+                            </button>
+                          ));
+                        })()}
                         <button 
                           onClick={() => setConsultantPage(prev => Math.min(prev + 1, totalPages))} 
                           disabled={consultantPage === totalPages}

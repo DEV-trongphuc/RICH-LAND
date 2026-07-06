@@ -630,9 +630,18 @@ export default function DepositsPage() {
                   <ChevronLeft size={16} />
                 </button>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  {Array.from({ length: totalPages }, (_, i) => {
-                    const pageNum = i + 1;
-                    return (
+                  {(() => {
+                    const maxVisible = 5;
+                    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+                    let end = Math.min(totalPages, start + maxVisible - 1);
+                    if (end - start + 1 < maxVisible) {
+                      start = Math.max(1, end - maxVisible + 1);
+                    }
+                    const pageNumbers = [];
+                    for (let p = start; p <= end; p++) {
+                      pageNumbers.push(p);
+                    }
+                    return pageNumbers.map((pageNum) => (
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
@@ -648,8 +657,8 @@ export default function DepositsPage() {
                       >
                         {pageNum}
                       </button>
-                    );
-                  })}
+                    ));
+                  })()}
                 </div>
                 <button 
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 

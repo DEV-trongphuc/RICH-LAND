@@ -17,6 +17,7 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
+import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 10;
 
@@ -35,6 +36,7 @@ export const InvoicesPage: React.FC = () => {
   const [period, setPeriod] = useState<Period>('this_month');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());
