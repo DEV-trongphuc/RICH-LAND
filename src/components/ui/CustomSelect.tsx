@@ -15,6 +15,10 @@ export interface SelectOption {
   disabled?: boolean;
   disabledReason?: string;
   disabledType?: 'round' | 'sale';
+  badge?: {
+    count: number;
+    color?: string;
+  };
 }
 
 interface CustomSelectProps {
@@ -130,19 +134,37 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       return <span className={styles.triggerContent}>{t('Đã chọn')} ({selectedOpts.length})</span>;
     }
     return selectedOption ? (
-      <span className={styles.triggerContent}>
-        {showAvatars && (
-          selectedOption.value === '' ? (
-            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
-          ) : (
-            <Avatar src={selectedOption.avatar} name={t(selectedOption.label)} size="sm" />
-          )
-        )}
-        {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-          <span>{t(selectedOption.label)}</span>
-          {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>({t(selectedOption.sublabel)})</span>}
+      <span className={styles.triggerContent} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {showAvatars && (
+            selectedOption.value === '' ? (
+              <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>?</div>
+            ) : (
+              <Avatar src={selectedOption.avatar} name={t(selectedOption.label)} size="sm" />
+            )
+          )}
+          {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span>{t(selectedOption.label)}</span>
+            {selectedOption.sublabel && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>({t(selectedOption.sublabel)})</span>}
+          </span>
         </span>
+        {selectedOption.badge && selectedOption.badge.count > 0 && (
+          <span style={{
+            background: selectedOption.badge.color || 'var(--color-danger)',
+            color: 'white',
+            borderRadius: '10px',
+            padding: '2px 6px',
+            fontSize: '0.7rem',
+            fontWeight: 700,
+            minWidth: '18px',
+            textAlign: 'center',
+            lineHeight: 1,
+            marginLeft: 'auto'
+          }}>
+            {selectedOption.badge.count}
+          </span>
+        )}
       </span>
     ) : t(placeholder);
   };
@@ -222,9 +244,27 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     ) : (
                       option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>
                     )}
-                    <div className={styles.optionText}>
-                      <span className={styles.optionMainLabel}>{t(option.label)}</span>
-                      {option.sublabel && <span className={styles.optionSublabel}>{t(option.sublabel)}</span>}
+                    <div className={styles.optionText} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', justifyContent: 'space-between', flex: 1 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className={styles.optionMainLabel}>{t(option.label)}</span>
+                        {option.sublabel && <span className={styles.optionSublabel}>{t(option.sublabel)}</span>}
+                      </div>
+                      {option.badge && option.badge.count > 0 && (
+                        <span style={{
+                          background: option.badge.color || 'var(--color-danger)',
+                          color: 'white',
+                          borderRadius: '10px',
+                          padding: '2px 6px',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          minWidth: '18px',
+                          textAlign: 'center',
+                          lineHeight: 1,
+                          marginLeft: 'auto'
+                        }}>
+                          {option.badge.count}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {isSelected(option.value) && <Check size={14} className={styles.checkIcon} />}

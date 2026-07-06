@@ -306,6 +306,70 @@ export default function CooperationSlipsPage() {
 
   const totalPages = Math.ceil(filteredSlips.length / ITEMS_PER_PAGE);
 
+  const statusCounts = React.useMemo(() => {
+    let pendingMe = 0;
+    let pendingSignatures = 0;
+    let pendingManager = 0;
+    let approved = 0;
+    let rejected = 0;
+
+    slips.forEach(slip => {
+      // 1. Search Query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const fullName = `${slip.last_name} ${slip.first_name}`.toLowerCase();
+        const matchCust = fullName.includes(query) || (slip.phone && slip.phone.includes(query));
+        const matchUnit = slip.unit_code && slip.unit_code.toLowerCase().includes(query);
+        const matchProj = slip.project_name && slip.project_name.toLowerCase().includes(query);
+        const matchId = String(slip.id).includes(query);
+        if (!matchCust && !matchUnit && !matchProj && !matchId) return;
+      }
+
+      // 2. Filter by Sale
+      if (filterSale !== 'all') {
+        const matchSale = slip.shareholders.some(sh => String(sh.user_id) === filterSale) || String(slip.created_by) === filterSale;
+        if (!matchSale) return;
+      }
+
+      // 3. Filter by Time/Date Range
+      const slipDateStr = slip.created_at.slice(0, 10);
+      if (slipDateStr < dateRange.from || slipDateStr > dateRange.to) return;
+
+      // 4. Calculate statuses
+      const hasSigned = slip.shareholders.find(s => String(s.user_id) === String(user?.id))?.signed;
+      const isShareholder = slip.shareholders.some(s => String(s.user_id) === String(user?.id));
+      const allSigned = slip.shareholders.every(s => s.signed);
+      const isPendingSignatures = !allSigned || slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures';
+
+      const needsMySignature = isShareholder && isPendingSignatures && !hasSigned;
+      const needsMyManagerApproval = isManager && slip.status === 'pending_manager_approval';
+
+      if (needsMySignature || needsMyManagerApproval) {
+        pendingMe++;
+      }
+      if (isPendingSignatures) {
+        pendingSignatures++;
+      }
+      if (slip.status === 'pending_manager_approval') {
+        pendingManager++;
+      }
+      if (slip.status === 'approved') {
+        approved++;
+      }
+      if (slip.status === 'rejected') {
+        rejected++;
+      }
+    });
+
+    return {
+      pending_me: pendingMe,
+      pending_signatures: pendingSignatures,
+      pending_manager: pendingManager,
+      approved,
+      rejected
+    };
+  }, [slips, searchQuery, filterSale, dateRange, user?.id, isManager]);
+
   const handleDeleteSlip = async (slipId: number) => {
     setCustomConfirm({
       isOpen: true,
@@ -638,9 +702,21 @@ export default function CooperationSlipsPage() {
             onChange={val => setStatusFilter(String(val))}
             options={[
               { value: 'all', label: 'Tất cả trạng thái' },
-              { value: 'pending_me', label: 'Chờ tôi duyệt / ký' },
-              { value: 'pending_signatures', label: 'Chờ nhân viên ký' },
-              isManager && { value: 'pending_manager', label: 'Chờ sếp duyệt' },
+              { 
+                value: 'pending_me', 
+                label: 'Chờ tôi duyệt / ký',
+                badge: { count: statusCounts.pending_me, color: '#BD1D2D' }
+              },
+              { 
+                value: 'pending_signatures', 
+                label: 'Chờ nhân viên ký',
+                badge: { count: statusCounts.pending_signatures, color: '#BD1D2D' }
+              },
+              isManager && { 
+                value: 'pending_manager', 
+                label: 'Chờ sếp duyệt',
+                badge: { count: statusCounts.pending_manager, color: '#BD1D2D' }
+              },
               { value: 'approved', label: 'Đã duyệt' },
               { value: 'rejected', label: 'Bác bỏ' }
             ].filter(Boolean) as any[]}
