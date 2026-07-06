@@ -119,6 +119,8 @@ interface SalePortalProps {
   embedMode?: boolean;
 }
 
+const ALLOWED_PORTAL_ROLES = ['sale', 'sales', 'superadmin', 'admin', 'super_admin', 'manager', 'director', 'assistant', 'viewer'];
+
 const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePortalProps) => {
   const navigate = useNavigate();
   const routerLocation = useLocation();
@@ -1578,7 +1580,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   // Fetch portal data when token is valid
   const loadPortalData = async () => {
-    if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) return;
+    if (!token || !ALLOWED_PORTAL_ROLES.includes(user?.role || '')) return;
     setLoading(true);
     fetchPortalTasks();
     fetchPortalCoops();
@@ -2651,7 +2653,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const paginatedLeads = filteredLeads.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   // Render Login Layout if not authorized
-  if (!token || !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user?.role || '')) {
+  if (!token || !ALLOWED_PORTAL_ROLES.includes(user?.role || '')) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -2738,7 +2740,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {t('Vào trang Quản trị')} <ArrowUpRight size={14} />
                 </button>
               </div>
-            ) : user && !['sale', 'superadmin', 'admin', 'assistant', 'viewer'].includes(user.role) ? (
+            ) : user && !ALLOWED_PORTAL_ROLES.includes(user.role) ? (
               <div style={{
                 background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)',
                 padding: '1.25rem', borderRadius: '16px', color: '#b45309', fontSize: '0.9rem',
