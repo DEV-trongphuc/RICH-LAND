@@ -536,7 +536,34 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     handleUpdateField('participant_ids', nextString);
   };
 
-  if (!isOpen || !task) return null;
+  const [isVisible, setIsVisible] = useState(isOpen && !!task);
+  const [animateIn, setAnimateIn] = useState(isOpen && !!task);
+
+  useEffect(() => {
+    if (isOpen && task) {
+      setIsVisible(true);
+      const timer = setTimeout(() => setAnimateIn(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setAnimateIn(false);
+      const timer = setTimeout(() => setIsVisible(false), 420);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, task]);
+
+  // Document body overflow handling
+  useEffect(() => {
+    if (isVisible && !embedMode) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isVisible, embedMode]);
+
+  if (!isVisible || !task) return null;
 
   // Common card style override
   const cardStyle: React.CSSProperties = {
@@ -623,12 +650,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   );
 
   const content = (
-    <motion.div 
+    <div 
       className={styles.drawer}
-      initial={embedMode ? {} : { x: '160px', opacity: 0, filter: 'blur(4px)' }}
-      animate={embedMode ? {} : { x: 0, opacity: 1, filter: 'blur(0px)' }}
-      exit={embedMode ? {} : { x: '160px', opacity: 0, filter: 'blur(4px)' }}
-      transition={embedMode ? {} : { type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.42 }}
       style={embedMode ? {
         width: '100%',
         background: 'var(--color-bg)',
@@ -650,7 +673,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         bottom: 0,
         right: 0,
         boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
-        x: '100vw'
+        transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
+        opacity: animateIn ? 1 : 0,
+        transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+        willChange: 'transform, opacity'
       }}
     >
         {/* Drawer Header */}
@@ -1840,7 +1866,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
           </div>
         )}
-      </motion.div>
+      </div>
   );
 
   if (embedMode) {
@@ -1848,24 +1874,22 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   }
 
   return createPortal(
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div 
-            className="drawer-backdrop" 
-            onClick={handleCloseDrawer}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.65)',
-              zIndex: 10500,
-              backdropFilter: 'blur(4px)'
-            }}
-          />
-          {content}
+    <>
+      <div 
+        className="drawer-backdrop" 
+        onClick={handleCloseDrawer}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.65)',
+          zIndex: 10500,
+          backdropFilter: 'blur(4px)',
+          opacity: animateIn ? 1 : 0,
+          transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+          pointerEvents: animateIn ? 'auto' : 'none'
+        }}
+      />
+      {content}
 
           {/* Validation Warning Modal */}
           <AnimatePresence>
@@ -1981,9 +2005,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               </div>
             )}
           </AnimatePresence>
-        </>
-      )}
-    </AnimatePresence>,
+    </>,
     document.body
   );
 };

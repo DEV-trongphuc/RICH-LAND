@@ -2502,7 +2502,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  if (!contact) return null;
+  const [isVisible, setIsVisible] = useState(isOpen);
+  const [animateIn, setAnimateIn] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsVisible(true);
+      const timer = setTimeout(() => setAnimateIn(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setAnimateIn(false);
+      const timer = setTimeout(() => setIsVisible(false), 420);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  if (!contact || !isVisible) return null;
 
   if (typeof document === 'undefined') return null;
 
@@ -2598,23 +2613,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   return createPortal(
     <>
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            <motion.div
-              className="drawer-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={handleClose}
-              style={{ zIndex: 1000 }}
-            />
-            <motion.div
-              className={styles.drawer}
-              initial={{ x: '160px', opacity: 0, filter: 'blur(4px)' }}
-              animate={{ x: 0, opacity: 1, filter: 'blur(0px)' }}
-              exit={{ x: '160px', opacity: 0, filter: 'blur(4px)' }}
-              transition={{ type: 'tween', ease: [0.16, 1, 0.3, 1], duration: 0.42 }}
-              style={{ x: '100vw' }}
-            >
+      <div
+        className="drawer-backdrop"
+        onClick={handleClose}
+        style={{
+          zIndex: 1000,
+          opacity: animateIn ? 1 : 0,
+          transition: 'opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+          pointerEvents: animateIn ? 'auto' : 'none'
+        }}
+      />
+      <div
+        className={styles.drawer}
+        style={{
+          transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
+          opacity: animateIn ? 1 : 0,
+          transition: 'transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform, opacity'
+        }}
+      >
               <AnimatePresence>
                 {showAvatarModal && (
                   <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
@@ -6593,10 +6610,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                 </div>
               </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+      </div>
 
       <CallLoggerModal
         isOpen={showCallLogger}
