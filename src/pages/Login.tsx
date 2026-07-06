@@ -124,6 +124,47 @@ export const Login = () => {
     setLoading(false);
   };
 
+  const handleQuickLogin = async (emailVal: string, passwordVal: string, roleName: string) => {
+    setLoading(true);
+    setError('');
+
+    if (localStorage.getItem('RICH LAND_DEMO_MODE') === 'true') {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      let userRole = roleName.toLowerCase();
+      if (userRole === 'sales') userRole = 'sale';
+      login(`demo_token_quick_${userRole}`, {
+        id: emailVal === 'haidang@richland.net' ? 1000 : 999,
+        username: emailVal.split('@')[0],
+        email: emailVal,
+        name: `Dev ${roleName}`,
+        role: userRole as any,
+        consultant_id: emailVal === 'haidang@richland.net' ? 1 : undefined
+      });
+      navigate('/');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailVal, password: passwordVal })
+      });
+      const json = await res.json();
+      if (json.success) {
+        login(json.token, json.user);
+        navigate('/');
+      } else {
+        setError(t(json.message) || `Đăng nhập ${roleName} thất bại`);
+      }
+    } catch (e: any) {
+      setError('Lỗi kết nối: ' + e.message);
+    }
+    setLoading(false);
+  };
+
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -348,62 +389,62 @@ export const Login = () => {
         {/* Dev Login Buttons */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '1.25rem' }}>
           <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', textAlign: 'center', margin: 0 }}>Dành cho Nhà phát triển (Developer Quick Login)</p>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(115px, 1fr))', gap: '8px' }}>
             <button 
               type="button" 
               className="btn secondary sm" 
-              style={{ flex: 1, height: '36px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              onClick={async () => {
-                setLoading(true);
-                setError('');
-                try {
-                  const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'admin@richland.net', password: 'admin123' })
-                  });
-                  const json = await res.json();
-                  if (json.success) {
-                    login(json.token, json.user);
-                    navigate('/');
-                  } else {
-                    setError(t(json.message) || 'Đăng nhập Admin thất bại');
-                  }
-                } catch (e: any) {
-                  setError('Lỗi kết nối: ' + e.message);
-                }
-                setLoading(false);
-              }}
+              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              onClick={() => handleQuickLogin('superadmin@richland.net', 'superadmin123', 'Super Admin')}
+            >
+              Dev Super Admin
+            </button>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              onClick={() => handleQuickLogin('admin@richland.net', 'admin123', 'Admin')}
             >
               Dev Admin
             </button>
             <button 
               type="button" 
               className="btn secondary sm" 
-              style={{ flex: 1, height: '36px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-              onClick={async () => {
-                setLoading(true);
-                setError('');
-                try {
-                  const res = await fetch(`${import.meta.env.VITE_API_URL || '/backend'}/api.php?action=login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: 'haidang@richland.net', password: 'sale123' })
-                  });
-                  const json = await res.json();
-                  if (json.success) {
-                    login(json.token, json.user);
-                    navigate('/');
-                  } else {
-                    setError(t(json.message) || 'Đăng nhập Sale thất bại');
-                  }
-                } catch (e: any) {
-                  setError('Lỗi kết nối: ' + e.message);
-                }
-                setLoading(false);
-              }}
+              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              onClick={() => handleQuickLogin('haidang@richland.net', 'sale123', 'Sale')}
             >
               Dev Sale
+            </button>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              onClick={() => handleQuickLogin('director@richland.net', 'director123', 'Director')}
+            >
+              Dev Director
+            </button>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              onClick={() => handleQuickLogin('manager@richland.net', 'manager123', 'Manager')}
+            >
+              Dev Manager
+            </button>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              onClick={() => handleQuickLogin('assistant@richland.net', 'assistant123', 'Assistant')}
+            >
+              Dev Assistant
+            </button>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ height: '36px', fontSize: '0.75rem', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+              onClick={() => handleQuickLogin('viewer@richland.net', 'viewer123', 'Viewer')}
+            >
+              Dev Viewer
             </button>
           </div>
         </div>
