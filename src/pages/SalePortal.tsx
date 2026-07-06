@@ -8443,6 +8443,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     width={220}
                     showAvatars={true}
                     searchable={true}
+                    align="right"
                   />
                 </div>
               </div>

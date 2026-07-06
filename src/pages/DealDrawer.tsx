@@ -510,7 +510,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         <div className="form-group">
                           <label className="form-label">Liên hệ chính</label>
                           <CustomSelect 
-                            options={contacts.map(c => ({ value: c.id, label: `${c.first_name} ${c.last_name}` }))}
+                            options={contacts.map(c => ({ value: c.id, label: `${c.first_name} ${c.last_name}`, avatar: c.avatar_url || c.avatar }))}
                             value={formData?.contact_id}
                             onChange={val => {
                               const co = contacts.find(x => x.id === Number(val));
@@ -518,6 +518,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                             }}
                             placeholder="Chọn liên hệ..."
                             searchable
+                            showAvatars
                           />
                         </div>
                       </div>

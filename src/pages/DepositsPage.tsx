@@ -689,11 +689,14 @@ export default function DepositsPage() {
                 <CustomSelect
                   options={contacts.map(c => ({
                     value: String(c.id),
-                    label: `${c.last_name} ${c.first_name} (${c.phone})`
+                    label: `${c.last_name} ${c.first_name} (${c.phone})`,
+                    avatar: (c as any).avatar_url || (c as any).avatar
                   }))}
                   value={selectedContactId}
                   onChange={val => setSelectedContactId(val.toString())}
                   placeholder="-- Chọn khách hàng --"
+                  showAvatars
+                  searchable
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>

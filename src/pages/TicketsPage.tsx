@@ -348,6 +348,7 @@ export const TicketsPage: React.FC = () => {
                   <label className="form-label">Tên khách hàng *</label>
                   <CustomSelect 
                     searchable 
+                    showAvatars
                     options={contacts.map(c => ({ 
                       value: `${c.first_name} ${c.last_name || ''}`.trim(), 
                       label: `${c.first_name} ${c.last_name || ''}`.trim(),
@@ -408,6 +409,7 @@ export const TicketsPage: React.FC = () => {
                     </div>
                     <CustomSelect 
                       searchable 
+                      showAvatars
                       placeholder="Chọn khách hàng để tag..."
                       options={contacts.filter(c => !createForm.related_contacts.includes(String(c.id))).map(c => ({ 
                         value: String(c.id), 
