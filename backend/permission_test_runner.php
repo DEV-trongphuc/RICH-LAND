@@ -76,10 +76,17 @@ try {
         $uri = $_SERVER['REQUEST_URI'] ?? '';
         $subDir = (strpos($uri, '/richland/') !== false) ? '/richland' : '';
         
+        $parts = explode('&', $resource);
+        $actionName = array_shift($parts);
+        $queryString = '';
+        if (count($parts) > 0) {
+            $queryString = '&' . implode('&', $parts);
+        }
+
         $urls = [
-            "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($resource),
-            "http://localhost" . $subDir . "/api.php?action=" . urlencode($resource),
-            "https://open.domation.net/richland/api.php?action=" . urlencode($resource)
+            "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($actionName) . $queryString,
+            "http://localhost" . $subDir . "/api.php?action=" . urlencode($actionName) . $queryString,
+            "https://open.domation.net/richland/api.php?action=" . urlencode($actionName) . $queryString
         ];
         
         $lastResponse = null;
@@ -362,8 +369,8 @@ try {
 
     // Create data reports (tickets)
     // S1 report
-    $db->prepare("INSERT INTO leads (tenant_id, name, phone, email, assigned_to) VALUES (?, 'Lead S1', '0912345678', 's1@lead.net', ?)")
-       ->execute([$tenantId, $sales1UserId]);
+    $db->prepare("INSERT INTO leads (name, phone, email, assigned_to) VALUES ('Lead S1', '0912345678', 's1@lead.net', ?)")
+       ->execute([$sales1UserId]);
     $leadS1Id = (int)$db->lastInsertId();
 
     $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, 1, 'Fake phone number', 'pending')")
@@ -371,8 +378,8 @@ try {
     $repS1Id = (int)$db->lastInsertId();
 
     // S2 report
-    $db->prepare("INSERT INTO leads (tenant_id, name, phone, email, assigned_to) VALUES (?, 'Lead S2', '0987654321', 's2@lead.net', ?)")
-       ->execute([$tenantId, $sales2UserId]);
+    $db->prepare("INSERT INTO leads (name, phone, email, assigned_to) VALUES ('Lead S2', '0987654321', 's2@lead.net', ?)")
+       ->execute([$sales2UserId]);
     $leadS2Id = (int)$db->lastInsertId();
 
     $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, 1, 'Spam mail', 'pending')")
@@ -465,12 +472,66 @@ try {
     );
 
     // Test 9: get_consultant_stats
-    $resStatsS1 = $callApi('get_consultant_stats', 'GET', ['consultant_id' => $sales1UserId, 'date_mode' => 'all'], $mgrToken);
-    $resStatsS2 = $callApi('get_consultant_stats', 'GET', ['consultant_id' => $sales2UserId, 'date_mode' => 'all'], $mgrToken);
+    $resStatsS1 = $callApi('get_consultant_stats&consultant_id=' . $sales1UserId . '&date_mode=all', 'GET', [], $mgrToken);
+    $resStatsS2 = $callApi('get_consultant_stats&consultant_id=' . $sales2UserId . '&date_mode=all', 'GET', [], $mgrToken);
     assertPermTest(
         "Manager: get_consultant_stats should only allow team members",
         isset($resStatsS1['success']) && $resStatsS1['success'] === true && isset($resStatsS2['success']) && $resStatsS2['success'] === false,
         "S1 Stats: " . json_encode($resStatsS1, JSON_UNESCAPED_UNICODE) . ", S2 Stats: " . json_encode($resStatsS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 10: get_consultant_leaves
+    $resLeavesS1 = $callApi('get_consultant_leaves&consultant_id=' . $sales1UserId, 'GET', [], $mgrToken);
+    $resLeavesS2 = $callApi('get_consultant_leaves&consultant_id=' . $sales2UserId, 'GET', [], $mgrToken);
+    assertPermTest(
+        "Manager: get_consultant_leaves should only allow team members",
+        isset($resLeavesS1['success']) && $resLeavesS1['success'] === true && isset($resLeavesS2['success']) && $resLeavesS2['success'] === false,
+        "S1 Leaves: " . json_encode($resLeavesS1, JSON_UNESCAPED_UNICODE) . ", S2 Leaves: " . json_encode($resLeavesS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 11: add_consultant_leave
+    $resAddLeaveS1 = $callApi('add_consultant_leave', 'POST', ['consultant_id' => $sales1UserId, 'start_date' => '2026-12-01', 'end_date' => '2026-12-05'], $mgrToken);
+    $resAddLeaveS2 = $callApi('add_consultant_leave', 'POST', ['consultant_id' => $sales2UserId, 'start_date' => '2026-12-01', 'end_date' => '2026-12-05'], $mgrToken);
+    assertPermTest(
+        "Manager: add_consultant_leave should only allow team members",
+        isset($resAddLeaveS1['success']) && $resAddLeaveS1['success'] === true && isset($resAddLeaveS2['success']) && $resAddLeaveS2['success'] === false,
+        "S1 Add Leave: " . json_encode($resAddLeaveS1, JSON_UNESCAPED_UNICODE) . ", S2 Add Leave: " . json_encode($resAddLeaveS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Fetch the leave ID of S1 to test delete
+    $leaveRow = $db->query("SELECT id FROM consultant_leaves WHERE consultant_id = $sales1UserId LIMIT 1")->fetch();
+    $leaveS1Id = $leaveRow ? (int)$leaveRow['id'] : 0;
+
+    // We also temporarily insert a leave for S2 using direct DB to test unauthorized delete
+    $db->prepare("INSERT INTO consultant_leaves (consultant_id, start_date, end_date) VALUES (?, '2026-12-01', '2026-12-05')")
+       ->execute([$sales2UserId]);
+    $leaveS2Id = (int)$db->lastInsertId();
+
+    // Test 12: delete_consultant_leave
+    $resDelLeaveS1 = $callApi('delete_consultant_leave', 'POST', ['id' => $leaveS1Id], $mgrToken);
+    $resDelLeaveS2 = $callApi('delete_consultant_leave', 'POST', ['id' => $leaveS2Id], $mgrToken);
+    assertPermTest(
+        "Manager: delete_consultant_leave should only allow team members",
+        isset($resDelLeaveS1['success']) && $resDelLeaveS1['success'] === true && isset($resDelLeaveS2['success']) && $resDelLeaveS2['success'] === false,
+        "S1 Del Leave: " . json_encode($resDelLeaveS1, JSON_UNESCAPED_UNICODE) . ", S2 Del Leave: " . json_encode($resDelLeaveS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 13: toggle_consultant_vacation
+    $resToggleS1 = $callApi('toggle_consultant_vacation', 'POST', ['id' => $sales1UserId], $mgrToken);
+    $resToggleS2 = $callApi('toggle_consultant_vacation', 'POST', ['id' => $sales2UserId], $mgrToken);
+    assertPermTest(
+        "Manager: toggle_consultant_vacation should only allow team members",
+        isset($resToggleS1['success']) && $resToggleS1['success'] === true && isset($resToggleS2['success']) && $resToggleS2['success'] === false,
+        "S1 Toggle: " . json_encode($resToggleS1, JSON_UNESCAPED_UNICODE) . ", S2 Toggle: " . json_encode($resToggleS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 14: get_consultant_compensation_details
+    $resCompS1 = $callApi('get_consultant_compensation_details&consultant_id=' . $sales1UserId, 'GET', [], $mgrToken);
+    $resCompS2 = $callApi('get_consultant_compensation_details&consultant_id=' . $sales2UserId, 'GET', [], $mgrToken);
+    assertPermTest(
+        "Manager: get_consultant_compensation_details should only allow team members",
+        isset($resCompS1['success']) && $resCompS1['success'] === true && isset($resCompS2['success']) && $resCompS2['success'] === false,
+        "S1 Comp: " . json_encode($resCompS1, JSON_UNESCAPED_UNICODE) . ", S2 Comp: " . json_encode($resCompS2, JSON_UNESCAPED_UNICODE)
     );
 
     // Clean up temporary DB records
@@ -478,6 +539,7 @@ try {
     $db->prepare("DELETE FROM users WHERE id IN (?, ?, ?, ?, ?, ?)")->execute([$salesUserId, $viewerUserId, $adminUserId, $mgrUserId, $sales1UserId, $sales2UserId]);
     $db->prepare("DELETE FROM teams WHERE id = ?")->execute([$teamId]);
     $db->prepare("DELETE FROM leads WHERE id IN (?, ?)")->execute([$leadS1Id, $leadS2Id]);
+    $db->prepare("DELETE FROM consultant_leaves WHERE consultant_id IN (?, ?)")->execute([$sales1UserId, $sales2UserId]);
     $db->prepare("DELETE FROM data_reports WHERE id IN (?, ?, ?)")->execute([$repS1Id, $repS2Id, $repS1Id_2]);
     $db->prepare("DELETE FROM distribution_logs WHERE id IN (?, ?)")->execute([$logS1Id, $logS2Id]);
     if ($supplierId) $db->prepare("DELETE FROM suppliers WHERE id = ?")->execute([$supplierId]);

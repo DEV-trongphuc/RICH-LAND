@@ -3140,12 +3140,20 @@ switch ($action) {
         }
         $isSale = $decodedUser['role'] === 'sale';
         $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        $isManager = ($decodedUser['role'] === 'manager');
         
         $targetConsultantId = null;
         if ($isSale) {
             $targetConsultantId = $currentSaleConsultantId;
-        } else if ($isAdmin && isset($_GET['consultant_id'])) {
+        } else if (($isAdmin || $isManager) && isset($_GET['consultant_id'])) {
             $targetConsultantId = (int)$_GET['consultant_id'];
+            if ($isManager) {
+                $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+                if (!isManagerOfConsultant($conn, $currentUserId, $targetConsultantId)) {
+                    echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem lịch nghỉ của tư vấn viên này']);
+                    break;
+                }
+            }
         } else {
             $targetConsultantId = $currentSaleConsultantId;
         }
@@ -3179,12 +3187,20 @@ switch ($action) {
 
         $isSale = $decodedUser['role'] === 'sale';
         $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        $isManager = ($decodedUser['role'] === 'manager');
         
         $targetConsultantId = null;
         if ($isSale) {
             $targetConsultantId = (int)$decodedUser['id'];
-        } else if ($isAdmin && isset($input['consultant_id'])) {
+        } else if (($isAdmin || $isManager) && isset($input['consultant_id'])) {
             $targetConsultantId = (int)$input['consultant_id'];
+            if ($isManager) {
+                $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+                if (!isManagerOfConsultant($conn, $currentUserId, $targetConsultantId)) {
+                    echo json_encode(['success' => false, 'message' => 'Bạn không có quyền đăng ký nghỉ phép cho tư vấn viên này']);
+                    break;
+                }
+            }
         } else {
             $targetConsultantId = (int)$decodedUser['id'];
         }
@@ -3250,6 +3266,7 @@ switch ($action) {
 
         $isSale = $decodedUser['role'] === 'sale';
         $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        $isManager = ($decodedUser['role'] === 'manager');
 
         // First find the consultant_id of this leave to authorize and recalculate
         $stmt = $conn->prepare("SELECT consultant_id FROM consultant_leaves WHERE id = ?");
@@ -3268,6 +3285,14 @@ switch ($action) {
         if ($isSale && $targetConsultantId !== $currentSaleConsultantId) {
             echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa đăng ký nghỉ phép của người khác.']);
             break;
+        }
+
+        if ($isManager) {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if (!isManagerOfConsultant($conn, $currentUserId, $targetConsultantId)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa đăng ký nghỉ phép của tư vấn viên này']);
+                break;
+            }
         }
 
         // Delete leave period
@@ -3654,6 +3679,14 @@ switch ($action) {
             // If logged in as sale, override ID to their own consultant record
             if ($decodedUser['role'] === 'sale') {
                 $id = $currentSaleConsultantId;
+            }
+
+            if ($decodedUser['role'] === 'manager') {
+                $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+                if (!isManagerOfConsultant($conn, $currentUserId, $id)) {
+                    echo json_encode(['success' => false, 'message' => 'Bạn không có quyền thay đổi trạng thái của tư vấn viên này']);
+                    break;
+                }
             }
 
             if (!$id) {
@@ -12205,6 +12238,14 @@ switch ($action) {
         if (!$consultantId) {
             echo json_encode(['success' => false, 'message' => 'Thiếu ID Tư vấn viên']);
             break;
+        }
+
+        if ($decodedUser['role'] === 'manager') {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if (!isManagerOfConsultant($conn, $currentUserId, $consultantId)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem chi tiết bù của tư vấn viên này']);
+                break;
+            }
         }
 
         // Fetch consultant info
