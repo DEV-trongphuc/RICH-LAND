@@ -716,6 +716,7 @@ const SettingsInner = () => {
       value: Number(c.id),
       label: c.name + (c.status === 'leave' ? ` (${t('Nghỉ phép')})` : Number(c.vacation_mode) === 1 ? ` (${t('Tạm ngưng')})` : c.status === 'inactive' ? ` (${t('Nghỉ việc')})` : ''),
       icon: <Users size={14} style={{ color: 'var(--color-text-muted)' }} />,
+      avatar: c.avatar,
       disabled: c.status !== 'active' || Number(c.vacation_mode) === 1,
       disabledType: 'sale' as const
     }))
@@ -4187,6 +4188,7 @@ function doPost(e) {
               onChange={setRuleSales}
               multiple={true}
               searchable={true}
+              showAvatars={true}
               placeholder={t("Chọn tư vấn viên...")}
             />
           </div>

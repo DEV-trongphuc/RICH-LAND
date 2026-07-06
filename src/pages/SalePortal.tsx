@@ -2838,7 +2838,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     const consultantOptions = [
       { value: '', label: t('Tất cả Nhân viên') },
-      ...users.map((u: any) => ({ value: String(u.id), label: u.full_name || u.username }))
+      ...users.map((u: any) => ({ value: String(u.id), label: u.full_name || u.username, avatar: u.avatar || u.avatar_url }))
     ];
 
     return (
@@ -3533,6 +3533,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           options={consultantOptions}
                           value={wsUserId}
                           onChange={val => setWsUserId(String(val))}
+                          showAvatars
+                          searchable
+                          align="right"
                         />
                       </div>
                     </div>

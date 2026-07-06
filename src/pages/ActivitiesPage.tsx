@@ -116,7 +116,7 @@ export const ActivitiesPage: React.FC = () => {
   const consultantOptions = useMemo(() => {
     return [
       { value: '', label: 'Tất cả Nhân viên' },
-      ...consultantsList.map(u => ({ value: String(u.id), label: u.name }))
+      ...consultantsList.map(u => ({ value: String(u.id), label: u.name, avatar: u.avatar || u.avatar_url }))
     ];
   }, [consultantsList]);
 
@@ -324,6 +324,9 @@ export const ActivitiesPage: React.FC = () => {
                 value={filterUserId}
                 onChange={val => { setFilterUserId(val.toString()); setPage(1); }}
                 placeholder="Lọc theo Nhân viên"
+                showAvatars
+                searchable
+                align="right"
               />
             </div>
           </div>
