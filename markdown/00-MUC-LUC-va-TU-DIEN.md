@@ -38,6 +38,7 @@ Mỗi luồng nghiệp vụ = 1 file, bên trong có 4 lớp cố định:
 | Vòng đời chiến dịch (mở/vận hành/đóng + nạp config) | 🔴 Chưa thảo luận | _(sẽ viết)_ |
 | Trung tâm thông báo (sự kiện → người nhận → kênh) | 🔴 Chờ chốt kênh chính | _(sẽ viết)_ |
 | Dashboard chi tiết theo vai | 🔴 Buổi riêng sau ERD — đã có đầu bài | _(Luồng 7 — M4)_ |
+| Kế hoạch kiểm thử toàn diện | ✅ Đăng ký phê duyệt | `11-ke-hoach-kiem-thu-toan-dien.md` |
 
 **Tài liệu nền (đã có):**
 - `01-bao-cao-hien-trang-database.md` — audit 24 bảng MySQL hiện tại

@@ -5,7 +5,7 @@ import { withRouterFreezer } from '../components/RouterFreezer';
 import {
   LogOut, LogIn, Search, Filter, AlertCircle, CheckCircle2,
   XCircle, Clock, FileText,
-  Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send,
+  Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
   Camera, Video, Layers, Plus, Receipt, Building2, Users, User, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone
@@ -1021,7 +1021,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       if (start) url += `&start_date=${start}`;
       if (end) url += `&end_date=${end}`;
-      if (wsTeamId) url += `&team_id=${wsTeamId}`;
+      if (wsTeamId && wsTeamId !== 'all_teams_bypass') url += `&team_id=${wsTeamId}`;
       if (wsUserId) url += `&user_id=${wsUserId}`;
 
       const res = await api.get(url);
@@ -2830,6 +2830,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   // Active Sale Portal View
   const renderWorkspaceView = () => {
     const currentUser = user;
+    const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
     const teamOptions = [
       { value: '', label: t('Tất cả Nhóm') },
       ...teamsList.map((t: any) => ({ value: String(t.id), label: t.name }))
@@ -3411,7 +3412,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                style={{ overflow: 'hidden' }}
+                style={{ overflow: showAdvancedFilters ? 'visible' : 'hidden' }}
               >
                 <div style={{
                   display: 'grid',
@@ -3544,7 +3545,116 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </>)}
 
         {/* Task Grid */}
-        {wsViewMode !== 'focus' && loadingWsTasks ? (
+        {isAdminOrManager && !wsTeamId && wsSubTab !== 'personal' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+              {t('Vui lòng chọn một Nhóm để xem chi tiết công việc:')}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+              {/* Card for "Tất cả các Nhóm" */}
+              <div
+                onClick={() => setWsTeamId('all_teams_bypass')}
+                style={{
+                  padding: '1.5rem',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: 'var(--radius-lg)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'all var(--transition-fluid)',
+                  cursor: 'pointer',
+                  justifyContent: 'center',
+                  minHeight: '140px'
+                }}
+                className="hover-lift active-press"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ padding: '10px', background: 'rgba(189, 29, 45, 0.08)', borderRadius: '10px', color: 'var(--color-primary)', display: 'flex' }}>
+                    <Layers size={24} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)', margin: 0 }}>
+                      {t('Tất cả các Nhóm')}
+                    </h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                      {t('Xem toàn bộ công việc hệ thống')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Individual Team Cards */}
+              {teamsList.map(team => (
+                <div
+                  key={team.id}
+                  onClick={() => setWsTeamId(String(team.id))}
+                  style={{
+                    padding: '1.5rem',
+                    background: 'var(--color-surface)',
+                    border: '1px solid var(--color-border-light)',
+                    borderRadius: 'var(--radius-lg)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1rem',
+                    boxShadow: 'var(--shadow-sm)',
+                    transition: 'all var(--transition-fluid)',
+                    cursor: 'pointer',
+                    justifyContent: 'center',
+                    minHeight: '140px'
+                  }}
+                  className="hover-lift active-press"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ padding: '10px', background: 'rgba(59, 130, 246, 0.08)', borderRadius: '10px', color: '#2563eb', display: 'flex' }}>
+                      <Users size={24} />
+                    </div>
+                    <div>
+                      <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)', margin: 0 }}>
+                        {team.name}
+                      </h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                        {t('Bấm để xem công việc của nhóm')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Back button when inside a team view */}
+            {isAdminOrManager && wsTeamId && wsSubTab !== 'personal' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                <button
+                  onClick={() => setWsTeamId('')}
+                  style={{
+                    height: 32,
+                    borderRadius: '8px',
+                    border: '1px solid var(--color-primary)',
+                    background: 'transparent',
+                    color: 'var(--color-primary)',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '0 12px',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                  className="hover-lift"
+                >
+                  <ArrowLeft size={14} /> {t('Quay lại danh sách nhóm')}
+                </button>
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                  {t('Đang xem nhóm:')} <strong style={{ color: 'var(--color-primary)' }}>{wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (teamsList.find(t => String(t.id) === wsTeamId)?.name || wsTeamId)}</strong>
+                </span>
+              </div>
+            )}
+
+            {wsViewMode !== 'focus' && loadingWsTasks ? (
           <div style={{ padding: '3rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
             <RefreshCw className="spin" size={24} style={{ color: 'var(--color-primary)', marginBottom: 8 }} />
             <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Đang tải danh sách công việc...</div>
@@ -4427,6 +4537,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               )}
             </div>
           </div>
+        )}
+        </>
         )}
 
         {/* Task Details Modal moved to root level */}
@@ -5806,7 +5918,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {paginatedPublicLeads.map((lead) => {
                     const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
                     const isFull = lead.takers && lead.takers.length >= 2;
-                    const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null;
+                    const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
+                    const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdminOrManager;
 
                     return (
                       <tr 
@@ -5849,26 +5962,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               handleClaimLead(lead.id, lead.full_name || lead.name);
                             }}
 
-                            disabled={isClaimingLeadId !== null || hasClaimed || isFull}
+                            disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdminOrManager}
                             className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
                             style={{
                               height: 32,
-                              fontSize: '0.75rem',
+                              fontSize: '0.72rem',
                               fontWeight: 700,
-                              padding: '0 12px',
-                              background: hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D'),
-                              color: hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff'),
-                              border: hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none'),
+                              padding: '0 10px',
+                              background: isAdminOrManager ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D')),
+                              color: isAdminOrManager ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff')),
+                              border: isAdminOrManager ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none')),
                               borderRadius: '16px',
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              boxShadow: (hasClaimed || isFull) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)'
+                              boxShadow: (hasClaimed || isFull || isAdminOrManager) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)',
+                              cursor: isAdminOrManager ? 'not-allowed' : 'pointer'
                             }}
                           >
                             {isClaimingLeadId === lead.id 
                               ? t('Đang nhận...') 
-                              : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : t('Nhận Data')))}
+                              : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : (isAdminOrManager ? t('Chỉ dành cho Sales') : t('Nhận Data'))))}
                           </button>
                         </td>
                       </tr>

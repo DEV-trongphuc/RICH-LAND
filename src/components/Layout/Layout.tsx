@@ -851,19 +851,19 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 onClick={() => { setIsUnifiedInboxOpen(false); navigate('/cooperation-slips'); }}
                 className="unified-inbox-card"
                 style={{ 
-                  '--hover-color': '#10b981',
-                  '--hover-bg': 'rgba(16, 185, 129, 0.03)',
-                  '--hover-shadow': 'rgba(16, 185, 129, 0.15)'
+                  '--hover-color': '#BD1D2D',
+                  '--hover-bg': 'rgba(189, 29, 45, 0.03)',
+                  '--hover-shadow': 'rgba(189, 29, 45, 0.15)'
                 } as any}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div className="unified-inbox-icon" style={{ background: 'rgba(16, 185, 129, 0.08)', color: '#10b981' }}>
+                  <div className="unified-inbox-icon" style={{ background: 'rgba(189, 29, 45, 0.08)', color: '#BD1D2D' }}>
                     <Scale size={18} />
                   </div>
                   <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t("Phê duyệt ký hợp tác chia hoa hồng")}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="badge success" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', boxShadow: '0 2px 6px rgba(16, 185, 129, 0.12)' }}>{pendingCoopsCount} {t('chờ duyệt')}</span>
+                  <span className="badge" style={{ borderRadius: '20px', padding: '4px 10px', fontWeight: 700, fontSize: '0.72rem', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', boxShadow: '0 2px 6px rgba(189, 29, 45, 0.12)' }}>{pendingCoopsCount} {t('chờ duyệt')}</span>
                   
                   <div style={{
                     borderRadius: '20px',
@@ -871,8 +871,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     fontWeight: 700,
                     fontSize: '0.72rem',
                     color: '#fff',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                    background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                    boxShadow: '0 4px 12px rgba(189, 29, 45, 0.25)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',

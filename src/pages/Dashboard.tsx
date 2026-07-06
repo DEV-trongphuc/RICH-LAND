@@ -91,6 +91,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
   const [healthModalTab, setHealthModalTab] = useState<'stats' | 'connections'>('stats');
   const [healthChartMetric, setHealthChartMetric] = useState<'zalo' | 'email' | 'token'>('zalo');
   const [modalChartLoading, setModalChartLoading] = useState(false);
+  const [consultantPage, setConsultantPage] = useState(1);
+  const CONSULTANTS_PER_PAGE = 8;
 
   const fetchStatsOnly = async (metricVal: string, modeVal: string, signal?: AbortSignal) => {
     if (loading) return; // Skip if main dashboard loading is in progress
@@ -731,7 +733,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 <button
                   onClick={() => navigate('/cooperation-slips')}
                   className="btn outline sm"
-                  style={{ borderRadius: '20px', borderColor: 'var(--color-success)', color: 'var(--color-success)', background: 'rgba(16, 185, 129, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                  style={{ borderRadius: '20px', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'rgba(163, 20, 34, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
                 >
                   <Scale size={12} />
                   <span>{pendingCoopsCount} {t('Hợp tác')}</span>
@@ -1500,94 +1502,175 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               </h3>
             </div>
             
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1.5px solid var(--color-border-light)', textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: 700 }}>
-                    <th style={{ padding: '8px 12px' }}>{t('Nhân viên')}</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Lead nhận')}</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Tỷ lệ nhận')}</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Quá hạn/Thu hồi')}</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'center' }}>{t('Chưa tương tác (Van ôm)')}</th>
-                    <th style={{ padding: '8px 12px' }}>{t('Dòng chảy (Flow)')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.map((c: any, idx: number) => {
-                    const total = c.offered_count || c.data || 0;
-                    const accepted = c.data || 0;
-                    const recalled = c.recalled_count || 0;
-                    const uncontacted = c.uncontacted_count || 0;
-                    
-                    const acceptPct = c.accepted_percent || 0;
-                    const recallPct = c.recalled_percent || 0;
-                    
-                    return (
-                      <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', height: '48px' }}>
-                        <td style={{ padding: '8px 12px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar src={c.avatar} name={c.name} size={24} />
-                            <div>
-                              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{c.name}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>{accepted}/{total}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                          <span style={{
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            fontSize: '0.75rem',
-                            background: acceptPct >= 80 ? 'rgba(16,185,129,0.08)' : acceptPct >= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
-                            color: acceptPct >= 80 ? 'var(--color-success)' : acceptPct >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'
-                          }}>
-                            {acceptPct}%
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                          <span style={{
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            fontSize: '0.75rem',
-                            background: recalled > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(163,20,34,0.04)',
-                            color: recalled > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)'
-                          }}>
-                            {recalled} ({recallPct}%)
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 12px', textAlign: 'center' }}>
-                          <span style={{
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            fontWeight: 700,
-                            fontSize: '0.75rem',
-                            background: uncontacted >= 5 ? 'rgba(239,68,68,0.12)' : uncontacted >= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.08)',
-                            color: uncontacted >= 5 ? 'var(--color-danger)' : uncontacted >= 3 ? 'var(--color-warning)' : 'var(--color-success)'
-                          }}>
-                            {uncontacted}/5
-                          </span>
-                        </td>
-                        <td style={{ padding: '8px 12px', minWidth: '150px' }}>
-                          <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'var(--color-bg)' }}>
-                            <div style={{ width: `${acceptPct}%`, background: 'var(--color-success)' }} title={`Đã nhận: ${acceptPct}%`} />
-                            <div style={{ width: `${recallPct}%`, background: 'var(--color-danger)' }} title={`Thu hồi: ${recallPct}%`} />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  }) : (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>
-                        {t('Chưa có dữ liệu phân bổ')}
-                      </td>
-                    </tr>
+            {(() => {
+              const consultantsList = stats?.topConsultants || [];
+              const totalConsultants = consultantsList.length;
+              const totalPages = Math.ceil(totalConsultants / CONSULTANTS_PER_PAGE);
+              const paginatedConsultants = consultantsList.slice((consultantPage - 1) * CONSULTANTS_PER_PAGE, consultantPage * CONSULTANTS_PER_PAGE);
+
+              return (
+                <>
+                  <div style={{ overflowX: 'auto', maxHeight: '360px', overflowY: 'auto', border: '1px solid var(--color-border-light)', borderRadius: '12px', background: 'var(--color-surface)' }} className="custom-scrollbar">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                          <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>{t('Nhân viên')}</th>
+                          <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>{t('Lead nhận')}</th>
+                          <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>{t('Tỷ lệ nhận')}</th>
+                          <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>{t('Quá hạn/Thu hồi')}</th>
+                          <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)', textAlign: 'center' }}>{t('Chưa tương tác (Van ôm)')}</th>
+                          <th style={{ padding: '12px', position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 2, borderBottom: '2px solid var(--color-border-light)' }}>{t('Dòng chảy (Flow)')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedConsultants.length > 0 ? paginatedConsultants.map((c: any, idx: number) => {
+                          const total = c.offered_count || c.data || 0;
+                          const accepted = c.data || 0;
+                          const recalled = c.recalled_count || 0;
+                          const uncontacted = c.uncontacted_count || 0;
+                          
+                          const acceptPct = c.accepted_percent || 0;
+                          const recallPct = c.recalled_percent || 0;
+                          
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--color-border-light)', height: '48px' }}>
+                              <td style={{ padding: '8px 12px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Avatar src={c.avatar} name={c.name} size={24} />
+                                  <div>
+                                    <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{c.name}</div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.email}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>{accepted}/{total}</td>
+                              <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                                <span style={{
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  background: acceptPct >= 80 ? 'rgba(16,185,129,0.08)' : acceptPct >= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+                                  color: acceptPct >= 80 ? 'var(--color-success)' : acceptPct >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'
+                                }}>
+                                  {acceptPct}%
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                                <span style={{
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  background: recalled > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(163,20,34,0.04)',
+                                  color: recalled > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)'
+                                }}>
+                                  {recalled} ({recallPct}%)
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px', textAlign: 'center' }}>
+                                <span style={{
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  fontSize: '0.75rem',
+                                  background: uncontacted >= 5 ? 'rgba(239,68,68,0.12)' : uncontacted >= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.08)',
+                                  color: uncontacted >= 5 ? 'var(--color-danger)' : uncontacted >= 3 ? 'var(--color-warning)' : 'var(--color-success)'
+                                }}>
+                                  {uncontacted}/5
+                                </span>
+                              </td>
+                              <td style={{ padding: '8px 12px', minWidth: '150px' }}>
+                                <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'var(--color-bg)' }}>
+                                  <div style={{ width: `${acceptPct}%`, background: 'var(--color-success)' }} title={`Đã nhận: ${acceptPct}%`} />
+                                  <div style={{ width: `${recallPct}%`, background: 'var(--color-danger)' }} title={`Thu hồi: ${recallPct}%`} />
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        }) : (
+                          <tr>
+                            <td colSpan={6} style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>
+                              {t('Chưa có dữ liệu phân bổ')}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border-light)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        {t('Hiển thị')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{(consultantPage - 1) * CONSULTANTS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{Math.min(consultantPage * CONSULTANTS_PER_PAGE, totalConsultants)}</span> {t('trên')} <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{totalConsultants}</span>
+                      </span>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button 
+                          onClick={() => setConsultantPage(prev => Math.max(prev - 1, 1))} 
+                          disabled={consultantPage === 1}
+                          style={{
+                            height: 28,
+                            minWidth: 28,
+                            padding: 0,
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-border-light)',
+                            background: consultantPage === 1 ? 'rgba(0,0,0,0.02)' : 'var(--color-surface)',
+                            color: consultantPage === 1 ? 'var(--color-text-muted)' : 'var(--color-text)',
+                            cursor: consultantPage === 1 ? 'not-allowed' : 'pointer',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          &lt;
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={pageNum}
+                            onClick={() => setConsultantPage(pageNum)}
+                            style={{
+                              height: 28,
+                              minWidth: 28,
+                              padding: 0,
+                              borderRadius: '6px',
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              border: consultantPage === pageNum ? 'none' : '1px solid var(--color-border-light)',
+                              background: consultantPage === pageNum ? 'var(--color-primary)' : 'var(--color-surface)',
+                              color: consultantPage === pageNum ? 'white' : 'var(--color-text)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+                        <button 
+                          onClick={() => setConsultantPage(prev => Math.min(prev + 1, totalPages))} 
+                          disabled={consultantPage === totalPages}
+                          style={{
+                            height: 28,
+                            minWidth: 28,
+                            padding: 0,
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-border-light)',
+                            background: consultantPage === totalPages ? 'rgba(0,0,0,0.02)' : 'var(--color-surface)',
+                            color: consultantPage === totalPages ? 'var(--color-text-muted)' : 'var(--color-text)',
+                            cursor: consultantPage === totalPages ? 'not-allowed' : 'pointer',
+                            fontWeight: 'bold',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                        >
+                          &gt;
+                        </button>
+                      </div>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
+                </>
+              );
+            })()}
           </div>
 
           {/* NEW ROW: Source Stats & Error Stats */}

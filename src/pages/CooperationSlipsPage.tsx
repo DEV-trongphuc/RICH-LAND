@@ -102,6 +102,7 @@ export default function CooperationSlipsPage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => getDateRange('30d'));
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSale, setFilterSale] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [changeReason, setChangeReason] = useState('');
 
   // Signature Modal state
@@ -253,9 +254,31 @@ export default function CooperationSlipsPage() {
         return false;
       }
 
+      // 4. Filter by Status
+      if (statusFilter !== 'all') {
+        const hasSigned = slip.shareholders.find(s => String(s.user_id) === String(user?.id))?.signed;
+        const isShareholder = slip.shareholders.some(s => String(s.user_id) === String(user?.id));
+        const allSigned = slip.shareholders.every(s => s.signed);
+        const isPendingSignatures = !allSigned || slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures';
+
+        if (statusFilter === 'pending_me') {
+          const needsMySignature = isShareholder && isPendingSignatures && !hasSigned;
+          const needsMyManagerApproval = isManager && slip.status === 'pending_manager_approval';
+          if (!needsMySignature && !needsMyManagerApproval) return false;
+        } else if (statusFilter === 'pending_signatures') {
+          if (!isPendingSignatures) return false;
+        } else if (statusFilter === 'pending_manager') {
+          if (slip.status !== 'pending_manager_approval') return false;
+        } else if (statusFilter === 'approved') {
+          if (slip.status !== 'approved') return false;
+        } else if (statusFilter === 'rejected') {
+          if (slip.status !== 'rejected') return false;
+        }
+      }
+
       return true;
     });
-  }, [slips, searchQuery, filterSale, dateRange]);
+  }, [slips, searchQuery, filterSale, dateRange, statusFilter, user?.id, isManager]);
 
   const handleDeleteSlip = async (slipId: number) => {
     setCustomConfirm({
@@ -582,6 +605,23 @@ export default function CooperationSlipsPage() {
           />
         </div>
 
+        {/* Filter Status */}
+        <div style={{ width: '185px' }}>
+          <CustomSelect
+            value={statusFilter}
+            onChange={val => setStatusFilter(String(val))}
+            options={[
+              { value: 'all', label: 'Tất cả trạng thái' },
+              { value: 'pending_me', label: 'Chờ tôi duyệt / ký' },
+              { value: 'pending_signatures', label: 'Chờ nhân viên ký' },
+              isManager && { value: 'pending_manager', label: 'Chờ sếp duyệt' },
+              { value: 'approved', label: 'Đã duyệt' },
+              { value: 'rejected', label: 'Bác bỏ' }
+            ].filter(Boolean) as any[]}
+            size="sm"
+          />
+        </div>
+
         {/* Filter Sale (Only show if Manager/Admin) */}
         {isManager && (
           <div style={{ width: '220px' }}>
@@ -595,6 +635,7 @@ export default function CooperationSlipsPage() {
               size="sm"
               showAvatars
               searchable
+              align="right"
             />
           </div>
         )}
