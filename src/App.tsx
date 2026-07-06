@@ -97,7 +97,7 @@ const AppTabs = () => {
   }
 
   if (currentPath === '/accounts' || currentPath === '/consultants') {
-    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/invoices') {
@@ -105,19 +105,19 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/quotes' || currentPath === '/expenses') {
-    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'manager') {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/tickets') {
-    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/fair-share') {
-    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin' && (user?.role as string) !== 'sale') {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   } else if (isAdminPath) {
-    if ((user?.role as string) !== 'admin' && (user?.role as string) !== 'superadmin' && (user?.role as string) !== 'super_admin') {
+    if (!['admin', 'superadmin', 'super_admin'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   }

@@ -307,9 +307,179 @@ try {
         "Sales Code: {$resSaleProdDelete['http_status_code']}, Viewer Code: {$resViewerProdDelete['http_status_code']}, Admin Code: {$resAdminProdDelete['http_status_code']}"
     );
 
+    // ─────────────────────────────────────────────────────────────────
+    // Test Case Group 5: Team and Manager Permissions
+    // ─────────────────────────────────────────────────────────────────
+    $mgrEmail = "perm_mgr_$suffix@richland.net";
+    $sales1Email = "perm_s1_$suffix@richland.net"; // In team
+    $sales2Email = "perm_s2_$suffix@richland.net"; // Outside team
+
+    // Create users
+    $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, 'hash', 'manager', 'Manager E2E Perm', 'active')")
+       ->execute([$tenantId, $mgrEmail]);
+    $mgrUserId = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, 'hash', 'sales', 'Sale 1 In Team', 'active')")
+       ->execute([$tenantId, $sales1Email]);
+    $sales1UserId = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, 'hash', 'sales', 'Sale 2 Out Team', 'active')")
+       ->execute([$tenantId, $sales2Email]);
+    $sales2UserId = (int)$db->lastInsertId();
+
+    // Create a team led by the manager
+    $db->prepare("INSERT INTO teams (tenant_id, name, leader_id) VALUES (?, ?, ?)")
+       ->execute([$tenantId, "Team Perm E2E $suffix", $mgrUserId]);
+    $teamId = (int)$db->lastInsertId();
+
+    // Assign Sales 1 to the team
+    $db->prepare("UPDATE users SET team_id = ? WHERE id = ?")
+       ->execute([$teamId, $sales1UserId]);
+
+    // Generate tokens
+    $mgrToken = JWT::encode([
+        'username' => 'perm_mgr_' . $suffix,
+        'email' => $mgrEmail,
+        'role' => 'manager',
+        'user_id' => $mgrUserId,
+        'id' => $mgrUserId,
+        'tenant_id' => $tenantId
+    ]);
+
+    // Test 1: get_consultants
+    $resConsultants = $callApi('get_consultants', 'GET', [], $mgrToken);
+    $consultantsData = $resConsultants['data'] ?? [];
+    $hasS1 = false; $hasS2 = false;
+    foreach ($consultantsData as $c) {
+        if ((int)$c['id'] === $sales1UserId) $hasS1 = true;
+        if ((int)$c['id'] === $sales2UserId) $hasS2 = true;
+    }
+    assertPermTest(
+        "Manager: get_consultants should only return team members",
+        $hasS1 && !$hasS2,
+        "Has S1: " . ($hasS1 ? 'Yes' : 'No') . ", Has S2: " . ($hasS2 ? 'Yes' : 'No')
+    );
+
+    // Create data reports (tickets)
+    // S1 report
+    $db->prepare("INSERT INTO leads (tenant_id, name, phone, email, assigned_to) VALUES (?, 'Lead S1', '0912345678', 's1@lead.net', ?)")
+       ->execute([$tenantId, $sales1UserId]);
+    $leadS1Id = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, 1, 'Fake phone number', 'pending')")
+       ->execute([$leadS1Id, $sales1UserId]);
+    $repS1Id = (int)$db->lastInsertId();
+
+    // S2 report
+    $db->prepare("INSERT INTO leads (tenant_id, name, phone, email, assigned_to) VALUES (?, 'Lead S2', '0987654321', 's2@lead.net', ?)")
+       ->execute([$tenantId, $sales2UserId]);
+    $leadS2Id = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, 1, 'Spam mail', 'pending')")
+       ->execute([$leadS2Id, $sales2UserId]);
+    $repS2Id = (int)$db->lastInsertId();
+
+    // Test 2: get_reports
+    $resReports = $callApi('get_reports', 'GET', ['status' => 'pending', 'date' => 'all'], $mgrToken);
+    $reportsData = $resReports['data'] ?? [];
+    $hasRepS1 = false; $hasRepS2 = false;
+    foreach ($reportsData as $r) {
+        if ((int)$r['id'] === $repS1Id) $hasRepS1 = true;
+        if ((int)$r['id'] === $repS2Id) $hasRepS2 = true;
+    }
+    assertPermTest(
+        "Manager: get_reports should only return team members reports",
+        $hasRepS1 && !$hasRepS2,
+        "Has S1 Report: " . ($hasRepS1 ? 'Yes' : 'No') . ", Has S2 Report: " . ($hasRepS2 ? 'Yes' : 'No')
+    );
+
+    // Test 3: approve_report
+    $resApproveS1 = $callApi('approve_report', 'POST', ['id' => $repS1Id, 'approval_reason' => 'Valid team check', 'no_compensation' => true], $mgrToken);
+    $resApproveS2 = $callApi('approve_report', 'POST', ['id' => $repS2Id, 'approval_reason' => 'Invalid check', 'no_compensation' => true], $mgrToken);
+    assertPermTest(
+        "Manager: approve_report should only allow team members reports",
+        isset($resApproveS1['success']) && $resApproveS1['success'] === true && isset($resApproveS2['success']) && $resApproveS2['success'] === false,
+        "S1 Approve: " . json_encode($resApproveS1, JSON_UNESCAPED_UNICODE) . ", S2 Approve: " . json_encode($resApproveS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Reset status of S2 report back to pending to test reject
+    $db->prepare("UPDATE data_reports SET status = 'pending' WHERE id = ?")->execute([$repS2Id]);
+
+    // Test 4: reject_report
+    // We create another pending S1 report to test valid reject
+    $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, 1, 'Fake phone number 2', 'pending')")
+       ->execute([$leadS1Id, $sales1UserId]);
+    $repS1Id_2 = (int)$db->lastInsertId();
+    $resRejectS1_2 = $callApi('reject_report', 'POST', ['id' => $repS1Id_2, 'reject_reason' => 'Valid reject reason'], $mgrToken);
+    $resRejectS2 = $callApi('reject_report', 'POST', ['id' => $repS2Id, 'reject_reason' => 'Invalid team reject'], $mgrToken); // not in team, should fail manager check
+
+    assertPermTest(
+        "Manager: reject_report should only allow team members reports",
+        isset($resRejectS1_2['success']) && $resRejectS1_2['success'] === true && isset($resRejectS2['success']) && $resRejectS2['success'] === false,
+        "S1 Reject: " . json_encode($resRejectS1_2, JSON_UNESCAPED_UNICODE) . ", S2 Reject: " . json_encode($resRejectS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Create distribution logs for reassign / block tests
+    $db->prepare("INSERT INTO distribution_logs (lead_id, round_id, assigned_to, status) VALUES (?, 1, ?, 'assigned')")
+       ->execute([$leadS1Id, $sales1UserId]);
+    $logS1Id = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO distribution_logs (lead_id, round_id, assigned_to, status) VALUES (?, 1, ?, 'assigned')")
+       ->execute([$leadS2Id, $sales2UserId]);
+    $logS2Id = (int)$db->lastInsertId();
+
+    // Test 5: reassign_lead
+    $resReassignS1 = $callApi('reassign_lead', 'POST', ['log_id' => $logS1Id, 'new_consultant_id' => $sales1UserId], $mgrToken);
+    $resReassignS2 = $callApi('reassign_lead', 'POST', ['log_id' => $logS2Id, 'new_consultant_id' => $sales1UserId], $mgrToken);
+    assertPermTest(
+        "Manager: reassign_lead should only allow team members leads",
+        isset($resReassignS1['success']) && $resReassignS1['success'] === true && isset($resReassignS2['success']) && $resReassignS2['success'] === false,
+        "S1 Reassign: " . json_encode($resReassignS1, JSON_UNESCAPED_UNICODE) . ", S2 Reassign: " . json_encode($resReassignS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 6: block_lead
+    $resBlockS1 = $callApi('block_lead', 'POST', ['log_id' => $logS1Id, 'reason' => 'Team lead blacklist'], $mgrToken);
+    $resBlockS2 = $callApi('block_lead', 'POST', ['log_id' => $logS2Id, 'reason' => 'Out team blacklist'], $mgrToken);
+    assertPermTest(
+        "Manager: block_lead should only allow team members leads",
+        isset($resBlockS1['success']) && $resBlockS1['success'] === true && isset($resBlockS2['success']) && $resBlockS2['success'] === false,
+        "S1 Block: " . json_encode($resBlockS1, JSON_UNESCAPED_UNICODE) . ", S2 Block: " . json_encode($resBlockS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 7: update_lead_fields
+    $resUpdateS1 = $callApi('update_lead_fields', 'POST', ['lead_id' => $leadS1Id, 'name' => 'Updated Lead S1'], $mgrToken);
+    $resUpdateS2 = $callApi('update_lead_fields', 'POST', ['lead_id' => $leadS2Id, 'name' => 'Updated Lead S2'], $mgrToken);
+    assertPermTest(
+        "Manager: update_lead_fields should only allow team members leads",
+        isset($resUpdateS1['success']) && $resUpdateS1['success'] === true && isset($resUpdateS2['success']) && $resUpdateS2['success'] === false,
+        "S1 Update: " . json_encode($resUpdateS1, JSON_UNESCAPED_UNICODE) . ", S2 Update: " . json_encode($resUpdateS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 8: send_lead_reminder
+    $resReminderS1 = $callApi('send_lead_reminder', 'POST', ['lead_id' => $leadS1Id, 'send_email' => true], $mgrToken);
+    $resReminderS2 = $callApi('send_lead_reminder', 'POST', ['lead_id' => $leadS2Id, 'send_email' => true], $mgrToken);
+    assertPermTest(
+        "Manager: send_lead_reminder should only allow team members leads",
+        isset($resReminderS1['success']) && $resReminderS1['success'] === true && isset($resReminderS2['success']) && $resReminderS2['success'] === false,
+        "S1 Reminder: " . json_encode($resReminderS1, JSON_UNESCAPED_UNICODE) . ", S2 Reminder: " . json_encode($resReminderS2, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 9: get_consultant_stats
+    $resStatsS1 = $callApi('get_consultant_stats', 'GET', ['consultant_id' => $sales1UserId, 'date_mode' => 'all'], $mgrToken);
+    $resStatsS2 = $callApi('get_consultant_stats', 'GET', ['consultant_id' => $sales2UserId, 'date_mode' => 'all'], $mgrToken);
+    assertPermTest(
+        "Manager: get_consultant_stats should only allow team members",
+        isset($resStatsS1['success']) && $resStatsS1['success'] === true && isset($resStatsS2['success']) && $resStatsS2['success'] === false,
+        "S1 Stats: " . json_encode($resStatsS1, JSON_UNESCAPED_UNICODE) . ", S2 Stats: " . json_encode($resStatsS2, JSON_UNESCAPED_UNICODE)
+    );
+
     // Clean up temporary DB records
     $db->exec("SET FOREIGN_KEY_CHECKS = 0");
-    $db->prepare("DELETE FROM users WHERE id IN (?, ?, ?)")->execute([$salesUserId, $viewerUserId, $adminUserId]);
+    $db->prepare("DELETE FROM users WHERE id IN (?, ?, ?, ?, ?, ?)")->execute([$salesUserId, $viewerUserId, $adminUserId, $mgrUserId, $sales1UserId, $sales2UserId]);
+    $db->prepare("DELETE FROM teams WHERE id = ?")->execute([$teamId]);
+    $db->prepare("DELETE FROM leads WHERE id IN (?, ?)")->execute([$leadS1Id, $leadS2Id]);
+    $db->prepare("DELETE FROM data_reports WHERE id IN (?, ?, ?)")->execute([$repS1Id, $repS2Id, $repS1Id_2]);
+    $db->prepare("DELETE FROM distribution_logs WHERE id IN (?, ?)")->execute([$logS1Id, $logS2Id]);
     if ($supplierId) $db->prepare("DELETE FROM suppliers WHERE id = ?")->execute([$supplierId]);
     if ($companyId) $db->prepare("DELETE FROM companies WHERE id = ?")->execute([$companyId]);
     if ($projectId) $db->prepare("DELETE FROM projects WHERE id = ?")->execute([$projectId]);

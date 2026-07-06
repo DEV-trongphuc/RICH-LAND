@@ -25,16 +25,41 @@ class UserController {
 
     public function index(array $auth): void {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'manager', 'sales', 'sale'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
+        
+        $where = ["tenant_id = ?"];
+        $params = [$auth['tenant_id']];
+        
+        if ($auth['role'] === 'manager') {
+            $where[] = "(id = ? OR team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        } else if (in_array($auth['role'], ['sales', 'sale'], true)) {
+            $tStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+            $tStmt->execute([$auth['user_id']]);
+            $teamRow = $tStmt->fetch();
+            $teamId = $teamRow ? $teamRow['team_id'] : null;
+            if ($teamId) {
+                $where[] = "team_id = ?";
+                $params[] = $teamId;
+            } else {
+                $where[] = "id = ?";
+                $params[] = $auth['user_id'];
+            }
+        }
+
+        $whereClause = implode(" AND ", $where);
+        
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE tenant_id=? ORDER BY full_name");
-            $stmt->execute([$auth['tenant_id']]);
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE $whereClause ORDER BY full_name");
+            $stmt->execute($params);
             respond(200,$stmt->fetchAll());
         } catch (PDOException $e) {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE tenant_id=? ORDER BY full_name");
-            $stmt->execute([$auth['tenant_id']]);
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE $whereClause ORDER BY full_name");
+            $stmt->execute($params);
             respond(200,$stmt->fetchAll());
         }
     }
+
     public function store(array $auth): void {
         if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         $b=getBody();

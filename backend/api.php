@@ -474,10 +474,24 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
-    if (in_array($action, $adminOnlyActions) && $decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin') {
+    $managerAllowedActions = [
+        'approve_report',
+        'reject_report',
+        'reassign_lead',
+        'block_lead',
+        'update_lead_fields',
+        'send_lead_reminder',
+        'get_consultant_stats'
+    ];
+
+    if (in_array($action, $adminOnlyActions) 
+        && $decodedUser['role'] !== 'admin' 
+        && $decodedUser['role'] !== 'superadmin'
+        && !($decodedUser['role'] === 'manager' && in_array($action, $managerAllowedActions))
+    ) {
         if ($action !== 'get_accounts' && !$isSelfUnlink) {
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin privileges']);
+            echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin/Manager privileges']);
             exit();
         }
     }
@@ -561,6 +575,30 @@ function logAdminAction($conn, $accountId, $action, $details = [])
         $stmt->close();
         pruneAdminLogs($conn);
     }
+}
+
+function isManagerOfConsultant($conn, $managerUserId, $consultantId) {
+    if (!$consultantId) return false;
+    $stmt = $conn->prepare("SELECT u.id FROM users u JOIN teams t ON u.team_id = t.id WHERE t.leader_id = ? AND u.id = ?");
+    if (!$stmt) return false;
+    $stmt->bind_param("ii", $managerUserId, $consultantId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $isManaged = ($res->num_rows > 0);
+    $stmt->close();
+    return $isManaged;
+}
+
+function isManagerOfLead($conn, $managerUserId, $leadId) {
+    if (!$leadId) return false;
+    $stmt = $conn->prepare("SELECT l.id FROM leads l JOIN users u ON l.assigned_to = u.id JOIN teams t ON u.team_id = t.id WHERE t.leader_id = ? AND l.id = ?");
+    if (!$stmt) return false;
+    $stmt->bind_param("ii", $managerUserId, $leadId);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    $isManaged = ($res->num_rows > 0);
+    $stmt->close();
+    return $isManaged;
 }
 
 function maskPhone($phone) {
@@ -3280,6 +3318,22 @@ switch ($action) {
             } else {
                 $where = " WHERE c.id = " . $currentUserId;
             }
+        } else if ($role === 'manager') {
+            $tStmt = $conn->prepare("SELECT id FROM teams WHERE leader_id = ?");
+            $tStmt->bind_param("i", $currentUserId);
+            $tStmt->execute();
+            $tRes = $tStmt->get_result();
+            $teamIds = [];
+            while ($tRow = $tRes->fetch_assoc()) {
+                $teamIds[] = (int)$tRow['id'];
+            }
+            $tStmt->close();
+
+            if (!empty($teamIds)) {
+                $where = " WHERE c.team_id IN (" . implode(',', $teamIds) . ")";
+            } else {
+                $where = " WHERE 1=0";
+            }
         }
 
         $res = $conn->query("
@@ -3805,6 +3859,14 @@ switch ($action) {
         if (empty($consultantId)) {
             echo json_encode(['success' => false, 'message' => 'Thiếu consultant_id']);
             break;
+        }
+
+        if ($decodedUser['role'] === 'manager') {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if (!isManagerOfConsultant($conn, $currentUserId, $consultantId)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem thông số của tư vấn viên này']);
+                break;
+            }
         }
 
         $dateMode = $_GET['date_mode'] ?? 'all';
@@ -6076,6 +6138,74 @@ switch ($action) {
                 break;
             }
         }
+
+        $managedConsultantIds = [];
+        $isManager = (isset($decodedUser['role']) && $decodedUser['role'] === 'manager');
+        if ($isManager) {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            $stmtM = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtM->bind_param("i", $currentUserId);
+            $stmtM->execute();
+            $resM = $stmtM->get_result();
+            while ($rowM = $resM->fetch_assoc()) {
+                $managedConsultantIds[] = (int)$rowM['id'];
+            }
+            $stmtM->close();
+            
+            if (empty($managedConsultantIds)) {
+                echo json_encode([
+                    'success' => true,
+                    'data' => [],
+                    'total_count' => 0,
+                    'stats' => [
+                        'pending' => 0,
+                        'approved' => 0,
+                        'rejected' => 0,
+                        'all' => 0
+                    ]
+                ]);
+                break;
+            }
+            
+            if ($consultantId > 0) {
+                if (!in_array($consultantId, $managedConsultantIds)) {
+                    echo json_encode([
+                        'success' => true,
+                        'data' => [],
+                        'total_count' => 0,
+                        'stats' => [
+                            'pending' => 0,
+                            'approved' => 0,
+                            'rejected' => 0,
+                            'all' => 0
+                        ]
+                    ]);
+                    break;
+                }
+            } else if ($consultant !== '' && $consultant !== 'all') {
+                $stmtCName = $conn->prepare("SELECT id FROM consultants WHERE name = ? LIMIT 1");
+                $stmtCName->bind_param("s", $consultant);
+                $stmtCName->execute();
+                $cNameRow = $stmtCName->get_result()->fetch_assoc();
+                $stmtCName->close();
+                
+                $cNameId = $cNameRow ? (int)$cNameRow['id'] : 0;
+                if (!$cNameId || !in_array($cNameId, $managedConsultantIds)) {
+                    echo json_encode([
+                        'success' => true,
+                        'data' => [],
+                        'total_count' => 0,
+                        'stats' => [
+                            'pending' => 0,
+                            'approved' => 0,
+                            'rejected' => 0,
+                            'all' => 0
+                        ]
+                    ]);
+                    break;
+                }
+            }
+        }
         
         $date = isset($_GET['date']) ? trim($_GET['date']) : 'Tháng này';
 
@@ -6105,6 +6235,15 @@ switch ($action) {
             $conds[] = "c.name = ?";
             $params[] = $consultant;
             $types .= "s";
+        }
+
+        if ($isManager && $consultantId <= 0 && ($consultant === '' || $consultant === 'all')) {
+            $placeholders = implode(',', array_fill(0, count($managedConsultantIds), '?'));
+            $conds[] = "r.consultant_id IN ($placeholders)";
+            foreach ($managedConsultantIds as $mId) {
+                $params[] = $mId;
+                $types .= "i";
+            }
         }
 
         // Parse date condition using the same logic (against r.created_at)
@@ -6352,6 +6491,13 @@ switch ($action) {
 
             if (!$report || $report['status'] !== 'pending') {
                 throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý.");
+            }
+
+            if ($decodedUser['role'] === 'manager') {
+                $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+                if (!isManagerOfConsultant($conn, $currentUserId, $report['consultant_id'])) {
+                    throw new Exception("Bạn không có quyền duyệt báo cáo này.");
+                }
             }
 
             $newConsultantName = '';
@@ -6806,6 +6952,13 @@ switch ($action) {
 
             if (!$report || $report['status'] !== 'pending') {
                 throw new Exception("Báo cáo không tồn tại hoặc đã được xử lý rồi.");
+            }
+
+            if ($decodedUser['role'] === 'manager') {
+                $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+                if (!isManagerOfConsultant($conn, $currentUserId, $report['consultant_id'])) {
+                    throw new Exception("Bạn không có quyền từ chối báo cáo này.");
+                }
             }
 
             $stmt = $conn->prepare("UPDATE data_reports SET status='rejected', reject_reason=?, resolved_by=?, resolved_at=(SELECT created_at FROM leads WHERE id=data_reports.lead_id) WHERE id=?");
@@ -12340,6 +12493,21 @@ switch ($action) {
         $log_data = $res->fetch_assoc();
         $lead_id = $log_data['lead_id'];
         $old_consultant_id = $log_data['old_consultant_id'] ? (int) $log_data['old_consultant_id'] : null;
+
+        if ($decodedUser['role'] === 'manager') {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if (!isManagerOfConsultant($conn, $currentUserId, $old_consultant_id)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền quản lý khách hàng của tư vấn viên này']);
+                $stmt->close();
+                break;
+            }
+            if (!isManagerOfConsultant($conn, $currentUserId, $new_consultant_id)) {
+                echo json_encode(['success' => false, 'message' => 'Tư vấn viên mới không thuộc nhóm của bạn']);
+                $stmt->close();
+                break;
+            }
+        }
+
         $old_consultant_name = $log_data['old_consultant_name'] ?? '';
         $cc_emails = $log_data['cc_emails'] ?? '';
         $lead_phone = $log_data['phone'] ?? '';
@@ -12651,6 +12819,14 @@ switch ($action) {
             break;
         }
 
+        if ($decodedUser['role'] === 'manager') {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if (!isManagerOfLead($conn, $currentUserId, $lead_id)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền quản lý khách hàng này']);
+                break;
+            }
+        }
+
         if (empty($name)) {
             echo json_encode(['success' => false, 'message' => 'Tên khách hàng không được để trống']);
             break;
@@ -12715,6 +12891,14 @@ switch ($action) {
         if (!$lead_id) {
             echo json_encode(['success' => false, 'message' => 'Thiếu ID khách hàng']);
             break;
+        }
+
+        if ($decodedUser['role'] === 'manager') {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if (!isManagerOfLead($conn, $currentUserId, $lead_id)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền quản lý khách hàng này']);
+                break;
+            }
         }
 
         if (!$send_zalo && !$send_email) {
@@ -12904,6 +13088,14 @@ switch ($action) {
         $lead_name = $log_data['lead_name'] ?: 'Khách hàng ẩn danh';
         $round_name = $log_data['round_name'] ?? 'Không rõ';
         $dl_status = $log_data['dl_status'] ?? '';
+
+        if ($decodedUser['role'] === 'manager') {
+            $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            if (!isManagerOfConsultant($conn, $currentUserId, $old_consultant_id)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền quản lý khách hàng của tư vấn viên này']);
+                break;
+            }
+        }
 
         if (empty($lead_phone) && empty($lead_email)) {
             echo json_encode(['success' => false, 'message' => 'Lead không có Số điện thoại hoặc Email để chặn']);
