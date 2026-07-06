@@ -1755,6 +1755,9 @@ try {
 
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '153') ON DUPLICATE KEY UPDATE setting_value = '153'");
 
+    // Ensure 'director' is in the users role enum
+    $conn->query("ALTER TABLE users MODIFY COLUMN role enum('super_admin','admin','manager','assistant','sales','viewer','superadmin','director') NOT NULL DEFAULT 'sales'");
+
     //    // Seed default users for Developer Quick Login (All Roles)
     $devUsers = [
         ['id' => 998, 'username' => 'superadmin', 'email' => 'superadmin@richland.net', 'password' => 'superadmin123', 'name' => 'Super Admin Richland', 'role' => 'superadmin'],
@@ -1771,7 +1774,7 @@ try {
         $conn->query("
             INSERT INTO users (id, tenant_id, username, email, password_hash, full_name, role, is_active)
             VALUES ({$du['id']}, 1, '{$du['username']}', '{$du['email']}', '$pHash', '{$du['name']}', '{$du['role']}', 1)
-            ON DUPLICATE KEY UPDATE password_hash = '$pHash', role = '{$du['role']}', username = '{$du['username']}', full_name = '{$du['name']}'
+            ON DUPLICATE KEY UPDATE password_hash = '$pHash', role = '{$du['role']}', username = '{$du['username']}', full_name = '{$du['name']}', email = '{$du['email']}'
         ");
     }
     $logMsg("Da khoi tao/cap nhat tai khoan cho tat ca cac quyen de Dev Quick Login", "success");
