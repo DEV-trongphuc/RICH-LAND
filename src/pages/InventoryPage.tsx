@@ -85,7 +85,7 @@ export default function InventoryPage() {
 
   const fetchReceivers = async () => {
     try {
-      const res = await api.get('/contacts');
+      const res = await api.get('/contacts?limit=1000');
       const raw = res.data?.data;
       const list = Array.isArray(raw) ? raw : (raw?.items || []);
       setReceivers(list.map((c: any) => ({

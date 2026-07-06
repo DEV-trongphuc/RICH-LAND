@@ -181,11 +181,11 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     setLoadingLists(true);
     try {
       const [rC, rCo, rT, rU, rP] = await Promise.all([
-        api.get('/contacts'),
+        api.get('/contacts?limit=1000'),
         api.get('/companies'),
         api.get('/tags'),
         api.get('/users').catch(() => ({ data: { data: [] } })),
-        api.get('/projects').catch(() => ({ data: { data: [] } }))
+        api.get('/projects?bypass_roster=1').catch(() => ({ data: { data: [] } }))
       ]);
       setContacts(rC.data.data?.items || []);
       setCompanies(rCo.data.data?.items || []);

@@ -101,13 +101,13 @@ export default function DepositsPage() {
     try {
       const [resDep, resCont, resProj] = await Promise.all([
         fetchAPI('deposits'),
-        fetchAPI('contacts'),
-        fetchAPI('projects')
+        fetchAPI('contacts?limit=1000'),
+        fetchAPI('projects?bypass_roster=1')
       ]);
 
       if (resDep.success) setDeposits(resDep.data || []);
       if (resCont.success) {
-        const allContacts = resCont.items || [];
+        const allContacts = resCont.data?.items || resCont.data || [];
         const filteredContacts = (user?.role === 'sale') 
           ? allContacts.filter((c: any) => String(c.owner_id) === String(user.id))
           : allContacts;

@@ -158,7 +158,7 @@ export const ExpensesPage: React.FC = () => {
 
   useEffect(() => {
     api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
-    api.get('/contacts').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => {});
+    api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => {});
     api.get('/suppliers').then(r => { const d = r.data.data; setSuppliers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
   }, []);
 

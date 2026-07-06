@@ -438,7 +438,7 @@ export const ContactsPage: React.FC = () => {
   }, [user]);
 
   useEffect(() => {
-    api.get('/projects').then(r => {
+    api.get('/projects?bypass_roster=1').then(r => {
       const d = r.data.data;
       setProjects(Array.isArray(d) ? d : (d?.items || []));
     }).catch(() => {});

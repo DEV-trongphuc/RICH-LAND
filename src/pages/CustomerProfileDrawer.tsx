@@ -1475,7 +1475,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (tabToLoad === 'info') {
         try {
           if (projectsList.length === 0) {
-            const projectsRes = await api.get('/projects');
+            const projectsRes = await api.get('/projects?bypass_roster=1');
             setProjectsList(projectsRes.data.data || projectsRes.data || []);
           }
         } catch (err) {}

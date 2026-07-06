@@ -40,7 +40,7 @@ export const FilesPage: React.FC = () => {
   
   const fetchProjects = async () => {
     try {
-      const res = await api.get('/projects');
+      const res = await api.get('/projects?bypass_roster=1');
       if (res.data?.success) {
         setProjects(res.data.data || []);
       } else {

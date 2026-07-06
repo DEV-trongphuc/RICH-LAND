@@ -62,7 +62,8 @@ class ProjectController {
         $where = "WHERE p.tenant_id = ?";
         $params = [$auth['tenant_id']];
         
-        if (in_array($role, ['sale', 'sales'], true)) {
+        $bypassRoster = (int)($_GET['bypass_roster'] ?? 0);
+        if (in_array($role, ['sale', 'sales'], true) && !$bypassRoster) {
             $where .= " AND p.id IN (SELECT project_id FROM project_roster WHERE user_id = ?)";
             $params[] = $uid;
         }
