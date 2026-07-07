@@ -4,7 +4,7 @@ class ActivityController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     private function hasAccess(array $auth, array $activity): bool {
-        if (in_array($auth['role'], ['super_admin', 'admin'], true)) {
+        if (in_array($auth['role'], ['super_admin', 'admin', 'superadmin', 'director'], true)) {
             return true;
         }
         

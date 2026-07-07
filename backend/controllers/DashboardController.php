@@ -514,7 +514,7 @@ class DashboardController {
         $from = ($_GET['from'] ?? date('Y-m-01')) . ' 00:00:00';
         $to   = ($_GET['to']   ?? date('Y-m-t')) . ' 23:59:59';
         
-        $where = "u.tenant_id=? AND u.is_active=1 AND u.role IN ('admin','manager','sales','sale')";
+        $where = "u.tenant_id=? AND u.is_active=1 AND u.role IN ('admin','manager','sales','sale','director','superadmin','super_admin')";
         $params = [$tid, $from, $to, $tid];
         
         if ($isSale) {

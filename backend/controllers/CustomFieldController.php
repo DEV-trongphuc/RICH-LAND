@@ -35,7 +35,7 @@ class CustomFieldController {
     }
 
     public function store(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Bạn không có quyền quản lý trường tùy chỉnh', false);
         }
         
@@ -78,7 +78,7 @@ class CustomFieldController {
     }
 
     public function update(array $auth, int $id): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Bạn không có quyền quản lý trường tùy chỉnh', false);
         }
         
@@ -114,7 +114,7 @@ class CustomFieldController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Bạn không có quyền quản lý trường tùy chỉnh', false);
         }
         
