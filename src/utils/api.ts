@@ -29,7 +29,12 @@ export async function fetchAPI(action: string, options: RequestInit = {}) {
   };
 
   const token = localStorage.getItem('richland_token');
-  let url = `api.php?action=${action}`;
+  const parts = action.split('?');
+  const baseAction = parts[0];
+  let url = `api.php?action=${baseAction}`;
+  if (parts[1]) {
+    url += `&${parts[1]}`;
+  }
   if (token) {
     url += `&token=${token}`;
   }
@@ -69,7 +74,12 @@ export async function fetchPublicAPI(action: string, options: RequestInit = {}) 
     ...(options.headers as Record<string, string>),
   };
 
-  let url = `${BASE_URL}?action=${action}`;
+  const parts = action.split('?');
+  const baseAction = parts[0];
+  let url = `${BASE_URL}?action=${baseAction}`;
+  if (parts[1]) {
+    url += `&${parts[1]}`;
+  }
   if (isProd && ['PUT', 'PATCH', 'DELETE'].includes(originalMethod)) {
     url += `&_method=${originalMethod}`;
   }

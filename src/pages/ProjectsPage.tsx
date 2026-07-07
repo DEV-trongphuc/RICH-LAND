@@ -187,10 +187,13 @@ export default function ProjectsPage() {
     setLoading(true);
     try {
       const res = await fetchAPI(`projects?page=${projectPage}&limit=${projectPageSize}`);
+      console.log('Projects API Response:', res);
       if (res.success) {
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
-          setProjects(res.data.data || []);
-          setTotalProjects(Number(res.data.total || 0));
+          const list = res.data.data || [];
+          setProjects(list);
+          const totalVal = Number(res.data.total);
+          setTotalProjects(isNaN(totalVal) ? list.length : totalVal);
         } else {
           const arr = Array.isArray(res.data) ? res.data : [];
           setProjects(arr);
@@ -200,6 +203,7 @@ export default function ProjectsPage() {
         addToast(res.message || 'Lỗi tải danh sách dự án', 'error');
       }
     } catch (e: any) {
+      console.error('loadProjects error:', e);
       addToast(e.message || 'Lỗi kết nối', 'error');
     } finally {
       setLoading(false);
@@ -551,67 +555,82 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      {/* Tab Selector */}
-      <div style={{
-        display: 'flex',
-        background: 'rgba(15, 23, 42, 0.05)',
-        padding: '4px',
-        borderRadius: '12px',
-        gap: '4px',
-        width: 'fit-content',
-        position: 'relative',
-        border: '1px solid var(--color-border-light)',
-        alignSelf: 'flex-start',
-        marginBottom: '1.5rem',
-        maxWidth: '100%',
-        overflowX: 'auto'
-      }}>
-        {/* Sliding Pill Background Indicator */}
+      {/* Tab Selector & Stats Info */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', width: '100%' }}>
         <div style={{
-          position: 'absolute',
-          top: '4px',
-          bottom: '4px',
-          width: '130px',
-          borderRadius: '10px',
-          background: 'var(--color-surface)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-          transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-          transform: `translateX(${activeSubTab === 'projects' ? '0px' : '134px'})`,
-          zIndex: 1
-        }} />
+          display: 'flex',
+          background: 'rgba(15, 23, 42, 0.05)',
+          padding: '4px',
+          borderRadius: '12px',
+          gap: '4px',
+          width: 'fit-content',
+          position: 'relative',
+          border: '1px solid var(--color-border-light)',
+          maxWidth: '100%',
+          overflowX: 'auto'
+        }}>
+          {/* Sliding Pill Background Indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '4px',
+            bottom: '4px',
+            width: '130px',
+            borderRadius: '10px',
+            background: 'var(--color-surface)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '134px'})`,
+            zIndex: 1
+          }} />
 
-        {[
-          { id: 'projects', label: 'Dự án' },
-          { id: 'campaigns', label: 'Chiến dịch' }
-        ].map(tab => {
-          const isSelected = activeSubTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveSubTab(tab.id as any)}
-              style={{
-                width: '130px',
-                height: '38px',
-                borderRadius: '10px',
-                border: 'none',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                background: 'transparent',
-                color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                zIndex: 2,
-                transition: 'color 0.25s ease'
-              }}
-              className=""
-            >
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+          {[
+            { id: 'projects', label: 'Dự án' },
+            { id: 'campaigns', label: 'Chiến dịch' }
+          ].map(tab => {
+            const isSelected = activeSubTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveSubTab(tab.id as any)}
+                style={{
+                  width: '130px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: 'transparent',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  zIndex: 2,
+                  transition: 'color 0.25s ease'
+                }}
+                className=""
+              >
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ 
+          fontSize: '0.825rem', 
+          color: 'var(--color-text-muted)', 
+          fontWeight: 650,
+          background: 'var(--color-bg-light)',
+          padding: '6px 12px',
+          borderRadius: '20px',
+          border: '1px solid var(--color-border-light)'
+        }}>
+          {activeSubTab === 'projects' 
+            ? `Hiển thị ${projects.length} / ${totalProjects} dự án` 
+            : `Hiển thị ${campaigns.length} / ${totalCampaigns} chiến dịch`
+          }
+        </div>
       </div>
 
       {/* Tab Panels with Enter Animation */}
