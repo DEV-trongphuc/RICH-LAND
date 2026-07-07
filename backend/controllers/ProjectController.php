@@ -30,6 +30,12 @@ class ProjectController {
         try {
             $this->db->exec("ALTER TABLE projects ADD COLUMN handover_year INT DEFAULT 2026");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN manager_ids TEXT NULL");
+        } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
+        } catch (Exception $e) {}
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
@@ -146,11 +152,14 @@ class ProjectController {
             respond(400, null, 'Mã dự án đã tồn tại', false);
         }
 
+        $manager_ids = trim($b['manager_ids'] ?? '');
+        $folder_path = trim($b['folder_path'] ?? '');
+
         $stmt = $this->db->prepare("
-            INSERT INTO projects (tenant_id, name, code, description, status, location, developer, document_ids, campaign_ids, progress_percent, construction_status, legal_status, scale_block_count, scale_unit_count, handover_year) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO projects (tenant_id, name, code, description, status, location, developer, document_ids, campaign_ids, progress_percent, construction_status, legal_status, scale_block_count, scale_unit_count, handover_year, manager_ids, folder_path) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year]);
+        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year, $manager_ids, $folder_path]);
         $newId = $this->db->lastInsertId();
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_PROJECT', 'project', $newId, "Tạo dự án: $name ($code)");
@@ -191,12 +200,15 @@ class ProjectController {
             respond(400, null, 'Mã dự án đã bị trùng với dự án khác', false);
         }
 
+        $manager_ids = trim($b['manager_ids'] ?? '');
+        $folder_path = trim($b['folder_path'] ?? '');
+
         $stmt = $this->db->prepare("
             UPDATE projects 
-            SET name = ?, code = ?, description = ?, status = ?, location = ?, developer = ?, document_ids = ?, campaign_ids = ?, progress_percent = ?, construction_status = ?, legal_status = ?, scale_block_count = ?, scale_unit_count = ?, handover_year = ? 
+            SET name = ?, code = ?, description = ?, status = ?, location = ?, developer = ?, document_ids = ?, campaign_ids = ?, progress_percent = ?, construction_status = ?, legal_status = ?, scale_block_count = ?, scale_unit_count = ?, handover_year = ?, manager_ids = ?, folder_path = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year, $id, $auth['tenant_id']]);
+        $stmt->execute([$name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year, $manager_ids, $folder_path, $id, $auth['tenant_id']]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT', 'project', $id, "Cập nhật dự án: $name ($code)");
         respond(200, null, 'Cập nhật dự án thành công');
