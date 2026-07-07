@@ -1957,6 +1957,13 @@ try {
             $logMsg("Đã thêm cột edit_history cho activities", "success");
         }
 
+        // Self-healing check: ensure switched_from_deal_id exists in deals
+        $chkSwitchedFrom = $conn->query("SHOW COLUMNS FROM deals LIKE 'switched_from_deal_id'");
+        if ($chkSwitchedFrom && $chkSwitchedFrom->num_rows === 0) {
+            $conn->query("ALTER TABLE deals ADD COLUMN switched_from_deal_id INT NULL DEFAULT NULL AFTER expected_close");
+            $logMsg("Đã thêm cột switched_from_deal_id cho deals", "success");
+        }
+
         // Self-healing check: Backfill contact's last_contact based on existing notes & activities history
         $conn->query("
             UPDATE contacts c

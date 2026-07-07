@@ -484,8 +484,8 @@ class DealController {
 
             $stmtNewDeal = $this->db->prepare("
                 INSERT INTO deals (tenant_id, stage_id, contact_id, company_id, owner_id, created_by,
-                    title, description, priority, value, probability, source, tags)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    title, description, priority, value, probability, source, tags, switched_from_deal_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmtNewDeal->execute([
                 $auth['tenant_id'],
@@ -500,7 +500,8 @@ class DealController {
                 $newPrice,
                 $oldDeal['probability'],
                 $oldDeal['source'],
-                $oldDeal['tags']
+                $oldDeal['tags'],
+                $id // switched_from_deal_id
             ]);
             $newDealId = (int)$this->db->lastInsertId();
 

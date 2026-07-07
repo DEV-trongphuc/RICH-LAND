@@ -356,7 +356,7 @@ class DepositController {
                 ];
                 $nextTemp = $tempDecayMap[$currTemp] ?? 'neutral';
 
-                // Resolve stage_id for 'booking'
+                // Resolve stage_ids for 'booking' and 'da_gap'
                 $stmtStages = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
                 $stmtStages->execute([$auth['tenant_id']]);
                 $stages = $stmtStages->fetchAll(PDO::FETCH_COLUMN);
@@ -370,16 +370,42 @@ class DepositController {
                 }
 
                 $bookingStageId = 0;
+                $daGapStageId = 0;
                 foreach ($hierarchy as $idx => $s) {
                     if ($s === 'booking') {
                         $bookingStageId = isset($stages[$idx]) ? (int)$stages[$idx] : 0;
-                        break;
+                    }
+                    if ($s === 'da_gap') {
+                        $daGapStageId = isset($stages[$idx]) ? (int)$stages[$idx] : 0;
                     }
                 }
 
+                // Check if the contact ever had an active booking in their audit logs
+                $stmtHasBooking = $this->db->prepare("
+                    SELECT 1 FROM audit_logs 
+                    WHERE tenant_id = ? 
+                      AND resource = 'contact' 
+                      AND resource_id = ? 
+                      AND action = 'MOVE_STAGE'
+                      AND (details LIKE '%\"pipeline_status\":\"booking\"%' OR details LIKE '%\"to_stage\":\"booking\"%')
+                    LIMIT 1
+                ");
+                $stmtHasBooking->execute([$auth['tenant_id'], $contactId]);
+                $hadBooking = (bool)$stmtHasBooking->fetchColumn();
+
+                $targetStatus = 'da_gap';
+                $targetStageId = $daGapStageId ?: ($stages[3] ?? ($stages[0] ?? 0));
+                $interval = '5 DAY';
+
+                if ($hadBooking && $bookingStageId > 0) {
+                    $targetStatus = 'booking';
+                    $targetStageId = $bookingStageId;
+                    $interval = '3 MONTH';
+                }
+
                 // Revert status to Booking or Da Gap
-                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = 'booking', stage_id = ?, temperature = ?, status = 'lead', security_expires_at = DATE_ADD(NOW(), INTERVAL 3 MONTH) WHERE id = ?");
-                $stmtRev->execute([$bookingStageId, $nextTemp, $contactId]);
+                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, stage_id = ?, temperature = ?, status = 'lead', security_expires_at = DATE_ADD(NOW(), INTERVAL $interval) WHERE id = ?");
+                $stmtRev->execute([$targetStatus, $targetStageId, $nextTemp, $contactId]);
             } else {
                 // If paid, keep in Dat Coc but mark deposit cancelled (Bể cọc, tiền thu hoặc chuyển đợt)
                 // In this case, contact remains in Customer status
