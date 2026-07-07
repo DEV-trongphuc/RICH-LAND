@@ -261,9 +261,9 @@ class CooperationController {
             respond(403, null, 'Bạn không có quyền cập nhật tỷ lệ cho phiếu hợp tác này', false);
         }
 
-        $allowedStatuses = ['pending_signatures', 'approved', 'pending_manager_approval', 'approved_pending_signatures'];
+        $allowedStatuses = ['pending_signatures', 'pending_manager_approval', 'approved_pending_signatures'];
         if (!in_array($slip['status'], $allowedStatuses)) {
-            respond(400, null, 'Không thể cập nhật tỷ lệ trong trạng thái hiện tại', false);
+            respond(400, null, 'Không thể cập nhật tỷ lệ cho phiếu hợp tác đã được phê duyệt hoặc khóa', false);
         }
 
         $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true);

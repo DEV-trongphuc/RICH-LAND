@@ -2030,7 +2030,7 @@ function assignParallelLeads($conn) {
     }, $applicableSources);
     $sourcesFilter = "AND c.source IN (" . implode(',', $applicableSourcesEscaped) . ")";
 
-    $sql = "SELECT c.id as contact_id, c.person_id, c.owner_id, c.project_id, c.email, c.phone, c.first_name, c.last_name, c.source, c.notes, c.customer_type,
+    $sql = "SELECT c.id as contact_id, c.person_id, c.owner_id, c.project_id, c.email, c.phone, c.first_name, c.last_name, c.source, c.notes, c.customer_type, c.tenant_id,
                    (SELECT round_id FROM distribution_logs WHERE lead_id = c.id AND status = 'assigned' ORDER BY id DESC LIMIT 1) as original_round_id
             FROM contacts c
             JOIN persons p ON c.person_id = p.id
@@ -2144,11 +2144,12 @@ function assignParallelLeads($conn) {
             $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
             $stmtIns = $conn->prepare("
-                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at, notes, customer_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, ?, ?, ?)
+                INSERT INTO contacts (tenant_id, person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at, notes, customer_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, ?, ?, ?)
             ");
             $createdBy = 1;
-            $stmtIns->bind_param("iiiissssssss", $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime, $row['notes'], $row['customer_type']);
+            $tenantId = (int)$row['tenant_id'];
+            $stmtIns->bind_param("iiiiissssssss", $tenantId, $personId, $projectId, $secondSaleId, $createdBy, $row['first_name'], $row['last_name'], $row['email'], $row['phone'], $row['source'], $secExpiresTime, $row['notes'], $row['customer_type']);
             $stmtIns->execute();
             $secondContactId = $stmtIns->insert_id;
             $stmtIns->close();
