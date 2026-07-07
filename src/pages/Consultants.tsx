@@ -185,7 +185,7 @@ const ConsultantsInner = () => {
     setTeamsLoading(true);
     try {
       const json = await fetchAPI('teams');
-      if (json.success) setTeams(json.data || []);
+      if (json.success) setTeams(Array.isArray(json.data) ? json.data : []);
     } catch (e: any) {
       toast.error(t('Không thể tải danh sách nhóm: ') + e.message);
     }
