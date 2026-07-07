@@ -103,7 +103,7 @@ export default function ProjectsPage() {
   const [projectDocs, setProjectDocs] = useState<ProjectDoc[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
 
-  const isAdmin = (user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'manager';
+  const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user.role);
 
   const parseIds = (val: any): string[] => {
     if (!val) return [];

@@ -247,7 +247,7 @@ export default function CooperationSlipsPage() {
     }));
   };
 
-  const isManager = ['admin', 'superadmin', 'super_admin', 'manager', 'assistant'].includes(String(user?.role).toLowerCase());
+  const isManager = ['admin', 'superadmin', 'super_admin', 'manager', 'assistant', 'director'].includes(String(user?.role).toLowerCase());
 
   const filteredSlips = React.useMemo(() => {
     return slips.filter(slip => {
@@ -404,7 +404,7 @@ export default function CooperationSlipsPage() {
       }
 
       const role = user?.role as string;
-      const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager';
+      const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'director';
       if (isAdminOrManager) {
         try {
           const resUsers = await fetchAPI('users');

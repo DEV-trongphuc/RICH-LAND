@@ -94,7 +94,7 @@ export default function DepositsPage() {
   const [cancelDepositId, setCancelDepositId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
 
-  const isAdmin = (user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'assistant';
+  const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(user.role);
 
   const loadData = async () => {
     setLoading(true);

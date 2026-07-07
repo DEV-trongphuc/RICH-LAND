@@ -26,7 +26,7 @@ class CooperationController {
     }
 
     private function checkSlipAccess(array $auth, int $id): bool {
-        if (in_array(strtolower($auth['role'] ?? ''), ['admin', 'superadmin', 'super_admin'], true)) {
+        if (in_array(strtolower($auth['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'director'], true)) {
             return true;
         }
 
@@ -266,7 +266,7 @@ class CooperationController {
             respond(400, null, 'Không thể cập nhật tỷ lệ trong trạng thái hiện tại', false);
         }
 
-        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true);
+        $isManagerOrAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true);
 
         $sharesJson = json_encode($shares);
         $reason = trim($b['reason'] ?? '');
@@ -298,7 +298,7 @@ class CooperationController {
 
             $stmtMgrs = $this->db->prepare("
                 SELECT id FROM users 
-                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager')
+                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director')
             ");
             $stmtMgrs->execute([$auth['tenant_id']]);
             $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_COLUMN) ?: [];
@@ -422,7 +422,7 @@ class CooperationController {
                 $this->notifyShareholders($id, $shares, $emailSubject, $emailTitle, $emailContent);
             } else { // pending_manager_approval
                 // Fetch manager emails
-                $stmtMgrs = $this->db->prepare("SELECT id, email FROM users WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager')");
+                $stmtMgrs = $this->db->prepare("SELECT id, email FROM users WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director')");
                 $stmtMgrs->execute([$auth['tenant_id']]);
                 $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 
@@ -460,7 +460,7 @@ class CooperationController {
     }
 
     public function approveSlip(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
 
         $stmtSlip = $this->db->prepare("
             SELECT cs.*, c.tenant_id 
@@ -620,7 +620,7 @@ class CooperationController {
         $stmtOwner->execute([$id, $tid]);
         $ownerId = $stmtOwner->fetchColumn();
 
-        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
+        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) || 
                      ($ownerId && (int)$ownerId === (int)$auth['user_id']);
 
         if (!$this->checkSlipAccess($auth, $id)) {
@@ -690,7 +690,7 @@ class CooperationController {
         $stmtOwner->execute([$id, $tid]);
         $ownerId = $stmtOwner->fetchColumn();
 
-        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
+        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) || 
                      ($ownerId && (int)$ownerId === (int)$auth['user_id']);
 
         if (!$this->checkSlipAccess($auth, $id)) {
@@ -749,7 +749,7 @@ class CooperationController {
             respond(404, null, 'Không tìm thấy phiếu hợp tác', false);
         }
         
-        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true) || 
+        $isAllowed = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) || 
                      ((int)$row['owner_id'] === (int)$auth['user_id']);
                      
         if (!$this->checkSlipAccess($auth, $id)) {
