@@ -12,6 +12,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Pagination } from '../components/ui/Pagination';
+import { Skeleton } from '../components/ui/Skeleton';
 
 
 
@@ -58,6 +59,53 @@ interface ProjectDoc {
   created_at: string;
   isLinkedOnly?: boolean;
 }
+
+const ProjectCardSkeleton = () => (
+  <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid var(--color-border-light)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Skeleton width="70%" height={20} />
+      <Skeleton width={60} height={20} borderRadius={10} />
+    </div>
+    <Skeleton width={120} height={12} style={{ marginTop: '4px' }} />
+    <Skeleton width="100%" height={14} style={{ marginTop: '4px' }} />
+    <div style={{ height: '1px', background: 'var(--color-border-light)', margin: '4px 0' }} />
+    <div style={{ display: 'flex', gap: '8px' }}>
+      <Skeleton width="45%" height={24} borderRadius={4} />
+      <Skeleton width="45%" height={24} borderRadius={4} />
+    </div>
+    <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+      <Skeleton width={80} height={12} />
+      <Skeleton width={80} height={12} />
+    </div>
+    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+      <Skeleton width="50%" height={32} borderRadius={16} />
+      <Skeleton width="50%" height={32} borderRadius={16} />
+    </div>
+  </div>
+);
+
+const CampaignCardSkeleton = () => (
+  <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '1px solid var(--color-border-light)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <Skeleton width="60%" height={18} />
+      <Skeleton width={80} height={22} borderRadius={20} />
+    </div>
+    <Skeleton width="100%" height={14} style={{ marginTop: '4px' }} />
+    <div style={{ display: 'flex', gap: '12px' }}>
+      <Skeleton width={70} height={12} />
+      <Skeleton width={70} height={12} />
+    </div>
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      <Skeleton width={32} height={32} borderRadius="50%" />
+      <Skeleton width={32} height={32} borderRadius="50%" />
+      <Skeleton width={32} height={32} borderRadius="50%" />
+    </div>
+    <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+      <Skeleton width="50%" height={32} borderRadius={6} />
+      <Skeleton width="50%" height={32} borderRadius={6} />
+    </div>
+  </div>
+);
 
 export default function ProjectsPage() {
   const { user } = useAuth();
@@ -640,7 +688,11 @@ export default function ProjectsPage() {
       {/* Projects List */}
       {activeSubTab === 'projects' && (
         loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách dự án...</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <ProjectCardSkeleton key={i} />
+            ))}
+          </div>
         ) : projects.length === 0 ? (
           <EmptyCard 
             icon={<Building2 size={48} />}
@@ -865,7 +917,11 @@ export default function ProjectsPage() {
       {/* Campaigns List Tab */}
       {activeSubTab === 'campaigns' && (
         campaignsLoading ? (
-          <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách chiến dịch...</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CampaignCardSkeleton key={i} />
+            ))}
+          </div>
         ) : campaigns.length === 0 ? (
           <EmptyCard
             icon={<Layers size={48} />}
