@@ -426,14 +426,17 @@ class CooperationController {
                 $stmtMgrs->execute([$auth['tenant_id']]);
                 $mgrs = $stmtMgrs->fetchAll(PDO::FETCH_ASSOC) ?: [];
                 
-                foreach ($mgrs as $mgr) {
-                    if (!empty($mgr['email'])) {
-                        $emailSubject = "[RICH LAND] Yêu cầu phê duyệt Phiếu hợp tác #" . $id;
-                        $emailTitle = "PHÊ DUYỆT PHIẾU HỢP TÁC";
-                        $emailContent = "Chào quản trị viên,<br/><br/>" .
-                                        "Phiếu hợp tác chia sẻ hoa hồng #" . $id . " đã thu thập đầy đủ chữ ký của các thành viên liên quan.<br/>" .
-                                        "Vui lòng truy cập hệ thống RICH LAND CRM để xem xét và duyệt phiếu.";
-                        sendEmailNotification($mgr['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                if (!empty($mgrs)) {
+                    require_once __DIR__ . '/../mailer.php';
+                    foreach ($mgrs as $mgr) {
+                        if (!empty($mgr['email'])) {
+                            $emailSubject = "[RICH LAND] Yêu cầu phê duyệt Phiếu hợp tác #" . $id;
+                            $emailTitle = "PHÊ DUYỆT PHIẾU HỢP TÁC";
+                            $emailContent = "Chào quản trị viên,<br/><br/>" .
+                                            "Phiếu hợp tác chia sẻ hoa hồng #" . $id . " đã thu thập đầy đủ chữ ký của các thành viên liên quan.<br/>" .
+                                            "Vui lòng truy cập hệ thống RICH LAND CRM để xem xét và duyệt phiếu.";
+                            sendEmailNotification($mgr['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                        }
                     }
                 }
             }
