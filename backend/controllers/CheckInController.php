@@ -22,7 +22,7 @@ class CheckInController {
             respond(200, $row ?: null, 'Lấy thông tin check-in hôm nay thành công');
         }
 
-        $isManager = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'manager'], true);
+        $isManager = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'], true);
         
         $sql = "SELECT c.*, u.full_name as user_name, u.email as user_email, u.avatar_url as user_avatar, u.work_start_time
                 FROM check_ins c
@@ -150,7 +150,7 @@ class CheckInController {
             // Find all managers/admins/superadmins
             $stmtAdmins = $this->db->prepare("
                 SELECT id FROM users 
-                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'assistant')
+                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'assistant', 'director')
             ");
             $stmtAdmins->execute([$auth['tenant_id']]);
             $admins = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN);
@@ -181,7 +181,7 @@ class CheckInController {
     }
 
     public function update(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'assistant', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director']);
         $b = getBody();
         $status = trim($b['status'] ?? '');
         $reason = trim($b['reason'] ?? ''); // Optionally update reason or note
@@ -252,7 +252,7 @@ class CheckInController {
     }
 
     public function destroy(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director']);
 
         // Fetch check-in record
         $stmtCheck = $this->db->prepare("

@@ -9,7 +9,7 @@ class CapiController {
     }
 
     public function getSettings(array $auth): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director']);
 
         $stmt = $this->db->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('meta_pixel_id', 'meta_access_token')");
         $settings = [];
@@ -26,7 +26,7 @@ class CapiController {
     }
 
     public function saveSettings(array $auth): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director']);
         $b = getBody();
         $pixelId = trim($b['meta_pixel_id'] ?? '');
         $token = trim($b['meta_access_token'] ?? '');
@@ -45,7 +45,7 @@ class CapiController {
     }
 
     public function getLogs(array $auth): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director']);
 
         $stmt = $this->db->query("
             SELECT cl.*, c.first_name, c.last_name, c.phone 

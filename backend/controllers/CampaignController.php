@@ -41,7 +41,7 @@ class CampaignController {
     }
 
     public function store(array $auth): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $description = trim($b['description'] ?? '');
@@ -63,7 +63,7 @@ class CampaignController {
     }
 
     public function update(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $description = trim($b['description'] ?? '');
@@ -84,7 +84,7 @@ class CampaignController {
     }
 
     public function destroy(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         
         $tenantId = $auth['tenant_id'] ?? 1;
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
