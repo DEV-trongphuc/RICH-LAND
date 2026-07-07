@@ -107,9 +107,9 @@ export default function ProjectsPage() {
   }, [window.location.search]);
 
   const [projectPage, setProjectPage] = useState(1);
-  const [projectPageSize, setProjectPageSize] = useState(3);
+  const [projectPageSize, setProjectPageSize] = useState(12);
   const [campaignPage, setCampaignPage] = useState(1);
-  const [campaignPageSize, setCampaignPageSize] = useState(3);
+  const [campaignPageSize, setCampaignPageSize] = useState(12);
 
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
