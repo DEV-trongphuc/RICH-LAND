@@ -89,12 +89,6 @@ export default function ProjectsPage() {
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
   const [totalProjects, setTotalProjects] = useState(0);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [allCampaigns, setAllCampaigns] = useState<any[]>([]);
-  const [isProjectsBackendPaginated, setIsProjectsBackendPaginated] = useState(false);
-  const [isCampaignsBackendPaginated, setIsCampaignsBackendPaginated] = useState(false);
-  const [hasLoadedProjectsOnce, setHasLoadedProjectsOnce] = useState(false);
-  const [hasLoadedCampaignsOnce, setHasLoadedCampaignsOnce] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -190,43 +184,20 @@ export default function ProjectsPage() {
   };
 
   const loadProjects = async (forceRefetch = false) => {
-    // Client-side paginate fallback
-    if (!forceRefetch && hasLoadedProjectsOnce && !isProjectsBackendPaginated) {
-      const offset = (projectPage - 1) * projectPageSize;
-      setProjects(allProjects.slice(offset, offset + projectPageSize));
-      setTotalProjects(allProjects.length);
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await fetchAPI(`projects?page=${projectPage}&limit=${projectPageSize}`);
       console.log('Projects API Response:', res);
       if (res.success) {
-        setHasLoadedProjectsOnce(true);
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
           const list = res.data.data || [];
+          setProjects(list);
           const totalVal = Number(res.data.total);
-          
-          if (!isNaN(totalVal) && list.length === totalVal && totalVal > projectPageSize) {
-            // Backend returned everything on page 1, so it does not support pagination
-            setIsProjectsBackendPaginated(false);
-            setAllProjects(list);
-            setTotalProjects(list.length);
-            const offset = (projectPage - 1) * projectPageSize;
-            setProjects(list.slice(offset, offset + projectPageSize));
-          } else {
-            setIsProjectsBackendPaginated(true);
-            setProjects(list);
-            setTotalProjects(isNaN(totalVal) ? list.length : totalVal);
-          }
+          setTotalProjects(isNaN(totalVal) ? list.length : totalVal);
         } else {
           const arr = Array.isArray(res.data) ? res.data : [];
-          setIsProjectsBackendPaginated(false);
-          setAllProjects(arr);
+          setProjects(arr);
           setTotalProjects(arr.length);
-          const offset = (projectPage - 1) * projectPageSize;
-          setProjects(arr.slice(offset, offset + projectPageSize));
         }
       } else {
         addToast(res.message || 'Lỗi tải danh sách dự án', 'error');
@@ -262,42 +233,19 @@ export default function ProjectsPage() {
   };
 
   const loadCampaigns = async (forceRefetch = false) => {
-    // Client-side paginate fallback
-    if (!forceRefetch && hasLoadedCampaignsOnce && !isCampaignsBackendPaginated) {
-      const offset = (campaignPage - 1) * campaignPageSize;
-      setCampaigns(allCampaigns.slice(offset, offset + campaignPageSize));
-      setTotalCampaigns(allCampaigns.length);
-      return;
-    }
-
     setCampaignsLoading(true);
     try {
       const res = await fetchAPI(`campaigns?page=${campaignPage}&limit=${campaignPageSize}`);
       if (res.success) {
-        setHasLoadedCampaignsOnce(true);
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
           const list = res.data.data || [];
+          setCampaigns(list);
           const totalVal = Number(res.data.total);
-          
-          if (!isNaN(totalVal) && list.length === totalVal && totalVal > campaignPageSize) {
-            // Backend returned everything on page 1, so it does not support pagination
-            setIsCampaignsBackendPaginated(false);
-            setAllCampaigns(list);
-            setTotalCampaigns(list.length);
-            const offset = (campaignPage - 1) * campaignPageSize;
-            setCampaigns(list.slice(offset, offset + campaignPageSize));
-          } else {
-            setIsCampaignsBackendPaginated(true);
-            setCampaigns(list);
-            setTotalCampaigns(isNaN(totalVal) ? list.length : totalVal);
-          }
+          setTotalCampaigns(isNaN(totalVal) ? list.length : totalVal);
         } else {
           const arr = Array.isArray(res.data) ? res.data : [];
-          setIsCampaignsBackendPaginated(false);
-          setAllCampaigns(arr);
+          setCampaigns(arr);
           setTotalCampaigns(arr.length);
-          const offset = (campaignPage - 1) * campaignPageSize;
-          setCampaigns(arr.slice(offset, offset + campaignPageSize));
         }
       }
     } catch (e) {
