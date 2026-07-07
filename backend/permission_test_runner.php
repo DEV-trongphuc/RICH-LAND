@@ -534,6 +534,62 @@ try {
         "S1 Comp: " . json_encode($resCompS1, JSON_UNESCAPED_UNICODE) . ", S2 Comp: " . json_encode($resCompS2, JSON_UNESCAPED_UNICODE)
     );
 
+    // Test 15: Unauthorized check - get_consultants without token
+    $resUnauthConsultants = $callApi('get_consultants', 'GET', [], '');
+    assertPermTest(
+        "Unauthorized: get_consultants without token should fail",
+        isset($resUnauthConsultants['success']) && $resUnauthConsultants['success'] === false,
+        "Response: " . json_encode($resUnauthConsultants, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 16: Unauthorized check - dashboard/stats without token
+    $resUnauthStats = $callApi('dashboard/stats', 'GET', [], '');
+    assertPermTest(
+        "Unauthorized: dashboard/stats without token should fail",
+        isset($resUnauthStats['success']) && $resUnauthStats['success'] === false,
+        "Response: " . json_encode($resUnauthStats, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 17: Unauthorized check - contacts list without token
+    $resUnauthContacts = $callApi('contacts', 'GET', [], '');
+    assertPermTest(
+        "Unauthorized: contacts without token should fail",
+        isset($resUnauthContacts['success']) && $resUnauthContacts['success'] === false,
+        "Response: " . json_encode($resUnauthContacts, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 18: Unauthorized check - projects list without token
+    $resUnauthProjects = $callApi('projects', 'GET', [], '');
+    assertPermTest(
+        "Unauthorized: projects without token should fail",
+        isset($resUnauthProjects['success']) && $resUnauthProjects['success'] === false,
+        "Response: " . json_encode($resUnauthProjects, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 19: Unauthorized check - products list without token
+    $resUnauthProducts = $callApi('products', 'GET', [], '');
+    assertPermTest(
+        "Unauthorized: products without token should fail",
+        isset($resUnauthProducts['success']) && $resUnauthProducts['success'] === false,
+        "Response: " . json_encode($resUnauthProducts, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 20: Invalid Token check - calling with invalid bearer token signature
+    $resInvalidToken = $callApi('contacts', 'GET', [], 'invalid_token_signature_123');
+    assertPermTest(
+        "Unauthorized: Invalid Token signature should fail",
+        isset($resInvalidToken['success']) && $resInvalidToken['success'] === false,
+        "Response: " . json_encode($resInvalidToken, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 21: Undefined Action check - calling non-existent endpoint
+    $resUndefinedAction = $callApi('non_existent_action_xyz', 'GET', [], $salesToken);
+    assertPermTest(
+        "API: Non-existent action should fail gracefully",
+        isset($resUndefinedAction['success']) && $resUndefinedAction['success'] === false,
+        "Response: " . json_encode($resUndefinedAction, JSON_UNESCAPED_UNICODE)
+    );
+
     // Clean up temporary DB records
     $db->exec("SET FOREIGN_KEY_CHECKS = 0");
     $db->prepare("DELETE FROM users WHERE id IN (?, ?, ?, ?, ?, ?)")->execute([$salesUserId, $viewerUserId, $adminUserId, $mgrUserId, $sales1UserId, $sales2UserId]);
