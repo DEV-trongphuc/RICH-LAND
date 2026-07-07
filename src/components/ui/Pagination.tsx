@@ -1,6 +1,5 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { CustomSelect } from './CustomSelect';
 
 interface PaginationProps {
   total: number;
@@ -43,9 +42,8 @@ export const Pagination: React.FC<PaginationProps> = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         width: '100%',
-        padding: '1rem 1.25rem',
-        borderTop: '1px solid var(--color-border-light)',
-        background: 'var(--color-surface)',
+        padding: '1rem 0',
+        background: 'transparent',
         flexWrap: 'wrap',
         gap: '1rem'
       }}
@@ -62,16 +60,6 @@ export const Pagination: React.FC<PaginationProps> = ({
         }}
       >
         Hiển thị <strong>{start}</strong> - <strong>{end}</strong> trên <strong>{total}</strong>
-        {showSizeChanger && onPageSizeChange && (
-          <div style={{ marginLeft: '0.75rem', width: '130px', display: 'inline-block' }}>
-            <CustomSelect
-              options={[3, 6, 12, 24, 50, 100].map(n => ({ value: n, label: `${n} / trang` }))}
-              value={pageSize}
-              onChange={v => { onPageSizeChange(Number(v)); onChange(1); }}
-              direction="up"
-            />
-          </div>
-        )}
       </div>
 
       <div 
