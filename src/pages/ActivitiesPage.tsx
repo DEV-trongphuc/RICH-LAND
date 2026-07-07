@@ -99,7 +99,7 @@ export const ActivitiesPage: React.FC = () => {
   }, [showModal]);
 
   useEffect(() => {
-    const isPrivileged = ['admin', 'superadmin', 'super_admin', 'manager'].includes(user?.role || '');
+    const isPrivileged = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user?.role || '');
     if (isPrivileged) {
       api.get('/teams').then(r => setTeamsList(r.data.data || r.data || [])).catch(() => {});
       api.get('/get_consultants').then(r => setConsultantsList(r.data.data || r.data || [])).catch(() => {});
@@ -308,7 +308,7 @@ export const ActivitiesPage: React.FC = () => {
           </div>
         </div>
 
-        {['admin', 'superadmin', 'super_admin', 'manager'].includes(user?.role || '') && (
+        {['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user?.role || '') && (
           <div style={{ display: 'flex', gap: '0.75rem', minWidth: '380px' }}>
             <div style={{ width: '180px' }}>
               <CustomSelect
