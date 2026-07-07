@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -46,7 +46,6 @@ interface RosterMember {
   email: string;
   role: string;
   is_assigned: number;
-  avatar_url?: string;
 }
 
 interface ProjectDoc {
@@ -90,6 +89,12 @@ export default function ProjectsPage() {
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
   const [totalProjects, setTotalProjects] = useState(0);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
+  const [allProjects, setAllProjects] = useState<Project[]>([]);
+  const [allCampaigns, setAllCampaigns] = useState<any[]>([]);
+  const [isProjectsBackendPaginated, setIsProjectsBackendPaginated] = useState(false);
+  const [isCampaignsBackendPaginated, setIsCampaignsBackendPaginated] = useState(false);
+  const [hasLoadedProjectsOnce, setHasLoadedProjectsOnce] = useState(false);
+  const [hasLoadedCampaignsOnce, setHasLoadedCampaignsOnce] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -126,7 +131,6 @@ export default function ProjectsPage() {
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [rosterMembers, setRosterMembers] = useState<RosterMember[]>([]);
-  const [rosterSearch, setRosterSearch] = useState('');
 
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
   const [projectDocs, setProjectDocs] = useState<ProjectDoc[]>([]);
@@ -186,20 +190,43 @@ export default function ProjectsPage() {
   };
 
   const loadProjects = async (forceRefetch = false) => {
+    // Client-side paginate fallback
+    if (!forceRefetch && hasLoadedProjectsOnce && !isProjectsBackendPaginated) {
+      const offset = (projectPage - 1) * projectPageSize;
+      setProjects(allProjects.slice(offset, offset + projectPageSize));
+      setTotalProjects(allProjects.length);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetchAPI(`projects?page=${projectPage}&limit=${projectPageSize}`);
       console.log('Projects API Response:', res);
       if (res.success) {
+        setHasLoadedProjectsOnce(true);
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
           const list = res.data.data || [];
-          setProjects(list);
           const totalVal = Number(res.data.total);
-          setTotalProjects(isNaN(totalVal) ? list.length : totalVal);
+          
+          if (!isNaN(totalVal) && list.length === totalVal && totalVal > projectPageSize) {
+            // Backend returned everything on page 1, so it does not support pagination
+            setIsProjectsBackendPaginated(false);
+            setAllProjects(list);
+            setTotalProjects(list.length);
+            const offset = (projectPage - 1) * projectPageSize;
+            setProjects(list.slice(offset, offset + projectPageSize));
+          } else {
+            setIsProjectsBackendPaginated(true);
+            setProjects(list);
+            setTotalProjects(isNaN(totalVal) ? list.length : totalVal);
+          }
         } else {
           const arr = Array.isArray(res.data) ? res.data : [];
-          setProjects(arr);
+          setIsProjectsBackendPaginated(false);
+          setAllProjects(arr);
           setTotalProjects(arr.length);
+          const offset = (projectPage - 1) * projectPageSize;
+          setProjects(arr.slice(offset, offset + projectPageSize));
         }
       } else {
         addToast(res.message || 'Lỗi tải danh sách dự án', 'error');
@@ -235,19 +262,42 @@ export default function ProjectsPage() {
   };
 
   const loadCampaigns = async (forceRefetch = false) => {
+    // Client-side paginate fallback
+    if (!forceRefetch && hasLoadedCampaignsOnce && !isCampaignsBackendPaginated) {
+      const offset = (campaignPage - 1) * campaignPageSize;
+      setCampaigns(allCampaigns.slice(offset, offset + campaignPageSize));
+      setTotalCampaigns(allCampaigns.length);
+      return;
+    }
+
     setCampaignsLoading(true);
     try {
       const res = await fetchAPI(`campaigns?page=${campaignPage}&limit=${campaignPageSize}`);
       if (res.success) {
+        setHasLoadedCampaignsOnce(true);
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
           const list = res.data.data || [];
-          setCampaigns(list);
           const totalVal = Number(res.data.total);
-          setTotalCampaigns(isNaN(totalVal) ? list.length : totalVal);
+          
+          if (!isNaN(totalVal) && list.length === totalVal && totalVal > campaignPageSize) {
+            // Backend returned everything on page 1, so it does not support pagination
+            setIsCampaignsBackendPaginated(false);
+            setAllCampaigns(list);
+            setTotalCampaigns(list.length);
+            const offset = (campaignPage - 1) * campaignPageSize;
+            setCampaigns(list.slice(offset, offset + campaignPageSize));
+          } else {
+            setIsCampaignsBackendPaginated(true);
+            setCampaigns(list);
+            setTotalCampaigns(isNaN(totalVal) ? list.length : totalVal);
+          }
         } else {
           const arr = Array.isArray(res.data) ? res.data : [];
-          setCampaigns(arr);
+          setIsCampaignsBackendPaginated(false);
+          setAllCampaigns(arr);
           setTotalCampaigns(arr.length);
+          const offset = (campaignPage - 1) * campaignPageSize;
+          setCampaigns(arr.slice(offset, offset + campaignPageSize));
         }
       }
     } catch (e) {
@@ -393,7 +443,6 @@ export default function ProjectsPage() {
   // Roster logic
   const handleOpenRoster = async (projectId: number) => {
     setSelectedProjectId(projectId);
-    setRosterSearch('');
     setIsRosterModalOpen(true);
     try {
       const res = await fetchAPI(`projects/${projectId}/roster`);
@@ -1518,55 +1567,11 @@ export default function ProjectsPage() {
         width="650px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Search bar */}
-          <div style={{ position: 'relative', width: '100%' }}>
-            <input
-              type="text"
-              placeholder="Tìm kiếm nhân sự theo tên hoặc email..."
-              value={rosterSearch}
-              onChange={(e) => setRosterSearch(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.625rem 1rem 0.625rem 2.5rem',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                background: 'var(--color-bg-light)',
-                fontSize: '0.875rem',
-                color: 'var(--color-text)',
-                outline: 'none',
-                transition: 'border-color 0.2s'
-              }}
-              onFocus={(e) => e.target.style.borderColor = 'var(--color-primary)'}
-              onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
-            />
-            <Search 
-              size={16} 
-              style={{ 
-                position: 'absolute', 
-                left: '12px', 
-                top: '50%', 
-                transform: 'translateY(-50%)', 
-                color: 'var(--color-text-muted)' 
-              }} 
-            />
-          </div>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '55vh', overflowY: 'auto', paddingRight: '4px' }}>
-            {(() => {
-              const filteredRoster = rosterMembers.filter(member => 
-                member.full_name?.toLowerCase().includes(rosterSearch.toLowerCase()) ||
-                member.email?.toLowerCase().includes(rosterSearch.toLowerCase())
-              );
-
-              if (filteredRoster.length === 0) {
-                return (
-                  <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>
-                    Không tìm thấy tài khoản Sales nào phù hợp
-                  </div>
-                );
-              }
-
-              return filteredRoster.map(member => (
+            {rosterMembers.length === 0 ? (
+              <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>Không tìm thấy tài khoản Sales khả dụng</div>
+            ) : (
+              rosterMembers.map(member => (
                 <div
                   key={member.id}
                   onClick={() => handleToggleRoster(member.id)}
@@ -1581,52 +1586,10 @@ export default function ProjectsPage() {
                     cursor: 'pointer'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {/* Avatar */}
-                    {member.avatar_url ? (
-                      <img
-                        src={member.avatar_url.startsWith('http') ? member.avatar_url : `${import.meta.env.VITE_API_URL ?? '/backend'}/${member.avatar_url}`}
-                        alt={member.full_name}
-                        style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                          border: '1px solid var(--color-border-light)'
-                        }}
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          const fallbackSpan = e.currentTarget.nextSibling as HTMLSpanElement;
-                          if (fallbackSpan) fallbackSpan.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    
-                    {/* Initials fallback */}
-                    <span
-                      style={{
-                        display: member.avatar_url ? 'none' : 'flex',
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '50%',
-                        background: member.is_assigned ? 'var(--color-primary)' : 'var(--color-bg-light)',
-                        color: member.is_assigned ? '#fff' : 'var(--color-text-muted)',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.85rem',
-                        fontWeight: 700,
-                        border: '1px solid var(--color-border-light)'
-                      }}
-                    >
-                      {generateCodeFromName(member.full_name).slice(0, 2) || 'S'}
-                    </span>
-
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
-                    </div>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
                   </div>
-
                   <div
                     style={{
                       width: '20px',
@@ -1643,8 +1606,8 @@ export default function ProjectsPage() {
                     {member.is_assigned === 1 && <Check size={14} />}
                   </div>
                 </div>
-              ));
-            })()}
+              ))
+            )}
           </div>
           <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
             <button type="button" className="btn outline sm" style={{ borderRadius: '100px' }} onClick={() => setIsRosterModalOpen(false)}>Hủy</button>

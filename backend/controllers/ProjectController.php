@@ -285,7 +285,7 @@ class ProjectController {
 
         // Fetch user IDs in roster
         $stmt = $this->db->prepare("
-            SELECT u.id, u.full_name, u.email, u.role, u.avatar_url,
+            SELECT u.id, u.full_name, u.email, u.role,
                    (CASE WHEN pr.user_id IS NOT NULL THEN 1 ELSE 0 END) as is_assigned
             FROM users u
             LEFT JOIN project_roster pr ON u.id = pr.user_id AND pr.project_id = ?
