@@ -3616,7 +3616,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
               {t('Vui lòng chọn một Nhóm để xem chi tiết công việc:')}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, minmax(0, 1fr))', gap: '1.25rem' }}>
               {/* Card for "Tất cả các Nhóm" */}
               <div
                 onClick={() => setWsTeamId('all_teams_bypass')}
