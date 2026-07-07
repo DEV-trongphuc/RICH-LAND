@@ -1964,6 +1964,18 @@ try {
             $logMsg("Đã thêm cột switched_from_deal_id cho deals", "success");
         }
 
+        // Self-healing check: ensure duplicate_flag exists in contacts
+        $chkDupFlag = $conn->query("SHOW COLUMNS FROM contacts LIKE 'duplicate_flag'");
+        if ($chkDupFlag && $chkDupFlag->num_rows === 0) {
+            $conn->query("ALTER TABLE contacts ADD COLUMN duplicate_flag TINYINT(1) NOT NULL DEFAULT 0 AFTER person_id");
+            $logMsg("Đã thêm cột duplicate_flag cho contacts", "success");
+        }
+        $chkDupWith = $conn->query("SHOW COLUMNS FROM contacts LIKE 'duplicate_with_id'");
+        if ($chkDupWith && $chkDupWith->num_rows === 0) {
+            $conn->query("ALTER TABLE contacts ADD COLUMN duplicate_with_id INT NULL DEFAULT NULL AFTER duplicate_flag");
+            $logMsg("Đã thêm cột duplicate_with_id cho contacts", "success");
+        }
+
         // Self-healing check: Backfill contact's last_contact based on existing notes & activities history
         $conn->query("
             UPDATE contacts c

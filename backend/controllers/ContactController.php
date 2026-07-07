@@ -176,14 +176,29 @@ class ContactController {
         
         // Duplicate Phone Check
         $phone = $b['phone'] ?? $b['mobile'] ?? null;
+        $duplicateFlag = 0;
+        $duplicateWithId = null;
         if ($phone) {
             require_once __DIR__ . '/../webhook_logic.php';
             $phone = normalizePhone($phone);
             
-            $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND deleted_at IS NULL LIMIT 1");
+            $check = $this->db->prepare("SELECT id, source, created_at, pipeline_status FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND deleted_at IS NULL LIMIT 1");
             $check->execute([$auth['tenant_id'], $phone, $phone]);
-            if ($check->fetch()) {
-                respond(422, null, "Số điện thoại '$phone' đã tồn tại trong hệ thống. Vui lòng kiểm tra lại.", false);
+            $existing = $check->fetch();
+            if ($existing) {
+                $newSource = $b['source'] ?? 'other';
+                $isPersonal = in_array($newSource, ['ca_nhan', 'gioi_thieu'], true);
+                
+                $washingDays = 30; // default 30 days
+                $existingCreatedTime = strtotime($existing['created_at']);
+                $isActiveAndRecent = ($existing['pipeline_status'] !== 'rejected' && (time() - $existingCreatedTime) <= ($washingDays * 24 * 3600));
+
+                if ($isPersonal && $isActiveAndRecent) {
+                    $duplicateFlag = 1;
+                    $duplicateWithId = (int)$existing['id'];
+                } else {
+                    respond(422, null, "Số điện thoại '$phone' đã tồn tại trong hệ thống. Vui lòng kiểm tra lại.", false);
+                }
             }
         }
         
@@ -248,6 +263,36 @@ class ContactController {
             $personId
         ]);
         $id = (int)$this->db->lastInsertId();
+        if ($duplicateFlag) {
+            $upd = $this->db->prepare("UPDATE contacts SET duplicate_flag = 1, duplicate_with_id = ? WHERE id = ?");
+            $upd->execute([$duplicateWithId, $id]);
+
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DUPLICATE_FLAG', 'contact', $id, json_encode(['duplicate_with' => $duplicateWithId, 'phone' => $phone]));
+
+            // Send notification to managers & admins
+            $stmtAdmins = $this->db->prepare("
+                SELECT id FROM users 
+                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'director')
+            ");
+            $stmtAdmins->execute([$auth['tenant_id']]);
+            $admins = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN);
+
+            if (!empty($admins)) {
+                $title = "Cảnh báo trùng số (Nghi ngờ rửa nguồn)";
+                $body = "Sale " . ($auth['full_name'] ?? 'Nhân viên') . " đã nhập tay khách hàng trùng SĐT với lead MKT đang hoạt động (Contact ID: " . $duplicateWithId . ")";
+                $type = "warning";
+                $link = "/contacts?id=" . $id;
+
+                $insertNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                foreach ($admins as $adminId) {
+                    $insertNotif->execute([$adminId, $auth['tenant_id'], $title, $body, $type, $link]);
+                }
+            }
+        }
+
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
         }
