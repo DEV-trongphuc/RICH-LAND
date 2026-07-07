@@ -23,6 +23,8 @@ export const FilesPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
   const userRole = useAuthStore.getState().user?.role;
   const isSale = userRole === 'sale';
+  const isViewer = userRole === 'viewer';
+  const isSaleOrViewer = isSale || isViewer;
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -220,7 +222,7 @@ export const FilesPage: React.FC = () => {
   };
 
   const handleSaveCategory = async () => {
-    if (isSale) {
+    if (isSaleOrViewer) {
       addToast('Bạn không có quyền thực hiện hành động này', 'error');
       return;
     }
@@ -333,10 +335,12 @@ export const FilesPage: React.FC = () => {
              </button>
            </div>
            
-           <button className="btn primary" onClick={() => fileInputRef.current?.click()} title="Tải tệp mới">
-             <Plus size={16} />
-             <span className="hide-on-mobile"> Tải tệp mới</span>
-           </button>
+           {!isViewer && (
+             <button className="btn primary" onClick={() => fileInputRef.current?.click()} title="Tải tệp mới">
+               <Plus size={16} />
+               <span className="hide-on-mobile"> Tải tệp mới</span>
+             </button>
+           )}
            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
         </div>
       </div>
@@ -347,7 +351,7 @@ export const FilesPage: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 8px' }}>
                 <p style={{ fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DANH MỤC</p>
-                {!isSale && (
+                {!isSaleOrViewer && (
                   <button 
                     onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
                     style={{ color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -444,9 +448,9 @@ export const FilesPage: React.FC = () => {
                   <EmptyCard 
                     icon={<Folder />}
                     title="Thư mục này đang trống"
-                    description="Bắt đầu tổ chức tài liệu bằng cách tải lên tệp đầu tiên. Dung lượng lưu trữ của bạn được giới hạn ở mức 10 GB."
-                    actionText="Tải lên ngay"
-                    onAction={() => fileInputRef.current?.click()}
+                    description={isViewer ? "Không có tài liệu nào trong thư mục này." : "Bắt đầu tổ chức tài liệu bằng cách tải lên tệp đầu tiên. Dung lượng lưu trữ của bạn được giới hạn ở mức 10 GB."}
+                    actionText={isViewer ? undefined : "Tải lên ngay"}
+                    onAction={isViewer ? undefined : () => fileInputRef.current?.click()}
                   />
                 </div>
               </div>
@@ -468,9 +472,9 @@ export const FilesPage: React.FC = () => {
                             {getMimeIcon(f.mime_type)}
                           </div>
                           <div style={{ display: 'flex', gap: '4px' }}>
-                            {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={16} /></button>}
+                            {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={16} /></button>}
                             <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={16} /></button>
-                            {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>}
+                            {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>}
                           </div>
                         </div>
                         
@@ -554,7 +558,7 @@ export const FilesPage: React.FC = () => {
                                 </td>
                                 <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                      {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
+                                      {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
                                       <a 
                                         href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
                                         download={f.name}
@@ -563,7 +567,7 @@ export const FilesPage: React.FC = () => {
                                       >
                                         <Download size={18} />
                                       </a>
-                                      {(!isSale || activeTab === 'personal') && <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>}
+                                      {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>}
                                       <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
                                     </div>
                                 </td>
