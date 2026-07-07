@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -66,6 +66,19 @@ const getCleanCityName = (name: string) => {
   return match ? match[1] : name.replace(/\s*\(.*?\)\s*/g, '').trim();
 };
 
+const getCityFromAddress = (address: string, defaultVal: string) => {
+  if (!address) return defaultVal;
+  const parts = address.split(',').map(p => p.trim());
+  if (parts.length >= 1) {
+    const lastPart = parts[parts.length - 1];
+    if (lastPart.toLowerCase() === 'việt nam' && parts.length >= 2) {
+      return parts[parts.length - 2];
+    }
+    return lastPart;
+  }
+  return defaultVal;
+};
+
 const cityOptions = ((cityData as any).cities || []).map((c: any) => {
   const cleanName = getCleanCityName(c.name);
   return { value: cleanName, label: cleanName };
@@ -80,6 +93,13 @@ const ConsultantsInner = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const handleThemeChange = () => {
@@ -91,6 +111,8 @@ const ConsultantsInner = () => {
   }, []);
 
   const [users, setUsers] = useState<any[]>([]);
+  const [allSystemUsers, setAllSystemUsers] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -129,8 +151,18 @@ const ConsultantsInner = () => {
   const [teamsLoading, setTeamsLoading] = useState(false);
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<any>(null);
-  const [teamFormData, setTeamFormData] = useState({ name: '', branch: '', leader_id: '' });
+  const [teamFormData, setTeamFormData] = useState({
+    name: '',
+    branch: '',
+    leader_id: '',
+    description: '',
+    kpi_target: '',
+    max_members: '',
+    focus_projects: [] as string[],
+    member_ids: [] as string[]
+  });
   const [searchLeader, setSearchLeader] = useState('');
+  const [memberSearch, setMemberSearch] = useState('');
   const [showLeaderDropdown, setShowLeaderDropdown] = useState(false);
   const leaderDropdownRef = useRef<HTMLDivElement>(null);
   const [confirmDeleteTeamOpen, setConfirmDeleteTeamOpen] = useState(false);
@@ -145,6 +177,7 @@ const ConsultantsInner = () => {
   const [formData, setFormData] = useState<{
     name: string;
     email: string;
+    phone: string;
     status: string;
     leave_start: string;
     leave_end: string;
@@ -163,6 +196,7 @@ const ConsultantsInner = () => {
   }>({
     name: '',
     email: '',
+    phone: '',
     status: 'active',
     leave_start: '',
     leave_end: '',
@@ -219,6 +253,26 @@ const ConsultantsInner = () => {
     setLoading(false);
   };
 
+  const fetchAllSystemUsers = async () => {
+    try {
+      const json = await fetchAPI('get_accounts');
+      if (json && json.success && Array.isArray(json.data)) {
+        setAllSystemUsers(json.data);
+      }
+    } catch (e: any) {
+      console.error('Failed to fetch system users:', e);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const json = await fetchAPI('projects');
+      if (json && Array.isArray(json)) setProjects(json);
+    } catch (e: any) {
+      console.error('Failed to fetch projects:', e);
+    }
+  };
+
   const handleToggleVacation = async (id: number) => {
     try {
       const json = await fetchAPI('toggle_consultant_vacation', {
@@ -249,6 +303,8 @@ const ConsultantsInner = () => {
   useEffect(() => {
     fetchUsers();
     fetchTeams();
+    fetchAllSystemUsers();
+    fetchProjects();
   }, []);
 
   const openAddModal = () => {
@@ -257,6 +313,7 @@ const ConsultantsInner = () => {
     setFormData({
       name: '',
       email: '',
+      phone: '',
       status: 'active',
       leave_start: '',
       leave_end: '',
@@ -283,6 +340,7 @@ const ConsultantsInner = () => {
     setFormData({
       name: user.name,
       email: user.email,
+      phone: user.phone || '',
       status: user.status,
       leave_start: user.leave_start || '',
       leave_end: user.leave_end || '',
@@ -349,23 +407,49 @@ const ConsultantsInner = () => {
 
   const openAddTeamModal = () => {
     setEditingTeam(null);
-    setTeamFormData({ name: '', branch: '', leader_id: '' });
+    setTeamFormData({
+      name: '',
+      branch: '',
+      leader_id: '',
+      description: '',
+      kpi_target: '',
+      max_members: '',
+      focus_projects: [],
+      member_ids: []
+    });
     setSearchLeader('');
     setShowLeaderDropdown(false);
     setTeamModalOpen(true);
   };
 
-  const openEditTeamModal = (team: any) => {
-    setEditingTeam(team);
-    setTeamFormData({
-      name: team.name,
-      branch: team.branch || '',
-      leader_id: team.leader_id || ''
-    });
-    const leaderUser = users.find(u => Number(u.id) === Number(team.leader_id));
-    setSearchLeader(leaderUser ? leaderUser.name : '');
-    setShowLeaderDropdown(false);
-    setTeamModalOpen(true);
+  const openEditTeamModal = async (team: any) => {
+    try {
+      const res = await fetchAPI(`teams/${team.id}`);
+      if (res && res.success && res.data) {
+        const data = res.data;
+        setEditingTeam(data);
+        const memberIds = Array.isArray(data.members) ? data.members.map((m: any) => String(m.id)) : [];
+        const focusProjects = data.focus_project ? data.focus_project.split(',').map((p: any) => p.trim()).filter(Boolean) : [];
+        setTeamFormData({
+          name: data.name,
+          branch: data.branch || '',
+          leader_id: data.leader_id || '',
+          description: data.description || '',
+          kpi_target: data.kpi_target !== null && data.kpi_target !== undefined ? String(data.kpi_target) : '',
+          max_members: data.max_members !== null && data.max_members !== undefined ? String(data.max_members) : '',
+          focus_projects: focusProjects,
+          member_ids: memberIds
+        });
+        const leaderUser = allSystemUsers.find(u => Number(u.id) === Number(data.leader_id));
+        setSearchLeader(leaderUser ? (leaderUser.full_name || leaderUser.name) : '');
+        setShowLeaderDropdown(false);
+        setTeamModalOpen(true);
+      } else {
+        toast.error(res ? res.message : t('Lỗi không xác định khi tải dữ liệu'));
+      }
+    } catch (e: any) {
+      toast.error(t('Không thể tải thông tin nhóm: ') + e.message);
+    }
   };
 
   const handleSaveTeam = async (e: React.FormEvent) => {
@@ -378,9 +462,20 @@ const ConsultantsInner = () => {
       const url = isEdit ? `teams/${editingTeam.id}` : 'teams';
       const method = isEdit ? 'PUT' : 'POST';
       
+      const payload = {
+        name: teamFormData.name,
+        branch: teamFormData.branch,
+        leader_id: teamFormData.leader_id,
+        description: teamFormData.description,
+        kpi_target: teamFormData.kpi_target,
+        max_members: teamFormData.max_members,
+        focus_project: teamFormData.focus_projects.join(', '),
+        member_ids: teamFormData.member_ids
+      };
+
       const res = await fetchAPI(url, {
         method,
-        body: JSON.stringify(teamFormData)
+        body: JSON.stringify(payload)
       });
       
       if (res.success) {
@@ -698,7 +793,7 @@ const ConsultantsInner = () => {
               <thead>
                 <tr>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên TVV')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Email')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Thông tin liên hệ')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Nhóm (Team)')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
@@ -783,10 +878,18 @@ const ConsultantsInner = () => {
                         </div>
                       </div>
                     </td>
-                    <td data-label={t('Email')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 }} />
-                        <span>{u.email}</span>
+                    <td data-label={t('Thông tin liên hệ')} style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" style={{ width: 14, height: 14, objectFit: 'contain', flexShrink: 0 }} />
+                          <span>{u.email}</span>
+                        </div>
+                        {u.phone && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text)' }}>
+                            <Phone size={12} style={{ color: 'var(--color-primary)' }} />
+                            <span>{u.phone}</span>
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td data-label={t('Nhóm (Team)')} style={{ fontWeight: 500, fontSize: '0.8125rem', color: 'var(--color-text)' }}>
@@ -1109,7 +1212,8 @@ const ConsultantsInner = () => {
           {(() => {
             const branchMap: Record<string, any[]> = {};
             teams.forEach(team => {
-              const bName = team.branch || t('Không thuộc chi nhánh nào');
+              const fullAddress = team.branch || '';
+              const bName = fullAddress ? getCityFromAddress(fullAddress, t('Không thuộc chi nhánh nào')) : t('Không thuộc chi nhánh nào');
               if (!branchMap[bName]) branchMap[bName] = [];
               branchMap[bName].push(team);
             });
@@ -1244,7 +1348,7 @@ const ConsultantsInner = () => {
         <div className="overlay-backdrop" onClick={() => setModalOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1100 }}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 800, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
+            style={{ width: '100%', maxWidth: 960, maxHeight: '92vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -1257,12 +1361,12 @@ const ConsultantsInner = () => {
             </div>
 
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '1.25rem', overflowY: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+              <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
 
-                  {/* Cột 1: Thông tin cá nhân & Trạng thái */}
+                  {/* Cột 1: Thông tin cơ bản & Trạng thái hoạt động */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-
+                    
                     {/* Avatar Upload */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
                       <div style={{ position: 'relative' }}>
@@ -1324,16 +1428,27 @@ const ConsultantsInner = () => {
                       />
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={14} /> {t('Email')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input
-                        type="email"
-                        className="form-input"
-                        placeholder="VD: email@domain.com"
-                        value={formData.email}
-                        onChange={e => setFormData({ ...formData, email: e.target.value })}
-                        required
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} /> {t('Số điện thoại')}</label>
+                        <input
+                          className="form-input"
+                          placeholder={t('VD: 0912345678')}
+                          value={formData.phone}
+                          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={14} /> {t('Email')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                        <input
+                          type="email"
+                          className="form-input"
+                          placeholder="VD: email@domain.com"
+                          value={formData.email}
+                          onChange={e => setFormData({ ...formData, email: e.target.value })}
+                          required
+                        />
+                      </div>
                     </div>
 
                     <div className="form-group">
@@ -1349,6 +1464,143 @@ const ConsultantsInner = () => {
                       />
                     </div>
 
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> {t('Trạng thái hoạt động')}</label>
+                      <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, status: 'active' })}
+                          style={{
+                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: formData.status === 'active' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
+                            color: formData.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
+                            boxShadow: formData.status === 'active' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >{t('Đang nhận Data')}</button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, status: 'leave' })}
+                          style={{
+                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: formData.status === 'leave' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
+                            color: formData.status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)',
+                            boxShadow: formData.status === 'leave' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >{t('Nghỉ phép')}</button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, status: 'inactive' })}
+                          style={{
+                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
+                            background: formData.status === 'inactive' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
+                            color: formData.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
+                            boxShadow: formData.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
+                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                          }}
+                        >{t('Ngừng HĐ')}</button>
+                      </div>
+                    </div>
+
+                    {formData.status === 'leave' && (
+                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: 'var(--color-warning-light)', padding: '0.75rem', borderRadius: 12, border: '1px solid var(--color-border)', animation: 'slideUp 0.15s ease-out' }}>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>{t('Từ ngày')}</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
+                            value={formData.leave_start}
+                            onChange={e => setFormData({ ...formData, leave_start: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>{t('Đến ngày')}</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
+                            value={formData.leave_end}
+                            onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
+                          />
+                        </div>
+                        <p style={{ gridColumn: 'span 2', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.3' }}>
+                          {t('Lưu ý: Trong thời gian nghỉ phép, Sale sẽ tạm ngưng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ được tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale này.')}
+                        </p>
+                      </div>
+                    )}
+
+                    {editingUser && formData.status === 'active' && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
+                        <div style={{ flex: 1, paddingRight: '0.5rem' }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Nhận data')}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '1.3' }}>
+                            {t('Khi tắt (nghỉ nhanh): Dừng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale.')}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                          <ToggleSwitch
+                            checked={!Boolean(Number(editingUser.vacation_mode))}
+                            onChange={async () => {
+                              await handleToggleVacation(editingUser.id);
+                              setEditingUser((prev: any) => prev ? { ...prev, vacation_mode: 1 - Number(prev.vacation_mode) } : null);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {editingUser && formData.zalo_chat_id && (
+                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
+                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                          <Send size={14} color="var(--color-primary)" /> {t('Tương tác nhanh với Sale')}
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 8 }}>
+                          <button
+                            type="button"
+                            onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
+                            className="btn outline"
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-surface)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#e5f0ff' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                          >
+                            <MessageCircle size={14} /> {t('Nhắn tin nhanh')}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirmUnlinkZalo(editingUser.id)}
+                            className="btn outline"
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'var(--color-surface)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'var(--color-warning-light)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
+                          >
+                            <Link2Off size={14} /> {t('Hủy kết nối Zalo')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
+                        <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Zalo Chat ID (Tự động cấp)')} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.75rem' }}>{t('(chỉ có thể hủy liên kết)')}</span>
+                      </label>
+                      <input
+                        className="form-input"
+                        placeholder={t('Chưa liên kết Zalo')}
+                        value={formData.zalo_chat_id}
+                        disabled
+                        style={{ fontSize: '0.8125rem', padding: '6px 10px', cursor: 'not-allowed', backgroundColor: 'var(--color-border-light)' }}
+                      />
+                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 6, lineHeight: '1.3' }}>
+                        {t('Hệ thống tự điền khi Sale xác thực Zalo. Admin có thể hủy liên kết nếu cần.')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Cột 2: Thông tin cá nhân, Tài chính & Lịch làm việc */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    
                     {/* Demographic Fields */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                       <div className="form-group">
@@ -1418,106 +1670,6 @@ const ConsultantsInner = () => {
                       </div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> {t('Trạng thái')}</label>
-                      <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, status: 'active' })}
-                          style={{
-                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'active' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: formData.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
-                            boxShadow: formData.status === 'active' ? 'var(--shadow-sm)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                        >{t('Đang nhận Data')}</button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, status: 'leave' })}
-                          style={{
-                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'leave' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: formData.status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)',
-                            boxShadow: formData.status === 'leave' ? 'var(--shadow-sm)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                        >{t('Nghỉ phép')}</button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, status: 'inactive' })}
-                          style={{
-                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'inactive' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: formData.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
-                            boxShadow: formData.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                        >{t('Ngừng HĐ')}</button>
-                      </div>
-                    </div>
-
-                    {formData.status === 'leave' && (
-                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: 'var(--color-warning-light)', padding: '0.75rem', borderRadius: 12, border: '1px solid var(--color-border)', animation: 'slideUp 0.15s ease-out' }}>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>{t('Từ ngày')}</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
-                            value={formData.leave_start}
-                            onChange={e => setFormData({ ...formData, leave_start: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>{t('Đến ngày')}</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
-                            value={formData.leave_end}
-                            onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
-                          />
-                        </div>
-                        <p style={{ gridColumn: 'span 2', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.3' }}>
-                          {t('Lưu ý: Trong thời gian nghỉ phép, Sale sẽ tạm ngưng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ được tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale này.')}
-                        </p>
-                      </div>
-                    )}
-
-                    {editingUser && formData.zalo_chat_id && (
-                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)', marginTop: '1.25rem' }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                          <Send size={14} color="var(--color-primary)" /> {t('Tương tác nhanh với Sale')}
-                        </label>
-                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 8 }}>
-                          <button
-                            type="button"
-                            onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
-                            className="btn outline"
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-surface)' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#e5f0ff' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
-                          >
-                            <MessageCircle size={14} /> {t('Nhắn tin nhanh')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => confirmUnlinkZalo(editingUser.id)}
-                            className="btn outline"
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'var(--color-surface)' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'var(--color-warning-light)' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
-                          >
-                            <Link2Off size={14} /> {t('Hủy liên kết Zalo')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cột 2: Cấu hình ca làm việc & Liên kết Zalo */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div className="form-group">
                       <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Clock size={14} /> {t('Giờ làm việc của Sale')}
@@ -1654,44 +1806,6 @@ const ConsultantsInner = () => {
                         {t('Ngoài ca làm việc, data sẽ được hệ thống tạm giữ lại và tự động bàn giao khi Sale bắt đầu ca kế tiếp.')}
                       </p>
                     </div>
-
-                    {editingUser && formData.status === 'active' && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: 10, border: '1px solid var(--color-border)', marginBottom: '1rem' }}>
-                        <div style={{ flex: 1, paddingRight: '0.5rem' }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Nhận data')}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '1.3' }}>
-                            {t('Khi tắt (nghỉ nhanh): Dừng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale.')}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                          <ToggleSwitch
-                            checked={!Boolean(Number(editingUser.vacation_mode))}
-                            onChange={async () => {
-                              await handleToggleVacation(editingUser.id);
-                              setEditingUser((prev: any) => prev ? { ...prev, vacation_mode: 1 - Number(prev.vacation_mode) } : null);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
-                        <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Zalo Chat ID (Tự động cấp)')} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.75rem' }}>{t('(chỉ có thể hủy liên kết)')}</span>
-                      </label>
-                      <input
-                        className="form-input"
-                        placeholder={t('Chưa liên kết Zalo')}
-                        value={formData.zalo_chat_id}
-                        disabled
-                        style={{ fontSize: '0.8125rem', padding: '6px 10px', cursor: 'not-allowed', backgroundColor: 'var(--color-border-light)' }}
-                      />
-                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 6, lineHeight: '1.3' }}>
-                        {t('Hệ thống tự điền khi Sale xác thực Zalo. Admin có thể hủy liên kết nếu cần.')}
-                      </p>
-                    </div>
-
-
                   </div>
 
                 </div>
@@ -2231,7 +2345,7 @@ const ConsultantsInner = () => {
         <div className="overlay-backdrop" onClick={() => setTeamModalOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1100 }}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
+            style={{ width: '100%', maxWidth: 960, maxHeight: '92vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
@@ -2243,126 +2357,426 @@ const ConsultantsInner = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSaveTeam} style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên Nhóm')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <input
-                    className="form-input"
-                    placeholder={t('VD: Team Chiến Binh')}
-                    value={teamFormData.name}
-                    onChange={e => setTeamFormData({ ...teamFormData, name: e.target.value })}
-                    required
-                    autoFocus
-                  />
-                </div>
+            <form onSubmit={handleSaveTeam} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Chi nhánh')}</label>
-                  <CustomSelect
-                    options={[
-                      { value: '', label: `-- ${t('Chọn Chi nhánh')} --` },
-                      ...cityOptions
-                    ]}
-                    value={teamFormData.branch}
-                    onChange={val => setTeamFormData({ ...teamFormData, branch: String(val) })}
-                    placeholder={t('Chọn Chi nhánh...')}
-                    searchable={true}
-                  />
-                </div>
+                  {/* Cột 1: Thông tin cơ bản & Quản trị */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên Nhóm')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <input
+                        className="form-input"
+                        placeholder={t('VD: Team Chiến Binh')}
+                        value={teamFormData.name}
+                        onChange={e => setTeamFormData({ ...teamFormData, name: e.target.value })}
+                        required
+                        autoFocus
+                      />
+                    </div>
 
-                <div className="form-group" ref={leaderDropdownRef} style={{ position: 'relative' }}>
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Manager')}</label>
-                  
-                  {/* Search Input Box */}
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-input"
-                      style={{ paddingLeft: '2.5rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
-                      placeholder={t("Tìm kiếm và chọn Manager...")}
-                      value={searchLeader}
-                      onChange={e => {
-                        setSearchLeader(e.target.value);
-                        setShowLeaderDropdown(true);
-                      }}
-                      onFocus={() => setShowLeaderDropdown(true)}
-                    />
-                    <div style={{ position: 'absolute', left: 12, top: 10, color: '#94a3b8' }}><Search size={16} /></div>
-                    {teamFormData.leader_id && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTeamFormData({ ...teamFormData, leader_id: '' });
-                          setSearchLeader('');
-                        }}
-                        style={{
-                          position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)',
-                          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
-                        }}
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Dropdown Options */}
-                  {showLeaderDropdown && (
-                    <div style={{
-                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 1200,
-                      background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
-                    }}>
-                      {users.filter(u => u.name.toLowerCase().includes(searchLeader.toLowerCase())).map(u => {
-                        const isSelected = String(teamFormData.leader_id) === String(u.id);
-                        return (
-                          <div
-                            key={u.id}
+                    <div className="form-group" ref={leaderDropdownRef} style={{ position: 'relative' }}>
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Manager')}</label>
+                      
+                      {/* Search Input Box */}
+                      <div style={{ position: 'relative', width: '100%' }}>
+                        <input
+                          className="form-input"
+                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', width: '100%' }}
+                          placeholder={t("Tìm kiếm và chọn Manager...")}
+                          value={searchLeader}
+                          onChange={e => {
+                            setSearchLeader(e.target.value);
+                            setShowLeaderDropdown(true);
+                          }}
+                          onFocus={() => setShowLeaderDropdown(true)}
+                        />
+                        {teamFormData.leader_id && (
+                          <button
+                            type="button"
                             onClick={() => {
-                              setTeamFormData({ ...teamFormData, leader_id: String(u.id) });
-                              setSearchLeader(u.name);
-                              setShowLeaderDropdown(false);
+                              setTeamFormData({ ...teamFormData, leader_id: '' });
+                              setSearchLeader('');
                             }}
                             style={{
-                              padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                              cursor: 'pointer',
-                              background: isSelected ? 'var(--color-primary-light)' : 'transparent',
-                              transition: 'background 0.1s'
+                              position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)',
+                              background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
                             }}
-                            onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
-                            onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                           >
-                            <Avatar src={u.avatar} name={u.name} size={28} />
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>{u.name}</p>
-                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
-                                {u.email && (
-                                  <img
-                                    src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
-                                    alt="Gmail"
-                                    style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
-                                  />
-                                )}
-                                <span>{u.email}</span>
-                              </p>
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Dropdown Options */}
+                      {showLeaderDropdown && (
+                        <div style={{
+                          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 1200,
+                          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
+                        }}>
+                          {allSystemUsers.filter(u => (u.full_name || u.name || '').toLowerCase().includes(searchLeader.toLowerCase())).map(u => {
+                            const uName = u.full_name || u.name || '';
+                            const isSelected = String(teamFormData.leader_id) === String(u.id);
+                            return (
+                              <div
+                                key={u.id}
+                                onClick={() => {
+                                  setTeamFormData({ ...teamFormData, leader_id: String(u.id) });
+                                  setSearchLeader(uName);
+                                  setShowLeaderDropdown(false);
+                                }}
+                                style={{
+                                  padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                  cursor: 'pointer',
+                                  background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                                  transition: 'background 0.1s'
+                                }}
+                                onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <Avatar src={u.avatar_url || u.avatar} name={uName} size={28} />
+                                <div style={{ flex: 1 }}>
+                                  <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>{uName}</p>
+                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                                    {u.email && (
+                                      <img
+                                        src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
+                                        alt="Gmail"
+                                        style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
+                                      />
+                                    )}
+                                    <span>{u.email}</span>
+                                    {u.role && (
+                                      <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', padding: '2px 6px', borderRadius: 4, marginLeft: 'auto', fontWeight: 600 }}>
+                                        {t(u.role)}
+                                      </span>
+                                    )}
+                                  </p>
+                                </div>
+                                {isSelected && <Check size={16} color="var(--color-primary)" />}
+                              </div>
+                            );
+                          })}
+                          {allSystemUsers.filter(u => (u.full_name || u.name || '').toLowerCase().includes(searchLeader.toLowerCase())).length === 0 && (
+                            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                              {t("Không tìm thấy nhân sự nào")}
                             </div>
-                            {isSelected && <Check size={16} color="var(--color-primary)" />}
-                          </div>
-                        );
-                      })}
-                      {users.filter(u => u.name.toLowerCase().includes(searchLeader.toLowerCase())).length === 0 && (
-                        <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                          {t("Không tìm thấy nhân sự nào")}
+                          )}
                         </div>
                       )}
                     </div>
-                  )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('KPI doanh thu tháng (VND)')}</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          placeholder="VD: 100000000"
+                          value={teamFormData.kpi_target}
+                          onChange={e => setTeamFormData({ ...teamFormData, kpi_target: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số TV tối đa')}</label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          placeholder="VD: 10"
+                          value={teamFormData.max_members}
+                          onChange={e => setTeamFormData({ ...teamFormData, max_members: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Mô tả nhóm / Slogan')}</label>
+                      <textarea
+                        className="form-input"
+                        rows={3}
+                        placeholder={t('Nhập mô tả hoạt động hoặc slogan của nhóm...')}
+                        value={teamFormData.description}
+                        onChange={e => setTeamFormData({ ...teamFormData, description: e.target.value })}
+                        style={{ resize: 'vertical' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cột 2: Địa chỉ & Dự án & Quản lý Thành viên */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div className="form-group">
+                      <AddressSelect
+                        label={t('Địa chỉ chi nhánh')}
+                        value={teamFormData.branch}
+                        onChange={val => setTeamFormData({ ...teamFormData, branch: val })}
+                      />
+                    </div>
+
+                    {/* Dự án trọng điểm (Multi-select) */}
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Dự án trọng điểm')} ({teamFormData.focus_projects.length})</label>
+                      
+                      {/* Selected projects tags */}
+                      {teamFormData.focus_projects.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginBottom: '0.5rem' }}>
+                          {teamFormData.focus_projects.map(projName => (
+                            <span 
+                              key={projName} 
+                              style={{ 
+                                display: 'inline-flex', 
+                                alignItems: 'center', 
+                                gap: '0.25rem', 
+                                background: 'var(--color-primary-light)', 
+                                color: 'var(--color-primary)', 
+                                padding: '2px 8px', 
+                                borderRadius: '12px', 
+                                fontSize: '0.75rem',
+                                fontWeight: 600
+                              }}
+                            >
+                              {projName}
+                              <button 
+                                type="button" 
+                                onClick={() => setTeamFormData({ ...teamFormData, focus_projects: teamFormData.focus_projects.filter(p => p !== projName) })}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center' }}
+                              >
+                                <X size={12} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Projects checklist */}
+                      <div className="custom-scrollbar" style={{ 
+                        border: '1px solid var(--color-border)', 
+                        borderRadius: 'var(--radius-md)', 
+                        maxHeight: '120px', 
+                        overflowY: 'auto',
+                        background: 'var(--color-bg)',
+                        padding: '0.25rem'
+                      }}>
+                        {projects.length === 0 ? (
+                          <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>
+                            {t('Không có dự án nào trên hệ thống')}
+                          </div>
+                        ) : (
+                          projects.map(p => {
+                            const isChecked = teamFormData.focus_projects.includes(p.name);
+                            return (
+                              <div
+                                key={p.id}
+                                onClick={() => {
+                                  const current = [...teamFormData.focus_projects];
+                                  if (isChecked) {
+                                    setTeamFormData({ ...teamFormData, focus_projects: current.filter(name => name !== p.name) });
+                                  } else {
+                                    setTeamFormData({ ...teamFormData, focus_projects: [...current, p.name] });
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  padding: '0.375rem 0.5rem',
+                                  cursor: 'pointer',
+                                  borderRadius: '4px',
+                                  fontSize: '0.8125rem',
+                                  background: isChecked ? 'var(--color-primary-light)' : 'transparent'
+                                }}
+                                onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = 'var(--color-surface)'; }}
+                                onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {}} // handled by click parent
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <span style={{ color: 'var(--color-text)', fontWeight: isChecked ? 600 : 400 }}>{p.name}</span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quản lý Thành viên Team */}
+                    <div className="form-group" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span>{t('Thành viên nhóm')} ({teamFormData.member_ids.length})</span>
+                        {teamFormData.max_members && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            {t('Tối đa')}: {teamFormData.max_members}
+                          </span>
+                        )}
+                      </label>
+
+                      {/* Selected members avatars list */}
+                      {teamFormData.member_ids.length > 0 && (
+                        <div style={{ 
+                          display: 'flex', 
+                          flexWrap: 'wrap', 
+                          gap: '0.5rem', 
+                          marginBottom: '0.75rem',
+                          padding: '0.5rem',
+                          background: 'var(--color-bg)',
+                          border: '1px dashed var(--color-border)',
+                          borderRadius: 'var(--radius-md)'
+                        }}>
+                          {teamFormData.member_ids.map(id => {
+                            const member = allSystemUsers.find(u => String(u.id) === String(id));
+                            if (!member) return null;
+                            const mName = member.full_name || member.name || '';
+                            return (
+                              <div 
+                                key={id} 
+                                style={{ 
+                                  display: 'inline-flex', 
+                                  alignItems: 'center', 
+                                  gap: '0.375rem', 
+                                  background: 'var(--color-surface)', 
+                                  border: '1px solid var(--color-border-light)', 
+                                  padding: '2px 8px 2px 4px', 
+                                  borderRadius: '12px',
+                                  fontSize: '0.75rem' 
+                                }}
+                              >
+                                <Avatar src={member.avatar_url || member.avatar} name={mName} size={16} />
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mName}</span>
+                                <button 
+                                  type="button" 
+                                  onClick={() => setTeamFormData({ ...teamFormData, member_ids: teamFormData.member_ids.filter(mid => mid !== id) })}
+                                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', color: 'var(--color-text-muted)' }}
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Search box for members */}
+                      <div style={{ marginBottom: '0.5rem', position: 'relative', width: '100%' }}>
+                        <input
+                          className="form-input sm"
+                          style={{ height: '32px', fontSize: '0.8125rem', width: '100%', paddingRight: '2rem' }}
+                          placeholder={t('Tìm kiếm TVV để thêm vào nhóm...')}
+                          value={memberSearch}
+                          onChange={e => setMemberSearch(e.target.value)}
+                        />
+                        {memberSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setMemberSearch('')}
+                            style={{ position: 'absolute', right: 8, top: 8, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)' }}
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Members Checklist */}
+                      <div className="custom-scrollbar" style={{ 
+                        border: '1px solid var(--color-border)', 
+                        borderRadius: 'var(--radius-md)', 
+                        maxHeight: '220px', 
+                        overflowY: 'auto',
+                        background: 'var(--color-bg)'
+                      }}>
+                        {(() => {
+                          const systemSales = allSystemUsers.filter(u => u.role === 'sales' || u.role === 'sale');
+                          const filteredSales = systemSales.filter(u => 
+                            (u.full_name || u.name || '').toLowerCase().includes(memberSearch.toLowerCase()) ||
+                            (u.email || '').toLowerCase().includes(memberSearch.toLowerCase())
+                          );
+
+                          if (filteredSales.length === 0) {
+                            return (
+                              <div style={{ padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
+                                {t('Không tìm thấy tư vấn viên nào')}
+                              </div>
+                            );
+                          }
+
+                          return filteredSales.map(sale => {
+                            const isChecked = teamFormData.member_ids.includes(String(sale.id));
+                            const belongsToOtherTeam = sale.team_id && String(sale.team_id) !== String(editingTeam?.id);
+                            const otherTeam = teams.find(t => String(t.id) === String(sale.team_id));
+                            
+                            return (
+                              <div
+                                key={sale.id}
+                                onClick={() => {
+                                  const currentIds = [...teamFormData.member_ids];
+                                  if (isChecked) {
+                                    setTeamFormData({ ...teamFormData, member_ids: currentIds.filter(id => id !== String(sale.id)) });
+                                  } else {
+                                    setTeamFormData({ ...teamFormData, member_ids: [...currentIds, String(sale.id)] });
+                                  }
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.75rem',
+                                  padding: '0.5rem 0.75rem',
+                                  borderBottom: '1px solid var(--color-border-light)',
+                                  cursor: 'pointer',
+                                  transition: 'background 0.1s',
+                                  background: isChecked ? 'var(--color-primary-light)' : 'transparent'
+                                }}
+                                onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = 'var(--color-surface)'; }}
+                                onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {}} // handled by outer div click
+                                  style={{ cursor: 'pointer' }}
+                                />
+                                <Avatar src={sale.avatar_url || sale.avatar} name={sale.full_name || sale.name || ''} size={24} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {sale.full_name || sale.name}
+                                  </p>
+                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {sale.email}
+                                  </p>
+                                </div>
+                                {sale.team_id && (
+                                  <span style={{ 
+                                    fontSize: '0.65rem', 
+                                    background: belongsToOtherTeam ? 'var(--color-danger-light)' : 'var(--color-primary-light)', 
+                                    color: belongsToOtherTeam ? 'var(--color-danger)' : 'var(--color-primary)', 
+                                    padding: '2px 6px', 
+                                    borderRadius: 4, 
+                                    fontWeight: 600 
+                                  }}>
+                                    {belongsToOtherTeam ? `${t('Nhóm')}: ${otherTeam ? otherTeam.name : 'Khác'}` : t('Đang trong nhóm')}
+                                  </span>
+                                )}
+                                {!sale.team_id && (
+                                  <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: 4 }}>
+                                    {t('Tự do')}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
 
-              <div style={{ padding: '1rem 1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button type="button" className="btn outline sm" onClick={() => setTeamModalOpen(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn primary sm" disabled={isSaving}>
-                  {isSaving ? <RefreshCw size={14} className="spin" /> : t('Lưu lại')}
+              <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+                <button type="button" className="btn outline" onClick={() => setTeamModalOpen(false)}>{t('Hủy')}</button>
+                <button type="submit" className="btn primary" disabled={isSaving}>
+                  {isSaving ? t('Đang lưu...') : t('Lưu lại')}
                 </button>
               </div>
             </form>

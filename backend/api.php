@@ -3515,9 +3515,10 @@ switch ($action) {
             $address = !empty($input['address']) ? $input['address'] : null;
             $bank_name = !empty($input['bank_name']) ? $input['bank_name'] : null;
             $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
+            $phone = !empty($input['phone']) ? trim($input['phone']) : null;
 
-            $stmt = $conn->prepare("INSERT INTO consultants (name, email, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssissssss", $name, $email, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account);
+            $stmt = $conn->prepare("INSERT INTO consultants (name, email, phone, status, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssssssssissssss", $name, $email, $phone, $status, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account);
             $stmt->execute();
             $newId = $conn->insert_id;
             $stmt->close();
@@ -3639,13 +3640,14 @@ switch ($action) {
             $address = !empty($input['address']) ? $input['address'] : null;
             $bank_name = !empty($input['bank_name']) ? $input['bank_name'] : null;
             $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
+            $phone = !empty($input['phone']) ? trim($input['phone']) : null;
 
             // Fetch old consultant state for audit log rollback support
-            $oldRes = $conn->query("SELECT name, email, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = " . $id);
+            $oldRes = $conn->query("SELECT name, email, phone, status, leave_start, leave_end, zalo_chat_id, work_start_time, work_end_time, work_schedule, avatar, team_id, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = " . $id);
             $oldData = $oldRes ? $oldRes->fetch_assoc() : null;
 
-            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, team_id=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
-            $stmt->bind_param("ssssssssssissssssi", $name, $email, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $id);
+            $stmt = $conn->prepare("UPDATE consultants SET name=?, email=?, phone=?, status=?, leave_start=?, leave_end=?, zalo_chat_id=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, team_id=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=? WHERE id=?");
+            $stmt->bind_param("ssssssssssisssssssi", $name, $email, $phone, $status, $leave_start, $leave_end, $zalo_chat_id, $work_start_time, $work_end_time, $work_schedule, $avatar, $team_id, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $id);
             if ($stmt->execute()) {
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_CONSULTANT', [
                     'id' => $id,
@@ -3653,6 +3655,7 @@ switch ($action) {
                     'new' => [
                         'name' => $name,
                         'email' => $email,
+                        'phone' => $phone,
                         'status' => $status,
                         'leave_start' => $leave_start,
                         'leave_end' => $leave_end,
@@ -9457,12 +9460,12 @@ switch ($action) {
 
     case 'get_accounts':
         if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin') {
-            $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active FROM accounts WHERE id = ?");
+            $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE id = ?");
             $stmt->bind_param("i", $decodedUser['id']);
             $stmt->execute();
             $res = $stmt->get_result();
         } else {
-            $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active FROM accounts ORDER BY created_at DESC");
+            $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts ORDER BY created_at DESC");
         }
         $data = [];
         while ($row = $res->fetch_assoc())

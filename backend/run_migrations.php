@@ -1466,6 +1466,28 @@ try {
         PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+    // 1b. Add extra fields to teams table for advanced settings
+    $chkColTeamsDesc = $conn->query("SHOW COLUMNS FROM teams LIKE 'description'");
+    if ($chkColTeamsDesc && $chkColTeamsDesc->num_rows === 0) {
+        $conn->query("ALTER TABLE teams ADD COLUMN description TEXT NULL");
+    }
+    $chkColTeamsKpi = $conn->query("SHOW COLUMNS FROM teams LIKE 'kpi_target'");
+    if ($chkColTeamsKpi && $chkColTeamsKpi->num_rows === 0) {
+        $conn->query("ALTER TABLE teams ADD COLUMN kpi_target DECIMAL(15,2) DEFAULT NULL");
+    }
+    $chkColTeamsMax = $conn->query("SHOW COLUMNS FROM teams LIKE 'max_members'");
+    if ($chkColTeamsMax && $chkColTeamsMax->num_rows === 0) {
+        $conn->query("ALTER TABLE teams ADD COLUMN max_members INT DEFAULT NULL");
+    }
+    $chkColTeamsWeight = $conn->query("SHOW COLUMNS FROM teams LIKE 'priority_weight'");
+    if ($chkColTeamsWeight && $chkColTeamsWeight->num_rows === 0) {
+        $conn->query("ALTER TABLE teams ADD COLUMN priority_weight INT DEFAULT 1");
+    }
+    $chkColTeamsProject = $conn->query("SHOW COLUMNS FROM teams LIKE 'focus_project'");
+    if ($chkColTeamsProject && $chkColTeamsProject->num_rows === 0) {
+        $conn->query("ALTER TABLE teams ADD COLUMN focus_project VARCHAR(255) DEFAULT NULL");
+    }
+
     // 2. team_id in consultants
     $chkCol = $conn->query("SHOW COLUMNS FROM consultants LIKE 'team_id'");
     if ($chkCol && $chkCol->num_rows === 0) {
@@ -1829,7 +1851,8 @@ try {
           `bank_name`,
           `bank_account`,
           `phone`,
-          `is_active`
+          `is_active`,
+          `team_id`
         FROM `users`
     ");
     $logMsg("Đã cập nhật VIEW accounts để hỗ trợ mọi roles đăng nhập", "success");
@@ -1841,6 +1864,7 @@ try {
           `id`, 
           `full_name` AS `name`, 
           `email`, 
+          `phone`,
           `status`, 
           `leave_start`, 
           `leave_end`, 

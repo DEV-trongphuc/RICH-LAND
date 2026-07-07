@@ -19,7 +19,10 @@ class TeamController
         $where = "";
         $params = [];
 
-        if (in_array($role, ['sale', 'sales'], true)) {
+        if ($role === 'manager') {
+            $where = " WHERE t.leader_id = ?";
+            $params[] = $uid;
+        } else if (in_array($role, ['sale', 'sales'], true)) {
             $uStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
             $uStmt->execute([$uid]);
             $uRow = $uStmt->fetch();
@@ -59,6 +62,10 @@ class TeamController
         $name = trim($b['name']);
         $branch = !empty($b['branch']) ? trim($b['branch']) : null;
         $leaderId = !empty($b['leader_id']) ? (int)$b['leader_id'] : null;
+        $description = !empty($b['description']) ? trim($b['description']) : null;
+        $kpiTarget = isset($b['kpi_target']) ? (float)$b['kpi_target'] : null;
+        $maxMembers = isset($b['max_members']) ? (int)$b['max_members'] : null;
+        $focusProject = !empty($b['focus_project']) ? trim($b['focus_project']) : null;
 
         // Check if team name already exists
         $chk = $this->db->prepare("SELECT id FROM teams WHERE name = ?");
@@ -67,12 +74,24 @@ class TeamController
             respond(409, null, 'Tên nhóm đã tồn tại', false);
         }
 
-        $stmt = $this->db->prepare("INSERT INTO teams (name, branch, leader_id) VALUES (?, ?, ?)");
-        $stmt->execute([$name, $branch, $leaderId]);
+        $stmt = $this->db->prepare("INSERT INTO teams (name, branch, leader_id, description, kpi_target, max_members, focus_project) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $branch, $leaderId, $description, $kpiTarget, $maxMembers, $focusProject]);
         $newId = (int)$this->db->lastInsertId();
 
+        // Sync members
+        if (isset($b['member_ids']) && is_array($b['member_ids'])) {
+            $clearStmt = $this->db->prepare("UPDATE users SET team_id = NULL WHERE team_id = ?");
+            $clearStmt->execute([$newId]);
+
+            if (!empty($b['member_ids'])) {
+                $inQuery = implode(',', array_fill(0, count($b['member_ids']), '?'));
+                $assignStmt = $this->db->prepare("UPDATE users SET team_id = ? WHERE id IN ($inQuery)");
+                $assignStmt->execute(array_merge([$newId], array_map('intval', $b['member_ids'])));
+            }
+        }
+
         // Log activity
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'team', $newId, json_encode(['name' => $name, 'branch' => $branch, 'leader_id' => $leaderId]));
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'team', $newId, json_encode(['name' => $name, 'branch' => $branch, 'leader_id' => $leaderId, 'description' => $description, 'kpi_target' => $kpiTarget, 'max_members' => $maxMembers, 'focus_project' => $focusProject, 'member_ids' => $b['member_ids'] ?? []]));
 
         $this->show($auth, $newId);
     }
@@ -138,13 +157,50 @@ class TeamController
             $params[] = !empty($b['leader_id']) ? (int)$b['leader_id'] : null;
         }
 
-        if (empty($sets)) {
-            respond(422, null, 'Không có dữ liệu cập nhật', false);
+        if (array_key_exists('description', $b)) {
+            $sets[] = "description = ?";
+            $params[] = !empty($b['description']) ? trim($b['description']) : null;
         }
 
-        $params[] = $id;
-        $stmt = $this->db->prepare("UPDATE teams SET " . implode(', ', $sets) . " WHERE id = ?");
-        $stmt->execute($params);
+        if (array_key_exists('kpi_target', $b)) {
+            $sets[] = "kpi_target = ?";
+            $params[] = isset($b['kpi_target']) && $b['kpi_target'] !== '' ? (float)$b['kpi_target'] : null;
+        }
+
+        if (array_key_exists('max_members', $b)) {
+            $sets[] = "max_members = ?";
+            $params[] = isset($b['max_members']) && $b['max_members'] !== '' ? (int)$b['max_members'] : null;
+        }
+
+        if (array_key_exists('focus_project', $b)) {
+            $sets[] = "focus_project = ?";
+            $params[] = !empty($b['focus_project']) ? trim($b['focus_project']) : null;
+        }
+
+        if (empty($sets)) {
+            // Even if no team table sets, we can still process member_ids if present.
+            if (!isset($b['member_ids'])) {
+                respond(422, null, 'Không có dữ liệu cập nhật', false);
+            }
+        }
+
+        if (!empty($sets)) {
+            $params[] = $id;
+            $stmt = $this->db->prepare("UPDATE teams SET " . implode(', ', $sets) . " WHERE id = ?");
+            $stmt->execute($params);
+        }
+
+        // Sync members
+        if (isset($b['member_ids']) && is_array($b['member_ids'])) {
+            $clearStmt = $this->db->prepare("UPDATE users SET team_id = NULL WHERE team_id = ?");
+            $clearStmt->execute([$id]);
+
+            if (!empty($b['member_ids'])) {
+                $inQuery = implode(',', array_fill(0, count($b['member_ids']), '?'));
+                $assignStmt = $this->db->prepare("UPDATE users SET team_id = ? WHERE id IN ($inQuery)");
+                $assignStmt->execute(array_merge([$id], array_map('intval', $b['member_ids'])));
+            }
+        }
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'team', $id, json_encode($b));
 
