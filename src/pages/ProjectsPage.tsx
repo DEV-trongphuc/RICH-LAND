@@ -100,9 +100,9 @@ export default function ProjectsPage() {
   }, [window.location.search]);
 
   const [projectPage, setProjectPage] = useState(1);
-  const projectPageSize = 12;
+  const [projectPageSize, setProjectPageSize] = useState(12);
   const [campaignPage, setCampaignPage] = useState(1);
-  const campaignPageSize = 12;
+  const [campaignPageSize, setCampaignPageSize] = useState(12);
 
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -511,7 +511,7 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)' }}>
+    <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)', height: 'auto', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
 
       {/* Header */}
       <div className="page-header">
@@ -819,6 +819,8 @@ export default function ProjectsPage() {
                 page={projectPage}
                 pageSize={projectPageSize}
                 onChange={setProjectPage}
+                showSizeChanger={true}
+                onPageSizeChange={setProjectPageSize}
               />
             </div>
           </>
@@ -959,6 +961,8 @@ export default function ProjectsPage() {
                 page={campaignPage}
                 pageSize={campaignPageSize}
                 onChange={setCampaignPage}
+                showSizeChanger={true}
+                onPageSizeChange={setCampaignPageSize}
               />
             </div>
           </>

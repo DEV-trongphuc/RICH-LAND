@@ -42,7 +42,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         {showSizeChanger && onPageSizeChange && (
           <div style={{ marginLeft: '0.75rem', width: '140px', display: 'inline-block' }}>
             <CustomSelect
-              options={[20, 50, 100, 200].map(n => ({ value: n, label: `${n} / trang` }))}
+              options={[3, 6, 12, 24, 50, 100].map(n => ({ value: n, label: `${n} / trang` }))}
               value={pageSize}
               onChange={v => { onPageSizeChange(Number(v)); onChange(1); }}
               direction="up"
