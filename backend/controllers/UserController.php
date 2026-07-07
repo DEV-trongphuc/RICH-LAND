@@ -61,7 +61,7 @@ class UserController {
     }
 
     public function store(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         $b=getBody();
         if(empty($b['email'])||empty($b['password'])||empty($b['full_name'])) respond(422,null,'Email, mật khẩu và tên là bắt buộc',false);
         // Check duplicate
@@ -103,10 +103,11 @@ class UserController {
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
-        $b=getBody(); 
-        $fields=['full_name','phone','dob','gender','citizen_id','address','bank_name','bank_account']; // Fields anyone can update on themselves
-        if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin'], true)) {
+        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
+        
+        $b = getBody();
+        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account'];
+        if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';
         }
@@ -135,8 +136,8 @@ class UserController {
         
         $this->show($auth,$id);
     }
-    public function destroy(array $auth,int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
+    public function destroy(array $auth, int $id): void {
+        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         if($id===$auth['user_id']) respond(403,null,'Không thể xóa tài khoản của chính mình',false);
         try {
             $this->db->prepare("DELETE FROM users WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
