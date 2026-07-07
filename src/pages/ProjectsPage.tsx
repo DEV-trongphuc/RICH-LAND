@@ -13,6 +13,7 @@ import { AddressSelect } from '../components/ui/AddressSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Pagination } from '../components/ui/Pagination';
 import { Skeleton } from '../components/ui/Skeleton';
+import { Avatar } from '../components/ui/Avatar';
 
 
 
@@ -1606,14 +1607,6 @@ export default function ProjectsPage() {
                   </div>
                 ) : (
                   filtered.map(member => {
-                    const nameParts = (member.full_name || '').trim().split(/\s+/);
-                    let initials = 'U';
-                    if (nameParts.length >= 2) {
-                      initials = (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
-                    } else if (nameParts.length === 1 && nameParts[0]) {
-                      initials = nameParts[0].charAt(0).toUpperCase();
-                    }
-
                     return (
                       <div
                         key={member.id}
@@ -1631,22 +1624,7 @@ export default function ProjectsPage() {
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          {/* Circle Avatar Icon */}
-                          <div style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '50%',
-                            backgroundColor: member.is_assigned ? 'var(--color-primary)' : 'rgba(15, 23, 42, 0.08)',
-                            color: member.is_assigned ? '#fff' : 'var(--color-text)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: '0.85rem',
-                            flexShrink: 0
-                          }}>
-                            {initials}
-                          </div>
+                          <Avatar name={member.full_name} size={36} />
                           <div>
                             <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
                             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
