@@ -400,6 +400,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const [ruleKeywords, setRuleKeywords] = useState('');
 
   const { user } = useAuth();
+  const isUserAdmin = user && ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user.role);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [notificationStatus, setNotificationStatus] = useState<any>(null);
   const [notifLoading, setNotifLoading] = useState(false);
@@ -432,7 +433,6 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   };
 
   const handleCopyFullInfo = (lead: Lead) => {
-    const isUserAdmin = (user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager');
     const displayPhone = isUserAdmin ? lead.phone : maskPhone(lead.phone);
     const displayEmail = isUserAdmin ? lead.email : maskEmail(lead.email);
     const text = [
@@ -2128,7 +2128,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         {copiedType === 'full' ? t('Đã chép') : t('Sao chép')}
                       </button>
                     )}
-                    {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && (
+                    {isUserAdmin && (
                       <>
                         {isAdminEditingLead ? (
                           <>
@@ -2220,7 +2220,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         )}
                       </>
                     )}
-                    {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && selectedLead.report_status === 'approved_no_comp' && !isAdminEditingLead && (
+                    {isUserAdmin && selectedLead.report_status === 'approved_no_comp' && !isAdminEditingLead && (
                       <button
                         onClick={() => handleCompensateNoComp(selectedLead.report_id || 0)}
                         disabled={isCompensatingNoComp}
@@ -2246,7 +2246,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                         {isCompensatingNoComp ? t('Đang xử lý...') : t('Bù lỗi')}
                       </button>
                     )}
-                    {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
+                    {isUserAdmin && selectedLead.status !== 'blacklisted' && !isAdminEditingLead && (
                       <button
                         onClick={() => {
                           const isTicket = selectedLead.status === 'error' || selectedLead.report_status === 'approved' || selectedLead.report_status === 'pending';
@@ -2288,7 +2288,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                   marginBottom: '1rem'
                 }}>
                   <div
-                    onClick={!isAdminEditingLead ? () => handleCopyText((user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
+                    onClick={!isAdminEditingLead ? () => handleCopyText(isUserAdmin ? selectedLead.phone : maskPhone(selectedLead.phone), t('Đã sao chép số điện thoại!'), 'phone') : undefined}
                     style={{
                       background: 'var(--color-bg)',
                       padding: '0.625rem 0.75rem',
@@ -2366,7 +2366,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.phone}>
-                          {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') ? selectedLead.phone : maskPhone(selectedLead.phone)}
+                          {isUserAdmin ? selectedLead.phone : maskPhone(selectedLead.phone)}
                         </span>
                         {!isAdminEditingLead && (
                           <div
@@ -2386,7 +2386,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     )}
                   </div>
                   <div
-                    onClick={!isAdminEditingLead ? () => handleCopyText((user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
+                    onClick={!isAdminEditingLead ? () => handleCopyText(isUserAdmin ? selectedLead.email : maskEmail(selectedLead.email), t('Đã sao chép email!'), 'email') : undefined}
                     style={{
                       background: 'var(--color-bg)',
                       padding: '0.625rem 0.75rem',
@@ -2441,7 +2441,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                     ) : (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }} title={selectedLead.email}>
-                          {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') ? selectedLead.email : maskEmail(selectedLead.email)}
+                          {isUserAdmin ? selectedLead.email : maskEmail(selectedLead.email)}
                         </span>
                         {!isAdminEditingLead && (
                           <div
@@ -3451,7 +3451,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                       )}
 
                       {/* Manual Reminder Button */}
-                      {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && selectedLead.assigned_to_name !== '-' && (
+                      {isUserAdmin && selectedLead.assigned_to_name !== '-' && (
                         <button
                           onClick={() => {
                             setReminderChannels({ zalo: true, email: true });
@@ -3500,7 +3500,7 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
                 )}
 
                 {/* Giao lại Tư vấn viên */}
-                {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') && (
+                {isUserAdmin && (
                   <div style={{ marginTop: '1.5rem', background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 12, border: '1px solid var(--color-border)' }}>
                     <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                       <User size={16} color="var(--color-primary)" /> {t("Giao lại Tư vấn viên")}
@@ -4276,8 +4276,8 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
           onClose={() => setPreviewOpen(false)}
           type={previewType}
           leadName={selectedLead.name}
-          leadPhone={(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') ? selectedLead.phone : maskPhone(selectedLead.phone)}
-          leadEmail={(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'manager') ? selectedLead.email : maskEmail(selectedLead.email)}
+          leadPhone={isUserAdmin ? selectedLead.phone : maskPhone(selectedLead.phone)}
+          leadEmail={isUserAdmin ? selectedLead.email : maskEmail(selectedLead.email)}
           leadSource={selectedLead.source || ''}
           leadType={selectedLead.type || ''}
           leadNote={selectedLead.note || ''}

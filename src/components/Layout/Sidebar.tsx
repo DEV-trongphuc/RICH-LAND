@@ -84,7 +84,7 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
       { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true },
       { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt },
-      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager'], badgeKey: 'coopSlips' }
+      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'director'], badgeKey: 'coopSlips' }
     ]
   },
   {
@@ -137,7 +137,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     const fetchPending = async () => {
       try {
         const role = user.role as string;
-        const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager';
+        const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'director';
 
         // Fetch undone tasks for all roles
         const resTasks = await fetchAPI('activities&type=task&limit=100');
@@ -212,7 +212,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     const filteredItems = items.filter((item: any) => {
       const role = user?.role as string;
       const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
-      const isManagerOrAdmin = isAdmin || role === 'manager';
+      const isManagerOrAdmin = isAdmin || role === 'manager' || role === 'director';
 
       if (item.adminOnly && !isManagerOrAdmin) {
         if (role === 'sale' && (item.href === '/accounts' || item.href === '/consultants')) {

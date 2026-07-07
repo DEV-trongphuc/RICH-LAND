@@ -295,7 +295,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
   const canDeleteComment = (c: any) => {
     if (!currentUser) return false;
     const role = currentUser.role as any;
-    if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'assistant') {
+    if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'assistant' || role === 'director') {
       return true;
     }
     return String(c.user_id) === String(currentUser.id);
@@ -902,10 +902,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
   const isOwnerOrAdmin = useMemo(() => {
     const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
-    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+    const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
     return isOwner || isAdmin;
   }, [currentUser, formData.owner_id, contact?.owner_id]);
-  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+  const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
   const isViewer = currentUser?.role === 'viewer';
   const [decayDays, setDecayDays] = useState<number>(5);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
@@ -1937,7 +1937,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
 
   const canDeleteNote = (noteCreatorId?: number) => {
-    const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+    const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
     return isAdmin || Number(currentUser?.id) === Number(noteCreatorId);
   };
 
@@ -2548,7 +2548,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                   // Guard: Only owner or admin can change pipeline status
                   const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
-                  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'assistant';
+                  const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
                   if (currentUser?.role === 'sale' && !isOwner && !isAdmin) {
                     addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
                     return;
@@ -2906,7 +2906,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <ShieldAlert size={16} />
                         <span>Khách hàng này được đề xuất loại khỏi phễu (Not Lead) và đang chờ phê duyệt.</span>
                       </div>
-                      {((currentUser?.role as string) === 'admin' || (currentUser?.role as string) === 'superadmin' || (currentUser?.role as string) === 'ads' || (currentUser?.role as string) === 'content') && (
+                      {((currentUser?.role as string) === 'admin' || (currentUser?.role as string) === 'superadmin' || (currentUser?.role as string) === 'super_admin' || (currentUser?.role as string) === 'director' || (currentUser?.role as string) === 'ads' || (currentUser?.role as string) === 'content') && (
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             type="button"

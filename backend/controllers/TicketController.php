@@ -102,7 +102,7 @@ class TicketController {
     }
 
     private function checkTicketAccess(array $auth, int $ticketId): bool {
-        if ($auth['role'] === 'admin') return true;
+        if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) return true;
         
         $sql = "SELECT id FROM tickets WHERE id=? AND tenant_id=? AND (created_by = ? OR assignee_id = ?";
         $params = [$ticketId, $auth['tenant_id'], $auth['user_id'], $auth['user_id']];
@@ -389,7 +389,7 @@ class TicketController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền xóa ticket', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director', 'manager'], true)) respond(403, null, 'Bạn không có quyền xóa ticket', false);
         
         $sql = "DELETE FROM tickets WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
