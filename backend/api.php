@@ -50,6 +50,8 @@ try {
 try {
     $conn->query("ALTER TABLE activities ADD COLUMN deleted_at DATETIME NULL DEFAULT NULL AFTER updated_at");
 } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE projects ADD COLUMN reference_url VARCHAR(500) NULL"); } catch (Exception $e) {}
+try { $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN reference_url VARCHAR(500) NULL"); } catch (Exception $e) {}
 try { $conn->query("ALTER TABLE contacts ADD COLUMN gender VARCHAR(20) NULL"); } catch (Exception $e) {}
 try { $conn->query("ALTER TABLE contacts ADD COLUMN zalo_link VARCHAR(255) NULL"); } catch (Exception $e) {}
 try { $conn->query("ALTER TABLE contacts ADD COLUMN fb_link VARCHAR(255) NULL"); } catch (Exception $e) {}

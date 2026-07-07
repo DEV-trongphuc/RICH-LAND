@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -37,6 +37,7 @@ interface Project {
   folder_path?: string;
   manager_ids?: string;
   created_by?: number;
+  reference_url?: string;
 }
 
 interface RosterMember {
@@ -642,7 +643,7 @@ export default function ProjectsPage() {
                   <div>
                     <div className="flex justify-between items-start mb-4">
                       <div 
-                        className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+                        className="project-card-header flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
                         onClick={() => {
                           setEditingProject(proj);
                           setProjectModalMode('view');
@@ -1015,6 +1016,39 @@ export default function ProjectsPage() {
                     {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
                   </span>
                 </div>
+                {editingProject?.reference_url && (
+                  <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px' }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Website / Link tham khảo</span>
+                    <a
+                      href={editingProject.reference_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: 'var(--color-primary)',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.875rem'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                    >
+                      {editingProject.reference_url.includes('docs.google.com/spreadsheets') || editingProject.reference_url.includes('google.com/sheets') ? (
+                        <>
+                          <FileSpreadsheet size={16} color="#10b981" />
+                          <span style={{ color: '#10b981' }}>Bảng tính Google Sheets</span>
+                        </>
+                      ) : (
+                        <>
+                          <Link2 size={16} />
+                          <span>Mở liên kết tham khảo</span>
+                        </>
+                      )}
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1409,6 +1443,17 @@ export default function ProjectsPage() {
               </div>
 
               <div style={{ gridColumn: 'span 2' }}>
+                <label className="form-label">Website hoặc Link tham khảo (GG Sheets, tài liệu...)</label>
+                <input
+                  type="text"
+                  value={editingProject?.reference_url || ''}
+                  onChange={e => setEditingProject(prev => ({ ...prev, reference_url: e.target.value }))}
+                  className="form-input"
+                  placeholder="Dán đường dẫn link website hoặc Google Sheets tham khảo..."
+                />
+              </div>
+
+              <div style={{ gridColumn: 'span 2' }}>
                 <label className="form-label">Mô tả chi tiết</label>
                 <textarea
                   value={editingProject?.description || ''}
@@ -1656,6 +1701,39 @@ export default function ProjectsPage() {
                     {editingCampaign?.folder_path || 'Không có folder liên kết'}
                   </span>
                 </div>
+                {editingCampaign?.reference_url && (
+                  <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Website / Link tham khảo</span>
+                    <a
+                      href={editingCampaign.reference_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: 'var(--color-primary)',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        fontSize: '0.875rem'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                      onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                    >
+                      {editingCampaign.reference_url.includes('docs.google.com/spreadsheets') || editingCampaign.reference_url.includes('google.com/sheets') ? (
+                        <>
+                          <FileSpreadsheet size={16} color="#10b981" />
+                          <span style={{ color: '#10b981' }}>Bảng tính Google Sheets</span>
+                        </>
+                      ) : (
+                        <>
+                          <Link2 size={16} />
+                          <span>Mở liên kết tham khảo</span>
+                        </>
+                      )}
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1872,6 +1950,17 @@ export default function ProjectsPage() {
                   placeholder="Ví dụ: /shared/campaigns/fb_leads"
                   value={editingCampaign?.folder_path || ''}
                   onChange={e => setEditingCampaign({ ...editingCampaign, folder_path: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600 }}>Website hoặc Link tham khảo (GG Sheets, tài liệu...)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Dán đường dẫn link website hoặc Google Sheets tham khảo..."
+                  value={editingCampaign?.reference_url || ''}
+                  onChange={e => setEditingCampaign({ ...editingCampaign, reference_url: e.target.value })}
                 />
               </div>
 

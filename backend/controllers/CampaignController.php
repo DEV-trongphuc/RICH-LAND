@@ -100,6 +100,7 @@ class CampaignController {
         $manager_ids = trim($b['manager_ids'] ?? '');
         $document_ids = trim($b['document_ids'] ?? '');
         $folder_path = trim($b['folder_path'] ?? '');
+        $reference_url = trim($b['reference_url'] ?? '');
 
         if (empty($name)) {
             respond(422, null, 'Tên chiến dịch không được để trống', false);
@@ -109,10 +110,10 @@ class CampaignController {
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
 
         $stmt = $this->db->prepare("
-            INSERT INTO marketing_campaigns (tenant_id, name, description, status, start_date, end_date, project_ids, user_ids, manager_ids, document_ids, folder_path) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO marketing_campaigns (tenant_id, name, description, status, start_date, end_date, project_ids, user_ids, manager_ids, document_ids, folder_path, reference_url) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$tenantId, $name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path]);
+        $stmt->execute([$tenantId, $name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url]);
         $newId = (int)$this->db->lastInsertId();
 
         $this->propagateCampaignRoster($project_ids, $user_ids);
@@ -134,6 +135,7 @@ class CampaignController {
         $manager_ids = trim($b['manager_ids'] ?? '');
         $document_ids = trim($b['document_ids'] ?? '');
         $folder_path = trim($b['folder_path'] ?? '');
+        $reference_url = trim($b['reference_url'] ?? '');
 
         if (empty($name)) {
             respond(422, null, 'Tên chiến dịch không được để trống', false);
@@ -144,10 +146,10 @@ class CampaignController {
 
         $stmt = $this->db->prepare("
             UPDATE marketing_campaigns 
-            SET name = ?, description = ?, status = ?, start_date = ?, end_date = ?, project_ids = ?, user_ids = ?, manager_ids = ?, document_ids = ?, folder_path = ? 
+            SET name = ?, description = ?, status = ?, start_date = ?, end_date = ?, project_ids = ?, user_ids = ?, manager_ids = ?, document_ids = ?, folder_path = ?, reference_url = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $id, $tenantId]);
+        $stmt->execute([$name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url, $id, $tenantId]);
 
         $this->propagateCampaignRoster($project_ids, $user_ids);
 

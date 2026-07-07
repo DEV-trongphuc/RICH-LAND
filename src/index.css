@@ -767,6 +767,12 @@ ul {
   transform: translateY(-4px);
   box-shadow: var(--shadow-xl);
 }
+.project-card-header h3 {
+  transition: color 0.2s ease-in-out;
+}
+.project-card-header:hover h3 {
+  color: var(--color-primary) !important;
+}
 
 .glass {
   background: var(--color-surface);
