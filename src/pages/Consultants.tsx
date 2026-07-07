@@ -705,66 +705,77 @@ const ConsultantsInner = () => {
 
       {/* Tab bar */}
       {showAllTabs && (
-        <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content', gap: '4px' }}>
-          <button
-            onClick={() => navigate('/consultants?tab=consultants')}
-            style={{
-              padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none',
-              background: activeTab === 'consultants' ? 'var(--color-surface)' : 'transparent',
-              color: activeTab === 'consultants' ? 'var(--color-primary)' : 'var(--color-text-light)',
-              boxShadow: activeTab === 'consultants' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 0.2s',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-            className={activeTab === 'consultants' ? '' : 'hover-lift'}
-          >
-            <User size={14} />
-            {t('Tư vấn viên')}
-          </button>
-          <button
-            onClick={() => navigate('/consultants?tab=teams')}
-            style={{
-              padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none',
-              background: activeTab === 'teams' ? 'var(--color-surface)' : 'transparent',
-              color: activeTab === 'teams' ? 'var(--color-primary)' : 'var(--color-text-light)',
-              boxShadow: activeTab === 'teams' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 0.2s',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-            className={activeTab === 'teams' ? '' : 'hover-lift'}
-          >
-            <Users size={14} />
-            {t('Nhóm (Team)')}
-          </button>
-          <button
-            onClick={() => navigate('/consultants?tab=branches')}
-            style={{
-              padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none',
-              background: activeTab === 'branches' ? 'var(--color-surface)' : 'transparent',
-              color: activeTab === 'branches' ? 'var(--color-primary)' : 'var(--color-text-light)',
-              boxShadow: activeTab === 'branches' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-              transition: 'all 0.2s',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer'
-            }}
-            className={activeTab === 'branches' ? '' : 'hover-lift'}
-          >
-            <Building2 size={14} />
-            {t('Chi nhánh')}
-          </button>
+        <div style={{
+          display: 'flex',
+          background: 'rgba(15, 23, 42, 0.05)',
+          padding: '4px',
+          borderRadius: '12px',
+          gap: '4px',
+          width: 'fit-content',
+          position: 'relative',
+          border: '1px solid var(--color-border-light)',
+          alignSelf: 'flex-start',
+          marginBottom: '1.5rem'
+        }}>
+          {/* Sliding Pill Background Indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '4px',
+            bottom: '4px',
+            width: '160px',
+            borderRadius: '10px',
+            background: 'var(--color-surface)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `translateX(${
+              activeTab === 'consultants' ? '0px' : 
+              activeTab === 'teams' ? '164px' : '328px'
+            })`,
+            zIndex: 1
+          }} />
+
+          {[
+            { id: 'consultants', label: t('Tư vấn viên'), icon: <User size={14} /> },
+            { id: 'teams', label: t('Nhóm (Team)'), icon: <Users size={14} /> },
+            { id: 'branches', label: t('Chi nhánh'), icon: <Building2 size={14} /> }
+          ].map(tab => {
+            const isSelected = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(`/consultants?tab=${tab.id}`)}
+                style={{
+                  width: '160px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: 'transparent',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  position: 'relative',
+                  zIndex: 2,
+                  transition: 'color 0.25s ease'
+                }}
+                className=""
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Summary Cards */}
-      {activeTab === 'consultants' && (
+      {/* Tab Panels with Enter Animation */}
+      <div key={activeTab} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+        {/* Summary Cards */}
+        {activeTab === 'consultants' && (
         <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
           <div className="stat-card hover-lift">
             <div className="stat-label">{t('Tổng TVV')}</div>
@@ -1342,6 +1353,7 @@ const ConsultantsInner = () => {
           })()}
         </div>
       )}
+      </div>
 
       {/* MODAL */}
       {modalOpen && typeof document !== 'undefined' && createPortal(

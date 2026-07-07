@@ -221,7 +221,6 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
                   {step < 3 && (
                     <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--color-border-light)', flexShrink: 0 }}>
                       <div style={{ position: 'relative' }}>
-                        <Search size={16} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                         <input
                           autoFocus
                           type="text"
@@ -229,7 +228,7 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
                           placeholder={step === 1 ? 'Tìm tỉnh / thành phố...' : 'Tìm quận, huyện, xã...'}
                           value={search}
                           onChange={e => setSearch(e.target.value)}
-                          style={{ paddingLeft: '2.5rem', borderRadius: '10px' }}
+                          style={{ paddingLeft: '0.875rem', borderRadius: '10px' }}
                         />
                       </div>
                     </div>

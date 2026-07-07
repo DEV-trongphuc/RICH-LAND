@@ -36,6 +36,9 @@ class ProjectController {
         try {
             $this->db->exec("ALTER TABLE projects ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE projects ADD COLUMN created_by INT DEFAULT NULL");
+        } catch (Exception $e) {}
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
@@ -156,10 +159,10 @@ class ProjectController {
         $folder_path = trim($b['folder_path'] ?? '');
 
         $stmt = $this->db->prepare("
-            INSERT INTO projects (tenant_id, name, code, description, status, location, developer, document_ids, campaign_ids, progress_percent, construction_status, legal_status, scale_block_count, scale_unit_count, handover_year, manager_ids, folder_path) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO projects (tenant_id, name, code, description, status, location, developer, document_ids, campaign_ids, progress_percent, construction_status, legal_status, scale_block_count, scale_unit_count, handover_year, manager_ids, folder_path, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year, $manager_ids, $folder_path]);
+        $stmt->execute([$auth['tenant_id'], $name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year, $manager_ids, $folder_path, $auth['user_id']]);
         $newId = $this->db->lastInsertId();
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_PROJECT', 'project', $newId, "Tạo dự án: $name ($code)");
@@ -168,6 +171,17 @@ class ProjectController {
 
     public function update(array $auth, int $id): void {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        
+        $stmtProj = $this->db->prepare("SELECT created_by FROM projects WHERE id = ? AND tenant_id = ?");
+        $stmtProj->execute([$id, $auth['tenant_id']]);
+        $creatorId = $stmtProj->fetchColumn();
+        if ($creatorId !== false && $creatorId !== null) {
+            $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
+            if (!$isAdmin && (int)$creatorId !== (int)$auth['user_id']) {
+                respond(403, null, 'Chỉ Admin hoặc người tạo dự án mới được chỉnh sửa', false);
+            }
+        }
+
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $code = trim($b['code'] ?? '');
@@ -215,7 +229,17 @@ class ProjectController {
     }
 
     public function destroy(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        
+        $stmtProj = $this->db->prepare("SELECT created_by FROM projects WHERE id = ? AND tenant_id = ?");
+        $stmtProj->execute([$id, $auth['tenant_id']]);
+        $creatorId = $stmtProj->fetchColumn();
+        if ($creatorId !== false && $creatorId !== null) {
+            $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
+            if (!$isAdmin && (int)$creatorId !== (int)$auth['user_id']) {
+                respond(403, null, 'Chỉ Admin hoặc người tạo dự án mới được xóa', false);
+            }
+        }
         
         $stmt = $this->db->prepare("DELETE FROM projects WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);

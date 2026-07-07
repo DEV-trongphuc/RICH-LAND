@@ -9459,7 +9459,7 @@ switch ($action) {
 
 
     case 'get_accounts':
-        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin') {
+        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin' && $decodedUser['role'] !== 'manager') {
             $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE id = ?");
             $stmt->bind_param("i", $decodedUser['id']);
             $stmt->execute();
