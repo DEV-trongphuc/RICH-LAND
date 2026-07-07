@@ -472,6 +472,7 @@ export default function ProjectsPage() {
       if (res.success) {
         addToast('Cập nhật roster dự án thành công!', 'success');
         setIsRosterModalOpen(false);
+        loadProjects();
       } else {
         addToast(res.message || 'Lỗi lưu roster', 'error');
       }
