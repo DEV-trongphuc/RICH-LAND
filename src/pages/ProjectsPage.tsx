@@ -808,33 +808,46 @@ export default function ProjectsPage() {
                             </div>
                           </div>
                         )}
-                        {proj.document_ids && parseIds(proj.document_ids).length > 0 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                              <FileText size={12} className="text-primary" /> Tài liệu liên kết:
-                            </span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '8px' }}>
-                              {parseIds(proj.document_ids).map(docId => {
-                                const fileObj = allFiles.find(f => String(f.id) === String(docId));
-                                if (!fileObj) return null;
-                                return (
-                                  <a
-                                    key={docId}
-                                    href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
-                                    download={fileObj.name}
-                                    title={fileObj.name}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600 }}
-                                    onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                                    onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
-                                  >
-                                    • {formatFileName(fileObj.name)}
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          </div>
+                        {proj.document_ids && (
+                          (() => {
+                            const matchedFiles = parseIds(proj.document_ids)
+                              .map(docId => allFiles.find(f => String(f.id) === String(docId)))
+                              .filter(Boolean) as typeof allFiles;
+                            
+                            if (matchedFiles.length === 0) return null;
+                            const visibleFiles = matchedFiles.slice(0, 3);
+                            const extraCount = matchedFiles.length - 3;
+
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
+                                  <FileText size={12} className="text-primary" /> Tài liệu liên kết:
+                                </span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '8px' }}>
+                                  {visibleFiles.map(fileObj => (
+                                    <a
+                                      key={fileObj.id}
+                                      href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
+                                      download={fileObj.name}
+                                      title={fileObj.name}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600 }}
+                                      onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                                      onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                                    >
+                                      • {formatFileName(fileObj.name)}
+                                    </a>
+                                  ))}
+                                  {extraCount > 0 && (
+                                    <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', paddingLeft: '8px', marginTop: '2px' }}>
+                                      + {extraCount} tài liệu khác
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()
                         )}
                       </div>
                     )}
