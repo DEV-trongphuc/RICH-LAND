@@ -982,7 +982,7 @@ const ConsultantsInner = () => {
                 <tr>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên Nhóm')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Chi nhánh')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trưởng nhóm')}</th>
+                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Manager')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Số thành viên')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>
                 </tr>
@@ -1008,7 +1008,7 @@ const ConsultantsInner = () => {
                     <td data-label={t('Chi nhánh')} style={{ color: 'var(--color-text-muted)' }}>
                       {team.branch || '—'}
                     </td>
-                    <td data-label={t('Trưởng nhóm')} style={{ fontWeight: 500 }} onClick={e => e.stopPropagation()}>
+                    <td data-label={t('Manager')} style={{ fontWeight: 500 }} onClick={e => e.stopPropagation()}>
                       {team.leader_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>}
                     </td>
                     <td data-label={t('Số thành viên')}>
@@ -1222,7 +1222,7 @@ const ConsultantsInner = () => {
                         <div>
                           <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)', display: 'block', marginBottom: '4px' }}>{team.name}</strong>
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                            Trưởng nhóm: <strong style={{ color: 'var(--color-text)' }}>{team.leader_name || 'Chưa gán'}</strong>
+                            Manager: <strong style={{ color: 'var(--color-text)' }}>{team.leader_name || 'Chưa gán'}</strong>
                           </span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dotted var(--color-border)', paddingTop: '0.5rem', fontSize: '0.75rem' }}>
@@ -2272,14 +2272,14 @@ const ConsultantsInner = () => {
                 </div>
 
                 <div className="form-group" ref={leaderDropdownRef} style={{ position: 'relative' }}>
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Trưởng nhóm')}</label>
+                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Manager')}</label>
                   
                   {/* Search Input Box */}
                   <div style={{ position: 'relative' }}>
                     <input
                       className="form-input"
                       style={{ paddingLeft: '2.5rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
-                      placeholder={t("Tìm kiếm và chọn Trưởng nhóm...")}
+                      placeholder={t("Tìm kiếm và chọn Manager...")}
                       value={searchLeader}
                       onChange={e => {
                         setSearchLeader(e.target.value);

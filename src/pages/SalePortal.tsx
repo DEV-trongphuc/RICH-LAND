@@ -3691,7 +3691,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       
                       {/* Leader details */}
                       <div style={{ marginTop: '0.625rem', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        <span>Trưởng nhóm:</span>
+                        <span>Manager:</span>
                         {leaderUser ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <Avatar src={leaderUser.avatar} name={leaderUser.name} size={18} />
