@@ -264,7 +264,7 @@ const AppTabs = () => {
       </div>
 
       {/* Admin Pages */}
-      {((user?.role as string) === 'admin' || (user?.role as string) === 'superadmin' || (user?.role as string) === 'super_admin' || (user?.role as string) === 'sale') && (
+      {['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '') && (
         <>
           <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }} className={currentPath === '/consultants' ? 'page-enter-active' : ''}>
             {visitedPaths.includes('/consultants') && (
