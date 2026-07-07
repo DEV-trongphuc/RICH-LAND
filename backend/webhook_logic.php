@@ -1691,6 +1691,17 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         if (!$hasCheckIn) {
             return "Failed Gate 2: No approved check-in for today";
         }
+    } else if ($dayOfWeek == 7) { // Sun
+        // Chủ nhật = cơ chế đăng ký tự nguyện như ca đêm (đăng ký cuối tuần)
+        $todayStr = date('Y-m-d');
+        $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
+        $stmtCheckReg->bind_param("is", $consultantId, $todayStr);
+        $stmtCheckReg->execute();
+        $hasReg = $stmtCheckReg->get_result()->fetch_assoc();
+        $stmtCheckReg->close();
+        if (!$hasReg) {
+            return "Failed Gate 2: No weekend registration for Sunday";
+        }
     }
 
     // GATE 3: Nút Sẵn sàng (vacation_mode / status)
