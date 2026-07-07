@@ -976,112 +976,173 @@ export default function ProjectsPage() {
         width="850px"
       >
         {projectModalMode === 'view' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Tên dự án</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block' }}>{editingProject?.name}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Mã dự án</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block', fontFamily: 'monospace' }}>{editingProject?.code}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Chủ đầu tư</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.developer || 'Chưa cập nhật'}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái bán</span>
-                <span 
-                  className={`badge ${editingProject?.status === 'active' ? 'success' : 'secondary'}`}
-                  style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '100px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
-                >
-                  {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Vị trí / Địa chỉ</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.location || 'Chưa cập nhật'}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái thi công & Tiến độ</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>
-                  {editingProject?.construction_status || 'Chưa khởi công'} ({editingProject?.progress_percent ?? 0}%)
-                </span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái pháp lý</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.legal_status || 'Đang hoàn thiện pháp lý'}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Năm bàn giao dự kiến</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.handover_year || 2026}</span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Quy mô Block & Căn hộ</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>
-                  {editingProject?.scale_block_count || 1} Block, {editingProject?.scale_unit_count || 100} căn hộ
-                </span>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
-                <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, wordBreak: 'break-all', display: 'block' }}>
-                  {editingProject?.folder_path || 'Không có folder liên kết'}
-                </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            
+            {/* Section 1: Thông tin cơ bản */}
+            <div style={{
+              background: 'var(--color-bg-light)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thông tin cơ bản</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Tên dự án</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block' }}>{editingProject?.name}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Mã dự án</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block', fontFamily: 'monospace' }}>{editingProject?.code}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Chủ đầu tư</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.developer || 'Chưa cập nhật'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái bán</span>
+                  <span 
+                    className={`badge ${editingProject?.status === 'active' ? 'success' : 'secondary'}`}
+                    style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '100px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
+                  >
+                    {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
-              <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Manager phụ trách chính</span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {parseIds(editingProject?.manager_ids).length === 0 ? (
-                  <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa phân công manager phụ trách</span>
-                ) : (
-                  parseIds(editingProject?.manager_ids).map(id => {
-                    const u = users.find(usr => String(usr.id) === String(id));
-                    if (!u) return null;
-                    return (
-                      <span key={id} style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                        {u.fullname || u.username} ({u.role})
-                      </span>
-                    );
-                  })
-                )}
+            {/* Section 2: Vị trí & Quy mô & Pháp lý */}
+            <div style={{
+              background: 'var(--color-bg-light)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vị trí, Quy mô & Pháp lý</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Vị trí / Địa chỉ</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.location || 'Chưa cập nhật'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái thi công & Tiến độ</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>
+                    {editingProject?.construction_status || 'Chưa khởi công'} ({editingProject?.progress_percent ?? 0}%)
+                  </span>
+                  {/* Beautiful progress bar */}
+                  <div style={{ height: '6px', background: 'var(--color-border-light)', borderRadius: '100px', overflow: 'hidden', marginTop: '8px', width: '80%' }}>
+                    <div 
+                      style={{ 
+                        height: '100%', 
+                        width: `${editingProject?.progress_percent ?? 0}%`, 
+                        background: 'linear-gradient(90deg, var(--color-primary) 0%, #ec4899 100%)',
+                        borderRadius: '100px',
+                        transition: 'width 0.5s ease-in-out'
+                      }} 
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái pháp lý</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.legal_status || 'Đang hoàn thiện pháp lý'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Năm bàn giao dự kiến</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.handover_year || 2026}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Quy mô Block & Căn hộ</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>
+                    {editingProject?.scale_block_count || 1} Block, {editingProject?.scale_unit_count || 100} căn hộ
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
+                  <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, wordBreak: 'break-all', display: 'block' }}>
+                    {editingProject?.folder_path || 'Không có folder liên kết'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
-              <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Tài liệu mật liên kết</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {parseIds(editingProject?.document_ids).length === 0 ? (
-                  <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết tài liệu mật</span>
-                ) : (
-                  parseIds(editingProject?.document_ids).map(docId => {
-                    const fileObj = allFiles.find(f => String(f.id) === String(docId));
-                    if (!fileObj) return null;
-                    return (
-                      <a
-                        key={docId}
-                        href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
-                        download={fileObj.name}
-                        title={fileObj.name}
-                        style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
-                        onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                        onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
-                      >
-                        <FileText size={14} /> {formatFileName(fileObj.name, 45)}
-                      </a>
-                    );
-                  })
-                )}
+            {/* Section 3: Nhân sự & Tài liệu */}
+            <div style={{
+              background: 'var(--color-bg-light)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quản lý & Tài liệu mật</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Manager phụ trách chính</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {parseIds(editingProject?.manager_ids).length === 0 ? (
+                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa phân công manager phụ trách</span>
+                    ) : (
+                      parseIds(editingProject?.manager_ids).map(id => {
+                        const u = users.find(usr => String(usr.id) === String(id));
+                        if (!u) return null;
+                        return (
+                          <span key={id} style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '4px 10px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                            {u.fullname || u.username} ({u.role})
+                          </span>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>Tài liệu mật liên kết</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {parseIds(editingProject?.document_ids).length === 0 ? (
+                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết tài liệu mật</span>
+                    ) : (
+                      parseIds(editingProject?.document_ids).map(docId => {
+                        const fileObj = allFiles.find(f => String(f.id) === String(docId));
+                        if (!fileObj) return null;
+                        return (
+                          <a
+                            key={docId}
+                            href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
+                            download={fileObj.name}
+                            title={fileObj.name}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
+                            onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                            onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
+                          >
+                            <FileText size={14} style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 45)}
+                          </a>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div>
-              <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Mô tả chi tiết</span>
+            {/* Section 4: Mô tả chi tiết */}
+            <div style={{
+              background: 'var(--color-bg-light)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem'
+            }}>
+              <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>Mô tả chi tiết</span>
               <p style={{ color: 'var(--color-text)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.875rem' }}>
                 {editingProject?.description || 'Không có mô tả chi tiết'}
               </p>
