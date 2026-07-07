@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -89,12 +89,7 @@ export default function ProjectsPage() {
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
   const [totalProjects, setTotalProjects] = useState(0);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
-  const [allProjects, setAllProjects] = useState<Project[]>([]);
-  const [allCampaigns, setAllCampaigns] = useState<any[]>([]);
-  const [isProjectsBackendPaginated, setIsProjectsBackendPaginated] = useState(false);
-  const [isCampaignsBackendPaginated, setIsCampaignsBackendPaginated] = useState(false);
-  const [hasLoadedProjectsOnce, setHasLoadedProjectsOnce] = useState(false);
-  const [hasLoadedCampaignsOnce, setHasLoadedCampaignsOnce] = useState(false);
+  const [rosterSearch, setRosterSearch] = useState('');
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -189,44 +184,21 @@ export default function ProjectsPage() {
     return [];
   };
 
-  const loadProjects = async (forceRefetch = false) => {
-    // Client-side paginate fallback
-    if (!forceRefetch && hasLoadedProjectsOnce && !isProjectsBackendPaginated) {
-      const offset = (projectPage - 1) * projectPageSize;
-      setProjects(allProjects.slice(offset, offset + projectPageSize));
-      setTotalProjects(allProjects.length);
-      return;
-    }
-
+  const loadProjects = async () => {
     setLoading(true);
     try {
       const res = await fetchAPI(`projects?page=${projectPage}&limit=${projectPageSize}`);
       console.log('Projects API Response:', res);
       if (res.success) {
-        setHasLoadedProjectsOnce(true);
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
           const list = res.data.data || [];
+          setProjects(list);
           const totalVal = Number(res.data.total);
-          
-          if (!isNaN(totalVal) && list.length === totalVal && totalVal > projectPageSize) {
-            // Backend returned everything on page 1, so it does not support pagination
-            setIsProjectsBackendPaginated(false);
-            setAllProjects(list);
-            setTotalProjects(list.length);
-            const offset = (projectPage - 1) * projectPageSize;
-            setProjects(list.slice(offset, offset + projectPageSize));
-          } else {
-            setIsProjectsBackendPaginated(true);
-            setProjects(list);
-            setTotalProjects(isNaN(totalVal) ? list.length : totalVal);
-          }
+          setTotalProjects(isNaN(totalVal) ? list.length : totalVal);
         } else {
           const arr = Array.isArray(res.data) ? res.data : [];
-          setIsProjectsBackendPaginated(false);
-          setAllProjects(arr);
+          setProjects(arr);
           setTotalProjects(arr.length);
-          const offset = (projectPage - 1) * projectPageSize;
-          setProjects(arr.slice(offset, offset + projectPageSize));
         }
       } else {
         addToast(res.message || 'Lỗi tải danh sách dự án', 'error');
@@ -261,43 +233,18 @@ export default function ProjectsPage() {
     }
   };
 
-  const loadCampaigns = async (forceRefetch = false) => {
-    // Client-side paginate fallback
-    if (!forceRefetch && hasLoadedCampaignsOnce && !isCampaignsBackendPaginated) {
-      const offset = (campaignPage - 1) * campaignPageSize;
-      setCampaigns(allCampaigns.slice(offset, offset + campaignPageSize));
-      setTotalCampaigns(allCampaigns.length);
-      return;
-    }
-
+  const loadCampaigns = async () => {
     setCampaignsLoading(true);
     try {
       const res = await fetchAPI(`campaigns?page=${campaignPage}&limit=${campaignPageSize}`);
       if (res.success) {
-        setHasLoadedCampaignsOnce(true);
         if (res.data && typeof res.data === 'object' && 'data' in res.data) {
-          const list = res.data.data || [];
-          const totalVal = Number(res.data.total);
-          
-          if (!isNaN(totalVal) && list.length === totalVal && totalVal > campaignPageSize) {
-            // Backend returned everything on page 1, so it does not support pagination
-            setIsCampaignsBackendPaginated(false);
-            setAllCampaigns(list);
-            setTotalCampaigns(list.length);
-            const offset = (campaignPage - 1) * campaignPageSize;
-            setCampaigns(list.slice(offset, offset + campaignPageSize));
-          } else {
-            setIsCampaignsBackendPaginated(true);
-            setCampaigns(list);
-            setTotalCampaigns(isNaN(totalVal) ? list.length : totalVal);
-          }
+          setCampaigns(res.data.data || []);
+          setTotalCampaigns(Number(res.data.total || 0));
         } else {
           const arr = Array.isArray(res.data) ? res.data : [];
-          setIsCampaignsBackendPaginated(false);
-          setAllCampaigns(arr);
+          setCampaigns(arr);
           setTotalCampaigns(arr.length);
-          const offset = (campaignPage - 1) * campaignPageSize;
-          setCampaigns(arr.slice(offset, offset + campaignPageSize));
         }
       }
     } catch (e) {
@@ -327,7 +274,7 @@ export default function ProjectsPage() {
       if (res.success) {
         addToast(isNew ? 'Tạo chiến dịch thành công!' : 'Cập nhật chiến dịch thành công!', 'success');
         setIsCampaignModalOpen(false);
-        loadCampaigns(true);
+        loadCampaigns();
       } else {
         addToast(res.message || 'Lỗi lưu thông tin chiến dịch', 'error');
       }
@@ -348,7 +295,7 @@ export default function ProjectsPage() {
           const res = await fetchAPI(`campaigns/${id}`, { method: 'DELETE' });
           if (res.success) {
             addToast('Xóa chiến dịch thành công!', 'success');
-            loadCampaigns(true);
+            loadCampaigns();
           } else {
             addToast(res.message || 'Lỗi khi xóa chiến dịch', 'error');
           }
@@ -408,7 +355,7 @@ export default function ProjectsPage() {
       if (res.success) {
         addToast(isNew ? 'Tạo dự án thành công!' : 'Cập nhật dự án thành công!', 'success');
         setIsEditModalOpen(false);
-        loadProjects(true);
+        loadProjects();
       } else {
         addToast(res.message || 'Lỗi lưu thông tin', 'error');
       }
@@ -429,7 +376,7 @@ export default function ProjectsPage() {
           const res = await fetchAPI(`projects/${id}`, { method: 'DELETE' });
           if (res.success) {
             addToast('Xóa dự án thành công!', 'success');
-            loadProjects(true);
+            loadProjects();
           } else {
             addToast(res.message || 'Lỗi xóa dự án', 'error');
           }
@@ -443,6 +390,7 @@ export default function ProjectsPage() {
   // Roster logic
   const handleOpenRoster = async (projectId: number) => {
     setSelectedProjectId(projectId);
+    setRosterSearch('');
     setIsRosterModalOpen(true);
     try {
       const res = await fetchAPI(`projects/${projectId}/roster`);
@@ -1567,48 +1515,110 @@ export default function ProjectsPage() {
         width="650px"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '55vh', overflowY: 'auto', paddingRight: '4px' }}>
-            {rosterMembers.length === 0 ? (
-              <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0' }}>Không tìm thấy tài khoản Sales khả dụng</div>
-            ) : (
-              rosterMembers.map(member => (
-                <div
-                  key={member.id}
-                  onClick={() => handleToggleRoster(member.id)}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '0.75rem 1rem',
-                    borderRadius: 'var(--radius-lg)',
-                    border: member.is_assigned ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                    background: member.is_assigned ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
-                  </div>
-                  <div
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '4px',
-                      border: member.is_assigned ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                      backgroundColor: member.is_assigned ? 'var(--color-primary)' : 'transparent',
-                      color: '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {member.is_assigned === 1 && <Check size={14} />}
-                  </div>
-                </div>
-              ))
-            )}
+          {/* Roster Search Box */}
+          <div style={{ position: 'relative', width: '100%' }}>
+            <input
+              type="text"
+              placeholder="Tìm kiếm nhân sự theo tên hoặc email..."
+              value={rosterSearch}
+              onChange={e => setRosterSearch(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '0.625rem 1rem 0.625rem 2.5rem',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid var(--color-border)',
+                fontSize: '0.875rem',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                outline: 'none'
+              }}
+            />
+            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
           </div>
+
+          {(() => {
+            const filtered = rosterMembers.filter(m => 
+              (m.full_name || '').toLowerCase().includes(rosterSearch.toLowerCase()) ||
+              (m.email || '').toLowerCase().includes(rosterSearch.toLowerCase())
+            );
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '50vh', overflowY: 'auto', paddingRight: '4px' }}>
+                {filtered.length === 0 ? (
+                  <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0', fontSize: '0.875rem' }}>
+                    Không tìm thấy nhân sự phù hợp
+                  </div>
+                ) : (
+                  filtered.map(member => {
+                    const nameParts = (member.full_name || '').trim().split(/\s+/);
+                    let initials = 'U';
+                    if (nameParts.length >= 2) {
+                      initials = (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
+                    } else if (nameParts.length === 1 && nameParts[0]) {
+                      initials = nameParts[0].charAt(0).toUpperCase();
+                    }
+
+                    return (
+                      <div
+                        key={member.id}
+                        onClick={() => handleToggleRoster(member.id)}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '0.75rem 1rem',
+                          borderRadius: 'var(--radius-lg)',
+                          border: member.is_assigned ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          background: member.is_assigned ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          {/* Circle Avatar Icon */}
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            backgroundColor: member.is_assigned ? 'var(--color-primary)' : 'rgba(15, 23, 42, 0.08)',
+                            color: member.is_assigned ? '#fff' : 'var(--color-text)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '0.85rem',
+                            flexShrink: 0
+                          }}>
+                            {initials}
+                          </div>
+                          <div>
+                            <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '4px',
+                            border: member.is_assigned ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                            backgroundColor: member.is_assigned ? 'var(--color-primary)' : 'transparent',
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          {member.is_assigned === 1 && <Check size={14} />}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            );
+          })()}
           <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
             <button type="button" className="btn outline sm" style={{ borderRadius: '100px' }} onClick={() => setIsRosterModalOpen(false)}>Hủy</button>
             <button type="button" className="btn primary sm" style={{ borderRadius: '100px' }} onClick={handleSaveRoster}>Lưu thay đổi</button>
