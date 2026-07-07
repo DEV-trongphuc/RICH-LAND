@@ -3652,41 +3652,117 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </div>
 
               {/* Individual Team Cards */}
-              {teamsList.map(team => (
-                <div
-                  key={team.id}
-                  onClick={() => setWsTeamId(String(team.id))}
-                  style={{
-                    padding: '1.5rem',
-                    background: 'var(--color-surface)',
-                    border: '1px solid var(--color-border-light)',
-                    borderRadius: 'var(--radius-lg)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '1rem',
-                    boxShadow: 'var(--shadow-sm)',
-                    transition: 'all var(--transition-fluid)',
-                    cursor: 'pointer',
-                    justifyContent: 'center',
-                    minHeight: '140px'
-                  }}
-                  className="hover-lift active-press"
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ padding: '10px', background: 'rgba(59, 130, 246, 0.08)', borderRadius: '10px', color: '#2563eb', display: 'flex' }}>
-                      <Users size={24} />
-                    </div>
+              {teamsList.map(team => {
+                const teamMembers = users.filter(u => String(u.team_id) === String(team.id));
+                const leaderUser = users.find(u => Number(u.id) === Number(team.leader_id));
+                
+                return (
+                  <div
+                    key={team.id}
+                    onClick={() => setWsTeamId(String(team.id))}
+                    style={{
+                      padding: '1.25rem',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                      boxShadow: 'var(--shadow-sm)',
+                      transition: 'all 0.2s',
+                      cursor: 'pointer',
+                      minHeight: '150px',
+                      justifyContent: 'space-between'
+                    }}
+                    className="hover-lift active-press"
+                  >
                     <div>
-                      <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)', margin: 0 }}>
-                        {team.name}
-                      </h3>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
-                        {t('Bấm để xem công việc của nhóm')}
-                      </p>
+                      {/* Header row: Team Name and Branch */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '8px' }}>
+                        <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0, lineHeight: 1.3 }}>
+                          {team.name}
+                        </h3>
+                        {team.branch && (
+                          <span className="badge info" style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                            {team.branch}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Leader details */}
+                      <div style={{ marginTop: '0.625rem', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        <span>Trưởng nhóm:</span>
+                        {leaderUser ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Avatar src={leaderUser.avatar} name={leaderUser.name} size={18} />
+                            <strong style={{ color: 'var(--color-text)' }}>{leaderUser.name}</strong>
+                          </div>
+                        ) : (
+                          <strong style={{ color: 'var(--color-text)' }}>{team.leader_name || t('Chưa gán')}</strong>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer row: Member Avatar Stack & Total Count */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.625rem', marginTop: '4px' }}>
+                      {/* Avatar Stack */}
+                      <div className="avatar-stack" style={{ display: 'flex', alignItems: 'center' }}>
+                        {teamMembers.slice(0, 5).map((member, index) => (
+                          <div
+                            key={member.id}
+                            style={{
+                              marginLeft: index > 0 ? '-8px' : '0',
+                              zIndex: 10 - index,
+                              position: 'relative'
+                            }}
+                          >
+                            <Avatar
+                              src={member.avatar}
+                              name={member.name}
+                              size={24}
+                              style={{ border: '2px solid var(--color-surface)' }}
+                            />
+                          </div>
+                        ))}
+                        {teamMembers.length > 5 && (
+                          <div
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: '50%',
+                              background: 'var(--color-bg-light)',
+                              border: '2px solid var(--color-surface)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              color: 'var(--color-text-muted)',
+                              marginLeft: '-8px',
+                              zIndex: 4,
+                              position: 'relative'
+                            }}
+                          >
+                            +{teamMembers.length - 5}
+                          </div>
+                        )}
+                        {teamMembers.length === 0 && (
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                            {t('Không có thành viên')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Total Count */}
+                      {teamMembers.length > 0 && (
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                          {teamMembers.length} sales
+                        </span>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (
