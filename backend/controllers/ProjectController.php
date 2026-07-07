@@ -77,17 +77,47 @@ class ProjectController {
             $params[] = $uid;
         }
 
-        $stmt = $this->db->prepare("
-            SELECT p.*,
-                   (SELECT COUNT(*) FROM project_roster WHERE project_id = p.id) as roster_count,
-                   (SELECT COUNT(*) FROM project_documents WHERE project_id = p.id) as doc_count
-            FROM projects p
-            $where
-            ORDER BY p.created_at DESC
-        ");
-        $stmt->execute($params);
-        $projects = $stmt->fetchAll();
-        respond(200, $projects, 'Lấy danh sách dự án thành công');
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 0;
+        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 0;
+
+        if ($page > 0 && $limit > 0) {
+            // Count total
+            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM projects p $where");
+            $stmtCount->execute($params);
+            $total = (int)$stmtCount->fetchColumn();
+
+            $offset = ($page - 1) * $limit;
+            $stmt = $this->db->prepare("
+                SELECT p.*,
+                       (SELECT COUNT(*) FROM project_roster WHERE project_id = p.id) as roster_count,
+                       (SELECT COUNT(*) FROM project_documents WHERE project_id = p.id) as doc_count
+                FROM projects p
+                $where
+                ORDER BY p.created_at DESC
+                LIMIT $offset, $limit
+            ");
+            $stmt->execute($params);
+            $projects = $stmt->fetchAll();
+
+            respond(200, [
+                'data' => $projects,
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit
+            ], 'Lấy danh sách dự án thành công');
+        } else {
+            $stmt = $this->db->prepare("
+                SELECT p.*,
+                       (SELECT COUNT(*) FROM project_roster WHERE project_id = p.id) as roster_count,
+                       (SELECT COUNT(*) FROM project_documents WHERE project_id = p.id) as doc_count
+                FROM projects p
+                $where
+                ORDER BY p.created_at DESC
+            ");
+            $stmt->execute($params);
+            $projects = $stmt->fetchAll();
+            respond(200, $projects, 'Lấy danh sách dự án thành công');
+        }
     }
 
     private function generateUniqueCode(string $projectName): string {

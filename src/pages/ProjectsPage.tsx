@@ -86,6 +86,8 @@ export default function ProjectsPage() {
   const [campaignsLoading, setCampaignsLoading] = useState(false);
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
+  const [totalProjects, setTotalProjects] = useState(0);
+  const [totalCampaigns, setTotalCampaigns] = useState(0);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -98,9 +100,9 @@ export default function ProjectsPage() {
   }, [window.location.search]);
 
   const [projectPage, setProjectPage] = useState(1);
-  const projectPageSize = 6;
+  const projectPageSize = 12;
   const [campaignPage, setCampaignPage] = useState(1);
-  const campaignPageSize = 6;
+  const campaignPageSize = 12;
 
   // Modals state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -183,9 +185,16 @@ export default function ProjectsPage() {
   const loadProjects = async () => {
     setLoading(true);
     try {
-      const res = await fetchAPI('projects');
+      const res = await fetchAPI(`projects?page=${projectPage}&limit=${projectPageSize}`);
       if (res.success) {
-        setProjects(res.data || []);
+        if (res.data && typeof res.data === 'object' && 'data' in res.data) {
+          setProjects(res.data.data || []);
+          setTotalProjects(Number(res.data.total || 0));
+        } else {
+          const arr = Array.isArray(res.data) ? res.data : [];
+          setProjects(arr);
+          setTotalProjects(arr.length);
+        }
       } else {
         addToast(res.message || 'Lỗi tải danh sách dự án', 'error');
       }
@@ -221,9 +230,16 @@ export default function ProjectsPage() {
   const loadCampaigns = async () => {
     setCampaignsLoading(true);
     try {
-      const res = await fetchAPI('campaigns');
+      const res = await fetchAPI(`campaigns?page=${campaignPage}&limit=${campaignPageSize}`);
       if (res.success) {
-        setCampaigns(res.data || []);
+        if (res.data && typeof res.data === 'object' && 'data' in res.data) {
+          setCampaigns(res.data.data || []);
+          setTotalCampaigns(Number(res.data.total || 0));
+        } else {
+          const arr = Array.isArray(res.data) ? res.data : [];
+          setCampaigns(arr);
+          setTotalCampaigns(arr.length);
+        }
       }
     } catch (e) {
       console.error('Failed to load campaigns', e);
@@ -297,9 +313,15 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     loadProjects();
+  }, [projectPage, projectPageSize]);
+
+  useEffect(() => {
+    loadCampaigns();
+  }, [campaignPage, campaignPageSize]);
+
+  useEffect(() => {
     loadDevelopers();
     loadAllFiles();
-    loadCampaigns();
     loadUsers();
   }, []);
 
@@ -612,7 +634,7 @@ export default function ProjectsPage() {
         ) : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-              {projects.slice((projectPage - 1) * projectPageSize, projectPage * projectPageSize).map(proj => (
+              {projects.map(proj => (
                 <div
                   key={proj.id}
                   className="card flex flex-col justify-between hover:border-primary/50 transition-all duration-200"
@@ -643,11 +665,13 @@ export default function ProjectsPage() {
                         style={{
                           fontSize: '0.675rem',
                           padding: '2px 8px',
-                          borderRadius: '4px',
+                          borderRadius: '100px',
                           fontWeight: 700,
                           background: proj.status === 'active' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                           color: proj.status === 'active' ? '#10b981' : '#ef4444',
-                          border: proj.status === 'active' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
+                          border: proj.status === 'active' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
                         }}
                       >
                         {proj.status === 'active' ? 'Đang bán' : 'Tạm dừng'}
@@ -791,7 +815,7 @@ export default function ProjectsPage() {
             </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
               <Pagination
-                total={projects.length}
+                total={totalProjects}
                 page={projectPage}
                 pageSize={projectPageSize}
                 onChange={setProjectPage}
@@ -814,7 +838,7 @@ export default function ProjectsPage() {
         ) : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
-              {campaigns.slice((campaignPage - 1) * campaignPageSize, campaignPage * campaignPageSize).map(camp => {
+              {campaigns.map(camp => {
                 const associatedProjs = projects.filter(p => {
                   const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
                   return campIds.includes(camp.name);
@@ -863,7 +887,7 @@ export default function ProjectsPage() {
                         </div>
                         <span 
                           className={`badge ${camp.status === 'active' ? 'success' : 'secondary'}`} 
-                          style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '6px', fontWeight: 700 }}
+                          style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '100px', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}
                         >
                           {camp.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
                         </span>
@@ -931,7 +955,7 @@ export default function ProjectsPage() {
             </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
               <Pagination
-                total={campaigns.length}
+                total={totalCampaigns}
                 page={campaignPage}
                 pageSize={campaignPageSize}
                 onChange={setCampaignPage}
@@ -953,7 +977,7 @@ export default function ProjectsPage() {
       >
         {projectModalMode === 'view' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
               <div>
                 <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Tên dự án</span>
                 <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block' }}>{editingProject?.name}</span>
@@ -970,14 +994,14 @@ export default function ProjectsPage() {
                 <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái bán</span>
                 <span 
                   className={`badge ${editingProject?.status === 'active' ? 'success' : 'secondary'}`}
-                  style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
+                  style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '100px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
                 >
                   {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
                 </span>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
               <div>
                 <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Vị trí / Địa chỉ</span>
                 <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 600, display: 'block' }}>{editingProject?.location || 'Chưa cập nhật'}</span>
@@ -1462,9 +1486,9 @@ export default function ProjectsPage() {
                     >
                       <div style={{ flex: 1, marginRight: '1rem', minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</h4>
+                          <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatFileName(doc.name, 35)}</h4>
                           {doc.isLinkedOnly && (
-                            <span style={{ fontSize: '0.625rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 700 }}>
+                            <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
                               Thư viện
                             </span>
                           )}
@@ -1523,7 +1547,7 @@ export default function ProjectsPage() {
       >
         {campaignModalMode === 'view' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.25rem' }}>
               <div>
                 <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Tên chiến dịch</span>
                 <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block' }}>{editingCampaign?.name}</span>
@@ -1532,7 +1556,7 @@ export default function ProjectsPage() {
                 <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '4px' }}>Trạng thái hoạt động</span>
                 <span 
                   className={`badge ${editingCampaign?.status === 'active' ? 'success' : 'secondary'}`}
-                  style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
+                  style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '100px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
                 >
                   {editingCampaign?.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
                 </span>

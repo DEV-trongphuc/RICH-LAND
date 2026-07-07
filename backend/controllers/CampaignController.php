@@ -57,9 +57,34 @@ class CampaignController {
 
     public function index(array $auth): void {
         $tenantId = $auth['tenant_id'] ?? 1;
-        $stmt = $this->db->prepare("SELECT * FROM marketing_campaigns WHERE tenant_id = ? ORDER BY created_at DESC");
-        $stmt->execute([$tenantId]);
-        respond(200, $stmt->fetchAll(), 'Lấy danh sách chiến dịch thành công');
+        $where = "WHERE tenant_id = ?";
+        $params = [$tenantId];
+
+        $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 0;
+        $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 0;
+
+        if ($page > 0 && $limit > 0) {
+            // Count total
+            $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM marketing_campaigns $where");
+            $stmtCount->execute($params);
+            $total = (int)$stmtCount->fetchColumn();
+
+            $offset = ($page - 1) * $limit;
+            $stmt = $this->db->prepare("SELECT * FROM marketing_campaigns $where ORDER BY created_at DESC LIMIT $offset, $limit");
+            $stmt->execute($params);
+            $campaigns = $stmt->fetchAll();
+
+            respond(200, [
+                'data' => $campaigns,
+                'total' => $total,
+                'page' => $page,
+                'limit' => $limit
+            ], 'Lấy danh sách chiến dịch thành công');
+        } else {
+            $stmt = $this->db->prepare("SELECT * FROM marketing_campaigns $where ORDER BY created_at DESC");
+            $stmt->execute($params);
+            respond(200, $stmt->fetchAll(), 'Lấy danh sách chiến dịch thành công');
+        }
     }
 
     public function store(array $auth): void {
