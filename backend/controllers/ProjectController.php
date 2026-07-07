@@ -43,7 +43,7 @@ class ProjectController {
             respond(403, null, 'Bạn không có quyền truy cập dự án này', false);
         }
 
-        if ($auth['role'] === 'admin' || $auth['role'] === 'superadmin' || $auth['role'] === 'super_admin' || $auth['role'] === 'manager') {
+        if ($auth['role'] === 'admin' || $auth['role'] === 'superadmin' || $auth['role'] === 'super_admin' || $auth['role'] === 'manager' || $auth['role'] === 'director') {
             return;
         }
 
@@ -113,7 +113,7 @@ class ProjectController {
     }
 
     public function store(array $auth): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $code = trim($b['code'] ?? '');
@@ -158,7 +158,7 @@ class ProjectController {
     }
 
     public function update(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $code = trim($b['code'] ?? '');
@@ -203,7 +203,7 @@ class ProjectController {
     }
 
     public function destroy(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'director']);
         
         $stmt = $this->db->prepare("DELETE FROM projects WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);
@@ -229,7 +229,7 @@ class ProjectController {
     }
 
     public function updateRoster(array $auth, int $projectId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $this->requireProjectAccess($auth, $projectId);
         $b = getBody();
         $userIds = $b['user_ids'] ?? []; // Array of user IDs to include in roster
@@ -277,7 +277,7 @@ class ProjectController {
     }
 
     public function uploadDocument(array $auth, int $projectId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $this->requireProjectAccess($auth, $projectId);
         
         if (empty($_FILES['file'])) {
@@ -321,7 +321,7 @@ class ProjectController {
     }
 
     public function deleteDocument(array $auth, int $projectId, int $docId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
         $this->requireProjectAccess($auth, $projectId);
 
         // Fetch document info
