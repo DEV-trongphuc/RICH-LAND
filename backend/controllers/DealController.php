@@ -39,7 +39,7 @@ class DealController {
     }
 
     public function storeStage(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
         $b = getBody();
         if (empty($b['name'])) respond(422, null, 'Tên stage là bắt buộc', false);
         $maxIdx = $this->db->prepare("SELECT COALESCE(MAX(order_index),0)+1 FROM pipeline_stages WHERE tenant_id=?");
@@ -51,7 +51,7 @@ class DealController {
     }
 
     public function updateStage(array $auth, int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
         $b = getBody();
         $fields = ['name','color','order_index','is_won','is_lost'];
         $sets=[]; $params=[];

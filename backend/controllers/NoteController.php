@@ -195,7 +195,7 @@ class NoteController {
         $oldNote = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$oldNote) respond(404, null, 'Không tìm thấy ghi chú', false);
 
-        if (!in_array($auth['role'], ['admin', 'manager', 'superadmin', 'super_admin'], true) && (int)$oldNote['user_id'] !== (int)$auth['user_id']) {
+        if (!in_array($auth['role'], ['admin', 'manager', 'superadmin', 'super_admin', 'director'], true) && (int)$oldNote['user_id'] !== (int)$auth['user_id']) {
             respond(403, null, 'Bạn không có quyền cập nhật ghi chú này', false);
         }
 
@@ -221,9 +221,9 @@ class NoteController {
     public function destroy(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa ghi chú', false);
         // 1. Verify existence and permission
-        $check = $this->db->prepare("SELECT id FROM notes WHERE id=? AND tenant_id=?" . (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true) ? " AND user_id=?" : ""));
+        $check = $this->db->prepare("SELECT id FROM notes WHERE id=? AND tenant_id=?" . (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) ? " AND user_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) $cp[] = $auth['user_id'];
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) $cp[] = $auth['user_id'];
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
 

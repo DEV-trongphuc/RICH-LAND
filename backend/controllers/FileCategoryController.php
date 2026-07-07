@@ -22,7 +22,7 @@ class FileCategoryController {
     }
 
     public function store(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
         }
         $b = getBody();
@@ -39,7 +39,7 @@ class FileCategoryController {
     }
 
     public function update(array $auth, string $id): void {
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
         }
         $b = getBody();
@@ -54,7 +54,7 @@ class FileCategoryController {
     }
 
     public function destroy(array $auth, string $id): void {
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
         }
         $stmt = $this->db->prepare("SELECT is_default FROM file_categories WHERE id = ? AND tenant_id = ?");

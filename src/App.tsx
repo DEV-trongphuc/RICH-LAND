@@ -117,7 +117,7 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (isAdminPath) {
-    if (!['admin', 'superadmin', 'super_admin'].includes(user?.role || '')) {
+    if (!['admin', 'superadmin', 'super_admin', 'director'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   }

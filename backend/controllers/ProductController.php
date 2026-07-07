@@ -44,7 +44,7 @@ class ProductController {
         respond(200, ['items' => $stmt->fetchAll(), 'total' => $total, 'page' => $page, 'limit' => $limit]);
     }
     public function store(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền thêm sản phẩm', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) respond(403, null, 'Bạn không có quyền thêm sản phẩm', false);
         $b=getBody();
         if(empty($b['name'])) respond(422,null,'Tên sản phẩm là bắt buộc',false);
         if (($b['price'] ?? 0) < 0 || ($b['cost'] ?? 0) < 0) respond(422, null, 'Giá bán và Giá vốn không được âm', false);
@@ -100,7 +100,7 @@ class ProductController {
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền cập nhật sản phẩm', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) respond(403, null, 'Bạn không có quyền cập nhật sản phẩm', false);
         $b=getBody();
         if (($b['price'] ?? 0) < 0 || ($b['cost'] ?? 0) < 0) respond(422, null, 'Giá bán và Giá vốn không được âm', false);
 
@@ -151,14 +151,14 @@ class ProductController {
         }
     }
     public function destroy(array $auth,int $id): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền xóa sản phẩm', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) respond(403, null, 'Bạn không có quyền xóa sản phẩm', false);
         $this->db->prepare("UPDATE products SET deleted_at=NOW() WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Xóa sản phẩm', 'product', $id);
         respond(200,null,'Đã xóa sản phẩm (vào thùng rác)');
     }
 
     public function bulkDelete(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền xóa sản phẩm', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) respond(403, null, 'Bạn không có quyền xóa sản phẩm', false);
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'ID không hợp lệ', false);

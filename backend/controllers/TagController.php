@@ -32,7 +32,7 @@ class TagController {
     }
 
     public function store($auth) {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý tags', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý tags', false);
         $data = getBody();
         if (empty($data['name'])) respond(400, null, 'Tên tag không được để trống', false);
 
@@ -52,7 +52,7 @@ class TagController {
     }
 
     public function update($auth, $id) {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý tags', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý tags', false);
         $data = getBody();
         $stmt = $this->db->prepare("
             UPDATE tags 
@@ -70,7 +70,7 @@ class TagController {
     }
 
     public function destroy($auth, $id) {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý tags', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) respond(403, null, 'Chỉ admin mới có quyền quản lý tags', false);
         $stmt = $this->db->prepare("DELETE FROM tags WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);
         respond(200, null, 'Đã xóa tag');

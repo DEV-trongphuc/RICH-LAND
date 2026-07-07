@@ -61,7 +61,7 @@ class InventoryController {
      * Handle internal stock out (Damage, Gift, Loss)
      */
     public function internalExport(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền thực hiện xuất kho nội bộ', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) respond(403, null, 'Bạn không có quyền thực hiện xuất kho nội bộ', false);
         $b = getBody();
         if (empty($b['batch_id']) || empty($b['qty']) || empty($b['reason'])) {
             respond(422, null, 'Thiếu thông tin xuất kho nội bộ', false);
@@ -159,7 +159,7 @@ class InventoryController {
      * Manual adjustment
      */
     public function adjust(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền điều chỉnh kho', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) respond(403, null, 'Bạn không có quyền điều chỉnh kho', false);
         $b = getBody();
         if (empty($b['batch_id']) || !isset($b['new_qty'])) respond(400, null, 'Thiếu thông tin điều chỉnh', false);
         if ((float)$b['new_qty'] < 0) respond(422, null, 'Số lượng tồn kho không được nhỏ hơn 0', false);
@@ -220,7 +220,7 @@ class InventoryController {
      * Archive a batch (when it's empty and no longer needed in active list)
      */
     public function archive(array $auth, int $id): void {
-        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền lưu trữ lô hàng', false);
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true)) respond(403, null, 'Chỉ admin mới có quyền lưu trữ lô hàng', false);
         
         $stmt = $this->db->prepare("SELECT current_qty FROM batches WHERE id=? AND tenant_id=?");
         $stmt->execute([$id, $auth['tenant_id']]);

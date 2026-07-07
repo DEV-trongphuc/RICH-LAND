@@ -52,7 +52,7 @@ class ImportController {
 
     /** POST /import/process — Upload & process CSV */
     public function process(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Bạn không có quyền nhập dữ liệu', false);
         }
 

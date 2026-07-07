@@ -10,7 +10,7 @@ class WorkflowTaskTemplateController
     public function index(array $auth): void
     {
         // Only managers, admins, and superadmins can configure templates
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Quyền truy cập bị từ chối', false);
         }
 
@@ -47,7 +47,7 @@ class WorkflowTaskTemplateController
 
     public function store(array $auth): void
     {
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
         }
 
@@ -108,7 +108,7 @@ class WorkflowTaskTemplateController
 
     public function update(array $auth, int $id): void
     {
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
         }
 
@@ -190,7 +190,7 @@ class WorkflowTaskTemplateController
 
     public function destroy(array $auth, int $id): void
     {
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
         }
 

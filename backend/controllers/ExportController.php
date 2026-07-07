@@ -5,7 +5,7 @@ class ExportController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function export(array $auth): void {
-        if (!in_array($auth['role'], ['super_admin', 'admin', 'manager', 'sales', 'sale'])) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'sales', 'sale'])) {
             respond(403, null, 'Bạn không có quyền xuất dữ liệu', false);
         }
         
