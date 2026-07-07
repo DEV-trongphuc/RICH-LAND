@@ -86,10 +86,8 @@
   width: 100%;
   min-width: max-content;
   max-width: 320px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   z-index: 1000;
@@ -99,10 +97,8 @@
 }
 
 :global([data-theme="dark"]) .dropdown {
-  background: rgba(28, 28, 30, 0.82);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: var(--shadow-xl), 0 4px 12px rgba(255, 69, 58, 0.08);
 }
 

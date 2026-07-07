@@ -196,7 +196,7 @@ const ConsultantsInner = () => {
     setLoading(true);
     try {
       const json = await fetchAPI('get_consultants');
-      if (json.success) setUsers(json.data);
+      if (json.success) setUsers(Array.isArray(json.data) ? json.data : []);
     } catch (e: any) {
       toast.error(t('Không thể tải dữ liệu: ') + e.message);
     }
