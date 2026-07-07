@@ -38,9 +38,9 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Công việc', href: '/activities', icon: CheckSquare, hideForRoles: ['sale'] },
       { name: 'Lịch biểu & Chấm công', href: '/calendar', icon: Calendar },
-      { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true },
+      { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
-      { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper' },
+      { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Ticket data lỗi', href: '/tickets', icon: Ticket, badgeKey: 'tickets' },
       { name: 'Ticket hỗ trợ', href: '/support-tickets', icon: LifeBuoy }
     ]
@@ -90,13 +90,13 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'CÀI ĐẶT HỆ THỐNG',
     items: [
-      { name: 'Tích hợp Data', href: '/integrations', icon: Link2, adminOnly: true },
-      { name: 'Vòng đời khách hàng', href: '/settings?tab=lifecycle', icon: Settings, adminOnly: true },
-      { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true },
-      { name: 'CAPI', href: '/capi', icon: Link2, adminOnly: true },
+      { name: 'Tích hợp Data', href: '/integrations', icon: Link2, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
+      { name: 'Vòng đời khách hàng', href: '/settings?tab=lifecycle', icon: Settings, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
+      { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
+      { name: 'CAPI', href: '/capi', icon: Link2, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
-      { name: 'Phân quyền', href: '/accounts?tab=permissions', icon: ShieldCheck, adminOnly: true },
-      { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true }
+      { name: 'Phân quyền', href: '/accounts?tab=permissions', icon: ShieldCheck, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
+      { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] }
     ]
   }
 ];

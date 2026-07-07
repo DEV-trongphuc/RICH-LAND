@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
@@ -10,6 +10,8 @@ import { compressToWebP } from '../utils/imageCompress';
 import { TableRowSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { AddressSelect } from '../components/ui/AddressSelect';
+import cityData from '../assets/ctiy.json';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -58,6 +60,16 @@ const formatScheduleTooltip = (schedule: any, t: any): string => {
     return `${t(dayLabel)}: ${config.start} - ${config.end}`;
   }).join('\n');
 };
+
+const getCleanCityName = (name: string) => {
+  const match = name.match(/\[(.*?)\]/);
+  return match ? match[1] : name.replace(/\s*\(.*?\)\s*/g, '').trim();
+};
+
+const cityOptions = ((cityData as any).cities || []).map((c: any) => {
+  const cleanName = getCleanCityName(c.name);
+  return { value: cleanName, label: cleanName };
+});
 
 const ConsultantsInner = () => {
   const { t } = useLanguage();
@@ -118,11 +130,15 @@ const ConsultantsInner = () => {
   const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [editingTeam, setEditingTeam] = useState<any>(null);
   const [teamFormData, setTeamFormData] = useState({ name: '', branch: '', leader_id: '' });
+  const [searchLeader, setSearchLeader] = useState('');
+  const [showLeaderDropdown, setShowLeaderDropdown] = useState(false);
+  const leaderDropdownRef = useRef<HTMLDivElement>(null);
   const [confirmDeleteTeamOpen, setConfirmDeleteTeamOpen] = useState(false);
   const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
   
   const [consultantsPage, setConsultantsPage] = useState(1);
   const [teamsPage, setTeamsPage] = useState(1);
+  const [selectedBranch, setSelectedBranch] = useState<string>('');
   const ITEMS_PER_PAGE = 8;
 
   const [scheduleMode, setScheduleMode] = useState<'daily' | 'custom'>('daily');
@@ -219,6 +235,16 @@ const ConsultantsInner = () => {
       toast.error(t('Lỗi kết nối: ') + err.message);
     }
   };
+
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (leaderDropdownRef.current && !leaderDropdownRef.current.contains(event.target as Node)) {
+        setShowLeaderDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   useEffect(() => {
     fetchUsers();
@@ -324,6 +350,8 @@ const ConsultantsInner = () => {
   const openAddTeamModal = () => {
     setEditingTeam(null);
     setTeamFormData({ name: '', branch: '', leader_id: '' });
+    setSearchLeader('');
+    setShowLeaderDropdown(false);
     setTeamModalOpen(true);
   };
 
@@ -334,6 +362,9 @@ const ConsultantsInner = () => {
       branch: team.branch || '',
       leader_id: team.leader_id || ''
     });
+    const leaderUser = users.find(u => Number(u.id) === Number(team.leader_id));
+    setSearchLeader(leaderUser ? leaderUser.name : '');
+    setShowLeaderDropdown(false);
     setTeamModalOpen(true);
   };
 
@@ -1074,7 +1105,7 @@ const ConsultantsInner = () => {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', width: '100%' }}>
+        <div style={{ display: 'flex', gap: '1.5rem', width: '100%', minHeight: '500px', alignItems: 'stretch' }}>
           {(() => {
             const branchMap: Record<string, any[]> = {};
             teams.forEach(team => {
@@ -1086,7 +1117,7 @@ const ConsultantsInner = () => {
             if (branchList.length === 0) {
               return (
                 <div className="card" style={{ 
-                  gridColumn: '1 / -1', 
+                  flex: 1,
                   padding: '5rem 2rem', 
                   textAlign: 'center', 
                   color: 'var(--color-text-muted)',
@@ -1109,32 +1140,101 @@ const ConsultantsInner = () => {
                 </div>
               );
             }
-            return branchList.map(([bName, bTeams], idx) => {
-              const totalMembers = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
-              return (
-                <div key={idx} className="card hover-lift" style={{ padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', background: 'var(--color-surface)', boxShadow: 'var(--shadow-sm)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Building2 size={18} color="var(--color-primary)" />
-                      <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{bName}</h3>
+
+            // Determine active selected branch
+            const activeBName = selectedBranch && branchMap[selectedBranch] ? selectedBranch : branchList[0][0];
+            const activeBTeams = branchMap[activeBName] || [];
+            const activeBTotalMembers = activeBTeams.reduce((sum, tObj) => sum + Number(tObj.member_count), 0);
+
+            return (
+              <>
+                {/* Left Side: Master Branch List */}
+                <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '0.75rem', flexShrink: 0 }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Danh sách chi nhánh ({branchList.length})</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', maxHeight: '70vh' }}>
+                    {branchList.map(([bName, bTeams]) => {
+                      const totalM = bTeams.reduce((sum, team) => sum + Number(team.member_count), 0);
+                      const isSelected = activeBName === bName;
+                      return (
+                        <div
+                          key={bName}
+                          onClick={() => setSelectedBranch(bName)}
+                          style={{
+                            padding: '1rem',
+                            borderRadius: '12px',
+                            border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border-light)',
+                            background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                            <Building2 size={16} color={isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)'} />
+                            <strong style={{ fontSize: '0.875rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                              {bName}
+                            </strong>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            <span>{bTeams.length} nhóm</span>
+                            <span>•</span>
+                            <span>{totalM} nhân sự</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Side: Detailed Teams Grid */}
+                <div className="card" style={{ flex: 1, padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{activeBName}</h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>Tổng cộng {activeBTeams.length} nhóm và {activeBTotalMembers} nhân sự phân phối</p>
                     </div>
-                    <span className="badge success" style={{ padding: '2px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700 }}>{bTeams.length} {t('nhóm')}</span>
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--color-bg-light)', padding: '8px 12px', borderRadius: '8px' }}>
-                    <span>{t('Tổng nhân sự:')}</span>
-                    <strong style={{ color: 'var(--color-text)', fontSize: '0.95rem' }}>{totalMembers}</strong>
-                  </div>
-                  <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '4px' }}>
-                    {bTeams.map(team => (
-                      <div key={team.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'var(--color-bg)', borderRadius: 10, fontSize: '0.8rem', border: '1px solid var(--color-border-light)' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{team.name}</span>
-                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>{team.member_count} {t('sales')}</span>
+
+                  <div className="custom-scrollbar" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem', paddingRight: '4px', alignContent: 'start' }}>
+                    {activeBTeams.map(team => (
+                      <div 
+                        key={team.id} 
+                        onClick={() => {
+                          if (!isSale) {
+                            openEditTeamModal(team);
+                          }
+                        }}
+                        style={{ 
+                          padding: '1rem', 
+                          background: 'var(--color-bg)', 
+                          borderRadius: '12px', 
+                          border: '1px solid var(--color-border-light)', 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          justifyContent: 'space-between', 
+                          gap: '0.75rem',
+                          cursor: isSale ? 'default' : 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border-light)'}
+                      >
+                        <div>
+                          <strong style={{ fontSize: '0.875rem', color: 'var(--color-text)', display: 'block', marginBottom: '4px' }}>{team.name}</strong>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            Trưởng nhóm: <strong style={{ color: 'var(--color-text)' }}>{team.leader_name || 'Chưa gán'}</strong>
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dotted var(--color-border)', paddingTop: '0.5rem', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--color-text-muted)' }}>Quy mô:</span>
+                          <span className="badge info" style={{ fontWeight: 700 }}>{team.member_count} sales</span>
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              );
-            });
+              </>
+            );
           })()}
         </div>
       )}
@@ -1288,13 +1388,10 @@ const ConsultantsInner = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">{t('Địa chỉ thường trú')}</label>
-                      <textarea
-                        className="form-textarea"
-                        placeholder="Nhập địa chỉ nhà..."
-                        rows={2}
+                      <AddressSelect
+                        label={t('Địa chỉ thường trú')}
                         value={formData.address}
-                        onChange={e => setFormData({ ...formData, address: e.target.value })}
+                        onChange={val => setFormData({ ...formData, address: val })}
                       />
                     </div>
 
@@ -2162,25 +2259,103 @@ const ConsultantsInner = () => {
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600 }}>{t('Chi nhánh')}</label>
-                  <input
-                    className="form-input"
-                    placeholder={t('VD: Chi nhánh Quận 1')}
+                  <CustomSelect
+                    options={[
+                      { value: '', label: `-- ${t('Chọn Chi nhánh')} --` },
+                      ...cityOptions
+                    ]}
                     value={teamFormData.branch}
-                    onChange={e => setTeamFormData({ ...teamFormData, branch: e.target.value })}
+                    onChange={val => setTeamFormData({ ...teamFormData, branch: String(val) })}
+                    placeholder={t('Chọn Chi nhánh...')}
+                    searchable={true}
                   />
                 </div>
 
-                <div className="form-group">
+                <div className="form-group" ref={leaderDropdownRef} style={{ position: 'relative' }}>
                   <label className="form-label" style={{ fontWeight: 600 }}>{t('Trưởng nhóm')}</label>
-                  <CustomSelect
-                    options={[
-                      { value: '', label: `-- ${t('Chọn Trưởng nhóm')} --` },
-                      ...users.map(u => ({ value: String(u.id), label: u.name }))
-                    ]}
-                    value={String(teamFormData.leader_id || '')}
-                    onChange={val => setTeamFormData({ ...teamFormData, leader_id: String(val) })}
-                    placeholder={t('Chọn Trưởng nhóm...')}
-                  />
+                  
+                  {/* Search Input Box */}
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      className="form-input"
+                      style={{ paddingLeft: '2.5rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                      placeholder={t("Tìm kiếm và chọn Trưởng nhóm...")}
+                      value={searchLeader}
+                      onChange={e => {
+                        setSearchLeader(e.target.value);
+                        setShowLeaderDropdown(true);
+                      }}
+                      onFocus={() => setShowLeaderDropdown(true)}
+                    />
+                    <div style={{ position: 'absolute', left: 12, top: 10, color: '#94a3b8' }}><Search size={16} /></div>
+                    {teamFormData.leader_id && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTeamFormData({ ...teamFormData, leader_id: '' });
+                          setSearchLeader('');
+                        }}
+                        style={{
+                          position: 'absolute', right: 12, top: 10, color: 'var(--color-text-muted)',
+                          background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown Options */}
+                  {showLeaderDropdown && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 1200,
+                      background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
+                    }}>
+                      {users.filter(u => u.name.toLowerCase().includes(searchLeader.toLowerCase())).map(u => {
+                        const isSelected = String(teamFormData.leader_id) === String(u.id);
+                        return (
+                          <div
+                            key={u.id}
+                            onClick={() => {
+                              setTeamFormData({ ...teamFormData, leader_id: String(u.id) });
+                              setSearchLeader(u.name);
+                              setShowLeaderDropdown(false);
+                            }}
+                            style={{
+                              padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                              cursor: 'pointer',
+                              background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                              transition: 'background 0.1s'
+                            }}
+                            onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                            onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <Avatar src={u.avatar} name={u.name} size={28} />
+                            <div style={{ flex: 1 }}>
+                              <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>{u.name}</p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                                {u.email && (
+                                  <img
+                                    src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
+                                    alt="Gmail"
+                                    style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
+                                  />
+                                )}
+                                <span>{u.email}</span>
+                              </p>
+                            </div>
+                            {isSelected && <Check size={16} color="var(--color-primary)" />}
+                          </div>
+                        );
+                      })}
+                      {users.filter(u => u.name.toLowerCase().includes(searchLeader.toLowerCase())).length === 0 && (
+                        <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                          {t("Không tìm thấy nhân sự nào")}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
