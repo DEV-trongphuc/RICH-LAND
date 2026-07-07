@@ -453,9 +453,12 @@ const AccountsInner = () => {
 
 
   const getRoleBadge = (role: string) => {
-    if (role === 'superadmin') return <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Super Admin</span>;
+    if (role === 'superadmin' || role === 'super_admin') return <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Super Admin</span>;
     if (role === 'admin') return <span style={{ background: 'rgba(163, 20, 34, 0.1)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Admin</span>;
+    if (role === 'director') return <span style={{ background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Director</span>;
+    if (role === 'manager') return <span style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Manager</span>;
     if (role === 'assistant') return <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Assistant</span>;
+    if (role === 'sale' || role === 'sales') return <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Sales</span>;
     return <span style={{ background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Viewer</span>;
   };
 
@@ -1422,7 +1425,10 @@ const AccountsInner = () => {
                 options={[
                   { value: 'superadmin', label: t('Super Admin (Quản trị cấp cao)') },
                   { value: 'admin', label: t('Admin (Toàn quyền)') },
+                  { value: 'director', label: t('Director (Giám đốc kinh doanh)') },
+                  { value: 'manager', label: t('Manager (Trưởng nhóm kinh doanh)') },
                   { value: 'assistant', label: t('Assistant (Trợ lý / Phân bổ Data)') },
+                  { value: 'sale', label: t('Sales (Nhân viên kinh doanh)') },
                   { value: 'viewer', label: t('Viewer (Chỉ xem Data)') }
                 ]}
                 value={formData.role}
