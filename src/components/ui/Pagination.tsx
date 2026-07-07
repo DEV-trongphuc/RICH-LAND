@@ -36,11 +36,34 @@ export const Pagination: React.FC<PaginationProps> = ({
   if (total === 0) return null;
 
   return (
-    <div className="pagination">
-      <div className="pagination-info">
-        Hiển thị <strong>{start}</strong>–<strong>{end}</strong> trong <strong>{total}</strong> kết quả
+    <div 
+      className="pagination"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        padding: '1rem 1.25rem',
+        borderTop: '1px solid var(--color-border-light)',
+        background: 'var(--color-surface)',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}
+    >
+      <div 
+        className="pagination-info"
+        style={{
+          fontSize: '0.8125rem',
+          color: 'var(--color-text-muted)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          flexWrap: 'wrap'
+        }}
+      >
+        Hiển thị <strong>{start}</strong> - <strong>{end}</strong> trên <strong>{total}</strong>
         {showSizeChanger && onPageSizeChange && (
-          <div style={{ marginLeft: '0.75rem', width: '140px', display: 'inline-block' }}>
+          <div style={{ marginLeft: '0.75rem', width: '130px', display: 'inline-block' }}>
             <CustomSelect
               options={[3, 6, 12, 24, 50, 100].map(n => ({ value: n, label: `${n} / trang` }))}
               value={pageSize}
@@ -51,37 +74,127 @@ export const Pagination: React.FC<PaginationProps> = ({
         )}
       </div>
 
-      <div className="pagination-pages">
+      <div 
+        className="pagination-pages"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}
+      >
         <button
           className="pagination-btn"
           disabled={page <= 1}
           onClick={() => onChange(page - 1)}
           title="Trang trước"
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid var(--color-border-light)',
+            background: 'var(--color-surface)',
+            color: 'var(--color-text)',
+            cursor: page <= 1 ? 'not-allowed' : 'pointer',
+            opacity: page <= 1 ? 0.4 : 1,
+            padding: 0,
+            transition: 'all 0.2s',
+            boxShadow: 'var(--shadow-xs)'
+          }}
+          onMouseEnter={e => {
+            if (page > 1) {
+              e.currentTarget.style.background = 'var(--color-bg-light)';
+              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+            }
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'var(--color-surface)';
+            e.currentTarget.style.borderColor = 'var(--color-border-light)';
+          }}
         >
-          <ChevronLeft size={15} />
+          <ChevronLeft size={16} />
         </button>
 
-        {getPages().map((p, i) =>
-          p === '...' ? (
-            <span key={`dots-${i}`} style={{ padding: '0 4px', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>…</span>
-          ) : (
-            <button
-              key={p}
-              className={`pagination-btn ${page === p ? 'active' : ''}`}
-              onClick={() => onChange(p as number)}
-            >
-              {p}
-            </button>
-          )
-        )}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+          {getPages().map((p, i) =>
+            p === '...' ? (
+              <span key={`dots-${i}`} style={{ padding: '0 4px', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>…</span>
+            ) : (
+              <button
+                key={p}
+                className={`pagination-btn ${page === p ? 'active' : ''}`}
+                onClick={() => onChange(p as number)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  fontSize: '0.8125rem',
+                  fontWeight: page === p ? 600 : 650,
+                  border: page === p ? 'none' : '1px solid var(--color-border-light)',
+                  background: page === p ? 'var(--color-primary)' : 'var(--color-surface)',
+                  color: page === p ? 'white' : 'var(--color-text)',
+                  cursor: page === p ? 'default' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease',
+                  padding: 0,
+                  boxShadow: page === p ? 'var(--shadow-sm)' : 'none'
+                }}
+                onMouseEnter={e => {
+                  if (page !== p) {
+                    e.currentTarget.style.background = 'var(--color-bg-light)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (page !== p) {
+                    e.currentTarget.style.background = 'var(--color-surface)';
+                    e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                  }
+                }}
+              >
+                {p}
+              </button>
+            )
+          )}
+        </div>
 
         <button
           className="pagination-btn"
           disabled={page >= totalPages}
           onClick={() => onChange(page + 1)}
           title="Trang sau"
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '1px solid var(--color-border-light)',
+            background: 'var(--color-surface)',
+            color: 'var(--color-text)',
+            cursor: page >= totalPages ? 'not-allowed' : 'pointer',
+            opacity: page >= totalPages ? 0.4 : 1,
+            padding: 0,
+            transition: 'all 0.2s',
+            boxShadow: 'var(--shadow-xs)'
+          }}
+          onMouseEnter={e => {
+            if (page < totalPages) {
+              e.currentTarget.style.background = 'var(--color-bg-light)';
+              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+            }
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'var(--color-surface)';
+            e.currentTarget.style.borderColor = 'var(--color-border-light)';
+          }}
         >
-          <ChevronRight size={15} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
