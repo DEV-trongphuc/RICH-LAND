@@ -3722,8 +3722,8 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
     content: "";
     position: fixed;
     top: 50%;
-    left: calc(var(--sidebar-width, 260px) + 30px);
-    transform: translateY(-50%);
+    left: calc(var(--sidebar-width, 260px) / 2);
+    transform: translate(-50%, -50%);
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -3742,7 +3742,7 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
   }
   .drawer-backdrop:hover::after {
     background-color: rgba(255, 255, 255, 0.22);
-    transform: translateY(-50%) scale(1.08);
+    transform: translate(-50%, -50%) scale(1.08);
   }
 }
 

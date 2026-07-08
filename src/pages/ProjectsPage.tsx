@@ -355,10 +355,11 @@ export default function ProjectsPage() {
           }}
         />
         <div 
+          className="drawer-sheet"
           style={{
             width: window.innerWidth <= 768 ? '100vw' : 'calc(100vw - var(--sidebar-width, 260px))',
             maxWidth: '100vw',
-            zIndex: 10001,
+            zIndex: 10600,
             background: '#ffffff',
             display: 'flex',
             flexDirection: 'column',
