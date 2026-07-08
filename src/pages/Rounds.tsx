@@ -752,12 +752,15 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 overflow: 'hidden', 
                 display: 'flex', 
                 flexDirection: 'column',
+                borderRadius: '12px',
+                borderTop: `4px solid ${color}`,
+                borderLeft: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
+                borderRight: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
+                borderBottom: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
                 opacity: Number(r.is_active) !== 1 ? 0.75 : 1,
                 filter: Number(r.is_active) !== 1 ? 'grayscale(0.95)' : 'none',
-                border: Number(r.is_active) !== 1 ? '1px solid var(--color-border)' : undefined,
                 background: Number(r.is_active) !== 1 ? (theme === 'dark' ? '#1f2937' : '#f9fafb') : undefined
               }}>
-                <div style={{ height: 4, background: color }} />
                 <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -990,6 +993,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             ) : (
               <div key={r.id} className="card hover-glow responsive-flex-row responsive-height-auto" style={{
                 display: 'flex', alignItems: 'center', gap: '1.5rem', padding: '1rem 1.5rem',
+                borderRadius: '12px',
                 borderLeft: `4px solid ${Number(r.is_active) !== 1 ? '#9ca3af' : color}`,
                 opacity: Number(r.is_active) !== 1 ? 0.75 : 1,
                 filter: Number(r.is_active) !== 1 ? 'grayscale(0.95)' : 'none',
@@ -1246,14 +1250,14 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
             {editingRound && (
               <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', margin: '0.75rem 1.25rem', width: 'fit-content', gap: '4px' }}>
-                <button type="button" onClick={() => setActiveTab('config')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'config' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'config' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }} className={activeTab === 'config' ? '' : 'hover-lift'}>{t("Cấu hình chung")}</button>
-                <button type="button" onClick={() => setActiveTab('reports')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'reports' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'reports' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'reports' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }} className={activeTab === 'reports' ? '' : 'hover-lift'}>
+                <button type="button" onClick={() => setActiveTab('config')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'config' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'config' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}>{t("Cấu hình chung")}</button>
+                <button type="button" onClick={() => setActiveTab('reports')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'reports' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'reports' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'reports' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }}>
                   {t("Data Lỗi & Đền Bù")}
                   {reports.filter(r => r.status === 'pending').length > 0 && (
                     <span style={{ background: 'var(--color-danger)', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: 10 }}>{reports.filter(r => r.status === 'pending').length}</span>
                   )}
                 </button>
-                <button type="button" onClick={() => setActiveTab('active_logs')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'active_logs' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'active_logs' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'active_logs' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }} className={activeTab === 'active_logs' ? '' : 'hover-lift'}>
+                <button type="button" onClick={() => setActiveTab('active_logs')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'active_logs' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'active_logs' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'active_logs' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}>
                   {t("Log bù chủ động")}
                 </button>
               </div>
