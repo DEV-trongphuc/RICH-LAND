@@ -215,7 +215,7 @@ class ActivityController {
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
             LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL
             LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
-            LEFT JOIN projects p ON a.related_type='project' AND a.related_id=p.id AND p.deleted_at IS NULL
+            LEFT JOIN projects p ON a.related_type='project' AND a.related_id=p.id
             LEFT JOIN marketing_campaigns camp ON a.related_type='campaign' AND a.related_id=camp.id
             LEFT JOIN teams t ON a.related_type='team' AND a.related_id=t.id
             WHERE $w ORDER BY a.$sortBy $order
