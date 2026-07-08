@@ -6373,9 +6373,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </tbody>
               </table>
             ) : (
-              <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>
-                <AlertCircle size={32} style={{ margin: '0 auto 10px', display: 'block' }} />
-                <span>{t('Không tìm thấy ticket nào.')}</span>
+              <div style={{ padding: '2rem 1rem' }}>
+                <EmptyCard
+                  icon={<Ticket />}
+                  title={t('Không tìm thấy ticket nào')}
+                  description={t('Hệ thống không tìm thấy bất kỳ Ticket báo lỗi hoặc yêu cầu hỗ trợ nào khớp với bộ lọc hiện tại.')}
+                />
               </div>
             )}
           </div>

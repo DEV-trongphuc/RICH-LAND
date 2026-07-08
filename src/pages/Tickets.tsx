@@ -14,6 +14,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Avatar } from '../components/ui/Avatar';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
+import { EmptyCard } from '../components/ui/EmptyCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -1459,16 +1460,12 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
         {loading ? (
           <TableSkeleton rows={4} cols={5} />
         ) : filteredReports.length === 0 ? (
-          <div style={{ padding: '5rem 2rem', textAlign: 'center' }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-              <CheckCircle size={40} color="#10b981" />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
-              {hasActiveFilters ? t('Không có kết quả phù hợp') : t('Chưa có báo cáo lỗi nào')}
-            </h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto' }}>
-              {hasActiveFilters ? t('Thử thay đổi bộ lọc để tìm kết quả khác.') : t('Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.')}
-            </p>
+          <div style={{ padding: '2rem 1rem' }}>
+            <EmptyCard
+              icon={<TicketIcon />}
+              title={hasActiveFilters ? t('Không tìm thấy ticket nào') : t('Chưa có báo cáo lỗi nào')}
+              description={hasActiveFilters ? t('Hệ thống không tìm thấy bất kỳ Ticket báo lỗi hoặc yêu cầu hỗ trợ nào khớp với bộ lọc hiện tại.') : t('Hệ thống đang hoạt động trơn tru. Các báo cáo lỗi Data từ Sale sẽ hiển thị tại đây.')}
+            />
           </div>
         ) : (
           <>

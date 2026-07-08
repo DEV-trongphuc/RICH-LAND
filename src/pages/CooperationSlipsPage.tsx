@@ -980,7 +980,7 @@ export default function CooperationSlipsPage() {
                         <button
                           onClick={() => handleOpenUpdateShares(slip)}
                           className="btn sm outline"
-                          style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', color: 'var(--color-primary)', borderColor: 'var(--color-primary)', borderRadius: '6px', fontWeight: 600 }}
+                          style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', borderRadius: '6px', fontWeight: 600 }}
                         >
                           {isManager ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
                         </button>

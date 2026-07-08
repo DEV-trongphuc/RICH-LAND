@@ -55,6 +55,20 @@ export const TicketsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
+  const formatSlaDate = (dateStr: any) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('vi-VN');
+  };
+
+  const isSlaOverdue = (dateStr: any) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+    return d.getTime() < now;
+  };
+
   const fetchTickets = async () => {
     if (DEV_MODE) {
       const state = getFilteredMockState();
@@ -262,8 +276,8 @@ export const TicketsPage: React.FC = () => {
                       {TICKET_STATUSES.find(p => p.id === t.status)?.label}
                     </span>
                   </td>
-                  <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600, color: new Date(t.due_date).getTime() < now ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                    {new Date(t.due_date).toLocaleDateString('vi-VN')}
+                  <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600, color: isSlaOverdue(t.due_date) ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                    {formatSlaDate(t.due_date)}
                   </td>
                 </motion.tr>
               ))}
@@ -307,8 +321,8 @@ export const TicketsPage: React.FC = () => {
                       <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem', lineHeight: 1.4 }}>{t.subject}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{t.customer_name}</span>
-                        <span style={{ fontSize: '0.7rem', color: new Date(t.due_date).getTime() < Date.now() ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <Clock size={12} /> {new Date(t.due_date).toLocaleDateString('vi-VN')}
+                        <span style={{ fontSize: '0.7rem', color: isSlaOverdue(t.due_date) ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={12} /> {formatSlaDate(t.due_date)}
                         </span>
                       </div>
                     </motion.div>

@@ -34,6 +34,13 @@ const PRIORITIES = [
 
 export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdate, contacts = [], users = [] }) => {
   const { addToast } = useUIStore();
+
+  const formatSlaDate = (dateStr: any) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('vi-VN');
+  };
   const [formData, setFormData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -253,7 +260,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                   </div>
                   <div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Thời hạn (SLA)</p>
-                    <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14}/> {new Date(formData.due_date).toLocaleDateString('vi-VN')}</p>
+                    <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14}/> {formatSlaDate(formData.due_date)}</p>
                   </div>
                 </div>
 
