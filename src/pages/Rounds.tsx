@@ -14,6 +14,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useAuthStore } from '../store/authStore';
+import { Pagination } from '../components/ui/Pagination';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
@@ -150,6 +151,14 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   // Compensation Modal State
   const [compModalOpen, setCompModalOpen] = useState(false);
 
+  // Pagination States
+  const [roundsPage, setRoundsPage] = useState(1);
+  const [roundsPageSize] = useState(6);
+  const [reportsPage, setReportsPage] = useState(1);
+  const [reportsPageSize] = useState(5);
+  const [activeLogsPage, setActiveLogsPage] = useState(1);
+  const [activeLogsPageSize] = useState(5);
+
   // CC config states
   const [accounts, setAccounts] = useState<any[]>([]);
   const [selectedAdmins, setSelectedAdmins] = useState<string[]>([]);
@@ -209,6 +218,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   useEffect(() => {
     if (isActive) {
+      setRoundsPage(1);
       fetchRounds();
     }
   }, [dateFilter, isActive]);
@@ -719,7 +729,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 onAction={openAddModal}
               />
             </div>
-          ) : rounds.map((r, idx) => {
+          ) : rounds.slice((roundsPage - 1) * roundsPageSize, roundsPage * roundsPageSize).map((r, idx) => {
             const consList = r.consultants ? r.consultants.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
             const consIds = r.consultant_ids ? r.consultant_ids.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
             const compensatedConsultants = [];
@@ -1206,6 +1216,17 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
         </div>
       )}
 
+      {rounds.length > roundsPageSize && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', paddingRight: '0.5rem' }}>
+          <Pagination
+            total={rounds.length}
+            page={roundsPage}
+            pageSize={roundsPageSize}
+            onChange={setRoundsPage}
+          />
+        </div>
+      )}
+
       {/* MODAL */}
       {modalOpen && typeof document !== 'undefined' && createPortal(
         <div className="overlay-backdrop" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>
@@ -1638,7 +1659,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {reports.map(r => {
+                    {reports.slice((reportsPage - 1) * reportsPageSize, reportsPage * reportsPageSize).map(r => {
                       const initials = r.lead_name ? r.lead_name.split(' ').slice(-2).map((w: string) => w[0]).join('').toUpperCase() : '?';
                       return (
                         <div key={r.id} className="compensation-report-row">
@@ -1778,6 +1799,16 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                         </div>
                       );
                     })}
+                    {reports.length > reportsPageSize && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem', paddingRight: '0.25rem' }}>
+                        <Pagination
+                          total={reports.length}
+                          page={reportsPage}
+                          pageSize={reportsPageSize}
+                          onChange={setReportsPage}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1793,7 +1824,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {activeLogs.map(log => {
+                    {activeLogs.slice((activeLogsPage - 1) * activeLogsPageSize, activeLogsPage * activeLogsPageSize).map(log => {
                       return (
                         <div 
                           key={log.id} 
@@ -1880,6 +1911,16 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                         </div>
                       );
                     })}
+                    {activeLogs.length > activeLogsPageSize && (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem', paddingRight: '0.25rem' }}>
+                        <Pagination
+                          total={activeLogs.length}
+                          page={activeLogsPage}
+                          pageSize={activeLogsPageSize}
+                          onChange={setActiveLogsPage}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
