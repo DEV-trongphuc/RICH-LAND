@@ -19,7 +19,7 @@ import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
-  PieChart, Pie, Cell
+  PieChart, Pie, Cell, LabelList
 } from 'recharts';
 import toast from 'react-hot-toast';
 import { useUIStore } from '../store/uiStore';
@@ -10573,6 +10573,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         }}
                       />
                       <Bar dataKey="calls" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                        <LabelList dataKey="calls" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} />
                         {modalChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--color-primary)' : '#10b981'} />
                         ))}
