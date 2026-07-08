@@ -3529,14 +3529,6 @@ export default function ProjectsPage() {
       projectModalMode === 'view' ? undefined : (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button
-            type="button"
-            className="btn secondary sm"
-            style={{ borderRadius: '100px', fontWeight: 700 }}
-            onClick={() => setIsEditModalOpen(false)}
-          >
-            Hủy
-          </button>
-          <button
             type="submit"
             form="project-form"
             className="btn primary sm"
@@ -4469,14 +4461,6 @@ export default function ProjectsPage() {
       '850px',
       campaignModalMode === 'view' ? undefined : (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button
-            type="button"
-            className="btn secondary sm"
-            style={{ borderRadius: '100px', fontWeight: 700 }}
-            onClick={() => setIsCampaignModalOpen(false)}
-          >
-            Hủy
-          </button>
           <button
             type="submit"
             form="campaign-form"
