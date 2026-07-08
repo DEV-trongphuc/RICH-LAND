@@ -45,6 +45,12 @@ CREATE TABLE IF NOT EXISTS `users` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `team_id` int(11) DEFAULT NULL,
+  `dob` date DEFAULT NULL,
+  `gender` varchar(20) DEFAULT NULL,
+  `citizen_id` varchar(50) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `bank_name` varchar(150) DEFAULT NULL,
+  `bank_account` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -55,7 +61,9 @@ CREATE TABLE IF NOT EXISTS `teams` (
   `tenant_id` int(11) NOT NULL DEFAULT 1,
   `name` varchar(255) NOT NULL,
   `leader_id` int(11) NOT NULL,
+  `branch` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   FOREIGN KEY (`leader_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
@@ -222,10 +230,12 @@ CREATE TABLE IF NOT EXISTS `leads` (
   `status` varchar(50) DEFAULT 'active',
   `ai_screener_status` varchar(50) DEFAULT 'not_screened',
   `ai_evaluation` text DEFAULT NULL,
+  `connection_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  INDEX `idx_connection_id` (`connection_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. Table: lead_offers (Module 2 - 2 Minute Timeout Lead Offer Queue)

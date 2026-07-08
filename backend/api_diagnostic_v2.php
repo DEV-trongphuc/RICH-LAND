@@ -102,4 +102,9 @@ if ($action === 'run_permission_tests') {
     exit;
 }
 
-echo json_encode(['success' => true, 'message' => 'Diagnostic endpoint active. Use action=query, action=schema, action=run_tests, or action=run_permission_tests.']);
+if ($action === 'reset_db') {
+    require_once __DIR__ . '/run_reset_db.php';
+    exit;
+}
+
+echo json_encode(['success' => true, 'message' => 'Diagnostic endpoint active. Use action=query, action=schema, action=run_tests, action=run_permission_tests, or action=reset_db.']);

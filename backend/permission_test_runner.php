@@ -364,7 +364,7 @@ try {
     assertPermTest(
         "Manager: get_consultants should only return team members",
         $hasS1 && !$hasS2,
-        "Has S1: " . ($hasS1 ? 'Yes' : 'No') . ", Has S2: " . ($hasS2 ? 'Yes' : 'No')
+        "Has S1: " . ($hasS1 ? 'Yes' : 'No') . ", Has S2: " . ($hasS2 ? 'Yes' : 'No') . ", Response: " . json_encode($resConsultants, JSON_UNESCAPED_UNICODE)
     );
 
     // Create data reports (tickets)
