@@ -169,6 +169,9 @@ export const ContactsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300); // 300ms debounce
+  const [pageSize, setPageSize] = useState<number>(() => {
+    return Number(localStorage.getItem('richland_contacts_page_size')) || 10;
+  });
 
   const [searchParams, setSearchParams] = useSearchParams();
   const openContactId = searchParams.get('open_contact_id');
@@ -417,7 +420,7 @@ export const ContactsPage: React.FC = () => {
     try {
       const params: any = { 
         page, 
-        limit: PAGE_SIZE, 
+        limit: pageSize, 
         search: debouncedSearch, 
         sort: sortBy === 'score_desc' ? 'lead_score' : (sortBy === 'deal_desc' ? 'open_deal_value' : 'created_at'),
         order: 'DESC'
@@ -482,7 +485,7 @@ export const ContactsPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [page, debouncedSearch, sortBy, activeFilters, users, teams]);
+  }, [page, pageSize, debouncedSearch, sortBy, activeFilters, users, teams]);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -1496,7 +1499,18 @@ export const ContactsPage: React.FC = () => {
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '1rem', width: '100%' }}>
-            <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+            <Pagination
+              total={total}
+              page={page}
+              pageSize={pageSize}
+              onChange={setPage}
+              showSizeChanger
+              onPageSizeChange={size => {
+                setPageSize(size);
+                localStorage.setItem('richland_contacts_page_size', String(size));
+                setPage(1);
+              }}
+            />
           </div>
         </div>
       )}

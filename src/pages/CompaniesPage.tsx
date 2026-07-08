@@ -36,6 +36,9 @@ export const CompaniesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
   const [page, setPage] = useState(1);
   const [showImportExport, setShowImportExport] = useState(false);
+  const [pageSize, setPageSize] = useState<number>(() => {
+    return Number(localStorage.getItem('richland_companies_page_size')) || 10;
+  });
 
   const fetchCompanies = useCallback(async () => {
     if (DEV_MODE) {
@@ -59,7 +62,7 @@ export const CompaniesPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const params: any = { page, limit: PAGE_SIZE };
+      const params: any = { page, limit: pageSize };
       if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter) params.status = statusFilter;
       
@@ -74,7 +77,7 @@ export const CompaniesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, statusFilter]);
+  }, [page, pageSize, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchCompanies();
@@ -321,9 +324,20 @@ export const CompaniesPage: React.FC = () => {
           )}
         </div>
       )}
-      {!loading && viewMode === 'card' && companies.length > PAGE_SIZE && (
+      {!loading && viewMode === 'card' && total > pageSize && (
         <div className="card" style={{ marginTop: '1rem' }}>
-          <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onChange={setPage}
+            showSizeChanger
+            onPageSizeChange={size => {
+              setPageSize(size);
+              localStorage.setItem('richland_companies_page_size', String(size));
+              setPage(1);
+            }}
+          />
         </div>
       )}
 
@@ -409,9 +423,20 @@ export const CompaniesPage: React.FC = () => {
           </div>
         </div>
       )}
-      {!loading && viewMode === 'list' && (
+      {!loading && viewMode === 'list' && total > pageSize && (
         <div className="card" style={{ marginTop: '0.25rem' }}>
-          <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onChange={setPage}
+            showSizeChanger
+            onPageSizeChange={size => {
+              setPageSize(size);
+              localStorage.setItem('richland_companies_page_size', String(size));
+              setPage(1);
+            }}
+          />
         </div>
       )}
 

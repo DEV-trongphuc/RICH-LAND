@@ -122,7 +122,9 @@ export const DealsPage: React.FC = () => {
   const [targetStageId, setTargetStageId] = useState<string>('');
   
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
+  const [limit, setLimit] = useState<number>(() => {
+    return Number(localStorage.getItem('richland_deals_page_size')) || 20;
+  });
   const [total, setTotal] = useState(0);
 
   const filteredItems = useMemo(() => {
@@ -1141,7 +1143,18 @@ export const DealsPage: React.FC = () => {
           
           {/* Pagination Controls */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '1rem', borderTop: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)', width: '100%' }}>
-            <Pagination total={total} page={page} pageSize={limit} onChange={setPage} />
+            <Pagination
+              total={total}
+              page={page}
+              pageSize={limit}
+              onChange={setPage}
+              showSizeChanger
+              onPageSizeChange={size => {
+                setLimit(size);
+                localStorage.setItem('richland_deals_page_size', String(size));
+                setPage(1);
+              }}
+            />
           </div>
         </div>
       )}
