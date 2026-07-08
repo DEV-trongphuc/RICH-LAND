@@ -32,6 +32,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { Pagination } from '../components/ui/Pagination';
 import { TableSkeleton, StatRowSkeleton, CalendarSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { FairShareAudit } from './FairShareAudit';
@@ -349,6 +350,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [wsRelatedType, setWsRelatedType] = useState('');
   const [teamsList, setTeamsList] = useState<any[]>([]);
   const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([]);
+  const [wsTasksPage, setWsTasksPage] = useState(1);
+  const [wsTasksPageSize, setWsTasksPageSize] = useState(12);
+
+  useEffect(() => {
+    setWsTasksPage(1);
+  }, [wsSearch, wsPriority, wsStatus, wsDatePreset, wsSubTab, wsTeamSubFilter, wsTaskFilter, wsActivityType, wsRelatedType]);
 
   useEffect(() => {
     const isFocus = wsViewMode === 'focus';
@@ -459,6 +466,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       );
     });
   }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser]);
+
+  const paginatedWsTasks = useMemo(() => {
+    const startIndex = (wsTasksPage - 1) * wsTasksPageSize;
+    return filteredWsTasks.slice(startIndex, startIndex + wsTasksPageSize);
+  }, [filteredWsTasks, wsTasksPage, wsTasksPageSize]);
+
   const [loadingWsTasks, setLoadingWsTasks] = useState(false);
   const [wsContacts, setWsContacts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -1017,7 +1030,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (!token) return;
     setLoadingWsTasks(true);
     try {
-      let url = '/activities?limit=100';
+      let url = '/activities?limit=5000';
       if (wsActivityType && wsActivityType !== 'all') {
         url += `&type=${wsActivityType}`;
       }
@@ -3807,8 +3820,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Không tìm thấy công việc nào phù hợp với bộ lọc.</p>
           </div>
         ) : wsViewMode === 'grid' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
-            {filteredWsTasks.map(task => {
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+            {paginatedWsTasks.map(task => {
               const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
               const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
               
@@ -4067,7 +4081,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               );
             })}
-          </div>
+            </div>
+            {filteredWsTasks.length > wsTasksPageSize && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                <Pagination
+                  total={filteredWsTasks.length}
+                  page={wsTasksPage}
+                  pageSize={wsTasksPageSize}
+                  onChange={setWsTasksPage}
+                />
+              </div>
+            )}
+          </>
         ) : wsViewMode === 'kanban' ? (
           /* Kanban View */
           <>
@@ -4125,7 +4150,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                     {/* Tasks List */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', flex: 1, overflowY: 'auto', maxHeight: '600px' }}>
-                      {columnTasks.map(task => {
+                      {columnTasks.slice(0, 30).map(task => {
                         const isOverdue = task.due_date && new Date(task.due_date) < new Date(new Date().setHours(0,0,0,0));
                         const isToday = task.due_date && new Date(task.due_date).toDateString() === new Date().toDateString();
                         
@@ -4416,6 +4441,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </div>
                         );
                       })}
+                      {columnTasks.length > 30 && (
+                        <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: '8px', border: '1px dashed var(--color-border-light)', margin: '0.5rem' }}>
+                          {t('Hiển thị 30 / {total} công việc. Hãy dùng tìm kiếm/bộ lọc để tìm các công việc khác.').replace('{total}', String(columnTasks.length))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -4551,7 +4581,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', padding: '0.5rem', gap: '0.5rem' }}>
-                {filteredWsTasks.map(task => {
+                {filteredWsTasks.slice(0, 50).map(task => {
                   const isSelected = selectedTaskForDetails?.id === task.id;
                   return (
                     <div
@@ -4640,6 +4670,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
                   );
                 })}
+                {filteredWsTasks.length > 50 && (
+                  <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: '8px', border: '1px dashed var(--color-border-light)', margin: '0.5rem' }}>
+                    {t('Hiển thị 50 / {total} công việc. Hãy dùng tìm kiếm/bộ lọc để tìm các công việc khác.').replace('{total}', String(filteredWsTasks.length))}
+                  </div>
+                )}
               </div>
             </div>
 
