@@ -415,6 +415,8 @@ export default function ProjectsPage() {
   const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
   const [projectDocs, setProjectDocs] = useState<ProjectDoc[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [editingDocKey, setEditingDocKey] = useState<string | null>(null);
+  const [editDocNameVal, setEditDocNameVal] = useState<string>('');
 
   const [campaignRosters, setCampaignRosters] = useState<Record<number, any[]>>({});
   const [campaignRostersLoading, setCampaignRostersLoading] = useState(false);
@@ -1048,7 +1050,7 @@ export default function ProjectsPage() {
                                 rel="noopener noreferrer"
                                 style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
                               >
-                                <FileText size={14} style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 45)}
+                                <FileText size={14} style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 75)}
                               </a>
                             );
                           })
@@ -2140,6 +2142,47 @@ export default function ProjectsPage() {
     });
   };
 
+  const handleRenameDoc = (doc: any) => {
+    setEditingDocKey(`${doc.isLinkedOnly ? 'link' : 'direct'}-${doc.id}`);
+    setEditDocNameVal(doc.name);
+  };
+
+  const handleSaveRenameDoc = async (doc: any) => {
+    if (!editDocNameVal || editDocNameVal.trim() === '' || editDocNameVal === doc.name) {
+      setEditingDocKey(null);
+      return;
+    }
+
+    try {
+      let res;
+      if (doc.isLinkedOnly) {
+        res = await fetchAPI(`cloud-files/${doc.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: editDocNameVal.trim() })
+        });
+      } else {
+        res = await fetchAPI(`projects/${selectedProjectId}/documents/${doc.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: editDocNameVal.trim() })
+        });
+      }
+
+      if (res.success) {
+        addToast('Đổi tên tài liệu thành công!', 'success');
+        setEditingDocKey(null);
+        if (selectedProjectId) {
+          loadDocuments(selectedProjectId);
+        }
+        loadAllFiles();
+        loadProjects();
+      } else {
+        addToast(res.message || 'Lỗi đổi tên tài liệu', 'error');
+      }
+    } catch (e: any) {
+      addToast(e.message || 'Lỗi kết nối', 'error');
+    }
+  };
+
   const handleDownloadDoc = (docId: number) => {
     if (!selectedProjectId) return;
     const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
@@ -2438,7 +2481,7 @@ export default function ProjectsPage() {
                                       onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                                       onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
                                     >
-                                      • {formatFileName(fileObj.name)}
+                                      • {formatFileName(fileObj.name, 50)}
                                     </a>
                                   ))}
                                   {extraCount > 0 && (
@@ -3012,7 +3055,7 @@ export default function ProjectsPage() {
                               rel="noopener noreferrer"
                               style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
                             >
-                              <FileText size={14} style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 45)}
+                              <FileText size={14} style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 75)}
                             </a>
                           );
                         })
@@ -3729,49 +3772,103 @@ export default function ProjectsPage() {
                       }}
                     >
                       <div style={{ flex: 1, marginRight: '1rem', minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatFileName(doc.name, 35)}</h4>
-                          {doc.isLinkedOnly ? (
-                            <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              Tệp liên kết
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              Tệp tải lên
-                            </span>
-                          )}
-                        </div>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                          {doc.uploaded_by_name} • {(doc.file_size / 1024 / 1024).toFixed(2)} MB • {new Date(doc.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button
-                          onClick={() => {
-                            if (doc.isLinkedOnly) {
-                              const url = `${import.meta.env.VITE_API_URL || '/backend'}/${doc.file_path}`;
-                              window.open(url, '_blank');
-                            } else {
-                              handleDownloadDoc(doc.id);
-                            }
-                          }}
-                          className="btn secondary sm"
-                          style={{ minWidth: 'auto', padding: '0 0.5rem' }}
-                          title="Tải xuống / Mở"
-                        >
-                          <Download size={14} />
-                        </button>
-                        {isAdmin && !doc.isLinkedOnly && (
-                          <button
-                            onClick={() => handleDeleteDoc(doc.id)}
-                            className="btn danger sm"
-                            style={{ minWidth: 'auto', padding: '0 0.5rem', backgroundColor: 'var(--color-red-light)', borderColor: 'var(--color-red-light)', color: 'var(--color-red)' }}
-                            title="Xóa"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                        {editingDocKey === `${doc.isLinkedOnly ? 'link' : 'direct'}-${doc.id}` ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={editDocNameVal}
+                              onChange={e => setEditDocNameVal(e.target.value)}
+                              style={{
+                                fontSize: '0.875rem',
+                                padding: '4px 8px',
+                                height: '32px',
+                                borderRadius: '6px',
+                                width: '100%',
+                                maxWidth: '380px'
+                              }}
+                              autoFocus
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleSaveRenameDoc(doc);
+                                if (e.key === 'Escape') setEditingDocKey(null);
+                              }}
+                            />
+                            <button
+                              onClick={() => handleSaveRenameDoc(doc)}
+                              className="btn success sm"
+                              style={{ minWidth: 'auto', padding: '0 0.5rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#10b981', color: '#fff', border: 'none', borderRadius: '6px' }}
+                              title="Lưu"
+                            >
+                              <Check size={14} />
+                            </button>
+                            <button
+                              onClick={() => setEditingDocKey(null)}
+                              className="btn secondary sm"
+                              style={{ minWidth: 'auto', padding: '0 0.5rem', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px' }}
+                              title="Hủy"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={doc.name}>
+                                {formatFileName(doc.name, 75)}
+                              </h4>
+                              {doc.isLinkedOnly ? (
+                                <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                  Tệp liên kết
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                  Tệp tải lên
+                                </span>
+                              )}
+                            </div>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                              {doc.uploaded_by_name} • {(doc.file_size / 1024 / 1024).toFixed(2)} MB • {new Date(doc.created_at).toLocaleDateString()}
+                            </p>
+                          </>
                         )}
                       </div>
+                      {editingDocKey !== `${doc.isLinkedOnly ? 'link' : 'direct'}-${doc.id}` && (
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => handleRenameDoc(doc)}
+                            className="btn secondary sm"
+                            style={{ minWidth: 'auto', padding: '0 0.5rem' }}
+                            title="Đổi tên"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (doc.isLinkedOnly) {
+                                const url = `${import.meta.env.VITE_API_URL || '/backend'}/${doc.file_path}`;
+                                window.open(url, '_blank');
+                              } else {
+                                handleDownloadDoc(doc.id);
+                              }
+                            }}
+                            className="btn secondary sm"
+                            style={{ minWidth: 'auto', padding: '0 0.5rem' }}
+                            title="Tải xuống / Mở"
+                          >
+                            <Download size={14} />
+                          </button>
+                          {isAdmin && !doc.isLinkedOnly && (
+                            <button
+                              onClick={() => handleDeleteDoc(doc.id)}
+                              className="btn danger sm"
+                              style={{ minWidth: 'auto', padding: '0 0.5rem', backgroundColor: 'var(--color-red-light)', borderColor: 'var(--color-red-light)', color: 'var(--color-red)' }}
+                              title="Xóa"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

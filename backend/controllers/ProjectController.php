@@ -429,6 +429,32 @@ class ProjectController {
         respond(200, null, 'Xóa tài liệu dự án thành công');
     }
 
+    public function updateDocument(array $auth, int $projectId, int $docId): void {
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        $this->requireProjectAccess($auth, $projectId);
+
+        $b = getRequestBody();
+        $name = trim($b['name'] ?? '');
+        if (empty($name)) {
+            respond(400, null, 'Tên tệp không được để trống', false);
+        }
+
+        // Fetch document info
+        $stmtDoc = $this->db->prepare("SELECT name FROM project_documents WHERE id = ? AND project_id = ?");
+        $stmtDoc->execute([$docId, $projectId]);
+        $oldName = $stmtDoc->fetchColumn();
+
+        if (!$oldName) {
+            respond(404, null, 'Tài liệu không tồn tại', false);
+        }
+
+        $stmt = $this->db->prepare("UPDATE project_documents SET name = ? WHERE id = ? AND project_id = ?");
+        $stmt->execute([$name, $docId, $projectId]);
+
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT_DOC', 'project_document', $docId, "Đổi tên tài liệu từ '$oldName' thành '$name'");
+        respond(200, null, 'Đổi tên tài liệu thành công');
+    }
+
     public function downloadDocument(array $auth, int $projectId, int $docId): void {
         $this->requireProjectAccess($auth, $projectId);
 
