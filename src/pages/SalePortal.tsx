@@ -3771,8 +3771,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <span>Manager:</span>
                         {leaderUser ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Avatar src={leaderUser.avatar} name={leaderUser.name} size={18} />
-                            <strong style={{ color: 'var(--color-text)' }}>{leaderUser.name}</strong>
+                            <Avatar src={leaderUser.avatar_url || leaderUser.avatar} name={leaderUser.full_name || leaderUser.username || leaderUser.name} size={18} />
+                            <strong style={{ color: 'var(--color-text)' }}>{leaderUser.full_name || leaderUser.username || leaderUser.name}</strong>
                           </div>
                         ) : (
                           <strong style={{ color: 'var(--color-text)' }}>{team.leader_name || t('Chưa gán')}</strong>
@@ -3794,8 +3794,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                             }}
                           >
                             <Avatar
-                              src={member.avatar}
-                              name={member.name}
+                              src={member.avatar_url || member.avatar}
+                              name={member.full_name || member.username || member.name}
                               size={24}
                               style={{ border: '2px solid var(--color-surface)' }}
                             />
