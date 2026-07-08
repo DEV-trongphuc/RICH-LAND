@@ -17,7 +17,7 @@ import confetti from 'canvas-confetti';
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
 import {
-  Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
   PieChart, Pie, Cell
 } from 'recharts';
@@ -341,6 +341,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [modalCalls, setModalCalls] = useState<any[]>([]);
   const [loadingModalCalls, setLoadingModalCalls] = useState(false);
   const [callsSearch, setCallsSearch] = useState('');
+  const [callsModalTab, setCallsModalTab] = useState<'chart' | 'detail'>('detail');
+  const [callsModalPage, setCallsModalPage] = useState(1);
+  const [callsModalPageSize] = useState(5);
   const [wsStartDate, setWsStartDate] = useState('');
   const [wsEndDate, setWsEndDate] = useState('');
   const [wsTasks, setWsTasks] = useState<any[]>([]);
@@ -998,6 +1001,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const handleOpenCallsModal = async () => {
     setShowCallsModal(true);
+    setCallsModalTab('detail');
+    setCallsModalPage(1);
     setLoadingModalCalls(true);
     setCallsSearch('');
     try {
@@ -1007,11 +1012,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         start = p7.start;
         end = p7.end;
       }
-      let url = '/activities?type=call&status=done&limit=100';
+      let url = '/activities?type=call&status=done&limit=1000';
       if (start) url += `&start_date=${start}`;
       if (end) url += `&end_date=${end}`;
-      if (wsUserId) url += `&user_id=${wsUserId}`;
-      else url += `&user_id=${user?.id}`;
+      
+      // If user is Admin/Manager, load team calls; if Sale, load their own calls
+      const isManager = currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase());
+      if (wsUserId) {
+        url += `&user_id=${wsUserId}`;
+      } else if (!isManager) {
+        url += `&user_id=${currentUser?.id || user?.id}`;
+      }
 
       const res = await api.get(url);
       if (res.data && res.data.data) {
@@ -1025,6 +1036,56 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       setLoadingModalCalls(false);
     }
   };
+
+  const modalChartData = useMemo(() => {
+    if (!modalCalls || modalCalls.length === 0) return [];
+    const isManager = currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase());
+    
+    if (isManager) {
+      const counts: Record<string, number> = {};
+      modalCalls.forEach((call: any) => {
+        const name = call.user_name || currentUser?.name || 'Tư vấn viên';
+        counts[name] = (counts[name] || 0) + 1;
+      });
+      return Object.entries(counts).map(([name, total]) => ({
+        name,
+        calls: total
+      })).sort((a, b) => b.calls - a.calls);
+    } else {
+      const counts: Record<string, number> = {};
+      modalCalls.forEach((call: any) => {
+        if (call.due_date) {
+          const dateStr = call.due_date.slice(0, 10);
+          counts[dateStr] = (counts[dateStr] || 0) + 1;
+        }
+      });
+      return Object.entries(counts).map(([name, total]) => ({
+        name,
+        calls: total
+      })).sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }, [modalCalls, currentUser]);
+
+  const filteredCalls = useMemo(() => {
+    const s = callsSearch.toLowerCase();
+    return modalCalls.filter(c => {
+      return (
+        (c.subject || '').toLowerCase().includes(s) ||
+        (c.body || '').toLowerCase().includes(s) ||
+        (c.contact_name || '').toLowerCase().includes(s) ||
+        (c.user_name || '').toLowerCase().includes(s)
+      );
+    });
+  }, [modalCalls, callsSearch]);
+
+  const paginatedCalls = useMemo(() => {
+    const startIndex = (callsModalPage - 1) * callsModalPageSize;
+    return filteredCalls.slice(startIndex, startIndex + callsModalPageSize);
+  }, [filteredCalls, callsModalPage, callsModalPageSize]);
+
+  useEffect(() => {
+    setCallsModalPage(1);
+  }, [callsSearch]);
 
   const fetchWorkspaceTasks = async () => {
     if (!token) return;
@@ -10448,47 +10509,102 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           title={`${t('Danh sách cuộc gọi')} (${modalCalls.length})`}
           width="680px"
         >
-          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '550px', overflowY: 'auto' }}>
-            <div style={{ position: 'relative' }}>
-              <input
-                className="form-input"
-                style={{ paddingLeft: '2.25rem', height: '38px', borderRadius: '10px' }}
-                value={callsSearch}
-                onChange={e => setCallsSearch(e.target.value)}
-                placeholder={t('Tìm theo tên khách hàng, nội dung cuộc gọi...')}
-              />
-              <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+          <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '400px', maxHeight: '650px' }}>
+            {/* Subtabs */}
+            <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', width: 'fit-content', gap: '4px', alignSelf: 'center' }}>
+              <button 
+                type="button" 
+                onClick={() => setCallsModalTab('detail')} 
+                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: callsModalTab === 'detail' ? 'var(--color-surface)' : 'transparent', color: callsModalTab === 'detail' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: callsModalTab === 'detail' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                {t("Chi tiết")}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setCallsModalTab('chart')} 
+                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: callsModalTab === 'chart' ? 'var(--color-surface)' : 'transparent', color: callsModalTab === 'chart' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: callsModalTab === 'chart' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                {t("Biểu đồ thống cụ")}
+              </button>
             </div>
 
             {loadingModalCalls ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '1rem' }}>
                 <StatRowSkeleton />
                 <StatRowSkeleton />
                 <StatRowSkeleton />
               </div>
+            ) : callsModalTab === 'chart' ? (
+              /* Chart Tab */
+              <div style={{ height: 320, padding: '1rem' }}>
+                {modalChartData.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
+                    <Phone size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                    <span style={{ fontSize: '0.875rem' }}>{t('Chưa có cuộc gọi nào để vẽ biểu đồ.')}</span>
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={modalChartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} 
+                        axisLine={false} 
+                        tickLine={false} 
+                      />
+                      <YAxis 
+                        tick={{ fill: 'var(--color-text-muted)', fontSize: 10 }} 
+                        axisLine={false} 
+                        tickLine={false} 
+                        allowDecimals={false}
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', padding: '8px 12px', borderRadius: '8px', boxShadow: 'var(--shadow-md)' }}>
+                                <p style={{ margin: 0, fontWeight: 700, fontSize: '0.8125rem', color: 'var(--color-text)' }}>{data.name}</p>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 600 }}>
+                                  {t('Số cuộc gọi:')} <span style={{ fontWeight: 800 }}>{data.calls}</span>
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="calls" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                        {modalChartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--color-primary)' : '#10b981'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
             ) : (
-              (() => {
-                const filteredCalls = modalCalls.filter(c => {
-                  const s = callsSearch.toLowerCase();
-                  return (
-                    (c.subject || '').toLowerCase().includes(s) ||
-                    (c.body || '').toLowerCase().includes(s) ||
-                    (c.contact_name || '').toLowerCase().includes(s)
-                  );
-                });
+              /* Detail Tab */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, overflow: 'hidden' }}>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    className="form-input"
+                    style={{ paddingLeft: '2.25rem', height: '38px', borderRadius: '10px' }}
+                    value={callsSearch}
+                    onChange={e => setCallsSearch(e.target.value)}
+                    placeholder={t('Tìm theo tên khách hàng, nội dung cuộc gọi...')}
+                  />
+                  <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                </div>
 
-                if (filteredCalls.length === 0) {
-                  return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
+                  {paginatedCalls.length === 0 ? (
                     <div style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                       <Phone size={36} style={{ marginBottom: '8px', opacity: 0.5, marginLeft: 'auto', marginRight: 'auto' }} />
                       <p>{t('Không tìm thấy cuộc gọi nào phù hợp.')}</p>
                     </div>
-                  );
-                }
-
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {filteredCalls.map(call => (
+                  ) : (
+                    paginatedCalls.map(call => (
                       <div 
                         key={call.id}
                         style={{
@@ -10559,10 +10675,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           )}
                         </div>
                       </div>
-                    ))}
+                    ))
+                  )}
+                </div>
+
+                {filteredCalls.length > callsModalPageSize && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                    <Pagination
+                      total={filteredCalls.length}
+                      page={callsModalPage}
+                      pageSize={callsModalPageSize}
+                      onChange={setCallsModalPage}
+                    />
                   </div>
-                );
-              })()
+                )}
+              </div>
             )}
           </div>
         </CustomModal>

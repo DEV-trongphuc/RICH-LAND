@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, CheckCircle2, Clock, Phone, Mail, Users, Calendar, AlignLeft, X, Loader2, Pencil, Trash2, RefreshCw, Link2, Search, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
