@@ -252,8 +252,8 @@ try {
 
     // Seed Persons (Thông tin liên hệ gốc)
     $personsData = [
-        ['name' => 'Hoàng Kim Long', 'phone' => '0912345678', 'email' => 'long.hoang@gmail.com'],
-        ['name' => 'Đặng Thu Thảo', 'phone' => '0987654321', 'email' => 'thao.dang@gmail.com'],
+        ['name' => 'Hoàng Kim Long', 'phone' => '0909998888', 'email' => 'long.hoang@gmail.com'],
+        ['name' => 'Đặng Thu Thảo', 'phone' => '0907776666', 'email' => 'thao.dang@gmail.com'],
         ['name' => 'Nguyễn Quốc Cường', 'phone' => '0901234567', 'email' => 'cuong.nguyen@gmail.com']
     ];
     $personIds = [];
@@ -271,12 +271,12 @@ try {
     
     // Contact 1: Qualified / Tu Van
     $conn->query("INSERT INTO contacts (tenant_id, person_id, first_name, last_name, email, phone, owner_id, status, pipeline_status, temperature, source) 
-                 VALUES (1, {$personIds['Hoàng Kim Long']}, 'Hoàng', 'Kim Long', 'long.hoang@gmail.com', '0912345678', $namId, 'qualified', 'tu_van', 'hot', 'FB ads')");
+                 VALUES (1, {$personIds['Hoàng Kim Long']}, 'Hoàng', 'Kim Long', 'long.hoang@gmail.com', '0909998888', $namId, 'qualified', 'tu_van', 'hot', 'FB ads')");
     $contactLongId = $conn->insert_id;
 
     // Contact 2: Customer / Dat coc
     $conn->query("INSERT INTO contacts (tenant_id, person_id, first_name, last_name, email, phone, owner_id, status, pipeline_status, temperature, source) 
-                 VALUES (1, {$personIds['Đặng Thu Thảo']}, 'Đặng', 'Thu Thảo', 'thao.dang@gmail.com', '0987654321', $namId, 'customer', 'dat_coc', 'warm', 'Zalo')");
+                 VALUES (1, {$personIds['Đặng Thu Thảo']}, 'Đặng', 'Thu Thảo', 'thao.dang@gmail.com', '0907776666', $namId, 'customer', 'dat_coc', 'warm', 'Zalo')");
     $contactThaoId = $conn->insert_id;
 
     // Contact 3: Customer / Dong deal
@@ -337,7 +337,7 @@ try {
 
     // Seed Tickets (Báo lỗi data & Hỗ trợ)
     $conn->query("INSERT INTO tickets (tenant_id, contact_id, created_by, assignee_id, subject, customer_name, description, status, priority) 
-                 VALUES (1, $contactLongId, $namId, $managerId, 'Trùng số điện thoại khách hàng Long', 'Hoàng Kim Long', 'Số điện thoại 0912345678 đã có trong hệ thống từ trước.', 'open', 'high')");
+                 VALUES (1, $contactLongId, $namId, $managerId, 'Trùng số điện thoại khách hàng Long', 'Hoàng Kim Long', 'Số điện thoại 0909998888 đã có trong hệ thống từ trước.', 'open', 'high')");
     $conn->query("INSERT INTO tickets (tenant_id, contact_id, created_by, assignee_id, subject, customer_name, description, status, priority) 
                  VALUES (1, $contactThaoId, $namId, $managerId, 'Yêu cầu đổi phương án vay ngân hàng', 'Đặng Thu Thảo', 'Khách hàng muốn chuyển từ gói vay Techcombank sang Vietcombank.', 'in_progress', 'medium')");
     echo "   - Created Tickets (Data & Support)\n";
@@ -393,6 +393,128 @@ try {
         $stmtC->close();
     }
     echo "   - Seeded Public Persons & Contacts in Databank\n";
+
+    // Seed Leads (Kho Data)
+    $conn->query("INSERT INTO leads (phone, email, name, source, type, status, connection_id) 
+                 VALUES ('0909998888', 'long.hoang@gmail.com', 'Hoàng Kim Long', 'Google Ads', 'import', 'assigned', 1)");
+    $lead1Id = $conn->insert_id ?: 1;
+    $conn->query("INSERT INTO leads (phone, email, name, source, type, status, connection_id) 
+                 VALUES ('0907776666', 'thao.dang@yahoo.com', 'Đặng Thu Thảo', 'Facebook Lead', 'sync', 'assigned', 1)");
+    $lead2Id = $conn->insert_id ?: 2;
+    echo "   - Seeded Leads (Kho Data)\n";
+
+    // Seed Distribution Logs (Nhật ký phân bổ)
+    $conn->query("INSERT INTO distribution_logs (lead_id, round_id, assigned_to, status, received_at) 
+                 VALUES ($lead1Id, 1, $namId, 'assigned', NOW())");
+    $conn->query("INSERT INTO distribution_logs (lead_id, round_id, assigned_to, status, received_at) 
+                 VALUES ($lead2Id, 1, $maiId, 'assigned', NOW())");
+    echo "   - Seeded Distribution Logs\n";
+
+    // Seed Data Reports (Ticket báo lỗi)
+    $conn->query("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status, created_at) 
+                 VALUES ($lead1Id, $namId, 1, 'Sai số điện thoại / Số ảo', 'pending', NOW())");
+    echo "   - Seeded Data Reports\n";
+
+    // Seed Login Attempts (Lịch sử đăng nhập)
+    $conn->query("INSERT INTO login_attempts (email, ip_address, attempt_time, is_successful) 
+                 VALUES ('admin@richland.vn', '127.0.0.1', NOW(), 1)");
+    echo "   - Seeded Login Attempts\n";
+
+    // Seed Notifications (Thông báo)
+    $conn->query("INSERT INTO notifications (user_id, tenant_id, title, body, is_read, created_at) 
+                 VALUES ($namId, 1, 'Lead Mới Được Phân Phối', 'Bạn nhận được khách hàng Đặng Thu Thảo từ vòng xoay.', 0, NOW())");
+    echo "   - Seeded Notifications\n";
+
+    // Seed Custom Fields (Trường tùy chỉnh)
+    $conn->query("INSERT INTO custom_fields (tenant_id, entity_type, field_key, label, field_type) 
+                 VALUES (1, 'contact', 'finance_source', 'Nguồn tài chính dự kiến', 'text')");
+    $cfId = $conn->insert_id ?: 1;
+    $conn->query("INSERT INTO custom_field_values (custom_field_id, entity_id, value_text) 
+                 VALUES ($cfId, 1, 'Vay ngân hàng 70%')");
+    echo "   - Seeded Custom Fields & Values\n";
+
+    // Seed Sheet Connections (Liên kết trang tính Google Sheets)
+    $conn->query("INSERT INTO sheet_connections (sheet_name, spreadsheet_id, webhook_token, is_active) 
+                 VALUES ('Google Sheet Đăng Ký Vũ Yên', '1abc123xyz', 'token_sheet_connection_001', 1)");
+    echo "   - Seeded Sheet Connections\n";
+
+    // Seed Routing Rules (Quy tắc phân bổ nâng cao)
+    $conn->query("INSERT INTO routing_rules (connection_id, target_round_id, condition_column, condition_value, priority) 
+                 VALUES ('1', 1, 'province', 'Hải Phòng', 1)");
+    echo "   - Seeded Routing Rules\n";
+
+    // Seed Workflows & Templates (Quy trình tiến độ)
+    $conn->query("INSERT INTO workflows (tenant_id, name, trigger_type, actions, is_active, created_by) 
+                 VALUES (1, 'Chăm sóc sau cuộc hẹn', 'status_changed', '[]', 1, $superAdminId)");
+    $conn->query("INSERT INTO workflow_task_templates (tenant_id, stage_id, title, description, priority, due_days_offset, require_approval) 
+                 VALUES (1, 1, 'Gọi điện xác nhận dịch vụ', 'Gọi lại cho khách hàng sau 2 ngày để xác nhận tiến độ.', 'medium', 2, 0)");
+    echo "   - Seeded Workflows & Templates\n";
+
+    // Seed Queues (Zalo, Mail, CAPI)
+    $conn->query("INSERT INTO zalo_queue (bot_token, chat_id, body_text, status, lead_id) 
+                 VALUES ('zalo_token_01', 'zalo_chat_123', 'Chào anh Long, em gửi thông tin mặt bằng dự án Vũ Yên qua Zalo.', 'pending', $lead1Id)");
+    $conn->query("INSERT INTO mail_queue (to_email, subject, body_html, status, lead_id) 
+                 VALUES ('long.hoang@gmail.com', 'Mặt bằng Vinhomes Royal Island Vũ Yên', '<p>Chào anh Long...</p>', 'pending', $lead1Id)");
+    $conn->query("INSERT INTO capi_logs (lead_id, contact_id, event_name, payload_hash, sent_payload, response_status, response_body) 
+                 VALUES ($lead1Id, 1, 'CompleteRegistration', 'hash123', '{\"phone\":\"0909998888\"}', 200, '{\"success\":true}')");
+    echo "   - Seeded Communication Queues (Zalo, Mail, CAPI)\n";
+
+    // Seed Logs (Audit & Communication)
+    $conn->query("INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, old_data, new_data) 
+                 VALUES (1, $superAdminId, 'update', 'contact', 1, '{\"status\":\"qualified\"}', '{\"status\":\"assigned\"}')");
+    $conn->query("INSERT INTO communication_logs (lead_id, type, recipient, status) 
+                 VALUES ($lead1Id, 'zalo', '0909998888', 'sent')");
+    echo "   - Seeded System Audit & Comm Logs\n";
+
+    // Seed Comments
+    $conn->query("INSERT INTO activity_comments (tenant_id, activity_id, user_id, content) 
+                 VALUES (1, 1, $managerId, 'Cần bám sát khách này, họ rất có thiện chí.')");
+    echo "   - Seeded Activity Comments\n";
+
+    // Seed Leaves (Nghỉ phép)
+    $conn->query("INSERT INTO consultant_leaves (consultant_id, start_date, end_date) 
+                 VALUES ($namId, '2026-07-10', '2026-07-12')");
+    echo "   - Seeded Consultant Leaves\n";
+
+    // Seed Quote & Invoice Items
+    $conn->query("INSERT INTO quote_items (quote_id, product_id, name, quantity, unit_price) 
+                 VALUES (1, 2, 'Shophouse Tài Lộc TL-09', 1.00, 12500000000.00)");
+    $conn->query("INSERT INTO invoice_items (invoice_id, product_id, name, quantity, unit_price) 
+                 VALUES (1, 3, 'Căn hộ 2 phòng ngủ CC-1205', 1.00, 1500000000.00)");
+    echo "   - Seeded Itemized Quote & Invoice Details\n";
+
+    // Seed Batches & Inventory Logs
+    $conn->query("INSERT INTO batches (tenant_id, product_id, supplier_id, batch_code, import_date, import_price, initial_qty, current_qty) 
+                 VALUES (1, 1, $vingroupId, 'BATCH-BT-01', '2026-07-01', 45000000000.00, 1, 1)");
+    $batchId = $conn->insert_id ?: 1;
+    $conn->query("INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by) 
+                 VALUES (1, $batchId, 'IMPORT', 1, 'Nhập giỏ hàng căn biệt thự đơn lập', $superAdminId)");
+    echo "   - Seeded Batches & Inventory Logs\n";
+
+    // Seed active_compensation_logs (Bù lead)
+    $conn->query("INSERT INTO active_compensation_logs (round_id, consultant_id, admin_id, amount, reason) 
+                 VALUES (1, $namId, $superAdminId, 1, 'Bù data do số điện thoại sai')");
+    echo "   - Seeded Active Compensation Logs\n";
+
+    // Seed admin_logs (Nhật ký quản trị)
+    $conn->query("INSERT INTO admin_logs (account_id, action, details) 
+                 VALUES ($superAdminId, 'reset_database', '{\"client\":\"cli_reset\"}')");
+    echo "   - Seeded Admin Logs\n";
+
+    // Seed duplicate_log (Nhật ký trùng lặp)
+    $conn->query("INSERT INTO duplicate_log (tenant_id, entity_type, original_id, duplicate_id, match_field, resolved) 
+                 VALUES (1, 'contact', 1, 2, 'phone', 0)");
+    echo "   - Seeded Duplicate Detection Logs\n";
+
+    // Seed refresh_tokens (Token làm mới)
+    $conn->query("INSERT INTO refresh_tokens (user_id, token_hash, expires_at) 
+                 VALUES ($superAdminId, 'refresh_token_sample_123_hash', DATE_ADD(NOW(), INTERVAL 30 DAY))");
+    echo "   - Seeded Session Refresh Tokens\n";
+
+    // Seed ticket_comments (Bình luận ticket)
+    $conn->query("INSERT INTO ticket_comments (ticket_id, user_id, body) 
+                 VALUES (1, $managerId, 'Đã xác minh và chuyển sang data khác bù cho Sale.')");
+    echo "   - Seeded Ticket Comments\n";
 
     echo "\n=== DATABASE RESET & SEEDING COMPLETED SUCCESSFULLY ===\n";
 
