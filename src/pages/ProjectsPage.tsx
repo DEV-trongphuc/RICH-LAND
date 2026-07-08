@@ -2043,6 +2043,7 @@ export default function ProjectsPage() {
       if (res.success) {
         addToast('Tải tài liệu lên thành công!', 'success');
         loadDocuments(selectedProjectId);
+        loadProjects();
       } else {
         addToast(res.message || 'Lỗi tải tài liệu lên', 'error');
       }
@@ -2067,6 +2068,7 @@ export default function ProjectsPage() {
           if (res.success) {
             addToast('Xóa tài liệu thành công!', 'success');
             loadDocuments(selectedProjectId);
+            loadProjects();
           } else {
             addToast(res.message || 'Lỗi xóa tài liệu', 'error');
           }
