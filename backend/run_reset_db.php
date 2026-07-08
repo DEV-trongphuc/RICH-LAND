@@ -335,10 +335,44 @@ try {
                  VALUES ($contactThaoId, $vinId, 'TL-09', 12500000000.00, 375000000.00, 'approved', $namId)");
     echo "   - Created Confirmed Deposit (200 Million VND)\n";
 
-    // Seed Tickets (Báo lỗi data)
+    // Seed Tickets (Báo lỗi data & Hỗ trợ)
     $conn->query("INSERT INTO tickets (tenant_id, contact_id, created_by, assignee_id, subject, customer_name, description, status, priority) 
                  VALUES (1, $contactLongId, $namId, $managerId, 'Trùng số điện thoại khách hàng Long', 'Hoàng Kim Long', 'Số điện thoại 0912345678 đã có trong hệ thống từ trước.', 'open', 'high')");
-    echo "   - Created Data Ticket\n";
+    $conn->query("INSERT INTO tickets (tenant_id, contact_id, created_by, assignee_id, subject, customer_name, description, status, priority) 
+                 VALUES (1, $contactThaoId, $namId, $managerId, 'Yêu cầu đổi phương án vay ngân hàng', 'Đặng Thu Thảo', 'Khách hàng muốn chuyển từ gói vay Techcombank sang Vietcombank.', 'in_progress', 'medium')");
+    echo "   - Created Tickets (Data & Support)\n";
+
+    // Seed Check-ins (Chấm công)
+    $conn->query("INSERT INTO check_ins (user_id, check_in_date, check_in_time, status) VALUES ($namId, CURDATE(), '08:05:22', 'approved')");
+    $conn->query("INSERT INTO check_ins (user_id, check_in_date, check_in_time, status) VALUES ($maiId, CURDATE(), '07:58:10', 'approved')");
+    echo "   - Seeded Today Attendance Check-ins\n";
+
+    // Seed Project Documents (Tài liệu dự án)
+    $conn->query("INSERT INTO project_documents (project_id, name, file_path, file_size, mime_type, uploaded_by) 
+                 VALUES ($vinId, 'Layout_Mat_Bang_Vin_Vu_Yen.pdf', '/uploads/Layout_Mat_Bang_Vin_Vu_Yen.pdf', 5242880, 'application/pdf', $superAdminId)");
+    echo "   - Seeded Project Documents\n";
+
+    // Seed Cooperation Slips (Duyệt hợp tác)
+    $sharesJson = json_encode([['user_id' => $namId, 'percentage' => 70], ['user_id' => $maiId, 'percentage' => 30]]);
+    $conn->query("INSERT INTO cooperation_slips (contact_id, version, total_percentage, shares_json, status, created_by) 
+                 VALUES ($contactThaoId, 1, 100, '$sharesJson', 'approved', $namId)");
+    echo "   - Seeded Cooperation Slips\n";
+
+    // Seed Quotes (Báo giá)
+    $conn->query("INSERT INTO quotes (tenant_id, contact_id, created_by, quote_number, title, status, total) 
+                 VALUES (1, $contactThaoId, $namId, 'QT-2026-0001', 'Báo giá Shophouse Tài Lộc', 'accepted', 12500000000.00)");
+    echo "   - Seeded Quotes\n";
+
+    // Seed Expenses (Chi phí vận hành)
+    $conn->query("INSERT INTO expenses (tenant_id, created_by, title, category, amount, date, status) 
+                 VALUES (1, $superAdminId, 'Thuê văn phòng Hải Phòng Tháng 7/2026', 'rental', 45000000.00, '2026-07-01', 'approved')");
+    echo "   - Seeded Operating Expenses\n";
+
+    // Seed Purchase Orders (Đơn nhập hàng - Kho hàng)
+    $vingroupId = $supplierIds['Tập đoàn Vingroup'];
+    $conn->query("INSERT INTO purchase_orders (tenant_id, supplier_id, created_by, po_number, order_date, status, total) 
+                 VALUES (1, $vingroupId, $superAdminId, 'PO-2026-0001', '2026-07-01', 'received', 45000000000.00)");
+    echo "   - Seeded Purchase Orders\n";
 
     echo "\n=== DATABASE RESET & SEEDING COMPLETED SUCCESSFULLY ===\n";
 
