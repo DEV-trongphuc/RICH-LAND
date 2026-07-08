@@ -342,14 +342,16 @@ export default function ProjectsPage() {
     return createPortal(
       <>
         <div 
+          className="drawer-backdrop"
           onClick={onClose}
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0,0,0,0.4)',
+            background: 'rgba(0,0,0,0.65)',
             zIndex: 10000,
             backdropFilter: 'blur(4px)',
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            cursor: 'pointer'
           }}
         />
         <div 
