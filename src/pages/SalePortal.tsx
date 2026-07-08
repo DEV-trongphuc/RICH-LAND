@@ -341,7 +341,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [modalCalls, setModalCalls] = useState<any[]>([]);
   const [loadingModalCalls, setLoadingModalCalls] = useState(false);
   const [callsSearch, setCallsSearch] = useState('');
-  const [callsModalTab, setCallsModalTab] = useState<'chart' | 'detail'>('detail');
+  const [callsModalTab, setCallsModalTab] = useState<'chart' | 'detail'>('chart');
   const [callsModalPage, setCallsModalPage] = useState(1);
   const [callsModalPageSize] = useState(5);
   const [wsStartDate, setWsStartDate] = useState('');
@@ -10512,17 +10512,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', width: 'fit-content', gap: '4px', alignSelf: 'center' }}>
               <button 
                 type="button" 
-                onClick={() => setCallsModalTab('detail')} 
-                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: callsModalTab === 'detail' ? 'var(--color-surface)' : 'transparent', color: callsModalTab === 'detail' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: callsModalTab === 'detail' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
-              >
-                {t("Chi tiết")}
-              </button>
-              <button 
-                type="button" 
                 onClick={() => setCallsModalTab('chart')} 
                 style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: callsModalTab === 'chart' ? 'var(--color-surface)' : 'transparent', color: callsModalTab === 'chart' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: callsModalTab === 'chart' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
               >
                 {t("Biểu đồ thống kê")}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setCallsModalTab('detail')} 
+                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: callsModalTab === 'detail' ? 'var(--color-surface)' : 'transparent', color: callsModalTab === 'detail' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: callsModalTab === 'detail' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                {t("Chi tiết")}
               </button>
             </div>
 
@@ -10644,9 +10644,20 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </p>
                         )}
 
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', marginTop: '2px' }}>
-                          <span style={{ color: 'var(--color-text-muted)' }}>
-                            {t('Người thực hiện:')} <strong style={{ color: 'var(--color-text)' }}>{call.user_name || currentUser?.name || t('Tư vấn viên')}</strong>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', marginTop: '2px', flexWrap: 'wrap', gap: '8px' }}>
+                          <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {t('Người thực hiện:')}
+                            {(() => {
+                              const callUser = users.find((u: any) => String(u.id) === String(call.user_id)) || (String(call.user_id) === String(currentUser?.id) ? currentUser : null);
+                              const avatarUrl = callUser?.avatar_url || callUser?.avatar || '';
+                              const displayName = call.user_name || callUser?.full_name || currentUser?.name || t('Tư vấn viên');
+                              return (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-text)', fontWeight: 700 }}>
+                                  <Avatar src={avatarUrl} name={displayName} size={18} />
+                                  {displayName}
+                                </span>
+                              );
+                            })()}
                           </span>
                           {call.related_type === 'contact' && (
                             <button
