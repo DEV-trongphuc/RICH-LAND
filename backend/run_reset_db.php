@@ -388,13 +388,13 @@ try {
     $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
                  VALUES (1, $namId, 'meeting', 'Họp giao ban tuần Đội ngũ Hải Phòng', 'Báo cáo tiến độ tiếp cận khách hàng và chia sẻ kinh nghiệm xử lý từ chối.', 'planned', 'high', 'team_meeting,internal')");
     $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
-                 VALUES (1, $namId, 'task', 'Trực bàn trực dự án Vinhomes Royal Island', 'Phân ca trực bàn trực tại sa bàn nhà mẫu Vũ Yên.', 'planned', 'medium', 'duty_schedule,internal')");
+                 VALUES (1, $namId, 'task', 'Trực bàn trực dự án Vinhomes Royal Island', 'Phân ca trực bàn trực tại sa bàn nhà mẫu Vũ Yên.\\n\\n- [ ] Lập danh sách trực tuần 1\\n- [x] Đăng ký trực với ban quản lý dự án\\n- [ ] Phân công chuẩn bị tài liệu dự án\\n- [ ] Chuẩn bị nước uống và hoa quả cho khách hàng', 'planned', 'medium', 'duty_schedule,internal')");
 
     // Personal Activities (planned/done, personal_task)
     $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
-                 VALUES (1, $namId, 'task', 'Nghiên cứu tài liệu pháp lý dự án Diamond Crown', 'Đọc và hiểu rõ quy hoạch 1/500 dự án Diamond Crown Plaza để tư vấn cho khách.', 'planned', 'low', 'personal_task,study')");
+                 VALUES (1, $namId, 'task', 'Nghiên cứu tài liệu pháp lý dự án Diamond Crown', 'Đọc và hiểu rõ quy hoạch 1/500 dự án Diamond Crown Plaza để tư vấn cho khách.\\n\\n- [x] Tải file quy hoạch 1/500\\n- [ ] Đọc hết chương 3 về pháp lý đất đai\\n- [ ] Lập slide tóm tắt các điểm quan trọng', 'planned', 'low', 'personal_task,study')");
     $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
-                 VALUES (1, $namId, 'task', 'Tham gia khóa đào tạo kỹ năng telesale BĐS', 'Hoàn thành khóa học telesale do công ty tổ chức.', 'done', 'medium', 'personal_task,training')");
+                 VALUES (1, $namId, 'task', 'Tham gia khóa đào tạo kỹ năng telesale BĐS', 'Hoàn thành khóa học telesale do công ty tổ chức.\\n\\n- [x] Đăng ký lớp học\\n- [x] Tham gia buổi lý thuyết 1\\n- [x] Thực hành cuộc gọi trực tiếp\\n- [x] Nhận chứng chỉ hoàn thành', 'done', 'medium', 'personal_task,training')");
 
     echo "   - Created Notes and Activities\n";
 
