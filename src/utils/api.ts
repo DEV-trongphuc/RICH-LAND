@@ -49,7 +49,7 @@ export async function fetchAPI(action: string, options: RequestInit = {}) {
     return response.data;
   } catch (err: any) {
     if (err.response) {
-      throw new Error(err.response.data?.message || err.message);
+      throw new Error(err.response.data?.message || err.message, { cause: err });
     }
     throw err;
   }

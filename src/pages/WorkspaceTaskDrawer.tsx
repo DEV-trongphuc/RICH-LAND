@@ -111,6 +111,20 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
   }, [isOpen]);
 
+  const loadComments = async (taskId: number) => {
+    setLoadingComments(true);
+    try {
+      const res = await api.get(`/activities/${taskId}/comments`);
+      if (res.data && res.data.success) {
+        setComments(res.data.data || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen && !embedMode) {
       document.body.style.overflow = 'hidden';
@@ -174,20 +188,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       }));
     }
   }, [task]);
-
-  const loadComments = async (taskId: number) => {
-    setLoadingComments(true);
-    try {
-      const res = await api.get(`/activities/${taskId}/comments`);
-      if (res.data && res.data.success) {
-        setComments(res.data.data || []);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingComments(false);
-    }
-  };
 
   const handleSaveMeta = async (updatedMeta: any) => {
     if (!task) return;
@@ -525,12 +525,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const handleToggleParticipant = (userId: number) => {
     const current = (formData.participant_ids || '').split(',').filter(Boolean);
-    let next = [];
-    if (current.includes(String(userId))) {
-      next = current.filter(id => id !== String(userId));
-    } else {
-      next = [...current, String(userId)];
-    }
+    const next = current.includes(String(userId))
+      ? current.filter(id => id !== String(userId))
+      : [...current, String(userId)];
     const nextString = next.join(',');
     setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
     handleUpdateField('participant_ids', nextString);
