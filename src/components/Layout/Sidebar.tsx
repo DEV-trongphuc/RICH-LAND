@@ -404,7 +404,25 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 )}
                  {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
                    const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'workspaceTasks' ? undoneTasksCount : 0;
-                  const isActive = location.pathname + location.search === href || (href.indexOf('?') === -1 && location.pathname === href && location.search === '');
+                   const checkIsActive = (locationPath: string, locationSearch: string, itemHref: string) => {
+                     const qIdx = itemHref.indexOf('?');
+                     if (qIdx !== -1) {
+                       const itemPath = itemHref.substring(0, qIdx);
+                       if (locationPath !== itemPath) return false;
+                       const itemParams = new URLSearchParams(itemHref.substring(qIdx));
+                       const locParams = new URLSearchParams(locationSearch);
+                       for (const [key, val] of itemParams.entries()) {
+                         if (locParams.get(key) !== val) return false;
+                       }
+                       return true;
+                     } else {
+                       if (locationPath !== itemHref) return false;
+                       const locParams = new URLSearchParams(locationSearch);
+                       if (locParams.get('tab')) return false;
+                       return true;
+                     }
+                   };
+                   const isActive = checkIsActive(location.pathname, location.search, href);
                   const displayName = t(name);
 
                   return (
