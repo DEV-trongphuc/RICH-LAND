@@ -901,6 +901,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
   const isOwnerOrAdmin = useMemo(() => {
+    if (currentUser?.role === 'viewer') return false;
     const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
     const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
     return isOwner || isAdmin;

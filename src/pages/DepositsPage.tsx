@@ -67,16 +67,28 @@ export default function DepositsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 8;
 
+  const filteredDepositsList = React.useMemo(() => {
+    if (user?.role === 'sale') {
+      return deposits.filter((d: any) => 
+        String(d.created_by) === String(user.id) || 
+        String(d.owner_id) === String(user.id) || 
+        (d.contact_owner_id && String(d.contact_owner_id) === String(user.id)) ||
+        (d.shareholders && Array.isArray(d.shareholders) && d.shareholders.some((sh: any) => String(sh.user_id) === String(user.id)))
+      );
+    }
+    return deposits;
+  }, [deposits, user]);
+
   const paginatedDeposits = React.useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    return deposits.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [deposits, currentPage]);
+    return filteredDepositsList.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredDepositsList, currentPage]);
 
-  const totalPages = Math.ceil(deposits.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredDepositsList.length / ITEMS_PER_PAGE);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [deposits.length]);
+  }, [filteredDepositsList.length]);
 
   // Creation State
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -319,7 +331,7 @@ export default function DepositsPage() {
       {/* List */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách đặt cọc...</div>
-      ) : deposits.length === 0 ? (
+      ) : filteredDepositsList.length === 0 ? (
         <EmptyCard
           icon={<CreditCard />}
           title="Chưa có phiếu cọc nào"
@@ -618,7 +630,7 @@ export default function DepositsPage() {
               borderBottomRightRadius: '16px'
             }}>
               <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                Hiển thị <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, deposits.length)}</span> trên <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{deposits.length}</span>
+                Hiển thị <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{Math.min(currentPage * ITEMS_PER_PAGE, filteredDepositsList.length)}</span> trên <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{filteredDepositsList.length}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button 

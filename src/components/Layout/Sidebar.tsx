@@ -56,12 +56,12 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
   {
     title: 'NHÂN SỰ',
     items: [
-      { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2, adminOnly: true },
-      { name: 'Team', href: '/consultants?tab=teams', icon: Users, adminOnly: true },
-      { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, adminOnly: true },
-      { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, adminOnly: true },
+      { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Team', href: '/consultants?tab=teams', icon: Users, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
       { name: 'Chấm công', href: '/attendance', icon: Clock, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] },
-      { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, adminOnly: true, badgeKey: 'coopSlips' }
+      { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['sale', 'viewer', 'sales'], badgeKey: 'coopSlips' }
     ]
   },
   {
@@ -81,22 +81,22 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     title: 'TÀI CHÍNH',
     items: [
       { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
-      { name: 'Báo giá', href: '/quotes', icon: FileText, adminOnly: true },
-      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, adminOnly: true },
-      { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt },
+      { name: 'Báo giá', href: '/quotes', icon: FileText, hideForRoles: ['viewer'] },
+      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, hideForRoles: ['sale', 'viewer', 'sales'] },
+      { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt, hideForRoles: ['viewer'] },
       { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'director'], badgeKey: 'coopSlips' }
     ]
   },
   {
     title: 'CÀI ĐẶT HỆ THỐNG',
     items: [
-      { name: 'Tích hợp Data', href: '/integrations', icon: Link2, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
-      { name: 'Vòng đời khách hàng', href: '/settings?tab=lifecycle', icon: Settings, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
-      { name: 'Logic xử lý', href: '/rules', icon: Webhook, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
-      { name: 'CAPI', href: '/capi', icon: Link2, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
-      { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck, adminOnly: true },
-      { name: 'Phân quyền', href: '/accounts?tab=permissions', icon: ShieldCheck, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
-      { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] }
+      { name: 'Tích hợp Data', href: '/integrations', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Vòng đời khách hàng', href: '/settings?tab=lifecycle', icon: Settings, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Logic xử lý', href: '/rules', icon: Webhook, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'CAPI', href: '/capi', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Phân quyền', href: '/accounts?tab=permissions', icon: ShieldCheck, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] }
     ]
   }
 ];
@@ -215,11 +215,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       const isManagerOrAdmin = isAdmin || role === 'manager' || role === 'director';
 
       if (item.adminOnly && !isManagerOrAdmin) {
-        if (role === 'sale' && (item.href === '/accounts' || item.href === '/consultants')) {
-          // Allow Sales to view these specific pages
-        } else {
-          return false;
-        }
+        return false;
       }
       if (item.hideForRoles && item.hideForRoles.includes(role)) {
         return false;

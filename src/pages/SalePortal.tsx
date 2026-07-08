@@ -2962,7 +2962,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   zIndex: 2,
                   transition: 'color 0.25s ease'
                 }}
-                className={isSelected ? "" : "hover-lift"}
+                className=""
               >
                 <span>{tab.label}</span>
                 <span style={{
@@ -3329,7 +3329,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         zIndex: 2,
                         transition: 'color 0.25s ease'
                       }}
-                      className={isSelected ? "" : "hover-lift"}
+                      className=""
                     >
                       {tab.label}
                     </button>
@@ -4758,7 +4758,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       <>
         <style>{`
           .stat-card {
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
           }
           .stat-card.total-card:hover {
             box-shadow: 0 6px 16px rgba(163, 20, 34, 0.15) !important;
@@ -9449,7 +9449,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     height: '32px',
                     flex: 1
                   }}
-                  className={activeCalendarModalTab === 'sales' ? '' : 'hover-lift'}
+                  className=""
                 >
                   <span>{t('Dữ liệu nhận (Phân bổ)')}</span>
                   <span style={{
@@ -9486,7 +9486,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     height: '32px',
                     flex: 1
                   }}
-                  className={activeCalendarModalTab === 'tickets' ? '' : 'hover-lift'}
+                  className=""
                 >
                   <span>{t('Ticket lỗi')}</span>
                   <span style={{
@@ -9713,7 +9713,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
-                    className={isActive ? '' : 'hover-lift'}
+                    className=""
                   >
                     {tab.label}
                   </button>

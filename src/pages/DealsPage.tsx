@@ -27,6 +27,7 @@ const FMT = (n: number) => {
 
 export const DealsPage: React.FC = () => {
   const { addToast } = useUIStore();
+  const currentUser = useAuthStore.getState().user;
   const [showImportExport, setShowImportExport] = useState(false);
   const [pipelineView, setPipelineView] = useState<'deals' | 'contacts' | 'companies'>('contacts');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
@@ -40,6 +41,27 @@ export const DealsPage: React.FC = () => {
 
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    const currentUser = useAuthStore.getState().user;
+    if (currentUser && ['manager', 'admin', 'superadmin'].includes(currentUser.role)) {
+      api.get('/teams').then(res => {
+        setTeams(res.data.data || res.data || []);
+      }).catch(() => {});
+    }
+  }, []);
+
+  const getEffectiveTeamId = () => {
+    const currentUser = useAuthStore.getState().user;
+    if (!currentUser) return null;
+    if ((currentUser as any).team_id) return (currentUser as any).team_id;
+    if (currentUser.role === 'manager') {
+      const managedTeam = teams.find(t => Number(t.leader_id) === Number(currentUser.id));
+      return managedTeam?.id || null;
+    }
+    return null;
+  };
   
   // Drawers
   const [showContactDrawer, setShowContactDrawer] = useState(false);
@@ -229,7 +251,12 @@ export const DealsPage: React.FC = () => {
     }
     try {
       const r = await api.get('/users');
-      setAllUsers(r.data.data || []);
+      let list = r.data.data || [];
+      const teamId = getEffectiveTeamId();
+      if (currentUser?.role === 'manager' && teamId) {
+        list = list.filter((u: any) => String(u.team_id) === String(teamId));
+      }
+      setAllUsers(list);
     } catch (e: any) {
       console.error("Failed to fetch users", e);
     }
@@ -251,6 +278,22 @@ export const DealsPage: React.FC = () => {
       const state = getFilteredMockState();
       let list = pipelineView === 'contacts' ? [...state.contacts] : (pipelineView === 'companies' ? [...state.companies] : [...state.deals]);
       
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.role === 'sale') {
+        list = list.filter(c => Number(c.owner_id) === Number(currentUser.id));
+      } else if (currentUser?.role === 'manager') {
+        const teamId = getEffectiveTeamId();
+        if (teamId) {
+          const teamMemberIds = (state.users || [])
+            .filter((u: any) => String(u.team_id) === String(teamId))
+            .map((u: any) => u.id);
+          if (!teamMemberIds.includes(currentUser.id)) {
+            teamMemberIds.push(currentUser.id);
+          }
+          list = list.filter(c => teamMemberIds.includes(Number(c.owner_id)));
+        }
+      }
+
       if (debouncedSearch) {
         const s = debouncedSearch.toLowerCase();
         if (pipelineView === 'contacts') {
@@ -275,8 +318,6 @@ export const DealsPage: React.FC = () => {
         grouped[sid as any].push(d);
       });
       
-
-      
       setItems(grouped);
       setTotal(list.length);
       setLoading(false);
@@ -294,13 +335,33 @@ export const DealsPage: React.FC = () => {
         stage_id: filterStage,
       };
 
+      const teamId = getEffectiveTeamId();
+      if (teamId) {
+        params.team_id = teamId;
+      }
+
       if (dateFilterType && (filterDateFrom || filterDateTo)) {
         params.from = filterDateFrom;
         params.to = filterDateTo;
       }
 
       const r = await api.get(endpoint, { params });
-      const dataItems = r.data.data?.items || [];
+      let dataItems = r.data.data?.items || [];
+
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?.role === 'sale') {
+        dataItems = dataItems.filter((c: any) => Number(c.owner_id) === Number(currentUser.id));
+      } else if (currentUser?.role === 'manager') {
+        const activeTeamId = getEffectiveTeamId();
+        if (activeTeamId && allUsers.length > 0) {
+          const teamMemberIds = allUsers.map((u: any) => u.id);
+          if (!teamMemberIds.includes(currentUser.id)) {
+            teamMemberIds.push(currentUser.id);
+          }
+          dataItems = dataItems.filter((c: any) => teamMemberIds.includes(Number(c.owner_id)));
+        }
+      }
+
       const grouped: Record<number, any[]> = {};
       dataItems.forEach((d: any) => {
         const sid = (!d.stage_id || d.stage_id === '0' || d.stage_id === 0) 
@@ -322,11 +383,11 @@ export const DealsPage: React.FC = () => {
   useEffect(() => {
     fetchUsers();
     fetchStages().then(() => fetchData());
-  }, [pipelineView]);
+  }, [pipelineView, teams]);
 
   useEffect(() => {
     if (stages.length > 0) fetchData();
-  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, viewMode]);
+  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, viewMode, allUsers, teams]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -449,20 +510,71 @@ export const DealsPage: React.FC = () => {
         </div>
         <div style={{ flex: 1 }} />
 
-        {/* Kanban vs List Toggle */}
-        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', marginRight: '1rem', height: 38, border: '1px solid var(--color-border)' }}>
-          <button 
-            className={`btn ${viewMode === 'kanban' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-sm)', padding: '0 10px', height: 28, minWidth: 32, fontSize: '0.8rem' }}
-            onClick={() => setViewMode('kanban')}
-            title="Dạng bảng (Kanban)"
-          ><LayoutGrid size={15}/></button>
-          <button 
-            className={`btn ${viewMode === 'list' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-sm)', padding: '0 10px', height: 28, minWidth: 32, fontSize: '0.8rem' }}
-            onClick={() => setViewMode('list')}
-            title="Dạng danh sách"
-          ><List size={15}/></button>
+        {/* Desktop Pipeline Tabs Switcher (Moved to Left) */}
+        <div className="hide-on-mobile" style={{ 
+          display: 'flex', 
+          background: 'rgba(15, 23, 42, 0.05)', 
+          padding: '4px', 
+          borderRadius: '12px', 
+          gap: '4px',
+          height: '38px', 
+          marginRight: '0.5rem', 
+          border: '1px solid var(--color-border-light)',
+          position: 'relative',
+          width: 'fit-content'
+        }}>
+          {/* Sliding Pill Background Indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '4px',
+            bottom: '4px',
+            width: '140px',
+            borderRadius: '10px',
+            background: 'var(--color-surface)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `translateX(${
+              pipelineView === 'contacts' ? '0px' : 
+              pipelineView === 'deals' ? '144px' : '288px'
+            })`,
+            zIndex: 1
+          }} />
+
+          {[
+            { id: 'contacts', label: 'Khách hàng', icon: <User size={14} /> },
+            { id: 'deals', label: 'Cơ hội', icon: <DollarSign size={14} /> },
+            { id: 'companies', label: 'Doanh nghiệp', icon: <Building2 size={14} /> }
+          ].map(tab => {
+            const isSelected = pipelineView === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setPipelineView(tab.id as any)}
+                style={{
+                  width: '140px',
+                  height: '28px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  fontSize: '0.825rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  background: 'transparent',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  position: 'relative',
+                  zIndex: 2,
+                  transition: 'color 0.25s ease',
+                  outline: 'none'
+                }}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Mobile Pipeline Selector Dropdown */}
@@ -479,35 +591,72 @@ export const DealsPage: React.FC = () => {
           </select>
         </div>
 
-        {/* Desktop Pipeline Tabs Switcher */}
-        <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-md)', height: 38, marginRight: '1rem', border: '1px solid var(--color-border)' }}>
-          <button 
-            className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-sm)', height: 28, padding: '0 10px', fontSize: '0.8rem' }}
-            onClick={() => setPipelineView('contacts')}
-          >
-            <User size={14} /> Khách hàng
-          </button>
-          <button 
-            className={`btn ${pipelineView === 'deals' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-sm)', height: 28, padding: '0 10px', fontSize: '0.8rem' }}
-            onClick={() => setPipelineView('deals')}
-          >
-            <DollarSign size={14} /> Cơ hội
-          </button>
-          <button 
-            className={`btn ${pipelineView === 'companies' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-sm)', height: 28, padding: '0 10px', fontSize: '0.8rem' }}
-            onClick={() => setPipelineView('companies')}
-          >
-            <Building2 size={14} /> Doanh nghiệp
-          </button>
+        {/* Kanban vs List Toggle (Moved to Right) */}
+        <div style={{ 
+          display: 'flex', 
+          background: 'rgba(15, 23, 42, 0.05)', 
+          padding: '4px', 
+          borderRadius: '12px', 
+          gap: '4px',
+          marginRight: '0.5rem', 
+          height: '38px', 
+          border: '1px solid var(--color-border-light)',
+          position: 'relative',
+          width: 'fit-content'
+        }}>
+          {/* Sliding Pill Background Indicator */}
+          <div style={{
+            position: 'absolute',
+            top: '4px',
+            bottom: '4px',
+            width: '36px',
+            borderRadius: '10px',
+            background: 'var(--color-primary)',
+            boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
+            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            transform: `translateX(${viewMode === 'kanban' ? '0px' : '40px'})`,
+            zIndex: 1
+          }} />
+
+          {[
+            { id: 'kanban', icon: <LayoutGrid size={15} />, title: "Dạng bảng (Kanban)" },
+            { id: 'list', icon: <List size={15} />, title: "Dạng danh sách" }
+          ].map(tab => {
+            const isSelected = viewMode === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setViewMode(tab.id as any)}
+                title={tab.title}
+                style={{
+                  width: '36px',
+                  height: '28px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: 'transparent',
+                  color: isSelected ? '#ffffff' : 'var(--color-text-light)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                  zIndex: 2,
+                  transition: 'color 0.25s ease',
+                  outline: 'none'
+                }}
+              >
+                {tab.icon}
+              </button>
+            );
+          })}
         </div>
 
-        <button className="btn outline" style={{ height: 38, borderRadius: 'var(--radius-md)', marginRight: '0.5rem', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
-          <Download size={14} />
-          <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Nhập/Xuất</span>
-        </button>
+        {currentUser?.role !== 'viewer' && currentUser?.role !== 'sale' && (
+          <button className="btn outline" style={{ height: 38, borderRadius: 'var(--radius-md)', marginRight: '0.5rem', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+            <Download size={14} />
+            <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Nhập/Xuất</span>
+          </button>
+        )}
 
       </div>
 
@@ -744,6 +893,8 @@ export const DealsPage: React.FC = () => {
           overflowX: 'auto', 
           padding: isMobile ? '0.75rem' : '1.5rem', 
           paddingBottom: '2rem', 
+          height: 'calc(100vh - 280px)',
+          minHeight: '520px',
           flex: 1, 
           alignItems: 'stretch', 
           scrollSnapType: 'x mandatory',
@@ -761,7 +912,7 @@ export const DealsPage: React.FC = () => {
             // Skeleton columns while loading
             <>
               {(isMobile ? [1] : [1, 2, 3, 4]).map(i => (
-                <div key={i} style={{ minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
+                <div key={i} style={{ minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', overflow: 'hidden', height: '100%' }}>
                   <div style={{ padding: '1rem 1.25rem', borderBottom: '3px solid var(--color-border)' }}>
                     <div style={{ height: 18, width: 120, background: '#e9ecef', borderRadius: 6, marginBottom: 8 }} />
                     <div style={{ height: 14, width: 60, background: '#f1f3f5', borderRadius: 6 }} />
@@ -796,7 +947,7 @@ export const DealsPage: React.FC = () => {
                   background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: 'var(--radius-lg)',
-                  display: 'flex', flexDirection: 'column', maxHeight: '100%',
+                  display: 'flex', flexDirection: 'column', maxHeight: '100%', height: '100%',
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   scrollSnapAlign: 'center'
                 }}
@@ -836,16 +987,19 @@ export const DealsPage: React.FC = () => {
                   <AnimatePresence>
                     {stageItems.map(item => {
                       const itemName = pipelineView === 'contacts' ? `${item.first_name} ${item.last_name || ''}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
+                      const isItemOwner = Number(currentUser?.id) === Number(item.owner_id || item.created_by);
+                      const isPrivileged = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(currentUser.role);
+                      const canDrag = (isItemOwner || isPrivileged) && currentUser?.role !== 'viewer';
                       return (
                       <motion.div key={item.id}
-                        draggable
-                        onDragStart={() => setDragging({ id: item.id, fromStage: stage.id })}
+                        draggable={canDrag}
+                        onDragStart={() => canDrag && setDragging({ id: item.id, fromStage: stage.id })}
                         onDragEnd={() => setDragging(null)}
                         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} layout
                         style={{ 
                           background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: '0.875rem 1rem', 
                           boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)', 
-                          cursor: 'grab', userSelect: 'none', position: 'relative'
+                          cursor: canDrag ? 'grab' : 'default', userSelect: 'none', position: 'relative'
                         }}
                         onClick={() => {
                           if (pipelineView === 'deals') { setSelectedDeal(item); setShowDealDrawer(true); }

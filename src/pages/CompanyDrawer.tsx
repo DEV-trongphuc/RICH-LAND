@@ -37,14 +37,16 @@ const TABS = [
 export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
   const { user: currentUser } = useAuth();
   const isSale = currentUser && ['sales', 'sale'].includes((currentUser.role || '').toLowerCase());
+  const isViewer = currentUser?.role === 'viewer';
+  const disableEdit = isSale || isViewer;
   const { addToast, showConfirm } = useUIStore();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
 
   const visibleTabs = useMemo(() => {
-    return isSale ? TABS.filter(t => t.id !== 'settings') : TABS;
-  }, [isSale]);
+    return disableEdit ? TABS.filter(t => t.id !== 'settings') : TABS;
+  }, [disableEdit]);
 
   useEffect(() => {
     if (isOpen) {
@@ -333,7 +335,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
               {/* Content Area */}
               <div className={styles.contentArea}>
                 {activeTab === 'info' && (
-                  <fieldset disabled={isSale} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }} className="animate-fade">
+                  <fieldset disabled={disableEdit} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }} className="animate-fade">
                     <div className="card-panel">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="panel-title" style={{ margin: 0 }}>Hồ sơ Doanh nghiệp</h4>
@@ -810,7 +812,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
 
             {/* Footer */}
             <div className={styles.footer}>
-              {isSale ? (
+              {disableEdit ? (
                 <button className="btn secondary" onClick={onClose}>Đóng</button>
               ) : (
                 <>

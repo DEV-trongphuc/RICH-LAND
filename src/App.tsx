@@ -96,16 +96,24 @@ const AppTabs = () => {
     return <Navigate to="/" replace />;
   }
 
-  if (currentPath === '/accounts' || currentPath === '/consultants') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
+  if (currentPath === '/accounts') {
+    if (!['admin', 'superadmin', 'super_admin', 'director'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
-  } else if (currentPath === '/invoices') {
+  } else if (currentPath === '/consultants') {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(user?.role || '')) {
+      return <Navigate to="/" replace />;
+    }
+  } else if (currentPath === '/invoices' || currentPath === '/deposits' || currentPath === '/attendance') {
     if ((user?.role as string) === 'viewer') {
       return <Navigate to="/" replace />;
     }
-  } else if (currentPath === '/quotes' || currentPath === '/expenses') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
+  } else if (currentPath === '/quotes') {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale'].includes(user?.role || '')) {
+      return <Navigate to="/" replace />;
+    }
+  } else if (currentPath === '/expenses') {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/tickets') {

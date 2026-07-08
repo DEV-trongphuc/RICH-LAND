@@ -13,6 +13,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomModal } from '../components/ui/CustomModal';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { useAuthStore } from '../store/authStore';
 
 const AVATAR_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#10b981', '#0ea5e9',
@@ -29,6 +30,8 @@ const getColorForName = (name: string) => {
 };
 const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const navigate = useNavigate();
+  const user = useAuthStore(state => state.user);
+  const isReadOnly = user?.role === 'director';
   const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -667,27 +670,29 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             <div style={{ width: '1px', height: '16px', background: 'var(--color-border)', margin: '0 6px' }} />
 
             {/* Thêm Vòng Button */}
-            <button
-              type="button"
-              onClick={openAddModal}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '0 10px',
-                borderRadius: '6px',
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--color-primary)',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                height: '28px'
-              }}
-            >
-              <Plus size={13} /> <span>{t("Thêm")}<span className="hide-on-mobile"> {t("Vòng")}</span></span>
-            </button>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={openAddModal}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '0 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--color-primary)',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  height: '28px'
+                }}
+              >
+                <Plus size={13} /> <span>{t("Thêm")}<span className="hide-on-mobile"> {t("Vòng")}</span></span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -957,14 +962,18 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
                   <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', gap: '0.75rem' }}>
                     <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
-                      <Info size={13} /> {t("Chi tiết")}
+                      <Info size={13} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                     </button>
-                    <button className="btn primary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
-                      <Zap size={13} /> {t("Bù Data")}
-                    </button>
-                    <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}>
-                      <Trash2 size={14} />
-                    </button>
+                    {!isReadOnly && (
+                      <button className="btn primary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
+                        <Zap size={13} /> {t("Bù Data")}
+                      </button>
+                    )}
+                    {!isReadOnly && (
+                      <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}>
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1178,14 +1187,18 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
                 <div className="mobile-round-actions" style={{ padding: '1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '0.75rem' }}>
                   <button onClick={() => openEditModal(r)} className="btn outline" style={{ flex: 1, padding: '0.625rem' }}>
-                    <Info size={16} /> {t("Chi tiết")}
+                    <Info size={16} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                   </button>
-                  <button onClick={() => openCompModal(r)} className="btn primary" style={{ flex: 1, padding: '0.625rem' }}>
-                    <Zap size={16} /> {t("Bù Data")}
-                  </button>
-                  <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline danger" style={{ padding: '0.625rem', width: 42, flexShrink: 0, justifyContent: 'center' }}>
-                    <Trash2 size={16} />
-                  </button>
+                  {!isReadOnly && (
+                    <button onClick={() => openCompModal(r)} className="btn primary" style={{ flex: 1, padding: '0.625rem' }}>
+                      <Zap size={16} /> {t("Bù Data")}
+                    </button>
+                  )}
+                  {!isReadOnly && (
+                    <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline danger" style={{ padding: '0.625rem', width: 42, flexShrink: 0, justifyContent: 'center' }}>
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -1227,7 +1240,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
             {activeTab === 'config' ? (
               <form onSubmit={handleSave} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
-                <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
+                <fieldset disabled={isReadOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
+                  <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
 
                   {/* LEFT COLUMN */}
                   <div className="custom-scrollbar modal-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }}>
@@ -1603,11 +1617,14 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 </div>
 
                 <div style={{ padding: '1.25rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
-                  <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>{t("Hủy bỏ")}</button>
-                  <button type="submit" className="btn primary" disabled={isSaving}>
-                    {isSaving ? t('Đang lưu...') : (editingRound ? t('Cập nhật') : t('Thêm mới'))}
-                  </button>
+                  <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>{isReadOnly ? t("Đóng") : t("Hủy bỏ")}</button>
+                  {!isReadOnly && (
+                    <button type="submit" className="btn primary" disabled={isSaving}>
+                      {isSaving ? t('Đang lưu...') : (editingRound ? t('Cập nhật') : t('Thêm mới'))}
+                    </button>
+                  )}
                 </div>
+                </fieldset>
               </form>
             ) : activeTab === 'reports' ? (
               <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar subtab-enter-active">

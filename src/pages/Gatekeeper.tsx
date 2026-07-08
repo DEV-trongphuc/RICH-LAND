@@ -518,6 +518,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
   };
   const { user } = useAuth();
   const isUserAdmin = user && ['admin', 'superadmin', 'super_admin'].includes(user.role);
+  const isReadOnly = user?.role === 'director';
   const navigate = useNavigate();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -3012,7 +3013,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         width="950px"
       >
         {isSettingsModalOpen && (
-          <>
+          <fieldset disabled={isReadOnly} style={{ border: 'none', padding: 0, margin: 0, height: '100%', width: '100%', display: 'contents' }}>
             <style>{`
               div:has(> .settings-modal-container) {
                 overflow: hidden !important;
@@ -3031,10 +3032,12 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                         display: 'flex', alignItems: 'flex-start', gap: '1rem', padding: '1.25rem',
                         background: 'var(--color-bg-alt)', borderRadius: '12px', border: '1px dashed var(--color-border)'
                       }}>
-                        <ToggleSwitch
-                          checked={aiScreenerEnabled}
-                          onChange={setAiScreenerEnabled}
-                        />
+                        <div style={{ opacity: isReadOnly ? 0.6 : 1, pointerEvents: isReadOnly ? 'none' : 'auto' }}>
+                          <ToggleSwitch
+                            checked={aiScreenerEnabled}
+                            onChange={setAiScreenerEnabled}
+                          />
+                        </div>
                         <div>
                           <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>
                             {t('Kích hoạt AI Pre-screener (Pre-screener Gatekeeper)')}
@@ -3351,6 +3354,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                                       { value: 'ai', label: t('Sử dụng Trí tuệ Nhân tạo (Gemini AI)') }
                                     ]}
                                     value={config.mode}
+                                    disabled={isReadOnly}
                                     onChange={val => {
                                       const updated = [...aiScreenerConfigs];
                                       updated[index].mode = val as any;
@@ -3732,20 +3736,22 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 flexShrink: 0
               }}>
                 <button className="btn outline" onClick={() => setIsSettingsModalOpen(false)}>
-                  {t("Đóng")}
+                  {isReadOnly ? t("Đóng") : t("Hủy bỏ")}
                 </button>
-                <button
-                  onClick={handleSaveConfig}
-                  disabled={savingSettings}
-                  className="btn primary"
-                  style={{ gap: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', padding: '10px 24px' }}
-                >
-                  {savingSettings ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
-                  {t("Lưu cấu hình bộ lọc")}
-                </button>
+                {!isReadOnly && (
+                  <button
+                    onClick={handleSaveConfig}
+                    disabled={savingSettings}
+                    className="btn primary"
+                    style={{ gap: 8, fontWeight: 700, display: 'inline-flex', alignItems: 'center', padding: '10px 24px' }}
+                  >
+                    {savingSettings ? <RefreshCw size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={16} />}
+                    {t("Lưu cấu hình bộ lọc")}
+                  </button>
+                )}
               </div>
             </div>
-          </>
+          </fieldset>
         )}
       </CustomModal>
 

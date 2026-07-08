@@ -5,6 +5,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
+import { useAuthStore } from '../store/authStore';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css';
@@ -33,6 +34,12 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   const { addToast, setShowPOS } = useUIStore();
   const [activeTab, setActiveTab] = useState<'info' | 'activities' | 'products' | 'quotes' | string>('info');
   const [formData, setFormData] = useState(deal || {});
+
+  const currentUser = useAuthStore(state => state.user);
+  const isOwner = Number(currentUser?.id) === Number(formData?.owner_id || deal?.owner_id || formData?.created_by || deal?.created_by);
+  const isPrivileged = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(currentUser.role);
+  const isReadOnly = !isOwner && !isPrivileged;
+  const isViewer = currentUser?.role === 'viewer' || isReadOnly;
   const [notes, setNotes] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
@@ -350,7 +357,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
 
               <div className={styles.contentArea}>
                 {activeTab === 'info' && (
-                  <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <fieldset disabled={isViewer} className="animate-fade" style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                     {(() => {
                       const linkedId = getLinkedDealId();
                       if (!linkedId) return null;
@@ -420,6 +427,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                             options={stages.map(s => ({ value: s.id, label: s.name }))}
                             value={formData?.stage_id}
                             onChange={val => setFormData({...formData, stage_id: Number(val)})}
+                            disabled={isViewer}
                           />
                         </div>
                         <div className="form-group">
@@ -466,6 +474,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                     newFields[index].value = val.toString();
                                     setFormData({ ...formData, custom_fields: newFields });
                                   }} 
+                                  disabled={isViewer}
                                 />
                               )}
                               {field.field_type === 'multiselect' && (
@@ -478,12 +487,12 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                      } catch (e: any) { console.error(e); }
                                     const isChecked = selected.includes(o);
                                     return (
-                                      <label key={o} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: isChecked ? 'var(--color-primary)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>
-                                        <input type="checkbox" checked={isChecked} onChange={e => {
+                                      <label key={o} style={{ display: 'flex', alignItems: 'center', cursor: isViewer ? 'not-allowed' : 'pointer', background: isChecked ? 'var(--color-primary)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`, transition: 'all 0.2s', opacity: isViewer ? 0.6 : 1 }}>
+                                        <input type="checkbox" checked={isChecked} disabled={isViewer} onChange={e => {
                                           const newFields = [...formData.custom_fields];
                                           const newSelected = e.target.checked ? [...selected, o] : selected.filter((s: string) => s !== o);
                                           newFields[index].value = newSelected;
-                                          setFormData({ ...formData, custom_fields: newFields });
+                                          setFormData({ ...formData, custom_fields: newSelected });
                                         }} style={{ display: 'none' }} />
                                         <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: isChecked ? 'white' : 'var(--color-text)' }}>{o}</span>
                                       </label>
@@ -492,7 +501,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                 </div>
                               )}
                               {field.field_type === 'checkbox' && (
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', height: '40px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: isViewer ? 'not-allowed' : 'pointer', height: '40px' }}>
                                   <CustomCheckbox 
                                     checked={field.value === 'true' || field.value === true} 
                                     onChange={e => {
@@ -500,6 +509,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                       newFields[index].value = e ? 'true' : 'false';
                                       setFormData({ ...formData, custom_fields: newFields });
                                     }} 
+                                    disabled={isViewer}
                                   />
                                   <span style={{ fontSize: '0.875rem' }}>Có</span>
                                 </label>
@@ -526,6 +536,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                             }}
                             placeholder="Chọn công ty..."
                             searchable
+                            disabled={isViewer}
                           />
                         </div>
                         <div className="form-group">
@@ -540,6 +551,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                             placeholder="Chọn liên hệ..."
                             searchable
                             showAvatars
+                            disabled={isViewer}
                           />
                         </div>
                       </div>
@@ -554,6 +566,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                             onChange={newTags => setFormData({...formData, tags: newTags})}
                             suggestions={allTags.map(t => t.name)}
                             placeholder="Thêm tag cho deal này..."
+                            readOnly={isViewer}
                           />
                         </div>
                         <p className="text-xs text-muted" style={{ marginTop: '0.5rem' }}>
@@ -561,7 +574,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </fieldset>
                 )}
 
                 {activeTab === 'activities' && (
@@ -815,9 +828,9 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
 
             {/* Footer */}
             <div className={styles.footer}>
-              {stages.find(s => s.id === formData?.stage_id)?.name?.toLowerCase()?.includes('cọc') && (
+              {formData.status === 'won' && !isViewer && (
                 <button 
-                  className="btn outline" 
+                  className="btn outline"
                   style={{ marginRight: 'auto', color: '#BD1D2D', borderColor: '#BD1D2D', display: 'flex', alignItems: 'center', gap: '6px' }}
                   onClick={() => {
                     setSwitchUnitCode('');
@@ -830,21 +843,23 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                   🔄 Đổi Căn
                 </button>
               )}
-              <button className="btn ghost" onClick={onClose}>Hủy bỏ</button>
-              <button className="btn primary" onClick={() => {
-                const payload = { ...formData };
-                if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
-                  for (const f of formData.custom_fields) {
-                    const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
-                    if (f.is_required && isEmpty) {
-                      addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
-                      return;
+              <button className="btn ghost" onClick={onClose}>{isViewer ? 'Đóng' : 'Hủy bỏ'}</button>
+              {!isViewer && (
+                <button className="btn primary" onClick={() => {
+                  const payload = { ...formData };
+                  if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
+                    for (const f of formData.custom_fields) {
+                      const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
+                      if (f.is_required && isEmpty) {
+                        addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
+                        return;
+                      }
                     }
+                    payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
                   }
-                  payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
-                }
-                onSave(payload);
-              }}>Lưu Cơ Hội</button>
+                  onSave(payload);
+                }}>Lưu Cơ Hội</button>
+              )}
             </div>
             {/* Unit Switching Modal */}
             <CustomModal

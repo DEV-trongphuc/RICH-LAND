@@ -571,7 +571,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           transition: all 0.2s ease-in-out;
         }
         .stat-card {
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
         .stat-card.total-card:hover {
           box-shadow: 0 6px 16px rgba(163, 20, 34, 0.15) !important;
@@ -748,6 +748,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
       {aiScreenerEnabled && (
         loading && !stats ? (
           <div
+            key="ai-screener-skeleton"
             className="card"
             style={{
               padding: '1rem 1.5rem',
@@ -782,6 +783,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         ) : (
           stats && (stats.ai_screener_enabled === 1 || stats.ai_screener_enabled === '1' || stats.ai_screener_enabled === true) && (
             <div
+              key="ai-screener-loaded"
               className="card hover-lift"
               onClick={() => navigate('/gatekeeper')}
               style={{
@@ -878,7 +880,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
         {loading && !stats ? (
           Array.from({ length: 4 }).map((_, i) => (
             <div
-              key={i}
+              key={`kpi-skeleton-${i}`}
               style={{
                 animation: 'slideUp 0.4s ease-out both',
                 animationDelay: '180ms'
@@ -887,11 +889,11 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               <KpiCardSkeleton />
             </div>
           ))
-        ) : kpiCards.map((card, i) => {
+        ) : kpiCards.map((card) => {
           const Icon = card.icon;
           return (
             <div
-              key={i}
+              key={`kpi-card-${card.id}`}
               className={`stat-card hover-lift ${card.id}-card`}
               style={{
                 minHeight: '140px',
@@ -992,7 +994,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
       {/* Chart + List row */}
       {loading && !stats ? (
-        <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+        <div key="chart-row-skeleton" className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           <div className="card" style={{ padding: '1.25rem', animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms' }}>
             <Skeleton width={220} height={16} style={{ marginBottom: 8 }} />
             <Skeleton width={300} height={11} style={{ marginBottom: 24 }} />
@@ -1013,7 +1015,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           </div>
         </div>
       ) : (
-        <div className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+        <div key="chart-row-loaded" className="responsive-grid-6-4" style={{ display: 'grid', gridTemplateColumns: '6fr 4fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           <div className="card" style={{ padding: '1.25rem', minWidth: 0, animation: 'slideUp 0.4s ease-out both', animationDelay: '300ms', position: 'relative' }}>
             <div style={{
               display: 'flex',
@@ -1402,7 +1404,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
       {/* Source Pie + Quality row */}
       {loading && !stats ? (
-        <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+        <div key="source-quality-skeleton" className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="card" style={{ padding: '1.25rem' }}>
               <Skeleton width={200} height={16} style={{ marginBottom: 20 }} />
@@ -1421,7 +1423,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
       ) : (
         <>
-          <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+          <div key="source-quality-loaded" className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
             {/* Top Consultants */}
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -1430,7 +1432,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 </h3>
               </div>
               <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
-                {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.map((c: any, i: number) => (
+                {stats?.topConsultants && stats.topConsultants.length > 0 ? stats.topConsultants.slice(0, 20).map((c: any, i: number) => (
                   <div
                     key={i}
                     className="top-consultant-item"
@@ -1478,7 +1480,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                 </h3>
               </div>
               <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', flex: 1, justifyContent: 'flex-start', overflowY: 'auto', maxHeight: 260, paddingRight: 4 }}>
-                {stats?.roundRatio && stats.roundRatio.length > 0 ? stats.roundRatio.map((r: any, i: number) => (
+                {stats?.roundRatio && stats.roundRatio.length > 0 ? stats.roundRatio.slice(0, 10).map((r: any, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ width: 14, height: 14, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
                     <div style={{ flex: 1 }}>
@@ -1801,41 +1803,48 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
               </div>
               <div style={{ flex: 1, minHeight: 260 }}>
                 {stats?.errorStats && stats.errorStats.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={stats.errorStats} margin={{ top: 20, right: 10, left: -10, bottom: 5 }}>
-                      <defs>
-                        <linearGradient id="warningGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#fbbf24" stopOpacity={1} />
-                          <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.8} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: isMobile ? 8 : 10, fill: 'var(--color-text)', fontWeight: 500 }}
-                        interval={isMobile ? 1 : 0}
-                        angle={isMobile ? -25 : -12}
-                        textAnchor="end"
-                        height={isMobile ? 50 : 40}
-                      />
-                      <YAxis
-                        allowDecimals={false}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
-                      />
-                      <Tooltip
-                        cursor={{ fill: 'rgba(245, 158, 11, 0.04)' }}
-                        contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                        itemStyle={{ color: 'var(--color-warning)', fontWeight: 600 }}
-                      />
-                      <Bar dataKey="errors" fill="url(#warningGradient)" radius={[4, 4, 0, 0]} barSize={28} name={t("Số lỗi được duyệt")}>
-                        <LabelList dataKey="errors" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  (() => {
+                    const sortedData = [...stats.errorStats]
+                      .sort((a: any, b: any) => (b.errors || 0) - (a.errors || 0))
+                      .slice(0, 10);
+                    return (
+                      <ResponsiveContainer width="100%" height={260}>
+                        <BarChart data={sortedData} margin={{ top: 20, right: 10, left: -10, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="warningGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#fbbf24" stopOpacity={1} />
+                              <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.8} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--color-border-light)" />
+                          <XAxis
+                            dataKey="name"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: isMobile ? 8 : 10, fill: 'var(--color-text)', fontWeight: 500 }}
+                            interval={0}
+                            angle={isMobile ? -25 : -12}
+                            textAnchor="end"
+                            height={isMobile ? 50 : 40}
+                          />
+                          <YAxis
+                            allowDecimals={false}
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }}
+                          />
+                          <Tooltip
+                            cursor={{ fill: 'rgba(245, 158, 11, 0.04)' }}
+                            contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            itemStyle={{ color: 'var(--color-warning)', fontWeight: 600 }}
+                          />
+                          <Bar dataKey="errors" fill="url(#warningGradient)" radius={[4, 4, 0, 0]} barSize={28} name={t("Số lỗi được duyệt")}>
+                            <LabelList dataKey="errors" position="top" style={{ fill: 'var(--color-text)', fontSize: 11, fontWeight: 700 }} offset={6} />
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    );
+                  })()
                 ) : (
                   <div style={{ textAlign: 'center', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>{t('Chưa có TVV nào có lỗi được duyệt')}</div>
                 )}
@@ -2069,7 +2078,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                   {/* Miniature fairness bars for rounds if stats?.roundRatio exists */}
                   <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem', maxHeight: 190, overflowY: 'auto', paddingRight: 4 }}>
                     {stats?.roundRatio && stats.roundRatio.length > 0 ? (
-                      stats.roundRatio.map((r: any, idx: number) => {
+                      stats.roundRatio.slice(0, 10).map((r: any, idx: number) => {
                         const isEven = idx % 2 === 0;
                         const individualFairness = Math.max(85, Math.min(100, parseFloat(stats?.fair_share_equity || '96.5') + (isEven ? 1.5 : -2.0) - (idx * 0.5)));
 

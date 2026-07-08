@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -211,7 +211,7 @@ export default function ProjectsPage() {
     fetchCampaignRosters(camp);
   };
 
-  const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user.role);
+  const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'director', 'assistant'].includes(user.role);
   const isSystemAdmin = user && ['admin', 'superadmin', 'super_admin'].includes(user.role);
   const canEditDeleteProject = (proj: Project) => {
     if (!user) return false;
@@ -574,7 +574,7 @@ export default function ProjectsPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Quản Lý Dự Án</h1>
-          <p className="page-subtitle">Đăng ký dự án, roster đội ngũ phân phối và quản lý tài liệu mật</p>
+          <p className="page-subtitle">Đăng ký dự án, roster đội ngũ phân phối và quản lý tài liệu</p>
         </div>
         {isAdmin && activeSubTab === 'projects' && (
           <button
@@ -626,18 +626,18 @@ export default function ProjectsPage() {
             position: 'absolute',
             top: '4px',
             bottom: '4px',
-            width: '130px',
+            width: '160px',
             borderRadius: '10px',
             background: 'var(--color-surface)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
             transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '134px'})`,
+            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '164px'})`,
             zIndex: 1
           }} />
 
           {[
-            { id: 'projects', label: 'Dự án' },
-            { id: 'campaigns', label: 'Chiến dịch' }
+            { id: 'projects', label: 'Dự án', count: totalProjects },
+            { id: 'campaigns', label: 'Chiến dịch', count: totalCampaigns }
           ].map(tab => {
             const isSelected = activeSubTab === tab.id;
             return (
@@ -645,7 +645,7 @@ export default function ProjectsPage() {
                 key={tab.id}
                 onClick={() => setActiveSubTab(tab.id as any)}
                 style={{
-                  width: '130px',
+                  width: '160px',
                   height: '38px',
                   borderRadius: '10px',
                   border: 'none',
@@ -657,6 +657,7 @@ export default function ProjectsPage() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  gap: '8px',
                   position: 'relative',
                   zIndex: 2,
                   transition: 'color 0.25s ease'
@@ -664,6 +665,17 @@ export default function ProjectsPage() {
                 className=""
               >
                 <span>{tab.label}</span>
+                <span style={{
+                  fontSize: '0.72rem',
+                  padding: '1px 6px',
+                  borderRadius: '10px',
+                  background: isSelected ? 'var(--color-primary-light)' : 'rgba(15, 23, 42, 0.05)',
+                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  fontWeight: 800,
+                  transition: 'background 0.25s ease, color 0.25s ease'
+                }}>
+                  {tab.count}
+                </span>
               </button>
             );
           })}
@@ -714,16 +726,17 @@ export default function ProjectsPage() {
                 <div
                   key={proj.id}
                   className="card flex flex-col justify-between hover:border-primary/50 transition-all duration-200"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setEditingProject(proj);
+                    setProjectModalMode('view');
+                    setIsEditModalOpen(true);
+                  }}
                 >
                   <div>
                     <div className="flex justify-between items-start mb-4">
                       <div 
-                        className="project-card-header flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-                        onClick={() => {
-                          setEditingProject(proj);
-                          setProjectModalMode('view');
-                          setIsEditModalOpen(true);
-                        }}
+                        className="project-card-header flex items-center gap-3"
                       >
                         <div className="p-3 bg-blue-500/10 rounded-lg text-blue-500" style={{ color: '#3b82f6' }}>
                           <Building2 size={24} />
@@ -759,10 +772,10 @@ export default function ProjectsPage() {
                     <div style={{ marginBottom: '1rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', fontSize: '0.75rem' }}>
                         <span style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>Tiến độ: {proj.construction_status || 'Chưa khởi công'}</span>
-                        <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{proj.progress_percent ?? 0}%</span>
+                        <span style={{ fontWeight: 800, color: (proj.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{proj.progress_percent ?? 0}%</span>
                       </div>
-                      <div style={{ width: '100%', height: '6px', background: 'var(--color-border)', borderRadius: '3px', overflow: 'hidden' }}>
-                        <div style={{ width: `${proj.progress_percent ?? 0}%`, height: '100%', background: 'var(--color-primary)', borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
+                      <div style={{ width: '100%', height: '10px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{ width: `${proj.progress_percent ?? 0}%`, height: '100%', background: (proj.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, #BD1D2D, #F97316)', borderRadius: '99px', transition: 'width 0.4s var(--transition-fluid)' }}></div>
                       </div>
                     </div>
 
@@ -776,7 +789,10 @@ export default function ProjectsPage() {
                     
                     <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
                       <span 
-                        onClick={() => handleOpenRoster(proj.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenRoster(proj.id);
+                        }}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '4px 8px', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--color-border-light)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'var(--color-bg)'}
@@ -784,7 +800,10 @@ export default function ProjectsPage() {
                         <Users size={12} /> {proj.roster_count || 0} nhân sự
                       </span>
                       <span 
-                        onClick={() => handleOpenDocs(proj.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDocs(proj.id);
+                        }}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '4px 8px', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'var(--color-border-light)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'var(--color-bg)'}
@@ -829,6 +848,7 @@ export default function ProjectsPage() {
                                   {visibleFiles.map(fileObj => (
                                     <a
                                       key={fileObj.id}
+                                      onClick={(e) => e.stopPropagation()}
                                       href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
                                       download={fileObj.name}
                                       title={fileObj.name}
@@ -855,18 +875,24 @@ export default function ProjectsPage() {
                     )}
                   </div>
 
-                  <div className="flex gap-2 pt-4" style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem' }}>
+                  <div className="flex gap-2 pt-4" style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem' }} onClick={e => e.stopPropagation()}>
                     <button
-                      onClick={() => handleOpenDocs(proj.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenDocs(proj.id);
+                      }}
                       className="btn secondary sm flex-1 flex justify-center items-center gap-1.5"
                     >
                       <FileText size={14} />
-                      Tài liệu mật
+                      Tài liệu
                     </button>
                     {isAdmin && (
                       <>
                         <button
-                          onClick={() => handleOpenRoster(proj.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenRoster(proj.id);
+                          }}
                           className="btn secondary sm"
                           title="Roster nhân viên"
                         >
@@ -874,7 +900,8 @@ export default function ProjectsPage() {
                         </button>
                         {canEditDeleteProject(proj) && (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingProject(proj);
                               setAutoCode(false);
                               setProjectModalMode('edit');
@@ -888,7 +915,10 @@ export default function ProjectsPage() {
                         )}
                         {canEditDeleteProject(proj) && (
                           <button
-                            onClick={() => handleDeleteProject(proj.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProject(proj.id);
+                            }}
                             className="btn secondary sm"
                             style={{ color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
                             title="Xóa"
@@ -1162,18 +1192,23 @@ export default function ProjectsPage() {
                 </div>
                 <div>
                   <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Trạng thái thi công &amp; Tiến độ</span>
-                  <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>
-                    {editingProject?.construction_status || 'Chưa khởi công'} ({editingProject?.progress_percent ?? 0}%)
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '80%', marginBottom: '4px' }}>
+                    <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600 }}>
+                      {editingProject?.construction_status || 'Chưa khởi công'}
+                    </span>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 800, color: (editingProject?.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>
+                      {editingProject?.progress_percent ?? 0}%
+                    </span>
+                  </div>
                   {/* Beautiful progress bar */}
-                  <div style={{ height: '6px', background: 'var(--color-border-light)', borderRadius: '100px', overflow: 'hidden', marginTop: '8px', width: '80%' }}>
+                  <div style={{ height: '10px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden', marginTop: '4px', width: '80%' }}>
                     <div 
                       style={{ 
                         height: '100%', 
                         width: `${editingProject?.progress_percent ?? 0}%`, 
-                        background: 'linear-gradient(90deg, var(--color-primary) 0%, #ec4899 100%)',
-                        borderRadius: '100px',
-                        transition: 'width 0.5s ease-in-out'
+                        background: (editingProject?.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, #BD1D2D, #F97316)',
+                        borderRadius: '99px',
+                        transition: 'width 0.4s var(--transition-fluid)'
                       }} 
                     />
                   </div>
@@ -1211,7 +1246,7 @@ export default function ProjectsPage() {
               flexDirection: 'column',
               gap: '1rem'
             }}>
-              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>Quản lý &amp; Tài liệu mật</h4>
+              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)' }}>Quản lý &amp; Tài liệu</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <div>
                   <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '6px' }}>Manager phụ trách chính</span>
@@ -1232,10 +1267,10 @@ export default function ProjectsPage() {
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
-                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '6px' }}>Tài liệu mật liên kết</span>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '6px' }}>Tài liệu liên kết</span>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {parseIds(editingProject?.document_ids).length === 0 ? (
-                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết tài liệu mật</span>
+                      <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết tài liệu</span>
                     ) : (
                       parseIds(editingProject?.document_ids).map(docId => {
                         const fileObj = allFiles.find(f => String(f.id) === String(docId));
@@ -1447,7 +1482,7 @@ export default function ProjectsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label className="form-label">Tiến độ thi công</label>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-primary)' }}>{editingProject?.progress_percent ?? 0}%</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: (editingProject?.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{editingProject?.progress_percent ?? 0}%</span>
                 </div>
                 <input
                   type="range"
@@ -1664,7 +1699,7 @@ export default function ProjectsPage() {
       <CustomModal
         isOpen={isDocsModalOpen}
         onClose={() => setIsDocsModalOpen(false)}
-        title="Kho Tài Liệu Dự Án (Mật)"
+        title="Kho Tài Liệu Dự Án"
         width="700px"
       >
         {(() => {
@@ -1688,6 +1723,43 @@ export default function ProjectsPage() {
 
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Linked Folder Area */}
+              {selectedProj?.folder_path && (
+                <div style={{
+                  padding: '1rem',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-lg)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: 'rgba(16, 185, 129, 0.04)',
+                  borderColor: 'rgba(16, 185, 129, 0.2)'
+                }}>
+                  <div style={{ flex: 1, minWidth: 0, marginRight: '1rem' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Folder size={16} color="#10b981" />
+                      Thư mục liên kết
+                    </h4>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {selectedProj.folder_path}
+                    </p>
+                  </div>
+                  {selectedProj.folder_path.startsWith('http') ? (
+                    <a
+                      href={selectedProj.folder_path}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn success sm"
+                      style={{ borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: '#10b981', color: '#fff', border: 'none' }}
+                    >
+                      <ExternalLink size={14} />
+                      Mở thư mục
+                    </a>
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Không phải liên kết URL</span>
+                  )}
+                </div>
+              )}
               {/* Upload Area for Admins */}
               {isAdmin && (
                 <div style={{
@@ -1732,9 +1804,13 @@ export default function ProjectsPage() {
                       <div style={{ flex: 1, marginRight: '1rem', minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{formatFileName(doc.name, 35)}</h4>
-                          {doc.isLinkedOnly && (
+                          {doc.isLinkedOnly ? (
                             <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              Thư viện
+                              Tệp liên kết
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.625rem', padding: '2px 8px', borderRadius: '100px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)', fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              Tệp tải lên
                             </span>
                           )}
                         </div>
@@ -1923,7 +1999,7 @@ export default function ProjectsPage() {
                           </div>
 
                           <div style={{ marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Tài liệu mật liên kết:</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Tài liệu liên kết:</span>
                             {projDocs.length === 0 ? (
                               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Không có tài liệu liên kết</span>
                             ) : (

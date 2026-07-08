@@ -20,6 +20,7 @@ import { CardSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { useAuthStore } from '../store/authStore';
 
 const OP_LABELS: Record<string, string> = {
   contains: 'Có chứa từ khóa',
@@ -36,7 +37,7 @@ const OP_LABELS: Record<string, string> = {
 };
 
 // Sortable Item Component
-const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisabled }: { rule: any, idx: number, connections: any[], onEdit: (r: any) => void, onDelete: (id: number) => void, isDragDisabled?: boolean }) => {
+const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisabled, isReadOnly }: { rule: any, idx: number, connections: any[], onEdit: (r: any) => void, onDelete: (id: number) => void, isDragDisabled?: boolean, isReadOnly?: boolean }) => {
   const { t } = useLanguage();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: rule.id });
 
@@ -231,18 +232,20 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
             onClick={() => onEdit(rule)}
             className="btn ghost"
             style={{ width: 40, height: 40, padding: 0, borderRadius: 10, color: 'var(--color-primary)' }}
-            title={t("Sửa quy tắc")}
+            title={isReadOnly ? t("Xem chi tiết") : t("Sửa quy tắc")}
           >
-            <Edit2 size={16} />
+            {isReadOnly ? <Filter size={16} /> : <Edit2 size={16} />}
           </button>
-          <button
-            onClick={() => onDelete(rule.id)}
-            className="btn ghost"
-            style={{ width: 40, height: 40, padding: 0, borderRadius: 10, color: 'var(--color-danger)' }}
-            title={t("Xóa quy tắc này")}
-          >
-            <Trash2 size={16} />
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={() => onDelete(rule.id)}
+              className="btn ghost"
+              style={{ width: 40, height: 40, padding: 0, borderRadius: 10, color: 'var(--color-danger)' }}
+              title={t("Xóa quy tắc này")}
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -269,6 +272,8 @@ const parseMarkdownToHtml = (markdown: string) => {
 
 const RuleSettingsInner = () => {
   const { t } = useLanguage();
+  const user = useAuthStore(state => state.user);
+  const isReadOnly = user?.role === 'director';
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -673,9 +678,11 @@ const RuleSettingsInner = () => {
           <button className="btn outline" onClick={openSimulateModal} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
             <Play size={16} style={{ fill: 'currentColor' }} /> {t("Thử nghiệm Định tuyến")}
           </button>
-          <button className="btn primary" onClick={openAddModal}>
-            <Plus size={18} /> {t("Thêm Quy tắc mới")}
-          </button>
+          {!isReadOnly && (
+            <button className="btn primary" onClick={openAddModal}>
+              <Plus size={18} /> {t("Thêm Quy tắc mới")}
+            </button>
+          )}
         </div>
       </div>
 
@@ -766,7 +773,8 @@ const RuleSettingsInner = () => {
                       key={rule.id} rule={rule} idx={originalIdx} connections={connections}
                       onEdit={openEditModal}
                       onDelete={(id) => { setDeleteId(id); setIsConfirmOpen(true); }}
-                      isDragDisabled={activeFilter !== 'all'}
+                      isDragDisabled={isReadOnly || activeFilter !== 'all'}
+                      isReadOnly={isReadOnly}
                     />
                   );
                 })}
@@ -792,7 +800,7 @@ const RuleSettingsInner = () => {
         width="800px"
       >
         {isModalOpen && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
+          <fieldset disabled={isReadOnly} style={{ border: 'none', margin: 0, display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1rem 0' }}>
           <div>
             <label className="form-label">{t("Áp dụng cho Nguồn (Connection)")}</label>
             <CustomSelect
@@ -806,6 +814,7 @@ const RuleSettingsInner = () => {
               ]}
               value={connectionId}
               onChange={(v) => setConnectionId(v)}
+              disabled={isReadOnly}
             />
           </div>
 
@@ -851,6 +860,7 @@ const RuleSettingsInner = () => {
                                 setBranches(newB);
                               }}
                               placeholder={t("Chọn trường...")}
+                              disabled={isReadOnly}
                             />
                           </div>
                         </div>
@@ -864,6 +874,7 @@ const RuleSettingsInner = () => {
                                 newB[bIndex].conditions[i].op = String(val);
                                 setBranches(newB);
                               }}
+                              disabled={isReadOnly}
                             />
                           </div>
                         </div>
@@ -892,6 +903,7 @@ const RuleSettingsInner = () => {
                                   newB[bIndex].conditions[i].val = String(v);
                                   setBranches(newB);
                                 }}
+                                disabled={isReadOnly}
                               />
                             ) : (
                               <input
@@ -1009,6 +1021,7 @@ const RuleSettingsInner = () => {
                                     }
                                     setBranches(newB);
                                   }}
+                                  disabled={isReadOnly}
                                 />
                               </div>
 
@@ -1065,15 +1078,17 @@ const RuleSettingsInner = () => {
             ))}
           </div>
 
-          <div style={{ padding: '0', marginTop: '0', marginBottom: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }])}
-              style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
-            >
-              <Plus size={18} /> {t("Thêm Nhánh Mới")}
-            </button>
-          </div>
+          {!isReadOnly && (
+            <div style={{ padding: '0', marginTop: '0', marginBottom: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => setBranches([...branches, { conditions: [{ col: 'source', op: 'contains', val: '' }], inject: { enabled: false, fields: [] } }])}
+                style={{ width: '100%', padding: '0.875rem', background: 'transparent', border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', color: 'var(--color-text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
+              >
+                <Plus size={18} /> {t("Thêm Nhánh Mới")}
+              </button>
+            </div>
+          )}
           <div>
             <label className="form-label">{t("Hành động: Phân bổ vào")}</label>
             <CustomSelect
@@ -1086,15 +1101,18 @@ const RuleSettingsInner = () => {
               value={targetRound.toString()}
               onChange={(v) => setTargetRound(Number(v))}
               placeholder={t("Chọn vòng phân bổ...")}
+              disabled={isReadOnly}
             />
           </div>
           <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-            <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)}>{t("Hủy bỏ")}</button>
-            <button type="button" onClick={handleSaveRule} className="btn primary" disabled={isSaving}>
-              {isSaving ? t('Đang lưu...') : (editingRule ? t('Cập nhật') : t('Thêm mới'))}
-            </button>
+            <button type="button" className="btn outline" onClick={() => setIsModalOpen(false)}>{isReadOnly ? t("Đóng") : t("Hủy bỏ")}</button>
+            {!isReadOnly && (
+              <button type="button" onClick={handleSaveRule} className="btn primary" disabled={isSaving}>
+                {isSaving ? t('Đang lưu...') : (editingRule ? t('Cập nhật') : t('Thêm mới'))}
+              </button>
+            )}
           </div>
-          </div>
+          </fieldset>
         )}
       </CustomModal>
 

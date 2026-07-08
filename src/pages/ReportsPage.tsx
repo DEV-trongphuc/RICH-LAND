@@ -53,22 +53,69 @@ export const ReportsPage: React.FC = () => {
   const [companyData, setCompanyData] = useState<any>(null);
   const [expenseData, setExpenseData] = useState<any>(null);
   const [activityData, setActivityData] = useState<any>(null);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
+      api.get('/teams').then(res => {
+        setTeams(res.data.data || res.data || []);
+      }).catch(() => {});
+      api.get('/users').then(res => {
+        const d = res.data.data;
+        setUsers(Array.isArray(d) ? d : (d?.items || []));
+      }).catch(() => {});
+    }
+  }, [user]);
+
+  const getEffectiveTeamId = () => {
+    if ((user as any)?.team_id) return (user as any).team_id;
+    const me = users.find(u => Number(u.id) === Number(user?.id));
+    if (me?.team_id) return me.team_id;
+    if (user?.role === 'manager') {
+      const managedTeam = teams.find(t => Number(t.leader_id) === Number(user.id));
+      return managedTeam?.id || null;
+    }
+    return null;
+  };
 
   const fetchSales = async () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
+      let usersList = [...(state.users || [])];
+      let dealsList = [...(state.deals || [])];
+      let contactsList = [...(state.contacts || [])];
+
+      if (user?.role === 'sale') {
+        usersList = usersList.filter((u: any) => u.id === user.id);
+        dealsList = dealsList.filter((d: any) => d.owner_id === user.id);
+        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
+      } else if (user?.role === 'manager') {
+        const activeTeamId = getEffectiveTeamId();
+        if (activeTeamId) {
+          const teamMemberIds = usersList
+            .filter((u: any) => String(u.team_id) === String(activeTeamId))
+            .map((u: any) => u.id);
+          if (!teamMemberIds.includes(user.id)) {
+            teamMemberIds.push(user.id);
+          }
+          usersList = usersList.filter((u: any) => teamMemberIds.includes(u.id));
+          dealsList = dealsList.filter((d: any) => teamMemberIds.includes(d.owner_id));
+          contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
+        }
+      }
 
       // Revenue = tổng value của deals đã chốt (stage_id === 'won')
-      const wonDeals = (state.deals || []).filter((d: any) => d.stage_id === 'won');
+      const wonDeals = dealsList.filter((d: any) => d.stage_id === 'won');
       const wonValue = wonDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
 
       // Tổng tất cả deals để tính thống kê
-      const allDeals = state.deals || [];
+      const allDeals = dealsList;
       const totalDealValue = allDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
 
       // Doanh thu theo owner
-      const byOwner = state.users.map((u: any) => {
+      const byOwner = usersList.map((u: any) => {
         const userDeals = allDeals.filter((d: any) => d.owner_id === u.id);
         return {
           id: u.id,
@@ -98,7 +145,7 @@ export const ReportsPage: React.FC = () => {
           revenue_change: '+12.4%',
           deals: allDeals.length,
           deals_change: '+5.2%',
-          contacts: state.contacts.length,
+          contacts: contactsList.length,
           contacts_change: '+8.1%',
           win_rate: allDeals.length > 0 ? Math.round((wonDeals.length / allDeals.length) * 100) : 68,
           win_rate_change: '+2.5%'
@@ -112,7 +159,7 @@ export const ReportsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to } });
+      const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       setSalesData(r.data.data);
     } catch (e: any) {
       // silent fail — show empty charts
@@ -125,10 +172,24 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
+      let contactsList = [...(state.contacts || [])];
+
+      if (user?.role === 'sale') {
+        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
+      } else if (user?.role === 'manager' && (user as any).team_id) {
+        const teamMemberIds = (state.users || [])
+          .filter((u: any) => String(u.team_id) === String((user as any).team_id))
+          .map((u: any) => u.id);
+        if (!teamMemberIds.includes(user.id)) {
+          teamMemberIds.push(user.id);
+        }
+        contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
+      }
+
       setPipelineData(state.pipeline_stages.map((s: any) => ({
         stage: s.name,
-        count: state.contacts.filter((c: any) => c.stage_id === s.id).length,
-        total_value: state.contacts.filter((c: any) => c.stage_id === s.id).reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0),
+        count: contactsList.filter((c: any) => c.stage_id === s.id).length,
+        total_value: contactsList.filter((c: any) => c.stage_id === s.id).reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0),
         color: s.color
       })));
       setLoading(false);
@@ -137,7 +198,7 @@ export const ReportsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to } });
+      const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data || [];
       const mapped = raw.map((item: any) => ({
         ...item,
@@ -155,16 +216,36 @@ export const ReportsPage: React.FC = () => {
       setLoading(true);
       const state = getFilteredMockState();
       const types = ['call', 'email', 'meeting', 'task', 'note'];
+      let usersList = [...(state.users || [])];
+      let activitiesList = [...(state.activities || [])];
+
+      if (user?.role === 'sale') {
+        usersList = usersList.filter((u: any) => u.id === user.id);
+        activitiesList = activitiesList.filter((a: any) => a.user_id === user.id);
+      } else if (user?.role === 'manager') {
+        const activeTeamId = getEffectiveTeamId();
+        if (activeTeamId) {
+          const teamMemberIds = usersList
+            .filter((u: any) => String(u.team_id) === String(activeTeamId))
+            .map((u: any) => u.id);
+          if (!teamMemberIds.includes(user.id)) {
+            teamMemberIds.push(user.id);
+          }
+          usersList = usersList.filter((u: any) => teamMemberIds.includes(u.id));
+          activitiesList = activitiesList.filter((a: any) => teamMemberIds.includes(a.user_id));
+        }
+      }
+
       setActivityData({
         by_type: types.map(t => ({
           type: t,
-          total: state.activities.filter((a: any) => a.type === t).length
+          total: activitiesList.filter((a: any) => a.type === t).length
         })),
-        by_user_type: state.users.slice(0, 3).flatMap((u: any) => 
+        by_user_type: usersList.flatMap((u: any) => 
           types.map(t => ({
             user_name: u.full_name,
             type: t,
-            total: Math.floor(Math.random() * 10) + 2
+            total: activitiesList.filter((a: any) => a.user_id === u.id && a.type === t).length || Math.floor(Math.random() * 10) + 2
           }))
         )
       });
@@ -174,7 +255,7 @@ export const ReportsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to } });
+      const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
       if (raw) {
         if (raw.by_type) raw.by_type = raw.by_type.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
@@ -190,26 +271,56 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
+      let contactsList = [...(state.contacts || [])];
+
+      if (user?.role === 'sale') {
+        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
+      } else if (user?.role === 'manager' && (user as any).team_id) {
+        const teamMemberIds = (state.users || [])
+          .filter((u: any) => String(u.team_id) === String((user as any).team_id))
+          .map((u: any) => u.id);
+        if (!teamMemberIds.includes(user.id)) {
+          teamMemberIds.push(user.id);
+        }
+        contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
+      }
+
+      // Group by source
+      const sourcesMap: Record<string, number> = {};
+      contactsList.forEach(c => {
+        const src = c.source ? (c.source.charAt(0).toUpperCase() + c.source.slice(1)) : 'Other';
+        sourcesMap[src] = (sourcesMap[src] || 0) + 1;
+      });
+      const bySource = Object.entries(sourcesMap).map(([source, count]) => ({ source, count }));
+
+      // Group by score
+      const scoreBuckets = [
+        { bucket: '0-20', min: 0, max: 20, count: 0 },
+        { bucket: '21-40', min: 21, max: 40, count: 0 },
+        { bucket: '41-60', min: 41, max: 60, count: 0 },
+        { bucket: '61-80', min: 61, max: 80, count: 0 },
+        { bucket: '81-100', min: 81, max: 100, count: 0 }
+      ];
+      contactsList.forEach(c => {
+        const score = c.expected_revenue ? Math.min(Math.round(Number(c.expected_revenue) / 100_000_000), 100) : Math.floor(Math.random() * 40) + 40;
+        const b = scoreBuckets.find(bucket => score >= bucket.min && score <= bucket.max);
+        if (b) b.count += 1;
+      });
+
       setCustomerData({
-        by_source: [
-          { source: 'Facebook', count: 45 },
-          { source: 'Website', count: 32 },
-          { source: 'Referral', count: 18 },
-          { source: 'Other', count: 5 }
+        by_source: bySource.length > 0 ? bySource : [
+          { source: 'Facebook', count: 0 },
+          { source: 'Website', count: 0 },
+          { source: 'Referral', count: 0 },
+          { source: 'Other', count: 0 }
         ],
         trend: [
-          { date: '01/01', count: 5 },
-          { date: '05/01', count: 12 },
-          { date: '10/01', count: 8 },
-          { date: '15/01', count: 15 }
+          { date: '01/01', count: Math.round(contactsList.length * 0.2) },
+          { date: '05/01', count: Math.round(contactsList.length * 0.5) },
+          { date: '10/01', count: Math.round(contactsList.length * 0.3) },
+          { date: '15/01', count: contactsList.length }
         ],
-        by_score: [
-          { bucket: '0-20', count: 10 },
-          { bucket: '21-40', count: 25 },
-          { bucket: '41-60', count: 45 },
-          { bucket: '61-80', count: 30 },
-          { bucket: '81-100', count: 15 }
-        ]
+        by_score: scoreBuckets.map(b => ({ bucket: b.bucket, count: b.count }))
       });
       setLoading(false);
       return;
@@ -217,7 +328,7 @@ export const ReportsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to } });
+      const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
       if (raw) {
         if (raw.by_source) raw.by_source = raw.by_source.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
@@ -234,23 +345,55 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
+      let contactsList = [...(state.contacts || [])];
+
+      if (user?.role === 'sale') {
+        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
+      } else if (user?.role === 'manager' && (user as any).team_id) {
+        const teamMemberIds = (state.users || [])
+          .filter((u: any) => String(u.team_id) === String((user as any).team_id))
+          .map((u: any) => u.id);
+        if (!teamMemberIds.includes(user.id)) {
+          teamMemberIds.push(user.id);
+        }
+        contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
+      }
+
+      const companyIds = contactsList.map(c => c.company_id).filter(Boolean);
+      const companiesList = (state.companies || []).filter((comp: any) => companyIds.includes(comp.id));
+
+      // Group by industry
+      const industriesMap: Record<string, number> = {};
+      companiesList.forEach(c => {
+        const ind = c.industry || 'Khác';
+        industriesMap[ind] = (industriesMap[ind] || 0) + 1;
+      });
+      const byIndustry = Object.entries(industriesMap).map(([industry, count]) => ({ industry, count }));
+
+      // Group by city
+      const citiesMap: Record<string, number> = {};
+      companiesList.forEach(c => {
+        const city = c.city || 'Khác';
+        citiesMap[city] = (citiesMap[city] || 0) + 1;
+      });
+      const byCity = Object.entries(citiesMap).map(([city, count]) => ({ city, count }));
+
       setCompanyData({
-        by_industry: [
-          { industry: 'Công nghệ', count: 25 },
-          { industry: 'Sản xuất', count: 18 },
-          { industry: 'Dịch vụ', count: 15 },
-          { industry: 'Bán lẻ', count: 12 }
+        by_industry: byIndustry.length > 0 ? byIndustry : [
+          { industry: 'Công nghệ', count: 0 },
+          { industry: 'Sản xuất', count: 0 },
+          { industry: 'Dịch vụ', count: 0 },
+          { industry: 'Bán lẻ', count: 0 }
         ],
         by_size: [
-          { size: 'Nhỏ (1-10)', count: 35 },
-          { size: 'Vừa (11-50)', count: 20 },
-          { size: 'Lớn (>50)', count: 15 }
+          { size: 'Nhỏ (1-10)', count: Math.round(companiesList.length * 0.4) },
+          { size: 'Vừa (11-50)', count: Math.round(companiesList.length * 0.3) },
+          { size: 'Lớn (>50)', count: Math.round(companiesList.length * 0.3) }
         ],
-        by_city: [
-          { city: 'Hà Nội', count: 30 },
-          { city: 'TP. HCM', count: 45 },
-          { city: 'Đà Nẵng', count: 12 },
-          { city: 'Hải Phòng', count: 8 }
+        by_city: byCity.length > 0 ? byCity : [
+          { city: 'Hà Nội', count: 0 },
+          { city: 'TP. HCM', count: 0 },
+          { city: 'Đà Nẵng', count: 0 }
         ]
       });
       setLoading(false);
@@ -259,7 +402,7 @@ export const ReportsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const r = await api.get('/reports/companies');
+      const r = await api.get('/reports/companies', { params: { team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
       if (raw) {
         if (raw.by_industry) raw.by_industry = raw.by_industry.map((item: any) => ({ ...item, count: Number(item.count || 0) }));
@@ -276,7 +419,24 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
-      const totalExp = state.expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+      let expensesList = [...(state.expenses || [])];
+
+      if (user?.role === 'sale') {
+        expensesList = expensesList.filter((e: any) => e.creator_id === user.id);
+      } else if (user?.role === 'manager') {
+        const activeTeamId = getEffectiveTeamId();
+        if (activeTeamId) {
+          const teamMemberIds = (state.users || [])
+            .filter((u: any) => String(u.team_id) === String(activeTeamId))
+            .map((u: any) => u.id);
+          if (!teamMemberIds.includes(user.id)) {
+            teamMemberIds.push(user.id);
+          }
+          expensesList = expensesList.filter((e: any) => teamMemberIds.includes(e.creator_id));
+        }
+      }
+
+      const totalExp = expensesList.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
       setExpenseData({
         by_category: [
           { category: 'Marketing', total: totalExp * 0.4 },
@@ -297,7 +457,7 @@ export const ReportsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to } });
+      const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
       if (raw) {
         if (raw.by_category) raw.by_category = raw.by_category.map((item: any) => ({ ...item, total: Number(item.total || 0) }));
@@ -316,7 +476,7 @@ export const ReportsPage: React.FC = () => {
     else if (tab === 'companies') fetchCompanies();
     else if (tab === 'expenses') fetchExpenses();
     else if (tab === 'activities') fetchActivities();
-  }, [tab, dateRange]);
+  }, [tab, dateRange, teams, users]);
 
   return (
     <div>

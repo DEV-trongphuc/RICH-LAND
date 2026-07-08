@@ -214,6 +214,24 @@ export const ContactsPage: React.FC = () => {
   const [filterAfterDate, setFilterAfterDate] = useState('');
   const [projects, setProjects] = useState<any[]>([]);
   const [pipelineStages, setPipelineStages] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
+      api.get('/teams').then(res => {
+        setTeams(res.data.data || res.data || []);
+      }).catch(() => {});
+    }
+  }, [user]);
+
+  const getEffectiveTeamId = () => {
+    if ((user as any)?.team_id) return (user as any).team_id;
+    if (user?.role === 'manager') {
+      const managedTeam = teams.find(t => Number(t.leader_id) === Number(user.id));
+      return managedTeam?.id || null;
+    }
+    return null;
+  };
   const [activeFilters, setActiveFilters] = useState({
     status: '',
     source: '',
@@ -334,7 +352,22 @@ export const ContactsPage: React.FC = () => {
   const fetchData = async () => {
     if (DEV_MODE) {
       const state = getFilteredMockState();
-      let list = [...state.contacts];
+      let list = [...(state.contacts || [])];
+      
+      if (user?.role === 'sale') {
+        list = list.filter(c => Number(c.owner_id) === Number(user.id) || Number(c.created_by) === Number(user.id));
+      } else if (user?.role === 'manager') {
+        const activeTeamId = getEffectiveTeamId();
+        if (activeTeamId) {
+          const teamMemberIds = (state.users || [])
+            .filter((u: any) => String(u.team_id) === String(activeTeamId))
+            .map((u: any) => u.id);
+          if (!teamMemberIds.includes(user.id)) {
+            teamMemberIds.push(user.id);
+          }
+          list = list.filter(c => teamMemberIds.includes(Number(c.owner_id)) || teamMemberIds.includes(Number(c.created_by)));
+        }
+      }
       
       // Basic search
       if (debouncedSearch) {
@@ -414,10 +447,30 @@ export const ContactsPage: React.FC = () => {
         }
       }
 
+      const teamId = getEffectiveTeamId();
+      if (teamId) {
+        params.team_id = teamId;
+      }
+
       const r = await api.get('/contacts', { params });
       const data = r.data.data;
-      setContacts((data.items || []).map((c: any) => ({ ...c, score: calcScore(c) })));
-      setTotal(data.total || 0);
+      let items = data.items || [];
+      if (user?.role === 'sale') {
+        items = items.filter((c: any) => Number(c.owner_id) === Number(user.id) || Number(c.created_by) === Number(user.id));
+      } else if (user?.role === 'manager') {
+        const activeTeamId = getEffectiveTeamId();
+        if (activeTeamId) {
+          const teamMemberIds = users
+            .filter((u: any) => String(u.team_id) === String(activeTeamId))
+            .map((u: any) => u.id);
+          if (!teamMemberIds.includes(user.id)) {
+            teamMemberIds.push(user.id);
+          }
+          items = items.filter((c: any) => teamMemberIds.includes(Number(c.owner_id)) || teamMemberIds.includes(Number(c.created_by)));
+        }
+      }
+      setContacts(items.map((c: any) => ({ ...c, score: calcScore(c) })));
+      setTotal(data.total || items.length);
     } catch (e: any) {
       setContacts([]);
       setTotal(0);
@@ -429,14 +482,32 @@ export const ContactsPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [page, debouncedSearch, sortBy, activeFilters]);
+  }, [page, debouncedSearch, sortBy, activeFilters, users, teams]);
 
   useEffect(() => {
+    if (DEV_MODE) {
+      const state = getFilteredMockState();
+      let list = [...(state.users || [])];
+      const activeTeamId = getEffectiveTeamId();
+      if (user?.role === 'manager' && activeTeamId) {
+        list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
+      }
+      setUsers(list);
+      return;
+    }
     // Fetch sales/users for assignment once (only for admin/manager who have permission)
     if (user && user.role !== 'sale') {
-      api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
+      api.get('/users').then(r => { 
+        const d = r.data.data; 
+        let list = Array.isArray(d) ? d : (d?.items || []);
+        const activeTeamId = getEffectiveTeamId();
+        if (user.role === 'manager' && activeTeamId) {
+          list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
+        }
+        setUsers(list); 
+      }).catch(() => {});
     }
-  }, [user]);
+  }, [user, teams]);
 
   useEffect(() => {
     api.get('/projects?bypass_roster=1').then(r => {
@@ -653,20 +724,24 @@ export const ContactsPage: React.FC = () => {
           <p className="page-subtitle" style={{ marginTop: '4px' }}>{loading ? '...' : `${total} liên hệ`}</p>
         </div>
         <div className="flex gap-2">
-          {!isSale && (
+          {user?.role !== 'viewer' && !isSale && (
             <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
               <Download size={14}/>
               <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
             </button>
           )}
-          <button className="btn outline" onClick={bulkExport} title="Xuất dữ liệu theo bộ lọc">
-            <Download size={14}/>
-            <span> Xuất theo bộ lọc</span>
-          </button>
-          <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
-            <Plus size={15}/>
-            <span className="hide-on-mobile"> Thêm liên hệ</span>
-          </button>
+          {user?.role !== 'viewer' && user?.role !== 'sale' && (
+            <button className="btn outline" onClick={bulkExport} title="Xuất dữ liệu theo bộ lọc">
+              <Download size={14}/>
+              <span> Xuất theo bộ lọc</span>
+            </button>
+          )}
+          {user?.role !== 'viewer' && (
+            <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
+              <Plus size={15}/>
+              <span className="hide-on-mobile"> Thêm liên hệ</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -953,7 +1028,7 @@ export const ContactsPage: React.FC = () => {
                 {b.label}
               </button>
             ))}
-            {!isSale && (
+            {['admin', 'superadmin', 'super_admin'].includes(user?.role || '') && (
               <button onClick={bulkDelete}
                 style={{ padding:'0.375rem 0.875rem', background:'rgba(239,68,68,0.8)', border:'none', borderRadius:'var(--radius-lg)', color:'white', fontWeight:700, fontSize:'0.8125rem', cursor:'pointer' }}>
                 Xóa
@@ -1223,7 +1298,7 @@ export const ContactsPage: React.FC = () => {
                         <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', opacity: 0 }} className="row-actions">
                             <button className="btn ghost sm" title="Xem hồ sơ" onClick={() => setProfileContact(c)}><Eye size={13} /></button>
-                            {!isSale && (
+                            {['admin', 'superadmin', 'super_admin'].includes(user?.role || '') && (
                               <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} title="Xóa"
                                 onClick={() => {
                                   showConfirm({

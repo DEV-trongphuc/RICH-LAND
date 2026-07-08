@@ -90,6 +90,7 @@ const ConsultantsInner = () => {
   const { user } = useAuth();
   const userRole = user?.role;
   const isSale = userRole === 'sale';
+  const isWriteAuthorized = ['admin', 'superadmin', 'super_admin', 'director'].includes(userRole || '');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -692,11 +693,11 @@ const ConsultantsInner = () => {
               : t('Danh sách nhân sự tiếp nhận và xử lý data từ hệ thống')}
           </p>
         </div>
-        {!isSale && activeTab === 'teams' ? (
+        {isWriteAuthorized && activeTab === 'teams' ? (
           <button onClick={openAddTeamModal} className="btn primary responsive-btn-full">
             <Plus size={16} /> {t('Thêm Nhóm')}
           </button>
-        ) : activeTab === 'branches' ? null : !isSale ? (
+        ) : activeTab === 'branches' ? null : isWriteAuthorized ? (
           <button onClick={openAddModal} className="btn primary responsive-btn-full">
             <Plus size={16} /> {t('Thêm TVV')}
           </button>
@@ -808,22 +809,22 @@ const ConsultantsInner = () => {
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Nhóm (Team)')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Zalo Bot')}</th>
                   <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Trạng thái')}</th>
-                  {!isSale && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
+                  {isWriteAuthorized && <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isSale ? 5 : 6} />)
+                  [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 5} />)
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={isSale ? 5 : 6}>
+                    <td colSpan={isWriteAuthorized ? 6 : 5}>
                     <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
                         <Users size={32} color="var(--color-text-muted)" />
                       </div>
                       <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>{t('Chưa có Tư vấn viên')}</h3>
                       <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', maxWidth: 400, margin: '0 auto 1.5rem' }}>{t('Thêm tư vấn viên đầu tiên để bắt đầu chia số tự động.')}</p>
-                      <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t('Thêm Tư vấn viên')}</button>
+                      {isWriteAuthorized && <button className="btn primary" onClick={openAddModal}><Plus size={18} /> {t('Thêm Tư vấn viên')}</button>}
                     </div>
                   </td>
                 </tr>
@@ -831,10 +832,10 @@ const ConsultantsInner = () => {
                 return (
                   <tr
                     key={u.id}
-                    className={`group ${!isSale ? 'table-row-hover' : ''}`}
-                    style={{ cursor: !isSale ? 'pointer' : 'default' }}
-                    onClick={() => !isSale && openEditModal(u)}
-                    title={!isSale ? t("Nhấp để chỉnh sửa thông tin") : undefined}
+                    className={`group ${isWriteAuthorized ? 'table-row-hover' : ''}`}
+                    style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
+                    onClick={() => isWriteAuthorized && openEditModal(u)}
+                    title={isWriteAuthorized ? t("Nhấp để chỉnh sửa thông tin") : undefined}
                   >
                     <td data-label={t('Tên TVV')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -1115,7 +1116,7 @@ const ConsultantsInner = () => {
                     </td>
                   </tr>
                 ) : paginatedTeams.map((team) => (
-                  <tr key={team.id} className="table-row-hover" style={{ cursor: isSale ? 'default' : 'pointer' }} onClick={() => !isSale && openEditTeamModal(team)}>
+                  <tr key={team.id} className={isWriteAuthorized ? "table-row-hover" : ""} style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }} onClick={() => isWriteAuthorized && openEditTeamModal(team)}>
                     <td data-label={t('Tên Nhóm')}>
                       <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{team.name}</span>
                     </td>
@@ -1130,8 +1131,8 @@ const ConsultantsInner = () => {
                     </td>
                     <td data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-                        {!isSale && <button className="btn sm outline" onClick={() => openEditTeamModal(team)}>{t('Sửa')}</button>}
-                        {!isSale && (
+                        {isWriteAuthorized && <button className="btn sm outline" onClick={() => openEditTeamModal(team)}>{t('Sửa')}</button>}
+                        {isWriteAuthorized && (
                           <button
                             className="btn sm"
                             style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none' }}
@@ -1315,7 +1316,7 @@ const ConsultantsInner = () => {
                       <div 
                         key={team.id} 
                         onClick={() => {
-                          if (!isSale) {
+                          if (isWriteAuthorized) {
                             openEditTeamModal(team);
                           }
                         }}
@@ -1328,7 +1329,7 @@ const ConsultantsInner = () => {
                           flexDirection: 'column', 
                           justifyContent: 'space-between', 
                           gap: '0.75rem',
-                          cursor: isSale ? 'default' : 'pointer',
+                          cursor: isWriteAuthorized ? 'pointer' : 'default',
                           transition: 'all 0.2s'
                         }}
                         onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
