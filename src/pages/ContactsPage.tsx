@@ -153,6 +153,7 @@ export const ContactsPage: React.FC = () => {
   const [uncontactedCount, setUncontactedCount] = useState(() => {
     return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
   });
+  const [initialMetadataLoaded, setInitialMetadataLoaded] = useState(false);
 
   useEffect(() => {
     const handleUncontactedCountChanged = (e: Event) => {
@@ -484,8 +485,10 @@ export const ContactsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [page, pageSize, debouncedSearch, sortBy, activeFilters, users, teams]);
+    if (initialMetadataLoaded) {
+      fetchData();
+    }
+  }, [page, pageSize, debouncedSearch, sortBy, activeFilters, initialMetadataLoaded]);
 
   useEffect(() => {
     if (DEV_MODE) {
@@ -496,33 +499,66 @@ export const ContactsPage: React.FC = () => {
         list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
       }
       setUsers(list);
+      setInitialMetadataLoaded(true);
       return;
     }
-    // Fetch sales/users for assignment once (only for admin/manager who have permission)
-    if (user && user.role !== 'sale') {
-      api.get('/users').then(r => { 
-        const d = r.data.data; 
-        let list = Array.isArray(d) ? d : (d?.items || []);
-        const activeTeamId = getEffectiveTeamId();
-        if (user.role === 'manager' && activeTeamId) {
-          list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
+
+    const loadMetadata = async () => {
+      try {
+        const projPromise = api.get('/projects?bypass_roster=1').catch(() => null);
+        const stagePromise = api.get('/pipeline-stages').catch(() => null);
+        
+        let teamsRes: any = null;
+        let usersRes: any = null;
+        
+        if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
+          teamsRes = await api.get('/teams').catch(() => null);
         }
-        setUsers(list); 
-      }).catch(() => {});
+        
+        const [projRes, stageRes] = await Promise.all([projPromise, stagePromise]);
+        
+        if (projRes) {
+          const d = projRes.data.data;
+          setProjects(Array.isArray(d) ? d : (d?.items || []));
+        }
+        if (stageRes) {
+          const d = stageRes.data.data;
+          setPipelineStages(Array.isArray(d) ? d : (d?.items || []));
+        }
+        
+        let loadedTeams: any[] = [];
+        if (teamsRes) {
+          loadedTeams = teamsRes.data.data || teamsRes.data || [];
+          setTeams(loadedTeams);
+        }
+        
+        if (user && user.role !== 'sale') {
+          usersRes = await api.get('/users').catch(() => null);
+          if (usersRes) {
+            const d = usersRes.data.data;
+            let list = Array.isArray(d) ? d : (d?.items || []);
+            
+            if (user.role === 'manager') {
+              const managedTeam = loadedTeams.find(t => Number(t.leader_id) === Number(user.id));
+              const activeTeamId = managedTeam?.id || null;
+              if (activeTeamId) {
+                list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
+              }
+            }
+            setUsers(list);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading metadata:", err);
+      } finally {
+        setInitialMetadataLoaded(true);
+      }
+    };
+    
+    if (user) {
+      loadMetadata();
     }
-  }, [user, teams]);
-
-  useEffect(() => {
-    api.get('/projects?bypass_roster=1').then(r => {
-      const d = r.data.data;
-      setProjects(Array.isArray(d) ? d : (d?.items || []));
-    }).catch(() => {});
-
-    api.get('/pipeline-stages').then(r => {
-      const d = r.data.data;
-      setPipelineStages(Array.isArray(d) ? d : (d?.items || []));
-    }).catch(() => {});
-  }, []);
+  }, [user]);
 
   const handleApplyFilters = () => {
     setPage(1);

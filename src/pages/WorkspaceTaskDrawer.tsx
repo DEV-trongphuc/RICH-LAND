@@ -73,6 +73,28 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   const [newSubDeadline, setNewSubDeadline] = useState('');
   const [newSubPriority, setNewSubPriority] = useState<string>('medium');
 
+  const [allowedProjects, setAllowedProjects] = useState<any[]>([]);
+  const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
+  const [allowedTeams, setAllowedTeams] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/projects?bypass_roster=1').then(res => {
+        const d = res.data.data;
+        setAllowedProjects(Array.isArray(d) ? d : (d?.items || []));
+      }).catch(() => {});
+
+      api.get('/campaigns').then(res => {
+        const d = res.data.data;
+        setAllowedCampaigns(Array.isArray(d) ? d : (d?.items || []));
+      }).catch(() => {});
+
+      api.get('/teams').then(res => {
+        setAllowedTeams(res.data.data || res.data || []);
+      }).catch(() => {});
+    }
+  }, [isOpen]);
+
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);
   const [showAddLink, setShowAddLink] = useState(false);
@@ -1322,6 +1344,80 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </div>
                 );
               })()}
+            </div>
+
+            {/* Dự án & Chiến dịch liên quan */}
+            <div className="card" style={cardStyle}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                {t('Liên kết Dự án / Chiến dịch / Team')}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Dự án')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn dự án...') },
+                      ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
+                    ]}
+                    value={formData.related_type === 'project' ? String(formData.related_id || '') : ''}
+                    onChange={val => {
+                      if (val) {
+                        handleUpdateField('related_type', 'project');
+                        handleUpdateField('related_id', Number(val));
+                      } else if (formData.related_type === 'project') {
+                        handleUpdateField('related_type', null);
+                        handleUpdateField('related_id', null);
+                      }
+                    }}
+                    placeholder={t('Chọn dự án...')}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Chiến dịch')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn chiến dịch...') },
+                      ...allowedCampaigns.map(c => ({ value: String(c.id), label: c.name }))
+                    ]}
+                    value={formData.related_type === 'campaign' ? String(formData.related_id || '') : ''}
+                    onChange={val => {
+                      if (val) {
+                        handleUpdateField('related_type', 'campaign');
+                        handleUpdateField('related_id', Number(val));
+                      } else if (formData.related_type === 'campaign') {
+                        handleUpdateField('related_type', null);
+                        handleUpdateField('related_id', null);
+                      }
+                    }}
+                    placeholder={t('Chọn chiến dịch...')}
+                  />
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Nhóm / Team')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn nhóm...') },
+                      ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))
+                    ]}
+                    value={formData.related_type === 'team' ? String(formData.related_id || '') : ''}
+                    onChange={val => {
+                      if (val) {
+                        handleUpdateField('related_type', 'team');
+                        handleUpdateField('related_id', Number(val));
+                      } else if (formData.related_type === 'team') {
+                        handleUpdateField('related_type', null);
+                        handleUpdateField('related_id', null);
+                      }
+                    }}
+                    placeholder={t('Chọn nhóm...')}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Approval Banner */}

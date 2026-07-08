@@ -39,6 +39,20 @@ class ProjectController {
         try {
             $this->db->exec("ALTER TABLE projects ADD COLUMN created_by INT DEFAULT NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("
+                CREATE TABLE IF NOT EXISTS comments (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    tenant_id INT NOT NULL DEFAULT 1,
+                    entity_type VARCHAR(50) NOT NULL,
+                    entity_id INT NOT NULL,
+                    user_id INT NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            ");
+        } catch (Exception $e) {}
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
@@ -441,5 +455,34 @@ class ProjectController {
         header('Content-Length: ' . filesize($filePath));
         readfile($filePath);
         exit;
+    }
+
+    public function getComments(array $auth, int $projectId): void {
+        $this->requireProjectAccess($auth, $projectId);
+        $stmt = $this->db->prepare("
+            SELECT c.*, u.full_name as user_name, u.avatar_url 
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.entity_type = 'project' AND c.entity_id = ? AND c.tenant_id = ?
+            ORDER BY c.created_at ASC
+        ");
+        $stmt->execute([$projectId, $auth['tenant_id']]);
+        respond(200, $stmt->fetchAll(), 'Lấy danh sách bình luận thành công');
+    }
+
+    public function addComment(array $auth, int $projectId): void {
+        $this->requireProjectAccess($auth, $projectId);
+        $b = getBody();
+        $body = trim($b['body'] ?? '');
+        if (!$body) {
+            respond(422, null, 'Nội dung bình luận là bắt buộc', false);
+        }
+        $stmt = $this->db->prepare("
+            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body) 
+            VALUES (?, 'project', ?, ?, ?)
+        ");
+        $stmt->execute([$auth['tenant_id'], $projectId, $auth['user_id'], $body]);
+        $newId = $this->db->lastInsertId();
+        respond(200, ['id' => $newId], 'Thêm bình luận thành công');
     }
 }

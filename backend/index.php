@@ -809,18 +809,22 @@ switch ($resource) {
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'DELETE') $ctrl->deleteDocument($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && ($segments[4] ?? '') === 'download') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]);
         elseif ($resourceId && $subResource === 'documents' && $segments[3] && $method === 'GET') $ctrl->downloadDocument($auth, (int)$resourceId, (int)$segments[3]); // fallback direct link download
+        elseif ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
-
+ 
     // CAMPAIGNS (Marketing campaigns)
     case 'campaigns':
         $auth = requireAuth();
         $ctrl = new CampaignController($db);
-        if (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        if ($resourceId && $subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);

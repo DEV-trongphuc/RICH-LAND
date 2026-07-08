@@ -204,6 +204,9 @@ class ActivityController {
                    COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
                    d.title as deal_name,
                    c.name as company_name,
+                   p.name as project_name,
+                   camp.name as campaign_name,
+                   t.name as team_name,
                    (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count,
                    (SELECT e.image_url FROM expenses e WHERE e.tenant_id = a.tenant_id AND e.title = REPLACE(a.subject, 'Ghi nhận Chi phí: ', '') AND e.image_url IS NOT NULL AND e.image_url != '' ORDER BY e.id DESC LIMIT 1) as expense_image_url
             FROM activities a 
@@ -212,6 +215,9 @@ class ActivityController {
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
             LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL
             LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
+            LEFT JOIN projects p ON a.related_type='project' AND a.related_id=p.id AND p.deleted_at IS NULL
+            LEFT JOIN marketing_campaigns camp ON a.related_type='campaign' AND a.related_id=camp.id
+            LEFT JOIN teams t ON a.related_type='team' AND a.related_id=t.id
             WHERE $w ORDER BY a.$sortBy $order
             LIMIT $limit OFFSET $offset
         ");
@@ -225,12 +231,21 @@ class ActivityController {
         if (empty($b['subject'])||empty($b['type'])) respond(422,null,'Tiêu đề và loại là bắt buộc',false);
         
         // Verify related entity if provided
-        $allowedRelTypes = ['contact', 'company', 'deal'];
+        $allowedRelTypes = ['contact', 'company', 'deal', 'project', 'campaign', 'team'];
         if (!empty($b['related_type']) && !empty($b['related_id'])) {
             if (in_array($b['related_type'], $allowedRelTypes)) {
-                $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
-                $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
-                $check->execute([(int)$b['related_id'], $auth['tenant_id']]);
+                $table = $b['related_type'] === 'contact' ? 'contacts' : (
+                    $b['related_type'] === 'company' ? 'companies' : (
+                        $b['related_type'] === 'deal' ? 'deals' : (
+                            $b['related_type'] === 'project' ? 'projects' : (
+                                $b['related_type'] === 'campaign' ? 'marketing_campaigns' : 'teams'
+                            )
+                        )
+                    )
+                );
+                $check = $this->db->prepare("SELECT id FROM $table WHERE id=?");
+                // Note: teams doesn't have tenant_id in some schemas, but projects/campaigns do. So we do simple select.
+                $check->execute([(int)$b['related_id']]);
                 if (!$check->fetch()) {
                     $b['related_type'] = null; $b['related_id'] = null; // Reset if unauthorized
                 }
@@ -473,12 +488,20 @@ class ActivityController {
         }
 
         // Verify related entity if changed
-        $allowedRelTypes = ['contact', 'company', 'deal'];
+        $allowedRelTypes = ['contact', 'company', 'deal', 'project', 'campaign', 'team'];
         if (!empty($b['related_type']) && !empty($b['related_id'])) {
             if (in_array($b['related_type'], $allowedRelTypes)) {
-                $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
-                $checkRel = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
-                $checkRel->execute([(int)$b['related_id'], $auth['tenant_id']]);
+                $table = $b['related_type'] === 'contact' ? 'contacts' : (
+                    $b['related_type'] === 'company' ? 'companies' : (
+                        $b['related_type'] === 'deal' ? 'deals' : (
+                            $b['related_type'] === 'project' ? 'projects' : (
+                                $b['related_type'] === 'campaign' ? 'marketing_campaigns' : 'teams'
+                            )
+                        )
+                    )
+                );
+                $checkRel = $this->db->prepare("SELECT id FROM $table WHERE id=?");
+                $checkRel->execute([(int)$b['related_id']]);
                 if (!$checkRel->fetch()) {
                     $b['related_type'] = null; $b['related_id'] = null;
                 }

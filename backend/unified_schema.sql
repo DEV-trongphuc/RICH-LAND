@@ -117,6 +117,20 @@ CREATE TABLE IF NOT EXISTS `projects` (
   `code` varchar(100) NOT NULL UNIQUE,
   `description` text DEFAULT NULL,
   `status` enum('active','completed','draft') DEFAULT 'active',
+  `location` varchar(255) DEFAULT NULL,
+  `developer` varchar(255) DEFAULT NULL,
+  `document_ids` text DEFAULT NULL,
+  `campaign_ids` text DEFAULT NULL,
+  `progress_percent` int(11) DEFAULT 0,
+  `construction_status` varchar(100) DEFAULT 'Chưa khởi công',
+  `legal_status` varchar(255) DEFAULT 'Đang hoàn thiện pháp lý',
+  `scale_block_count` int(11) DEFAULT 1,
+  `scale_unit_count` int(11) DEFAULT 100,
+  `handover_year` int(11) DEFAULT 2026,
+  `manager_ids` text DEFAULT NULL,
+  `folder_path` varchar(500) DEFAULT NULL,
+  `reference_url` varchar(500) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`)
@@ -540,7 +554,7 @@ CREATE TABLE IF NOT EXISTS `activities` (
   `priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
   `due_date` datetime DEFAULT NULL,
   `done_at` datetime DEFAULT NULL,
-  `related_type` enum('contact','company','deal') DEFAULT NULL,
+  `related_type` varchar(50) DEFAULT NULL,
   `related_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -1569,6 +1583,19 @@ INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
 ('report_error_reasons', '[\"Sai số điện thoại / Số ảo\", \"Trùng của tôi (Trùng Saleperson)\", \"Trùng của người khác (Saleperson khác đã chăm)\", \"Spam ảo / Junk lead\", \"Khác (Vui lòng ghi rõ ở phần ghi chú)\"]'),
 ('pipeline_status_hierarchy', '[\"chua_xac_dinh\", \"quan_tam\", \"dong_y_gap\", \"da_gap\", \"booking\", \"dat_coc\", \"dong_deal\"]')
 ON DUPLICATE KEY UPDATE `setting_value` = VALUES(`setting_value`);
+
+-- Table: comments (Generic Comments for Projects, Campaigns, etc.)
+CREATE TABLE IF NOT EXISTS `comments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tenant_id` int(11) NOT NULL DEFAULT 1,
+  `entity_type` varchar(50) NOT NULL,
+  `entity_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `body` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 4. Mark migrations as applied
 CREATE TABLE IF NOT EXISTS `schema_migrations` (

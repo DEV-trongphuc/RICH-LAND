@@ -166,17 +166,57 @@ try {
         $stmt->close();
     }
 
+    // Seed Cloud Files (Tài liệu lưu trữ đám mây)
+    $stmtFile = $conn->prepare("INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility) VALUES (1, ?, ?, ?, ?, ?, ?, 'shared')");
+    
+    // File 1
+    $f1Name = 'Tài liệu Pháp lý & Quy hoạch Vũ Yên.pdf';
+    $f1Path = 'uploads/Quy_hoach_Vu_Yen.pdf';
+    $f1Mime = 'application/pdf';
+    $f1Size = 5242880;
+    $f1Cat = 'legal';
+    $stmtFile->bind_param("isssis", $superAdminId, $f1Name, $f1Path, $f1Mime, $f1Size, $f1Cat);
+    $stmtFile->execute();
+    $file1Id = $stmtFile->insert_id ?: 1;
+
+    // File 2
+    $f2Name = 'Bảng hàng Vinhomes Vũ Yên đợt 1.xlsx';
+    $f2Path = 'uploads/Bang_hang_Vu_Yen.xlsx';
+    $f2Mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    $f2Size = 2097152;
+    $f2Cat = 'sales';
+    $stmtFile->bind_param("isssis", $superAdminId, $f2Name, $f2Path, $f2Mime, $f2Size, $f2Cat);
+    $stmtFile->execute();
+    $file2Id = $stmtFile->insert_id ?: 2;
+    
+    $stmtFile->close();
+    echo "   - Seeded 2 Cloud Files\n";
+
     // Seed Projects (Dự án)
-    $vinHP = $supplierIds['Tập đoàn Vingroup'];
-    $dojiHP = $supplierIds['Tập đoàn DOJI'];
     $projects = [
-        ['name' => 'Vinhomes Royal Island Vũ Yên', 'code' => 'VH-ROYAL', 'developer' => $vinHP, 'location' => 'Đảo Vũ Yên, Thủy Nguyên, Hải Phòng'],
-        ['name' => 'Diamond Crown Plaza Hải Phòng', 'code' => 'DOJI-DCP', 'developer' => $dojiHP, 'location' => 'Lê Hồng Phong, Ngô Quyền, Hải Phòng']
+        [
+            'name' => 'Vinhomes Royal Island Vũ Yên', 
+            'code' => 'VH-ROYAL', 
+            'developer' => 'Tập đoàn Vingroup', 
+            'location' => 'Đảo Vũ Yên, Thủy Nguyên, Hải Phòng',
+            'manager_ids' => "$managerId",
+            'document_ids' => "$file1Id,$file2Id",
+            'campaign_ids' => 'Chiến dịch Vinhomes Vũ Yên Hè 2026'
+        ],
+        [
+            'name' => 'Diamond Crown Plaza Hải Phòng', 
+            'code' => 'DOJI-DCP', 
+            'developer' => 'Tập đoàn DOJI', 
+            'location' => 'Lê Hồng Phong, Ngô Quyền, Hải Phòng',
+            'manager_ids' => "$managerId",
+            'document_ids' => "$file2Id",
+            'campaign_ids' => ""
+        ]
     ];
     $projectIds = [];
     foreach ($projects as $p) {
-        $stmt = $conn->prepare("INSERT INTO projects (tenant_id, name, code, developer, location) VALUES (1, ?, ?, ?, ?)");
-        $stmt->bind_param("ssis", $p['name'], $p['code'], $p['developer'], $p['location']);
+        $stmt = $conn->prepare("INSERT INTO projects (tenant_id, name, code, developer, location, manager_ids, document_ids, campaign_ids) VALUES (1, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("sssssss", $p['name'], $p['code'], $p['developer'], $p['location'], $p['manager_ids'], $p['document_ids'], $p['campaign_ids']);
         $stmt->execute();
         $projectIds[$p['name']] = $stmt->insert_id;
         echo "   - Created Project: {$p['name']}\n";
@@ -321,8 +361,31 @@ try {
 
     // Seed Notes & Activities
     $conn->query("INSERT INTO notes (tenant_id, user_id, entity_type, entity_id, body) VALUES (1, $namId, 'contact', $contactLongId, 'Khách hàng VIP, quan tâm thiết kế phong cách Hoàng Gia Pháp. Yêu cầu gửi bảng tiến độ thanh toán vay ngân hàng.')");
+    
+    // Customer Activities (Planned/Done, Tasks/Calls/Meetings/Emails)
     $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, related_type, related_id) 
-                 VALUES (1, $namId, 'call', 'Gọi điện tư vấn lãi suất vay 0%', 'Khách đồng ý nghe điện thoại và hẹn lịch gặp cuối tuần này.', 'done', 'high', 'contact', $contactLongId)");
+                 VALUES (1, $namId, 'task', 'Soạn thảo hợp đồng đặt cọc căn HG-18', 'Cần soạn thảo và gửi dự thảo hợp đồng đặt cọc cho khách hàng Đặng Thu Thảo để duyệt trước.', 'planned', 'high', 'contact', $contactThaoId)");
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, related_type, related_id) 
+                 VALUES (1, $namId, 'call', 'Gọi điện xác nhận lịch hẹn xem dự án Vũ Yên', 'Xác nhận thời gian và địa điểm đón khách hàng Hoàng Kim Long vào cuối tuần.', 'planned', 'medium', 'contact', $contactLongId)");
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, related_type, related_id) 
+                 VALUES (1, $namId, 'call', 'Tư vấn vị trí căn góc Shophouse Tài Lộc', 'Khách hàng Quốc Cường đã nghe tư vấn và chọn căn TL-09.', 'done', 'high', 'contact', $contactCuongId)");
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, related_type, related_id) 
+                 VALUES (1, $namId, 'meeting', 'Họp ký kết thỏa thuận dịch vụ môi giới', 'Gặp trực tiếp khách hàng Đặng Thu Thảo tại văn phòng để ký thỏa thuận.', 'planned', 'high', 'contact', $contactThaoId)");
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, related_type, related_id) 
+                 VALUES (1, $namId, 'email', 'Gửi bảng báo giá chi tiết và CSBH mới nhất', 'Gửi qua email thông tin chi tiết chính sách bán hàng dự án Vũ Yên.', 'planned', 'medium', 'contact', $contactLongId)");
+
+    // Team Activities (planned, internal)
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
+                 VALUES (1, $namId, 'meeting', 'Họp giao ban tuần Đội ngũ Hải Phòng', 'Báo cáo tiến độ tiếp cận khách hàng và chia sẻ kinh nghiệm xử lý từ chối.', 'planned', 'high', 'team_meeting,internal')");
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
+                 VALUES (1, $namId, 'task', 'Trực bàn trực dự án Vinhomes Royal Island', 'Phân ca trực bàn trực tại sa bàn nhà mẫu Vũ Yên.', 'planned', 'medium', 'duty_schedule,internal')");
+
+    // Personal Activities (planned/done, personal_task)
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
+                 VALUES (1, $namId, 'task', 'Nghiên cứu tài liệu pháp lý dự án Diamond Crown', 'Đọc và hiểu rõ quy hoạch 1/500 dự án Diamond Crown Plaza để tư vấn cho khách.', 'planned', 'low', 'personal_task,study')");
+    $conn->query("INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, tags) 
+                 VALUES (1, $namId, 'task', 'Tham gia khóa đào tạo kỹ năng telesale BĐS', 'Hoàn thành khóa học telesale do công ty tổ chức.', 'done', 'medium', 'personal_task,training')");
+
     echo "   - Created Notes and Activities\n";
 
     // Seed Invoices

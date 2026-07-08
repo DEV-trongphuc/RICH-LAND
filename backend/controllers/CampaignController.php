@@ -201,4 +201,45 @@ class CampaignController {
         logActivity($this->db, $tenantId, $userId, 'DELETE_CAMPAIGN', 'marketing_campaigns', $id, "Xóa chiến dịch: $name");
         respond(200, null, 'Xóa chiến dịch thành công');
     }
+
+    private function requireCampaignAccess(array $auth, int $campaignId): void {
+        $stmtCamp = $this->db->prepare("SELECT tenant_id FROM marketing_campaigns WHERE id = ?");
+        $stmtCamp->execute([$campaignId]);
+        $campTenantId = $stmtCamp->fetchColumn();
+        if ($campTenantId === false) {
+            respond(404, null, 'Chiến dịch không tồn tại', false);
+        }
+        if ((int)$campTenantId !== (int)$auth['tenant_id']) {
+            respond(403, null, 'Bạn không có quyền truy cập chiến dịch này', false);
+        }
+    }
+
+    public function getComments(array $auth, int $campaignId): void {
+        $this->requireCampaignAccess($auth, $campaignId);
+        $stmt = $this->db->prepare("
+            SELECT c.*, u.full_name as user_name, u.avatar_url 
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.entity_type = 'campaign' AND c.entity_id = ? AND c.tenant_id = ?
+            ORDER BY c.created_at ASC
+        ");
+        $stmt->execute([$campaignId, $auth['tenant_id']]);
+        respond(200, $stmt->fetchAll(), 'Lấy danh sách bình luận thành công');
+    }
+
+    public function addComment(array $auth, int $campaignId): void {
+        $this->requireCampaignAccess($auth, $campaignId);
+        $b = getBody();
+        $body = trim($b['body'] ?? '');
+        if (!$body) {
+            respond(422, null, 'Nội dung bình luận là bắt buộc', false);
+        }
+        $stmt = $this->db->prepare("
+            INSERT INTO comments (tenant_id, entity_type, entity_id, user_id, body) 
+            VALUES (?, 'campaign', ?, ?, ?)
+        ");
+        $stmt->execute([$auth['tenant_id'], $campaignId, $auth['user_id'], $body]);
+        $newId = $this->db->lastInsertId();
+        respond(200, ['id' => $newId], 'Thêm bình luận thành công');
+    }
 }
