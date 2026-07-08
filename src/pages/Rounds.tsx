@@ -1488,13 +1488,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       <div style={{ position: 'relative' }}>
                         <input
                           className="form-input"
-                          style={{ paddingLeft: '2.5rem', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                          style={{ paddingLeft: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
                           placeholder={t("Tìm kiếm và chọn Tư vấn viên...")}
                           value={searchUser}
                           onChange={e => setSearchUser(e.target.value)}
                           onFocus={() => setShowDropdown(true)}
                         />
-                        <div style={{ position: 'absolute', left: 12, top: 10, color: '#94a3b8' }}><Search size={16} /></div>
                       </div>
 
                       {/* Dropdown Options */}

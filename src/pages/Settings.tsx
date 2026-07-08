@@ -3979,9 +3979,8 @@ function doPost(e) {
                               placeholder={t("Tìm nhanh SĐT/Email trong danh sách đen...")}
                               value={blacklistSearchQuery}
                               onChange={e => setBlacklistSearchQuery(e.target.value)}
-                              style={{ paddingLeft: '32px', height: '32px', fontSize: '0.8125rem' }}
+                              style={{ paddingLeft: '12px', height: '32px', fontSize: '0.8125rem' }}
                             />
-                            <Search size={14} style={{ position: 'absolute', left: 10, top: 9, color: 'var(--color-text-muted)' }} />
                           </div>
                           <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', flexShrink: 0 }}>
                             {t('Tổng số: {count} liên hệ').replace('{count}', String(contacts.length))}
