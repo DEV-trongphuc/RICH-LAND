@@ -231,11 +231,13 @@ CREATE TABLE IF NOT EXISTS `leads` (
   `ai_screener_status` varchar(50) DEFAULT 'not_screened',
   `ai_evaluation` text DEFAULT NULL,
   `connection_id` int(11) DEFAULT NULL,
+  `last_interaction_date` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   FOREIGN KEY (`person_id`) REFERENCES `persons` (`id`) ON DELETE SET NULL,
   FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  INDEX `idx_connection_id` (`connection_id`)
+  INDEX `idx_connection_id` (`connection_id`),
+  INDEX `idx_last_interaction_date` (`last_interaction_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 9. Table: lead_offers (Module 2 - 2 Minute Timeout Lead Offer Queue)
