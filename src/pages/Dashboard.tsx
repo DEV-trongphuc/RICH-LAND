@@ -894,7 +894,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
           return (
             <div
               key={`kpi-card-${card.id}`}
-              className={`stat-card hover-lift ${card.id}-card`}
+              className={`stat-card ${card.id}-card`}
               style={{
                 minHeight: '140px',
                 display: 'flex',
@@ -2370,9 +2370,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                     </div>
                   </div>
 
-                  {/* KPI Cards Row (4 Columns) */}
                   <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Thành công')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><CheckCircle size={18} /></div>
@@ -2386,7 +2385,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       </div>
                     </div>
 
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Nhắc lại')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-warning)', opacity: 0.8 }}><Clock size={18} /></div>
@@ -2400,7 +2399,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       </div>
                     </div>
 
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Lỗi')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-danger)', opacity: 0.8 }}><AlertTriangle size={18} /></div>
@@ -2414,7 +2413,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                       </div>
                     </div>
 
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tỷ lệ')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-success)', opacity: 0.8 }}><BarChart2 size={18} /></div>

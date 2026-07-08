@@ -4,6 +4,7 @@ import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircl
 import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useUIStore } from '../store/uiStore';
+import { useAuth } from '../contexts/AuthContext';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css'; 
@@ -34,6 +35,8 @@ const PRIORITIES = [
 
 export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdate, contacts = [], users = [] }) => {
   const { addToast } = useUIStore();
+  const { user: currentUser } = useAuth();
+  const isAdminOrManager = currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes((currentUser.role || '').toLowerCase());
 
   const formatSlaDate = (dateStr: any) => {
     if (!dateStr) return '—';
@@ -175,6 +178,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                     options={TICKET_STATUSES.map(s => ({ value: s.id, label: s.label }))} 
                     value={formData.status} 
                     onChange={val => handleStatusChange(val.toString())} 
+                    disabled={!isAdminOrManager}
                   />
                 </div>
                 <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>

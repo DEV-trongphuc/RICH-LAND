@@ -6,7 +6,7 @@ import {
   MoreVertical, File, Filter, LayoutGrid, List, Plus, Edit,
   Shield, User, Globe, Clock, ChevronRight, HardDrive,
   Star, Clock3, FileJson, FileCode, FileImage, FileVideo,
-  MoreHorizontal, Share2, Info, Building2
+  MoreHorizontal, Share2, Info, Building2, Eye
 } from 'lucide-react';
 import api from '../api/axios';
 import { compressToWebP } from '../utils/imageCompress';
@@ -527,15 +527,22 @@ export const FilesPage: React.FC = () => {
                           <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                             <a 
                               href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                              download={f.name}
+                              target="_blank"
+                              rel="noreferrer"
                               className="btn primary" 
-                              style={{ flex: 1, padding: '8px', fontSize: '0.75rem', borderRadius: 'var(--radius-lg)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              style={{ flex: 1, padding: '8px', fontSize: '0.75rem', borderRadius: 'var(--radius-lg)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                             >
-                              <Download size={14} /> Tải xuống
+                              <Eye size={14} /> Xem tài liệu
                             </a>
-                            <button className="btn outline" style={{ padding: '8px 12px', borderRadius: 'var(--radius-lg)' }}>
-                              <Info size={16} />
-                            </button>
+                            <a 
+                              href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                              download={f.name}
+                              className="btn outline" 
+                              style={{ padding: '8px 12px', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              title="Tải xuống"
+                            >
+                              <Download size={16} />
+                            </a>
                           </div>
                         </motion.div>
                       ))}
@@ -585,6 +592,15 @@ export const FilesPage: React.FC = () => {
                                 <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                                       {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
+                                      <a 
+                                        href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn-icon-bare" 
+                                        title="Xem tài liệu"
+                                      >
+                                        <Eye size={18} />
+                                      </a>
                                       <a 
                                         href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
                                         download={f.name}

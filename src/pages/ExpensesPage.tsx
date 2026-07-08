@@ -336,7 +336,7 @@ export const ExpensesPage: React.FC = () => {
               {loading ? (
                 <div className="skeleton" style={{ height: 32, width: '85%', borderRadius: 6, marginBottom: 8 }} />
               ) : (
-                <div className="stat-kpi__value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', margin: '0.125rem 0', lineHeight: 1.2 }}>{k.value}</div>
+                <div className="stat-kpi__value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: '0.125rem 0', lineHeight: 1.2 }}>{k.value}</div>
               )}
               <div className="stat-kpi__sub" style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem' }}>{k.sub}</div>
               {!isZero && (

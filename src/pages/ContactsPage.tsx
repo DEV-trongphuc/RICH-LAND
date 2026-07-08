@@ -1159,13 +1159,11 @@ export const ContactsPage: React.FC = () => {
                               {columns.find(col => col.id === 'phone')?.visible && c.phone ? (
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                   <PhoneLink phone={c.phone} style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} />
-                                  <CopyButton text={c.phone} size={12} />
                                 </div>
                               ) : null}
                               {columns.find(col => col.id === 'email')?.visible && c.email ? (
                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{c.email}</span>
-                                  <CopyButton text={c.email} size={12} />
                                 </div>
                               ) : null}
                             </div>
@@ -1451,14 +1449,12 @@ export const ContactsPage: React.FC = () => {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--color-text)', fontWeight: 600 }}>
                               <Phone size={12} style={{ color: 'var(--color-text-muted)' }} />
                               <span>{c.phone}</span>
-                              <CopyButton text={c.phone} size={11} />
                             </div>
                           )}
                           {c.email && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               <Mail size={12} style={{ color: 'var(--color-text-muted)' }} />
                               <span>{c.email}</span>
-                              <CopyButton text={c.email} size={11} />
                             </div>
                           )}
                         </div>

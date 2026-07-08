@@ -433,7 +433,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--sidebar-width',
-      isSidebarCollapsed ? '72px' : '260px'
+      isSidebarCollapsed ? '60px' : '220px'
     );
   }, [isSidebarCollapsed]);
 

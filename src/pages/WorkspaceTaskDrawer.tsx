@@ -681,16 +681,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         boxShadow: 'none',
         borderLeft: '1px solid var(--color-border-light)'
       } : {
-        width: isMobileOrTablet ? '100vw' : 'calc(100vw - var(--sidebar-width, 260px))',
+        left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
+        right: 0,
         maxWidth: '100vw',
         zIndex: 10600,
-        background: 'var(--color-bg)',
+        background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-border-light) 100%)',
         display: 'flex',
         flexDirection: 'column',
         position: 'fixed',
         top: 0,
         bottom: 0,
-        right: 0,
         boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
         transform: animateIn ? 'translateX(0)' : 'translateX(160px)',
         opacity: animateIn ? 1 : 0,
@@ -749,7 +749,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
             <button
               onClick={handleManualSave}
               disabled={isSaving || !hasChanges}
@@ -757,12 +757,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
-                padding: isMobileOrTablet ? '4px 10px' : '6px 16px',
+                gap: '6px',
+                padding: isMobileOrTablet ? '6px 12px' : '8px 18px',
                 borderRadius: '8px',
-                fontSize: '0.75rem',
+                fontSize: '0.85rem',
                 fontWeight: 700,
-                height: '30px',
+                height: '36px',
                 background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                 borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                 color: hasChanges ? 'white' : '#9ca3af',
@@ -770,7 +770,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 transition: 'all 0.2s ease'
               }}
             >
-              {isSaving ? <RefreshCw className="spin" size={12} /> : <CheckSquare2 size={12} />}
+              {isSaving ? <RefreshCw className="spin" size={14} /> : <CheckSquare2 size={14} />}
               <span>{isMobileOrTablet ? t('Lưu') : t('Lưu thay đổi')}</span>
             </button>
 
@@ -787,11 +787,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                height: '34px',
-                width: '34px'
+                height: '36px',
+                width: '36px'
               }}
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
+import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
 import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive } from 'lucide-react';
@@ -117,6 +118,19 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [fileCategories, setFileCategories] = useState<{ id: number; label: string }[]>([]);
+  const [folderLinkType, setFolderLinkType] = useState<'link' | 'select'>('link');
+  const [campaignFolderLinkType, setCampaignFolderLinkType] = useState<'link' | 'select'>('link');
+
+  useEffect(() => {
+    api.get('/file-categories')
+      .then(res => {
+        if (res.data && Array.isArray(res.data.data)) {
+          setFileCategories(res.data.data);
+        }
+      })
+      .catch(err => console.error('Failed to fetch file categories', err));
+  }, []);
   const [developers, setDevelopers] = useState<any[]>([]);
   const [allFiles, setAllFiles] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -161,6 +175,20 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [autoCode, setAutoCode] = useState(true);
   const quickUploadInputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingProject) {
+      const isUrl = editingProject.folder_path?.startsWith('http') || false;
+      setFolderLinkType(isUrl ? 'link' : 'select');
+    }
+  }, [editingProject?.id]);
+
+  useEffect(() => {
+    if (editingCampaign) {
+      const isUrl = editingCampaign.folder_path?.startsWith('http') || false;
+      setCampaignFolderLinkType(isUrl ? 'link' : 'select');
+    }
+  }, [editingCampaign?.id]);
 
   const generateCodeFromName = (name: string) => {
     if (!name) return '';
@@ -357,16 +385,16 @@ export default function ProjectsPage() {
         <div 
           className="drawer-sheet"
           style={{
-            width: window.innerWidth <= 768 ? '100vw' : 'calc(100vw - var(--sidebar-width, 260px))',
+            left: window.innerWidth <= 768 ? 0 : 'var(--sidebar-width, 220px)',
+            right: 0,
             maxWidth: '100vw',
             zIndex: 10600,
-            background: '#ffffff',
+            background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-border-light) 100%)',
             display: 'flex',
             flexDirection: 'column',
             position: 'fixed',
             top: 0,
             bottom: 0,
-            right: 0,
             boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
             animation: 'slideInProj 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             willChange: 'transform'
@@ -546,26 +574,26 @@ export default function ProjectsPage() {
             {/* KPI Summary Cards */}
             {projectStats && (
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
                     <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><Layers size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
                       {projectStats.total_deals}
                     </div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Cơ hội bán hàng</div>
                   </div>
                 </div>
 
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh thu thực tế</span>
                     <div className="stat-icon" style={{ color: '#10b981', opacity: 0.8 }}><CheckSquare size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {projectStats.actual_revenue >= 1000000000 
                         ? `${(projectStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(projectStats.actual_revenue / 1000000).toFixed(0)} triệu`}
@@ -574,26 +602,26 @@ export default function ProjectsPage() {
                   </div>
                 </div>
 
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ chốt</span>
                     <div className="stat-icon" style={{ color: '#f59e0b', opacity: 0.8 }}><Users size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
                       {projectStats.win_rate}%
                     </div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Tỷ lệ giao dịch thành công</div>
                   </div>
                 </div>
 
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chăm sóc</span>
                     <div className="stat-icon" style={{ color: '#6366f1', opacity: 0.8 }}><Building2 size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
                       {projectStats.total_leads}
                     </div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Khách hàng tiềm năng</div>
@@ -753,51 +781,13 @@ export default function ProjectsPage() {
                             return (
                               <div 
                                 key={idx}
-                                onClick={async () => {
-                                  const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user?.role || '');
-                                  if (!isAdminOrManager) {
-                                    addToast('Bạn không có quyền cập nhật tiến độ dự án', 'error');
-                                    return;
-                                  }
-                                  
-                                  const newStatus = milestone.pct === 100 ? 'Đã bàn giao' : (milestone.pct >= 85 ? 'Đang hoàn thiện' : 'Đang thi công');
-                                  setEditingProject(prev => ({ 
-                                    ...prev, 
-                                    progress_percent: milestone.pct,
-                                    construction_status: newStatus
-                                  }));
-                                  
-                                  if (editingProject?.id) {
-                                    try {
-                                      const updateData = {
-                                        ...editingProject,
-                                        progress_percent: milestone.pct,
-                                        construction_status: newStatus
-                                      };
-                                      const res = await fetchAPI(`projects/${editingProject.id}`, {
-                                        method: 'PUT',
-                                        body: JSON.stringify(updateData)
-                                      });
-                                      if (res.success || res.id) {
-                                        addToast(`Cập nhật tiến độ: ${milestone.pct}% (${newStatus})`, 'success');
-                                        setProjects(prev => prev.map(p => p.id === editingProject.id ? { ...p, progress_percent: milestone.pct, construction_status: newStatus } : p));
-                                        loadProjectStats(editingProject.id);
-                                      }
-                                    } catch (e) {
-                                      console.error(e);
-                                      addToast('Lỗi cập nhật tiến độ lên máy chủ', 'error');
-                                    }
-                                  }
-                                }}
                                 style={{ 
                                   display: 'flex', 
                                   flexDirection: 'column', 
                                   alignItems: 'center', 
                                   zIndex: 3, 
-                                  cursor: 'pointer',
                                   position: 'relative'
                                 }}
-                                title={`Thiết lập tiến độ về ${milestone.pct}%`}
                               >
                                 <div style={{
                                   width: '32px',
@@ -1228,52 +1218,52 @@ export default function ProjectsPage() {
             {/* KPI Summary Cards */}
             {campaignStats && (
               <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Số Leads</span>
                     <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><Layers size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
                       {campaignStats.total_leads}
                     </div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Nhận từ kênh Ads/Sheet</div>
                   </div>
                 </div>
 
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã Chuyển Đổi</span>
                     <div className="stat-icon" style={{ color: '#6366f1', opacity: 0.8 }}><Users size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
                       {campaignStats.converted_leads}
                     </div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Tỷ lệ: {campaignStats.conversion_rate}%</div>
                   </div>
                 </div>
 
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giao Dịch Thành Công</span>
                     <div className="stat-icon" style={{ color: '#f59e0b', opacity: 0.8 }}><CheckSquare size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)' }}>
                       {campaignStats.won_deals}
                     </div>
                     <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Đã chốt (Đóng Deal)</div>
                   </div>
                 </div>
 
-                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu Thực Thu</span>
                     <div className="stat-icon" style={{ color: '#10b981', opacity: 0.8 }}><Building2 size={18} /></div>
                   </div>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    <div className="stat-value" style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
                       {campaignStats.actual_revenue >= 1000000000 
                         ? `${(campaignStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
                         : `${(campaignStats.actual_revenue / 1000000).toFixed(0)} triệu`}
@@ -2325,7 +2315,7 @@ export default function ProjectsPage() {
       {/* Projects List */}
       {activeSubTab === 'projects' && (
         loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
             {Array.from({ length: 6 }).map((_, i) => (
               <ProjectCardSkeleton key={i} />
             ))}
@@ -2344,7 +2334,7 @@ export default function ProjectsPage() {
           />
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 768 ? 'repeat(auto-fill, minmax(280px, 1fr))' : 'repeat(3, 1fr)', gap: '1.5rem' }}>
               {projects.map(proj => (
                 <div
                   key={proj.id}
@@ -2389,7 +2379,6 @@ export default function ProjectsPage() {
                         {proj.status === 'active' ? 'Đang bán' : 'Tạm dừng'}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-400 line-clamp-3 mb-4" style={{ color: 'var(--color-text-muted)' }}>{proj.description || 'Không có mô tả'}</p>
 
                     {/* Construction Progress Bar */}
                     <div style={{ marginBottom: '1rem' }}>
@@ -2435,67 +2424,6 @@ export default function ProjectsPage() {
                       </span>
                     </div>
 
-                    {/* Linked Campaigns & Documents display on Project Card */}
-                    {((proj.campaign_ids && parseIds(proj.campaign_ids).length > 0) || (proj.document_ids && parseIds(proj.document_ids).length > 0)) && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '12px', padding: '12px', background: 'var(--color-bg)', borderRadius: '10px', fontSize: '0.75rem', border: '1px solid var(--color-border)' }}>
-                        {proj.campaign_ids && parseIds(proj.campaign_ids).length > 0 && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
-                            <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px', minWidth: '70px' }}>
-                              <Layers size={12} className="text-primary" /> Chiến dịch:
-                            </span>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                              {parseIds(proj.campaign_ids).map(cName => (
-                                <span key={cName} style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: 700 }}>
-                                  {cName}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {proj.document_ids && (
-                          (() => {
-                            const matchedFiles = parseIds(proj.document_ids)
-                              .map(docId => allFiles.find(f => String(f.id) === String(docId)))
-                              .filter(Boolean) as typeof allFiles;
-                            
-                            if (matchedFiles.length === 0) return null;
-                            const visibleFiles = matchedFiles.slice(0, 3);
-                            const extraCount = matchedFiles.length - 3;
-
-                            return (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
-                                  <FileText size={12} className="text-primary" /> Tài liệu liên kết:
-                                </span>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', paddingLeft: '8px' }}>
-                                  {visibleFiles.map(fileObj => (
-                                    <a
-                                      key={fileObj.id}
-                                      onClick={(e) => e.stopPropagation()}
-                                      href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
-                                      download={fileObj.name}
-                                      title={fileObj.name}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600 }}
-                                      onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
-                                      onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
-                                    >
-                                      • {formatFileName(fileObj.name, 50)}
-                                    </a>
-                                  ))}
-                                  {extraCount > 0 && (
-                                    <div style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', paddingLeft: '8px', marginTop: '2px' }}>
-                                      + {extraCount} tài liệu khác
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })()
-                        )}
-                      </div>
-                    )}
                   </div>
 
                   <div className="flex gap-2 pt-4" style={{ borderTop: '1px solid var(--color-border)', marginTop: '1rem' }} onClick={e => e.stopPropagation()}>
@@ -3244,10 +3172,11 @@ export default function ProjectsPage() {
                     )}
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Trạng thái bán</label>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', background: 'var(--color-bg-light)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', height: '44px' }}>
                       <div>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Trạng thái bán</span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>Cho phép mở bán</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 600, color: editingProject?.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
@@ -3328,6 +3257,7 @@ export default function ProjectsPage() {
                       searchable={true}
                       options={[
                         { value: 'Chưa khởi công', label: 'Chưa khởi công' },
+                        { value: 'Đang thi công', label: 'Đang thi công' },
                         { value: 'Đang thi công móng', label: 'Đang thi công móng' },
                         { value: 'Đang xây thân', label: 'Đang xây thân' },
                         { value: 'Đã cất nóc', label: 'Đã cất nóc' },
@@ -3460,13 +3390,63 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div>
                     <label className="form-label">Đường dẫn Folder liên kết</label>
-                    <input
-                      type="text"
-                      value={editingProject?.folder_path || ''}
-                      onChange={e => setEditingProject(prev => ({ ...prev, folder_path: e.target.value }))}
-                      className="form-input"
-                      placeholder="Ví dụ: /shared/projects/folder_a"
-                    />
+                    <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: '10px', marginBottom: '12px', border: '1px solid var(--color-border-light)' }}>
+                      <button
+                        type="button"
+                        onClick={() => setFolderLinkType('link')}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: folderLinkType === 'link' ? 'var(--color-primary)' : 'transparent',
+                          color: folderLinkType === 'link' ? 'white' : 'var(--color-text-muted)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: folderLinkType === 'link' ? '0 2px 4px rgba(163, 20, 34, 0.2)' : 'none'
+                        }}
+                      >
+                        Dán Link (Drive...)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFolderLinkType('select')}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: folderLinkType === 'select' ? 'var(--color-primary)' : 'transparent',
+                          color: folderLinkType === 'select' ? 'white' : 'var(--color-text-muted)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: folderLinkType === 'select' ? '0 2px 4px rgba(163, 20, 34, 0.2)' : 'none'
+                        }}
+                      >
+                        Chọn thư mục có sẵn
+                      </button>
+                    </div>
+
+                    {folderLinkType === 'link' ? (
+                      <input
+                        type="text"
+                        value={editingProject?.folder_path || ''}
+                        onChange={e => setEditingProject(prev => ({ ...prev, folder_path: e.target.value }))}
+                        className="form-input"
+                        placeholder="Dán link thư mục Google Drive..."
+                      />
+                    ) : (
+                      <CustomSelect
+                        options={fileCategories.map(cat => ({ value: cat.label, label: cat.label }))}
+                        value={editingProject?.folder_path || ''}
+                        onChange={val => setEditingProject(prev => ({ ...prev, folder_path: val as string }))}
+                        placeholder="Chọn thư mục từ /files..."
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -4405,13 +4385,63 @@ export default function ProjectsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>Đường dẫn Folder liên kết</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="Ví dụ: /shared/campaigns/fb_leads"
-                      value={editingCampaign?.folder_path || ''}
-                      onChange={e => setEditingCampaign({ ...editingCampaign, folder_path: e.target.value })}
-                    />
+                    <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: '10px', marginBottom: '12px', border: '1px solid var(--color-border-light)' }}>
+                      <button
+                        type="button"
+                        onClick={() => setCampaignFolderLinkType('link')}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: campaignFolderLinkType === 'link' ? 'var(--color-primary)' : 'transparent',
+                          color: campaignFolderLinkType === 'link' ? 'white' : 'var(--color-text-muted)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: campaignFolderLinkType === 'link' ? '0 2px 4px rgba(163, 20, 34, 0.2)' : 'none'
+                        }}
+                      >
+                        Dán Link (Drive...)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCampaignFolderLinkType('select')}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: campaignFolderLinkType === 'select' ? 'var(--color-primary)' : 'transparent',
+                          color: campaignFolderLinkType === 'select' ? 'white' : 'var(--color-text-muted)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease',
+                          boxShadow: campaignFolderLinkType === 'select' ? '0 2px 4px rgba(163, 20, 34, 0.2)' : 'none'
+                        }}
+                      >
+                        Chọn thư mục có sẵn
+                      </button>
+                    </div>
+
+                    {campaignFolderLinkType === 'link' ? (
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Dán link thư mục Google Drive..."
+                        value={editingCampaign?.folder_path || ''}
+                        onChange={e => setEditingCampaign({ ...editingCampaign, folder_path: e.target.value })}
+                      />
+                    ) : (
+                      <CustomSelect
+                        options={fileCategories.map(cat => ({ value: cat.label, label: cat.label }))}
+                        value={editingCampaign?.folder_path || ''}
+                        onChange={val => setEditingCampaign({ ...editingCampaign, folder_path: val as string })}
+                        placeholder="Chọn thư mục từ /files..."
+                      />
+                    )}
                   </div>
 
                   <div className="form-group">

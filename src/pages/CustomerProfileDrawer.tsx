@@ -2864,21 +2864,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     onClick={handleSave}
                     className="btn success sm"
                     style={{
-                      padding: '4px 12px',
+                      padding: '6px 14px',
                       borderRadius: '8px',
-                      fontSize: '0.75rem',
+                      fontSize: '0.8rem',
                       fontWeight: 700,
-                      height: '28px',
+                      height: '32px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
+                      gap: '6px',
                       background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                       borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                       color: hasChanges ? 'white' : '#9ca3af',
                       cursor: hasChanges ? 'pointer' : 'not-allowed'
                     }}
                   >
-                    <CheckSquare size={12} />
+                    <CheckSquare size={14} />
                     <span>Lưu</span>
                   </button>
                 </div>
@@ -3088,11 +3088,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         style={{ 
                           display: 'flex', 
                           alignItems: 'center', 
-                          gap: '6px', 
-                          padding: '6px 14px', 
+                          gap: '8px', 
+                          padding: '8px 18px', 
                           borderRadius: '10px', 
-                          height: '36px', 
-                          fontSize: '0.8125rem',
+                          height: '40px', 
+                          fontSize: '0.875rem',
                           background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                           borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
                           color: hasChanges ? 'white' : '#9ca3af',
@@ -3898,7 +3898,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
                         </div>
 
-                        <div className="card-panel" style={{ padding: '1.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), var(--color-bg))', border: '1px solid var(--color-border-light)' }}>
+                        <div className="card-panel" style={{ padding: '1.5rem', background: '#ffffff', border: '1px solid var(--color-border-light)' }}>
                           <div>
                             <label className="form-label" style={{ fontWeight: 700, marginBottom: '1rem', display: 'block', fontSize: '0.9375rem' }}>Gắn thẻ thông minh</label>
                             <TagInput

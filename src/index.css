@@ -1982,13 +1982,12 @@ input[type="radio"]:hover:not(:checked) {
   border-radius: var(--radius-lg);
   padding: 1.25rem;
   box-shadow: var(--shadow-xs);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: box-shadow 0.2s;
   display: flex;
   flex-direction: column;
 }
 
 .stat-kpi:hover {
-  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -2016,11 +2015,11 @@ input[type="radio"]:hover:not(:checked) {
 }
 
 .stat-kpi__value {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: var(--color-text);
   line-height: 1.2;
-  margin: 0.25rem 0;
+  margin: 0.125rem 0;
 }
 
 .stat-kpi__sub {
@@ -3722,7 +3721,7 @@ textarea, .form-textarea, textarea.form-input, textarea.form-control {
     content: "";
     position: fixed;
     top: 50%;
-    left: calc(var(--sidebar-width, 260px) / 2);
+    left: calc(var(--sidebar-width, 220px) / 2);
     transform: translate(-50%, -50%);
     width: 44px;
     height: 44px;

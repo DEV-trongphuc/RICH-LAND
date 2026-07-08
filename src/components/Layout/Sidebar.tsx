@@ -26,18 +26,18 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { name: 'Dashboard', href: '/', icon: LayoutDashboard, end: true },
       { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
-      { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] },
-      { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2 }
+      { name: 'Báo cáo', href: '/reports-crm', icon: BarChart2 },
+      { name: 'Kho Databank', href: '/databank', icon: Layers, hideForRoles: ['viewer'] }
     ]
   },
   {
     title: 'KHÁCH HÀNG',
     items: [
       { name: 'Khách hàng', href: '/contacts', icon: Users },
-      { name: 'Kho Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
       { name: 'Pipeline', href: '/deals', icon: TrendingUp },
       { name: 'Nhật ký hoạt động', href: '/activities', icon: Clock, hideForRoles: ['sale'] },
       { name: 'Lịch biểu & Chấm công', href: '/calendar', icon: Calendar },
+      { name: 'Kho Data', href: '/data', icon: Database, hideForRoles: ['sale'] },
       { name: 'Quy tắc phân bổ', href: '/rounds', icon: GitBranch, adminOnly: true, hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
       { name: 'Đối soát công bằng', href: '/fair-share', icon: Scale },
       { name: 'AI Pre-screener', href: '/gatekeeper', icon: Filter, adminOnly: true, badgeKey: 'gatekeeper', hideForRoles: ['manager', 'assistant', 'sale', 'sales'] },
@@ -46,11 +46,25 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     ]
   },
   {
-    title: 'DỰ ÁN',
+    title: 'DỰ ÁN & SẢN PHẨM',
     items: [
       { name: 'Dự án', href: '/projects', icon: Building2 },
+      { name: 'Giỏ hàng', href: '/inventory', icon: Boxes },
       { name: 'Chiến dịch', href: '/projects?tab=campaigns', icon: Layers },
-      { name: 'Tài liệu', href: '/files', icon: File }
+      { name: 'Tài liệu', href: '/files', icon: File },
+      { name: 'Công ty', href: '/companies', icon: Building2 },
+      { name: 'Chủ đầu tư', href: '/suppliers', icon: Truck }
+    ]
+  },
+  {
+    title: 'TÀI CHÍNH',
+    items: [
+      { name: 'Báo giá', href: '/quotes', icon: FileText, hideForRoles: ['viewer'] },
+      { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt, hideForRoles: ['viewer'] },
+      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'director'], badgeKey: 'coopSlips' },
+      { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['sale', 'viewer', 'sales'], badgeKey: 'coopSlips' },
+      { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
+      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, hideForRoles: ['sale', 'viewer', 'sales'] }
     ]
   },
   {
@@ -60,43 +74,17 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
       { name: 'Team', href: '/consultants?tab=teams', icon: Users, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
       { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
       { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Chấm công', href: '/attendance', icon: Clock, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] },
-      { name: 'Duyệt hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['sale', 'viewer', 'sales'], badgeKey: 'coopSlips' }
-    ]
-  },
-  {
-    title: 'ĐỐI TÁC',
-    items: [
-      { name: 'Công ty', href: '/companies', icon: Building2 },
-      { name: 'Chủ đầu tư', href: '/suppliers', icon: Truck }
-    ]
-  },
-  {
-    title: 'SẢN PHẨM',
-    items: [
-      { name: 'Giỏ hàng', href: '/inventory', icon: Boxes }
-    ]
-  },
-  {
-    title: 'TÀI CHÍNH',
-    items: [
-      { name: 'Hóa đơn', href: '/invoices', icon: Receipt, hideForRoles: ['viewer'] },
-      { name: 'Báo giá', href: '/quotes', icon: FileText, hideForRoles: ['viewer'] },
-      { name: 'Chi phí vận hành', href: '/expenses', icon: CreditCard, hideForRoles: ['sale', 'viewer', 'sales'] },
-      { name: 'Phiếu đặt cọc', href: '/deposits', icon: Receipt, hideForRoles: ['viewer'] },
-      { name: 'Phiếu hợp tác', href: '/cooperation-slips', icon: Scale, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'director'], badgeKey: 'coopSlips' }
+      { name: 'Chấm công', href: '/attendance', icon: Clock, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] }
     ]
   },
   {
     title: 'CÀI ĐẶT HỆ THỐNG',
     items: [
-      { name: 'Tích hợp Data', href: '/integrations', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Vòng đời khách hàng', href: '/settings?tab=lifecycle', icon: Settings, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Logic xử lý', href: '/rules', icon: Webhook, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'CAPI', href: '/capi', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
       { name: 'Quản lý tài khoản', href: '/accounts', icon: ShieldCheck, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Phân quyền', href: '/accounts?tab=permissions', icon: ShieldCheck, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Cài đặt hệ thống', href: '/settings', icon: Settings, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] }
+      { name: 'Logic xử lý', href: '/rules', icon: Webhook, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Tích hợp Data', href: '/integrations', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'CAPI', href: '/capi', icon: Link2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] }
     ]
   }
 ];
@@ -238,7 +226,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
-          width: isCollapsed ? 72 : 260,
+          width: isCollapsed ? 60 : 220,
           background: 'var(--sidebar-bg)',
           color: '#dadada',
           display: 'flex',
@@ -252,11 +240,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       >
         {/* Logo Area */}
         <div style={{
-          height: 92,
+          height: 72,
           display: 'flex',
           alignItems: 'center',
-          padding: isCollapsed ? '20px 0 0 0' : '20px 1.25rem 0 1.25rem',
-          gap: '0.875rem',
+          padding: isCollapsed ? '12px 0 0 0' : '12px 1rem 0 1rem',
+          gap: '0.75rem',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
           flexShrink: 0,
           justifyContent: isCollapsed ? 'center' : 'flex-start',
@@ -264,7 +252,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         }}>
           {/* Logo Icon */}
           <div style={{
-            width: 42, height: 42, borderRadius: '50%',
+            width: 36, height: 36, borderRadius: '50%',
             background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             flexShrink: 0,
@@ -279,18 +267,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
           {!isCollapsed && (
             <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
-              <span style={{ fontSize: '1.45rem', fontWeight: 900, whiteSpace: 'nowrap', color: 'white', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
+              <span style={{ fontSize: '1.2rem', fontWeight: 900, whiteSpace: 'nowrap', color: 'white', letterSpacing: '-0.03em', lineHeight: 1.05 }}>
                 RICH LAND
               </span>
               <span style={{
-                fontSize: '0.625rem',
+                fontSize: '0.55rem',
                 fontWeight: 800,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 background: 'linear-gradient(135deg, #f45b69 0%, #e63946 50%, #BD1D2D 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
-                marginTop: '4px',
+                marginTop: '3px',
                 whiteSpace: 'nowrap'
               }}>
                 / DATA AUTOMATION
@@ -300,7 +288,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         </div>
 
         {/* Quick Action Button */}
-        <div style={{ padding: isCollapsed ? '0.75rem 0.5rem' : '1.25rem 1rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ padding: isCollapsed ? '0.5rem 0.25rem' : '0.875rem 0.75rem', display: 'flex', justifyContent: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
           {isCollapsed ? (
             <button
               onClick={() => {
@@ -308,7 +296,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 if (onMobileClose) onMobileClose();
               }}
               style={{
-                width: 38, height: 38, borderRadius: '50%',
+                width: 32, height: 32, borderRadius: '50%',
                 background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
@@ -317,7 +305,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
               title={((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
             >
-              <Plus size={18} />
+              <Plus size={16} />
             </button>
           ) : (
             <button
@@ -327,10 +315,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
               }}
               className="btn primary"
               style={{
-                width: '100%', height: 38, borderRadius: '10px',
+                width: '100%', height: 34, borderRadius: '8px',
                 background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 8, fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer',
+                gap: 6, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer',
                 boxShadow: '0 4px 12px rgba(163, 20, 34, 0.4)', transition: 'all 0.2s'
               }}
               onMouseEnter={e => {
@@ -342,7 +330,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(163, 20, 34, 0.4)';
               }}
             >
-              <Plus size={16} /> {((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
+              <Plus size={14} /> {((user?.role as string) === 'sale' || (user?.role as string) === 'sales') ? t("Thêm data cá nhân") : t("Thêm data nhanh")}
             </button>
           )}
         </div>
@@ -387,15 +375,15 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             )}
 
             {visibleGroups.map((group, groupIdx) => (
-              <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: isCollapsed ? '0.5rem' : '1.25rem' }}>
+              <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: isCollapsed ? '0.375rem' : '0.875rem' }}>
                 {!isCollapsed && (
                   <span style={{
-                    fontSize: '0.68rem',
+                    fontSize: '0.65rem',
                     fontWeight: 800,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
                     color: 'rgba(255, 255, 255, 0.28)',
-                    padding: '0.5rem 1.5rem',
+                    padding: '0.375rem 1rem',
                     whiteSpace: 'nowrap',
                     display: 'block'
                   }}>
@@ -411,10 +399,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                        if (locationPath !== itemPath) return false;
                        const itemParams = new URLSearchParams(itemHref.substring(qIdx));
                        const locParams = new URLSearchParams(locationSearch);
-                       for (const [key, val] of itemParams.entries()) {
-                         if (locParams.get(key) !== val) return false;
-                       }
-                       return true;
+                       let match = true;
+                       itemParams.forEach((val, key) => {
+                         if (locParams.get(key) !== val) match = false;
+                       });
+                       return match;
                      } else {
                        if (locationPath !== itemHref) return false;
                        const locParams = new URLSearchParams(locationSearch);
@@ -440,11 +429,11 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                         if (onMobileClose) onMobileClose();
                       }}
                       style={{
-                        display: 'flex', alignItems: 'center', gap: '0.875rem',
-                        padding: isCollapsed ? '0.75rem 0' : '0.625rem 1.5rem',
+                        display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        padding: isCollapsed ? '0.5rem 0' : '0.45rem 1rem',
                         justifyContent: isCollapsed ? 'center' : 'flex-start',
                         color: isActive ? '#dadada' : 'rgba(255,255,255,0.5)',
-                        textDecoration: 'none', fontSize: '0.9rem',
+                        textDecoration: 'none', fontSize: '0.825rem',
                         fontWeight: isActive ? 700 : 500, transition: 'all 0.2s ease',
                         position: 'relative',
                         background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
@@ -455,15 +444,15 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                         <>
                           {/* Icon Box — with badge dot when collapsed */}
                           <div style={{
-                            width: 36, height: 36, borderRadius: 10,
+                            width: 30, height: 30, borderRadius: 8,
                             background: isActive ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.06)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0, transition: 'all 0.2s', position: 'relative'
                           }}>
-                            <Icon size={18} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
+                            <Icon size={15} color={isActive ? '#dadada' : 'rgba(255,255,255,0.5)'} />
                             {isCollapsed && badgeCount > 0 && (
                               <div style={{
-                                position: 'absolute', top: 4, right: 4, width: 8, height: 8,
+                                position: 'absolute', top: 3, right: 3, width: 6, height: 6,
                                 borderRadius: '50%', background: badgeKey === 'gatekeeper' ? '#f59e0b' : '#ef4444'
                               }} />
                             )}
@@ -474,10 +463,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                               <span>{displayName}</span>
                               {badgeCount > 0 && (
                                 <span style={{
-                                  fontSize: '0.7rem',
-                                  minWidth: '18px',
-                                  height: '18px',
-                                  borderRadius: '9px',
+                                  fontSize: '0.65rem',
+                                  minWidth: '15px',
+                                  height: '15px',
+                                  borderRadius: '8px',
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
