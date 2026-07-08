@@ -1217,6 +1217,12 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
     }
   }, [isActive, searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get('page') && searchParams.get('page') !== '1') {
+      updateParams('page', '1');
+    }
+  }, [heldLeadsSearch]);
+
   // ── Lead Action Handlers ──
   const handleOpenApproveHeldLead = async (lead: any) => {
     setActioningHeldLead(lead);

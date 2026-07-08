@@ -83,6 +83,10 @@ export const CompaniesPage: React.FC = () => {
     fetchCompanies();
   }, [fetchCompanies]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter]);
+
   const openCreate = () => { setEditItem(null); setShowModal(true); };
   const openEdit = (c: any) => { setEditItem(c); setShowModal(true); };
 

@@ -392,6 +392,10 @@ export const DealsPage: React.FC = () => {
   }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, viewMode, allUsers, teams]);
 
   useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, pipelineView]);
+
+  useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (transitionModal?.isOpen) setTransitionModal(null);

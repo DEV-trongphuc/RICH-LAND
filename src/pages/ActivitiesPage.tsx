@@ -181,6 +181,10 @@ export const ActivitiesPage: React.FC = () => {
   useEffect(() => { fetchActivities(); }, [fetchActivities]);
 
   useEffect(() => {
+    setPage(1);
+  }, [filterType, filterStatus]);
+
+  useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && showModal && !saving) {
         setShowModal(false);

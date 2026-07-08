@@ -721,6 +721,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   }, [token, ticketStatusFilter, ticketDateFilter, ticketPage, activeTab, displayUser?.consultant_id]);
 
+  useEffect(() => {
+    setTicketPage(1);
+  }, [displayUser?.consultant_id]);
+
   // Google Login element references
   const googleBtnRef = useRef<HTMLDivElement>(null);
   const renderedRef = useRef(false);
