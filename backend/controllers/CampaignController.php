@@ -242,4 +242,88 @@ class CampaignController {
         $newId = $this->db->lastInsertId();
         respond(200, ['id' => $newId], 'Thêm bình luận thành công');
     }
+
+    public function getStats(array $auth, int $campaignId): void {
+        $this->requireCampaignAccess($auth, $campaignId);
+        
+        // Fetch campaign details to get name
+        $stmtC = $this->db->prepare("SELECT name FROM marketing_campaigns WHERE id = ?");
+        $stmtC->execute([$campaignId]);
+        $campName = $stmtC->fetchColumn();
+        if (!$campName) {
+            respond(404, null, 'Chiến dịch không tồn tại', false);
+        }
+        
+        $campaignIdStr = (string)$campaignId;
+        
+        // Count total leads in leads table
+        $stmtLeads = $this->db->prepare("
+            SELECT COUNT(*) 
+            FROM leads 
+            WHERE (campaign_id = ? OR campaign_name = ?)
+        ");
+        $stmtLeads->execute([$campaignIdStr, $campName]);
+        $totalLeads = (int)$stmtLeads->fetchColumn();
+        
+        // Converted leads (leads that have a contact record)
+        $stmtConverted = $this->db->prepare("
+            SELECT COUNT(DISTINCT c.id) 
+            FROM contacts c
+            JOIN leads l ON c.person_id = l.person_id
+            WHERE (l.campaign_id = ? OR l.campaign_name = ?)
+              AND c.deleted_at IS NULL
+        ");
+        $stmtConverted->execute([$campaignIdStr, $campName]);
+        $convertedLeads = (int)$stmtConverted->fetchColumn();
+        
+        // Conversion rate
+        $conversionRate = $totalLeads > 0 ? round(($convertedLeads / $totalLeads) * 100, 1) : 0.0;
+        
+        // Won deals from this campaign
+        $stmtWon = $this->db->prepare("
+            SELECT COUNT(DISTINCT c.id) 
+            FROM contacts c
+            JOIN leads l ON c.person_id = l.person_id
+            WHERE (l.campaign_id = ? OR l.campaign_name = ?)
+              AND c.pipeline_status = 'dong_deal'
+              AND c.deleted_at IS NULL
+        ");
+        $stmtWon->execute([$campaignIdStr, $campName]);
+        $wonDeals = (int)$stmtWon->fetchColumn();
+        
+        // Actual revenue from paid invoices of contacts from this campaign
+        $stmtRev = $this->db->prepare("
+            SELECT COALESCE(SUM(inv.total), 0)
+            FROM invoices inv
+            JOIN contacts c ON inv.contact_id = c.id
+            JOIN leads l ON c.person_id = l.person_id
+            WHERE (l.campaign_id = ? OR l.campaign_name = ?)
+              AND inv.status = 'paid'
+              AND inv.deleted_at IS NULL
+              AND c.deleted_at IS NULL
+        ");
+        $stmtRev->execute([$campaignIdStr, $campName]);
+        $actualRevenue = (float)$stmtRev->fetchColumn();
+        
+        // Audit changelog trail: last 15 actions
+        $stmtLogs = $this->db->prepare("
+            SELECT a.id, a.action, a.new_data, a.created_at, u.full_name as user_name
+            FROM audit_logs a
+            LEFT JOIN users u ON a.user_id = u.id
+            WHERE a.resource = 'marketing_campaigns' AND a.resource_id = ? AND a.tenant_id = ?
+            ORDER BY a.created_at DESC
+            LIMIT 15
+        ");
+        $stmtLogs->execute([$campaignId, $auth['tenant_id']]);
+        $logs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        
+        respond(200, [
+            'total_leads' => $totalLeads,
+            'converted_leads' => $convertedLeads,
+            'conversion_rate' => $conversionRate,
+            'won_deals' => $wonDeals,
+            'actual_revenue' => $actualRevenue,
+            'logs' => $logs
+        ], 'Lấy thống kê chiến dịch thành công');
+    }
 }

@@ -180,6 +180,45 @@ export default function ProjectsPage() {
 
   const [projectRoster, setProjectRoster] = useState<any[]>([]);
   const [projectRosterLoading, setProjectRosterLoading] = useState(false);
+  const [projectDrawerTab, setProjectDrawerTab] = useState<'details' | 'changelog'>('details');
+  const [campaignDrawerTab, setCampaignDrawerTab] = useState<'details' | 'changelog'>('details');
+  const [projectStats, setProjectStats] = useState<any>(null);
+  const [campaignStats, setCampaignStats] = useState<any>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  const loadProjectStats = async (id: number) => {
+    setStatsLoading(true);
+    try {
+      const res = await fetchAPI(`projects/${id}/stats`);
+      if (res && res.success) {
+        setProjectStats(res.data);
+      } else {
+        setProjectStats(null);
+      }
+    } catch (e) {
+      console.error(e);
+      setProjectStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const loadCampaignStats = async (id: number) => {
+    setStatsLoading(true);
+    try {
+      const res = await fetchAPI(`campaigns/${id}/stats`);
+      if (res && res.success) {
+        setCampaignStats(res.data);
+      } else {
+        setCampaignStats(null);
+      }
+    } catch (e) {
+      console.error(e);
+      setCampaignStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
 
   const loadProjectRoster = async (projectId: number) => {
     setProjectRosterLoading(true);
@@ -275,10 +314,12 @@ export default function ProjectsPage() {
       loadProjectRoster(editingProject.id);
       loadDetailComments('project', editingProject.id);
       loadLinkedTasks('project', editingProject.id);
+      loadProjectStats(editingProject.id);
     } else {
       setProjectRoster([]);
       setDetailComments([]);
       setLinkedTasks([]);
+      setProjectStats(null);
     }
   }, [editingProject?.id]);
 
@@ -286,7 +327,9 @@ export default function ProjectsPage() {
     if (editingCampaign && editingCampaign.id) {
       loadDetailComments('campaign', editingCampaign.id);
       loadLinkedTasks('campaign', editingCampaign.id);
+      loadCampaignStats(editingCampaign.id);
     } else {
+      setCampaignStats(null);
       if (!editingProject) {
         setDetailComments([]);
         setLinkedTasks([]);
@@ -451,6 +494,1213 @@ export default function ProjectsPage() {
         <Folder size={14} />
         <span>{path} (Xem trong Kho tài liệu)</span>
       </a>
+    );
+  };
+
+  const renderProjectViewDrawer = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', gap: '1.5rem', marginBottom: '0.25rem' }}>
+          <button
+            onClick={() => setProjectDrawerTab('details')}
+            style={{
+              padding: '8px 4px 12px',
+              background: 'none',
+              border: 'none',
+              borderBottom: projectDrawerTab === 'details' ? '2px solid var(--color-primary)' : '2px solid transparent',
+              color: projectDrawerTab === 'details' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Thông tin & Chỉ số
+          </button>
+          <button
+            onClick={() => setProjectDrawerTab('changelog')}
+            style={{
+              padding: '8px 4px 12px',
+              background: 'none',
+              border: 'none',
+              borderBottom: projectDrawerTab === 'changelog' ? '2px solid var(--color-primary)' : '2px solid transparent',
+              color: projectDrawerTab === 'changelog' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Lịch sử thay đổi
+          </button>
+        </div>
+
+        {projectDrawerTab === 'details' ? (
+          <>
+            {/* KPI Summary Cards */}
+            {projectStats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '0.5rem' }}>
+                <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#1e3a8a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e40af' }}>{projectStats.total_deals}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#60a5fa', fontWeight: 600 }}>Cơ hội bán hàng</span>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#065f46', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh thu thực tế</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#065f46', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    {projectStats.actual_revenue >= 1000000000 
+                      ? `${(projectStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
+                      : `${(projectStats.actual_revenue / 1000000).toFixed(0)} triệu`}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>Từ hóa đơn đã thu</span>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '1px solid #fde68a', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#78350f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ chốt</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#78350f' }}>{projectStats.win_rate}%</span>
+                  <span style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 600 }}>Tỷ lệ giao dịch thành công</span>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#581c87', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chăm sóc</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#6b21a8' }}>{projectStats.total_leads}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#c084fc', fontWeight: 600 }}>Khách hàng tiềm năng</span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+              {/* Left Column (3/5) */}
+              <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                
+                {/* Section 1: Thông tin cơ bản */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thông tin cơ bản</h4>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Tên dự án</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block' }}>{editingProject?.name}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Mã dự án</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block', fontFamily: 'monospace' }}>{editingProject?.code}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Chủ đầu tư</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block' }}>{editingProject?.developer || 'Chưa cập nhật'}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Trạng thái bán</span>
+                      <span 
+                        className={`badge ${editingProject?.status === 'active' ? 'success' : 'secondary'}`}
+                        style={{ fontSize: '0.75rem', padding: '5px 10px', borderRadius: '100px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
+                      >
+                        {editingProject?.status === 'active' ? 'Đang mở bán' : 'Tạm dừng bán'}
+                      </span>
+                    </div>
+                    {editingProject?.reference_url && (
+                      <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Website / Link tham khảo</span>
+                        <a
+                          href={editingProject.reference_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: 'var(--color-primary)',
+                            textDecoration: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          {editingProject.reference_url.includes('docs.google.com/spreadsheets') || editingProject.reference_url.includes('google.com/sheets') ? (
+                            <>
+                              <FileSpreadsheet size={16} color="#10b981" />
+                              <span style={{ color: '#10b981' }}>Bảng tính Google Sheets</span>
+                            </>
+                          ) : (
+                            <>
+                              <Link2 size={16} />
+                              <span>Mở liên kết tham khảo</span>
+                            </>
+                          )}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section 2: Vị trí & Quy mô & Pháp lý */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vị trí, Quy mô & Pháp lý</h4>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Vị trí / Địa chỉ</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>{editingProject?.location || 'Chưa cập nhật'}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Trạng thái thi công &amp; Tiến độ</span>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '4px' }}>
+                        <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600 }}>
+                          {editingProject?.construction_status || 'Chưa khởi công'}
+                        </span>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 800, color: (editingProject?.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>
+                          {editingProject?.progress_percent ?? 0}%
+                        </span>
+                      </div>
+                      
+                      {/* Beautiful progress bar */}
+                      <div style={{ height: '10px', background: 'var(--color-border-light)', borderRadius: '99px', overflow: 'hidden', marginTop: '4px', width: '100%' }}>
+                        <div 
+                          style={{ 
+                            height: '100%', 
+                            width: `${editingProject?.progress_percent ?? 0}%`, 
+                            background: (editingProject?.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, #BD1D2D, #F97316)',
+                            borderRadius: '99px',
+                            transition: 'width 0.4s var(--transition-fluid)'
+                          }} 
+                        />
+                      </div>
+
+                      {/* Milestone Timeline */}
+                      <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 750 }}>Cột mốc dự án (Milestones)</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '8px 0 24px' }}>
+                          {/* Connecting Line */}
+                          <div style={{ position: 'absolute', top: '23px', left: '10px', right: '10px', height: '2px', background: 'var(--color-border-light)', zIndex: 1 }} />
+                          <div 
+                            style={{ 
+                              position: 'absolute', 
+                              top: '23px', 
+                              left: '10px', 
+                              width: `${Math.min(100, Math.max(0, ((editingProject?.progress_percent ?? 0) / 100) * 100))}%`, 
+                              height: '2px', 
+                              background: 'var(--color-primary)', 
+                              zIndex: 2,
+                              transition: 'width 0.3s ease'
+                            }} 
+                          />
+                          
+                          {/* Milestone Nodes */}
+                          {[
+                            { name: 'Chuẩn bị', pct: 10, label: 'Khởi công' },
+                            { name: 'Phần móng', pct: 30, label: 'Xây móng' },
+                            { name: 'Phần thô', pct: 60, label: 'Xây thô' },
+                            { name: 'Cất nóc', pct: 85, label: 'Cất nóc' },
+                            { name: 'Bàn giao', pct: 100, label: 'Bàn giao' }
+                          ].map((milestone, idx) => {
+                            const isDone = (editingProject?.progress_percent ?? 0) >= milestone.pct;
+                            const isCurrent = (editingProject?.progress_percent ?? 0) === milestone.pct;
+                            return (
+                              <div 
+                                key={idx}
+                                onClick={async () => {
+                                  const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user?.role || '');
+                                  if (!isAdminOrManager) {
+                                    addToast('Bạn không có quyền cập nhật tiến độ dự án', 'error');
+                                    return;
+                                  }
+                                  
+                                  const newStatus = milestone.pct === 100 ? 'Đã bàn giao' : (milestone.pct >= 85 ? 'Đang hoàn thiện' : 'Đang thi công');
+                                  setEditingProject(prev => ({ 
+                                    ...prev, 
+                                    progress_percent: milestone.pct,
+                                    construction_status: newStatus
+                                  }));
+                                  
+                                  if (editingProject?.id) {
+                                    try {
+                                      const updateData = {
+                                        ...editingProject,
+                                        progress_percent: milestone.pct,
+                                        construction_status: newStatus
+                                      };
+                                      const res = await fetchAPI(`projects/${editingProject.id}`, {
+                                        method: 'PUT',
+                                        body: JSON.stringify(updateData)
+                                      });
+                                      if (res.success || res.id) {
+                                        addToast(`Cập nhật tiến độ: ${milestone.pct}% (${newStatus})`, 'success');
+                                        setProjects(prev => prev.map(p => p.id === editingProject.id ? { ...p, progress_percent: milestone.pct, construction_status: newStatus } : p));
+                                        loadProjectStats(editingProject.id);
+                                      }
+                                    } catch (e) {
+                                      console.error(e);
+                                      addToast('Lỗi cập nhật tiến độ lên máy chủ', 'error');
+                                    }
+                                  }
+                                }}
+                                style={{ 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  alignItems: 'center', 
+                                  zIndex: 3, 
+                                  cursor: 'pointer',
+                                  position: 'relative'
+                                }}
+                                title={`Thiết lập tiến độ về ${milestone.pct}%`}
+                              >
+                                <div style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  background: isDone ? 'var(--color-primary)' : '#ffffff',
+                                  border: isDone ? '2px solid var(--color-primary)' : '2px solid var(--color-border-light)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: isDone ? '#ffffff' : 'var(--color-text-muted)',
+                                  fontWeight: 800,
+                                  fontSize: '0.75rem',
+                                  boxShadow: isCurrent ? '0 0 0 4px rgba(189, 29, 45, 0.2)' : '0 2px 4px rgba(0,0,0,0.05)',
+                                  transition: 'all 0.2s ease',
+                                  transform: isCurrent ? 'scale(1.15)' : 'none'
+                                }}>
+                                  {isDone ? <Check size={14} strokeWidth={3} /> : idx + 1}
+                                </div>
+                                <span style={{
+                                  position: 'absolute',
+                                  bottom: '-20px',
+                                  fontSize: '0.68rem',
+                                  fontWeight: isDone ? 750 : 600,
+                                  color: isDone ? 'var(--color-text)' : 'var(--color-text-muted)',
+                                  whiteSpace: 'nowrap'
+                                }}>
+                                  {milestone.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Trạng thái pháp lý</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>{editingProject?.legal_status || 'Đang hoàn thiện pháp lý'}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Năm bàn giao dự kiến</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>{editingProject?.handover_year || 2026}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Quy mô Block &amp; Căn hộ</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>
+                        {editingProject?.scale_block_count || 1} Block, {editingProject?.scale_unit_count || 100} căn hộ
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
+                      <div style={{ marginTop: '4px' }}>
+                        {renderFolderPathLink(editingProject?.folder_path, editingProject?.id)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 4: Mô tả chi tiết */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block' }}>Mô tả chi tiết</span>
+                  <p style={{ color: 'var(--color-text)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.875rem' }}>
+                    {editingProject?.description || 'Không có mô tả chi tiết'}
+                  </p>
+                </div>
+
+                {/* Discussions/Comments */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>
+                    Thảo luận & Trao đổi ({detailComments.length})
+                  </span>
+                  
+                  <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                    <MentionInput
+                      users={users}
+                      value={newCommentText}
+                      onChange={setNewCommentText}
+                      placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
+                      style={{ minHeight: '55px', fontSize: '0.85rem' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', marginTop: '2px' }}>
+                      <button
+                        onClick={() => handlePostDetailComment('project', editingProject!.id!)}
+                        disabled={isSubmittingComment}
+                        className="btn primary sm"
+                        style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <MessageSquare size={12} />
+                        <span>Gửi bình luận</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }} className="custom-scrollbar">
+                    {loadingComments ? (
+                      <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+                        <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
+                      </div>
+                    ) : detailComments.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
+                        Chưa có thảo luận nào.
+                      </div>
+                    ) : (
+                      detailComments.map((comment: any) => (
+                        <div key={comment.id} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
+                          <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{comment.user_name || 'Thành viên'}</span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                                {new Date(comment.created_at).toLocaleString('vi-VN')}
+                              </span>
+                            </div>
+                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{comment.body}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column (2/5) */}
+              <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                
+                {/* Section 3: Nhân sự & Tài liệu */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Quản lý &amp; Tài liệu</h4>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '6px' }}>Manager phụ trách chính</span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {parseIds(editingProject?.manager_ids).length === 0 ? (
+                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa phân công manager phụ trách</span>
+                        ) : (
+                          parseIds(editingProject?.manager_ids).map(id => {
+                            const u = users.find(usr => String(usr.id) === String(id));
+                            if (!u) return null;
+                            return (
+                              <span key={id} style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', padding: '4px 10px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                <Avatar src={u.avatar_url || u.avatar} name={u.full_name || u.fullname || u.username} size={18} />
+                                {u.full_name || u.fullname || u.username}
+                              </span>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '6px' }}>Đội ngũ nhân sự phụ trách</span>
+                      {projectRosterLoading ? (
+                        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Đang tải danh sách nhân sự...</span>
+                      ) : projectRoster.length === 0 ? (
+                        <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa phân công nhân sự</span>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '2px 0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            {projectRoster.slice(0, 5).map((member: any, idx: number) => (
+                              <div 
+                                key={member.id} 
+                                style={{ 
+                                  marginLeft: idx === 0 ? 0 : -8, 
+                                  border: '2px solid var(--color-surface)', 
+                                  borderRadius: '50%',
+                                  overflow: 'hidden',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                                  zIndex: 10 - idx
+                                }}
+                                title={`${member.full_name || member.name} (${member.role || 'sales'})`}
+                              >
+                                <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.name} size={28} />
+                              </div>
+                            ))}
+                            {projectRoster.length > 5 && (
+                              <div 
+                                style={{ 
+                                  marginLeft: -8, 
+                                  width: 28, 
+                                  height: 28, 
+                                  borderRadius: '50%', 
+                                  background: 'var(--color-border-light)', 
+                                  color: 'var(--color-text)', 
+                                  fontSize: '0.7rem', 
+                                  fontWeight: 800, 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center',
+                                  border: '2px solid var(--color-surface)',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+                                  zIndex: 5
+                                }}
+                              >
+                                +{projectRoster.length - 5}
+                              </div>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', marginLeft: '8px' }}>
+                            ({projectRoster.length} nhân sự)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '6px' }}>Tài liệu liên kết</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {parseIds(editingProject?.document_ids).length === 0 ? (
+                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>Chưa liên kết tài liệu</span>
+                        ) : (
+                          parseIds(editingProject?.document_ids).map(docId => {
+                            const fileObj = allFiles.find(f => String(f.id) === String(docId));
+                            if (!fileObj) return null;
+                            return (
+                              <a
+                                key={docId}
+                                href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${fileObj.file_path}`}
+                                download={fileObj.name}
+                                title={fileObj.name}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
+                              >
+                                <FileText size={14} style={{ flexShrink: 0 }} /> {formatFileName(fileObj.name, 45)}
+                              </a>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Linked Tasks */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block' }}>
+                    Nhiệm vụ & Công việc liên kết ({linkedTasks.length})
+                  </span>
+                  {loadingLinkedTasks ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+                      <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
+                    </div>
+                  ) : linkedTasks.length === 0 ? (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '10px' }}>
+                      Chưa có công việc nào liên kết với dự án này.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {linkedTasks.map(task => {
+                        const statusColors: any = {
+                          planned: { bg: 'rgba(245, 158, 11, 0.08)', text: 'var(--color-warning)' },
+                          done: { bg: 'rgba(16, 185, 129, 0.08)', text: 'var(--color-success)' },
+                          cancelled: { bg: 'rgba(239, 68, 68, 0.08)', text: 'var(--color-danger)' }
+                        };
+                        const sc = statusColors[task.status] || statusColors.planned;
+                        const performer = users.find(u => Number(u.id) === Number(task.user_id));
+                        return (
+                          <div
+                            key={task.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: 'var(--color-bg-light)',
+                              border: '1px solid var(--color-border-light)',
+                              padding: '10px 14px',
+                              borderRadius: '10px',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <CheckSquare size={16} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} />
+                              <div>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'block' }}>{task.subject}</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                  {performer?.full_name || 'Hệ thống'}
+                                </span>
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: sc.bg, color: sc.text }}>
+                              {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Changelog Tab View */
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            minHeight: '300px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lịch sử hoạt động của Dự án</h4>
+            </div>
+            
+            {statsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                <RefreshCw className="spin" size={24} color="var(--color-text-muted)" />
+              </div>
+            ) : !projectStats?.logs || projectStats.logs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>
+                Chưa có nhật ký hoạt động nào cho dự án này.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingLeft: '8px' }}>
+                {projectStats.logs.map((log: any, idx: number) => (
+                  <div key={log.id} style={{ display: 'flex', gap: '12px', position: 'relative' }}>
+                    {idx !== projectStats.logs.length - 1 && (
+                      <div style={{ position: 'absolute', top: '16px', left: '7px', bottom: '-24px', width: '2px', background: 'var(--color-border-light)' }} />
+                    )}
+                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'var(--color-primary)', border: '4px solid #ffffff', boxShadow: '0 0 0 1px var(--color-border-light)', flexShrink: 0, marginTop: '2px' }} />
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{log.user_name || 'Hệ thống'}</span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-light)', fontWeight: 600 }}>
+                          {new Date(log.created_at).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                        {log.new_data || log.action}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCampaignViewDrawer = () => {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%' }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border-light)', gap: '1.5rem', marginBottom: '0.25rem' }}>
+          <button
+            onClick={() => setCampaignDrawerTab('details')}
+            style={{
+              padding: '8px 4px 12px',
+              background: 'none',
+              border: 'none',
+              borderBottom: campaignDrawerTab === 'details' ? '2px solid var(--color-primary)' : '2px solid transparent',
+              color: campaignDrawerTab === 'details' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Thông tin & Chỉ số
+          </button>
+          <button
+            onClick={() => setCampaignDrawerTab('changelog')}
+            style={{
+              padding: '8px 4px 12px',
+              background: 'none',
+              border: 'none',
+              borderBottom: campaignDrawerTab === 'changelog' ? '2px solid var(--color-primary)' : '2px solid transparent',
+              color: campaignDrawerTab === 'changelog' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            Lịch sử thay đổi
+          </button>
+        </div>
+
+        {campaignDrawerTab === 'details' ? (
+          <>
+            {/* KPI Summary Cards */}
+            {campaignStats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '0.5rem' }}>
+                <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#1e3a8a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Số Leads</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e40af' }}>{campaignStats.total_leads}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#60a5fa', fontWeight: 600 }}>Nhận từ kênh Ads/Sheet</span>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#581c87', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã Chuyển Đổi</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#6b21a8' }}>{campaignStats.converted_leads}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#c084fc', fontWeight: 600 }}>Tỷ lệ: {campaignStats.conversion_rate}%</span>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '1px solid #fde68a', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#78350f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giao Dịch Thành Công</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#78350f' }}>{campaignStats.won_deals}</span>
+                  <span style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 600 }}>Đã chốt (Đóng Deal)</span>
+                </div>
+                <div style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#065f46', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu Thực Thu</span>
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#065f46', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                    {campaignStats.actual_revenue >= 1000000000 
+                      ? `${(campaignStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
+                      : `${(campaignStats.actual_revenue / 1000000).toFixed(0)} triệu`}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>Từ hóa đơn đã thu</span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+              {/* Left Column (3/5) */}
+              <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                
+                {/* Section 1: Thông tin cơ bản */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thông tin cơ bản</h4>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.25rem' }}>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Tên chiến dịch</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.925rem', fontWeight: 700, display: 'block' }}>{editingCampaign?.name}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Trạng thái hoạt động</span>
+                      <span 
+                        className={`badge ${editingCampaign?.status === 'active' ? 'success' : 'secondary'}`}
+                        style={{ fontSize: '0.75rem', padding: '5px 10px', borderRadius: '100px', fontWeight: 700, display: 'inline-block', marginTop: '2px' }}
+                      >
+                        {editingCampaign?.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Ngày bắt đầu</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>{editingCampaign?.start_date || 'Chưa thiết lập'}</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Ngày kết thúc</span>
+                      <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>{editingCampaign?.end_date || 'Chưa thiết lập'}</span>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
+                      <div style={{ marginTop: '4px' }}>
+                        {renderFolderPathLink(editingCampaign?.folder_path)}
+                      </div>
+                    </div>
+                    {editingCampaign?.reference_url && (
+                      <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px' }}>
+                        <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Website / Link tham khảo</span>
+                        <a
+                          href={editingCampaign.reference_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            color: 'var(--color-primary)',
+                            textDecoration: 'none',
+                            fontWeight: 700,
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          {editingCampaign.reference_url.includes('docs.google.com/spreadsheets') || editingCampaign.reference_url.includes('google.com/sheets') ? (
+                            <>
+                              <FileSpreadsheet size={16} color="#10b981" />
+                              <span style={{ color: '#10b981' }}>Bảng tính Google Sheets</span>
+                            </>
+                          ) : (
+                            <>
+                              <Link2 size={16} />
+                              <span>Mở liên kết tham khảo</span>
+                            </>
+                          )}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Campaign Timeline Section */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cột mốc & Tiến độ Chiến dịch</h4>
+                  </div>
+                  
+                  {(() => {
+                    const today = new Date();
+                    const start = editingCampaign?.start_date ? new Date(editingCampaign.start_date) : null;
+                    const end = editingCampaign?.end_date ? new Date(editingCampaign.end_date) : null;
+                    
+                    let phase = 1; // 1: Planning, 2: Active, 3: Completed
+                    if (start && today >= start) {
+                      phase = 2;
+                    }
+                    if (end && today > end) {
+                      phase = 3;
+                    }
+                    
+                    return (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'relative', padding: '10px 0 20px' }}>
+                        {/* Connecting Line */}
+                        <div style={{ position: 'absolute', top: '25px', left: '10px', right: '10px', height: '2px', background: 'var(--color-border-light)', zIndex: 1 }} />
+                        <div 
+                          style={{ 
+                            position: 'absolute', 
+                            top: '25px', 
+                            left: '10px', 
+                            width: phase === 1 ? '0%' : (phase === 2 ? '50%' : '100%'), 
+                            height: '2px', 
+                            background: 'var(--color-primary)', 
+                            zIndex: 2,
+                            transition: 'width 0.3s ease'
+                          }} 
+                        />
+                        
+                        {[
+                          { label: 'Lập kế hoạch', desc: 'Trước ngày bắt đầu' },
+                          { label: 'Đang triển khai', desc: start ? `Từ ${new Date(start).toLocaleDateString('vi-VN')}` : 'Chạy Ads & Thu Lead' },
+                          { label: 'Tổng kết', desc: end ? `Sau ${new Date(end).toLocaleDateString('vi-VN')}` : 'Đóng chiến dịch' }
+                        ].map((item, idx) => {
+                          const active = phase >= (idx + 1);
+                          const current = phase === (idx + 1);
+                          return (
+                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', zIndex: 3, flex: 1, position: 'relative' }}>
+                              <div style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '50%',
+                                background: active ? 'var(--color-primary)' : '#ffffff',
+                                border: active ? '2px solid var(--color-primary)' : '2px solid var(--color-border-light)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: active ? '#ffffff' : 'var(--color-text-muted)',
+                                fontWeight: 800,
+                                fontSize: '0.75rem',
+                                boxShadow: current ? '0 0 0 4px rgba(189, 29, 45, 0.2)' : '0 2px 4px rgba(0,0,0,0.05)',
+                                transition: 'all 0.2s ease',
+                                transform: current ? 'scale(1.1)' : 'none'
+                              }}>
+                                {active ? <Check size={14} strokeWidth={3} /> : idx + 1}
+                              </div>
+                              <span style={{ fontSize: '0.72rem', fontWeight: active ? 750 : 600, color: active ? 'var(--color-text)' : 'var(--color-text-muted)', marginTop: '8px', textAlign: 'center' }}>
+                                {item.label}
+                              </span>
+                              <span style={{ fontSize: '0.62rem', color: 'var(--color-text-light)', marginTop: '2px', textAlign: 'center' }}>
+                                {item.desc}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Section 3: Mô tả chiến dịch */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block' }}>Mô tả chiến dịch</span>
+                  <p style={{ color: 'var(--color-text)', margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: '0.875rem' }}>
+                    {editingCampaign?.description || 'Không có mô tả chi tiết'}
+                  </p>
+                </div>
+
+                {/* Discussions/Comments */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>
+                    Thảo luận & Trao đổi ({detailComments.length})
+                  </span>
+                  
+                  <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                    <MentionInput
+                      users={users}
+                      value={newCommentText}
+                      onChange={setNewCommentText}
+                      placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
+                      style={{ minHeight: '55px', fontSize: '0.85rem' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '8px', marginTop: '2px' }}>
+                      <button
+                        onClick={() => handlePostDetailComment('campaign', editingCampaign!.id!)}
+                        disabled={isSubmittingComment}
+                        className="btn primary sm"
+                        style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <MessageSquare size={12} />
+                        <span>Gửi bình luận</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }} className="custom-scrollbar">
+                    {loadingComments ? (
+                      <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+                        <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
+                      </div>
+                    ) : detailComments.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>
+                        Chưa có thảo luận nào.
+                      </div>
+                    ) : (
+                      detailComments.map((comment: any) => (
+                        <div key={comment.id} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
+                          <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{comment.user_name || 'Thành viên'}</span>
+                              <span style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                                {new Date(comment.created_at).toLocaleString('vi-VN')}
+                              </span>
+                            </div>
+                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{comment.body}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Right Column (2/5) */}
+              <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                
+                {/* Section 2: Dự án & Nhân sự phụ trách */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dự án &amp; Nhân sự phụ trách</h4>
+                  </div>
+                  
+                  {(() => {
+                    const associatedProjs = projects.filter(p => {
+                      const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
+                      return campIds.includes(editingCampaign?.name);
+                    });
+
+                    if (associatedProjs.length === 0) {
+                      return (
+                        <div style={{ padding: '1rem', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '12px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                          Chưa liên kết dự án nào
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {associatedProjs.map(proj => {
+                          const docIds = proj.document_ids ? proj.document_ids.split(',').map((id: string) => id.trim()) : [];
+                          const projDocs = allFiles.filter(f => docIds.includes(String(f.id)));
+                          const rosterList = campaignRosters[proj.id] || [];
+
+                          return (
+                            <div key={proj.id} style={{ border: '1px solid var(--color-border-light)', borderRadius: '12px', padding: '1rem', background: 'var(--color-bg-light)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', borderBottom: '1px dotted var(--color-border-light)', paddingBottom: '0.5rem' }}>
+                                <span 
+                                  onClick={() => {
+                                    setEditingProject(proj);
+                                    setProjectModalMode('view');
+                                    setIsCampaignModalOpen(false);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                  style={{ color: 'var(--color-primary)', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', textDecoration: 'underline', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  <Building2 size={14} /> {proj.name}
+                                </span>
+                                <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{proj.code}</span>
+                              </div>
+
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span>Thư mục:</span> {renderFolderPathLink(proj.folder_path, proj.id)}
+                              </div>
+
+                              <div style={{ marginBottom: '8px' }}>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Tài liệu:</span>
+                                {projDocs.length === 0 ? (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Không có tài liệu</span>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    {projDocs.map(doc => (
+                                      <a
+                                        key={doc.id}
+                                        href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${doc.file_path}`}
+                                        download={doc.name}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: 'var(--color-primary)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600 }}
+                                      >
+                                        <FileText size={12} style={{ flexShrink: 0 }} /> {doc.name}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginBottom: '4px' }}>Nhân sự phụ trách:</span>
+                                {campaignRostersLoading ? (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>Đang tải...</span>
+                                ) : rosterList.length === 0 ? (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>Chưa phân công</span>
+                                ) : (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                    {rosterList.map(member => (
+                                      <span key={member.id} style={{ background: '#ffffff', border: '1px solid var(--color-border)', padding: '2px 8px', borderRadius: '100px', fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                        <Avatar src={member.avatar_url || member.avatar} name={member.full_name || member.name} size={16} />
+                                        {member.full_name || member.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Linked Tasks */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block' }}>
+                    Nhiệm vụ & Công việc liên kết ({linkedTasks.length})
+                  </span>
+                  {loadingLinkedTasks ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+                      <RefreshCw className="spin" size={16} color="var(--color-text-muted)" />
+                    </div>
+                  ) : linkedTasks.length === 0 ? (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontStyle: 'italic', padding: '10px 14px', background: 'var(--color-bg-light)', border: '1px dashed var(--color-border)', borderRadius: '10px' }}>
+                      Chưa có công việc nào liên kết với chiến dịch này.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {linkedTasks.map(task => {
+                        const statusColors: any = {
+                          planned: { bg: 'rgba(245, 158, 11, 0.08)', text: 'var(--color-warning)' },
+                          done: { bg: 'rgba(16, 185, 129, 0.08)', text: 'var(--color-success)' },
+                          cancelled: { bg: 'rgba(239, 68, 68, 0.08)', text: 'var(--color-danger)' }
+                        };
+                        const sc = statusColors[task.status] || statusColors.planned;
+                        const performer = users.find(u => Number(u.id) === Number(task.user_id));
+                        return (
+                          <div
+                            key={task.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: 'var(--color-bg-light)',
+                              border: '1px solid var(--color-border-light)',
+                              padding: '10px 14px',
+                              borderRadius: '10px',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <CheckSquare size={16} color={task.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)'} />
+                              <div>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text)', display: 'block' }}>{task.subject}</span>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                                  {performer?.full_name || 'Hệ thống'}
+                                </span>
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '100px', background: sc.bg, color: sc.text }}>
+                              {task.status === 'done' ? 'Đã xong' : 'Chưa xong'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </>
+        ) : (
+          /* Changelog Tab View */
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid var(--color-border-light)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            minHeight: '300px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '3px', height: '14px', background: 'var(--color-primary)', borderRadius: '1.5px', flexShrink: 0 }} />
+              <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Lịch sử hoạt động của Chiến dịch</h4>
+            </div>
+            
+            {statsLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem' }}>
+                <RefreshCw className="spin" size={24} color="var(--color-text-muted)" />
+              </div>
+            ) : !campaignStats?.logs || campaignStats.logs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>
+                Chưa có nhật ký hoạt động nào cho chiến dịch này.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', paddingLeft: '8px' }}>
+                {campaignStats.logs.map((log: any, idx: number) => (
+                  <div key={log.id} style={{ display: 'flex', gap: '12px', position: 'relative' }}>
+                    {idx !== campaignStats.logs.length - 1 && (
+                      <div style={{ position: 'absolute', top: '16px', left: '7px', bottom: '-24px', width: '2px', background: 'var(--color-border-light)' }} />
+                    )}
+                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'var(--color-primary)', border: '4px solid #ffffff', boxShadow: '0 0 0 1px var(--color-border-light)', flexShrink: 0, marginTop: '2px' }} />
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--color-text)' }}>{log.user_name || 'Hệ thống'}</span>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-light)', fontWeight: 600 }}>
+                          {new Date(log.created_at).toLocaleString('vi-VN')}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                        {log.new_data || log.action}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -1369,7 +2619,10 @@ export default function ProjectsPage() {
           : editingProject?.id ? 'Chỉnh sửa dự án' : 'Thêm dự án mới',
         <>
         {projectModalMode === 'view' ? (
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+          <>
+            {renderProjectViewDrawer()}
+            {false && (
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
             
             {/* Left Column (3/5) */}
             <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -1773,6 +3026,8 @@ export default function ProjectsPage() {
 
             </div>
           </div>
+          )}
+          </>
         ) : (
           <form id="project-form" onSubmit={handleSaveProject} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
             <input 
@@ -2476,7 +3731,10 @@ export default function ProjectsPage() {
           : editingCampaign?.id ? 'Chỉnh sửa Chiến dịch' : 'Thêm Chiến dịch mới',
         <>
         {campaignModalMode === 'view' ? (
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+          <>
+            {renderCampaignViewDrawer()}
+            {false && (
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
             
             {/* Left Column (3/5) */}
             <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -2810,6 +4068,8 @@ export default function ProjectsPage() {
 
             </div>
           </div>
+          )}
+          </>
         ) : (
           <form id="campaign-form" onSubmit={handleSaveCampaign} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
             <input 

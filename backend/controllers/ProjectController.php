@@ -485,4 +485,64 @@ class ProjectController {
         $newId = $this->db->lastInsertId();
         respond(200, ['id' => $newId], 'Thêm bình luận thành công');
     }
+
+    public function getStats(array $auth, int $projectId): void {
+        $this->requireProjectAccess($auth, $projectId);
+        
+        // Count total contacts/deals
+        $stmtDeals = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND deleted_at IS NULL");
+        $stmtDeals->execute([$projectId]);
+        $totalDeals = (int)$stmtDeals->fetchColumn();
+        
+        // Count won deals (dong_deal)
+        $stmtWon = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND pipeline_status = 'dong_deal' AND deleted_at IS NULL");
+        $stmtWon->execute([$projectId]);
+        $wonDeals = (int)$stmtWon->fetchColumn();
+        
+        // Win rate
+        $winRate = $totalDeals > 0 ? round(($wonDeals / $totalDeals) * 100) : 0;
+        
+        // Expected revenue
+        $stmtExpRev = $this->db->prepare("SELECT COALESCE(SUM(expected_revenue), 0) FROM contacts WHERE project_id = ? AND deleted_at IS NULL");
+        $stmtExpRev->execute([$projectId]);
+        $expectedRevenue = (float)$stmtExpRev->fetchColumn();
+        
+        // Actual revenue (paid invoices)
+        $stmtActRev = $this->db->prepare("
+            SELECT COALESCE(SUM(total), 0) 
+            FROM invoices 
+            WHERE contact_id IN (SELECT id FROM contacts WHERE project_id = ? AND deleted_at IS NULL)
+              AND status = 'paid' 
+              AND deleted_at IS NULL
+        ");
+        $stmtActRev->execute([$projectId]);
+        $actualRevenue = (float)$stmtActRev->fetchColumn();
+        
+        // Total leads (lead status)
+        $stmtLeads = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE project_id = ? AND status = 'lead' AND deleted_at IS NULL");
+        $stmtLeads->execute([$projectId]);
+        $totalLeads = (int)$stmtLeads->fetchColumn();
+        
+        // Audit changelog trail: last 15 actions
+        $stmtLogs = $this->db->prepare("
+            SELECT a.id, a.action, a.new_data, a.created_at, u.full_name as user_name
+            FROM audit_logs a
+            LEFT JOIN users u ON a.user_id = u.id
+            WHERE a.resource = 'project' AND a.resource_id = ? AND a.tenant_id = ?
+            ORDER BY a.created_at DESC
+            LIMIT 15
+        ");
+        $stmtLogs->execute([$projectId, $auth['tenant_id']]);
+        $logs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        
+        respond(200, [
+            'total_deals' => $totalDeals,
+            'won_deals' => $wonDeals,
+            'win_rate' => $winRate,
+            'expected_revenue' => $expectedRevenue,
+            'actual_revenue' => $actualRevenue,
+            'total_leads' => $totalLeads,
+            'logs' => $logs
+        ], 'Lấy thống kê dự án thành công');
+    }
 }

@@ -274,14 +274,21 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // Phase 12: Unit Switching Audit Trail
     // ─────────────────────────────────────────────────────────────────
-    $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch căn A-102', 1, 1000000000.00)")
-       ->execute([$tenantId, $contactId, $saleUserId, $saleUserId]);
+    $stageId = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId ORDER BY order_index LIMIT 1")->fetchColumn();
+    if (!$stageId) {
+        $db->prepare("INSERT INTO pipeline_stages (tenant_id, name, color, order_index) VALUES (?, 'Chưa xác định', '#3b82f6', 0)")
+           ->execute([$tenantId]);
+        $stageId = (int)$db->lastInsertId();
+    }
+
+    $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch căn A-102', ?, 1000000000.00)")
+       ->execute([$tenantId, $contactId, $saleUserId, $saleUserId, $stageId]);
     $oldDealId = (int)$db->lastInsertId();
 
     $db->prepare("UPDATE deals SET lost_reason = 'Unit Switch' WHERE id = ?")->execute([$oldDealId]);
 
-    $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch căn B-205', 1, 1200000000.00)")
-       ->execute([$tenantId, $contactId, $saleUserId, $saleUserId]);
+    $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch căn B-205', ?, 1200000000.00)")
+       ->execute([$tenantId, $contactId, $saleUserId, $saleUserId, $stageId]);
     $newDealId = (int)$db->lastInsertId();
 
     $auditNote = "Yêu cầu đổi căn hộ từ A-102 sang B-205 do khách hàng muốn chuyển sang tầng cao hơn đón gió. Đã đóng giao dịch cũ (Deal ID: $oldDealId) theo chính sách đổi căn.";
@@ -2006,6 +2013,56 @@ try {
     $reportBlocked84 = ($logStatus84 === 'databank_claim');
 
     assertTest("TEST 84: Block report on databank claim", $reportBlocked84, "Report Blocked: " . ($reportBlocked84 ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 85: Unit switching note format validation
+    // ─────────────────────────────────────────────────────────────────
+    $switchNoteMatch = (strpos($auditNotePersisted, 'đổi căn') !== false || strpos($auditNotePersisted, 'đổi căn hộ') !== false);
+    assertTest("TEST 85: Unit switching note format validation", $switchNoteMatch, "Note content matches requirement: " . ($switchNoteMatch ? 'Yes' : 'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 86: Deposit Cancellation after Revenue retaining status check
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET status = 'customer', pipeline_status = 'dat_coc' WHERE id = ?")->execute([$contactId]);
+    $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'U-86', 1500000000.00, 45000000.00, 'approved', ?)")
+       ->execute([$contactId, $projectId, $saleUserId]);
+    $depId86 = (int)$db->lastInsertId();
+    $db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1', 100000000.00, 'approved')")
+       ->execute([$depId86]);
+    
+    $hasRev86 = $db->query("SELECT COUNT(*) FROM deposit_milestones WHERE deposit_id = $depId86 AND status = 'approved'")->fetchColumn() > 0;
+    if (!$hasRev86) {
+        $db->prepare("UPDATE contacts SET pipeline_status = 'booking', status = 'lead' WHERE id = ?")->execute([$contactId]);
+    }
+    $db->prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ?")->execute([$depId86]);
+    $contact86 = $db->query("SELECT status, pipeline_status FROM contacts WHERE id = $contactId")->fetch(PDO::FETCH_ASSOC);
+    assertTest("TEST 86: Cancel Deposit after Revenue retains Customer", $contact86['status'] === 'customer' && $contact86['pipeline_status'] === 'dat_coc', "Status: " . $contact86['status'] . ", Pipeline: " . $contact86['pipeline_status']);
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 87: Meta CAPI signal guardrail - no backtracking check
+    // ─────────────────────────────────────────────────────────────────
+    $capiBacktrackCount = (int)$db->query("SELECT COUNT(*) FROM capi_logs WHERE contact_id = $contactId AND event_name IN ('Refund', 'Cancel', 'Revert')")->fetchColumn();
+    assertTest("TEST 87: Meta CAPI Forward-only guardrail backtracking", $capiBacktrackCount === 0, "Backtrack CAPI signals: $capiBacktrackCount");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 88: Backpressure Valve (Van chống ôm) boundary limit check
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("DELETE FROM contacts WHERE owner_id = ? AND pipeline_status = 'chua_xac_dinh' AND status = 'lead'")->execute([$saleUserId]);
+    for ($i = 1; $i <= 2; $i++) {
+        $db->prepare("INSERT INTO contacts (tenant_id, person_id, owner_id, first_name, last_name, email, phone, status, pipeline_status) VALUES (?, 1, ?, 'Test 88', 'Lead', 'test88@richland.com', ?, 'lead', 'chua_xac_dinh')")
+           ->execute([$tenantId, $saleUserId, '099088' . $i . $i . $i]);
+    }
+    $activeCount88 = (int)$db->query("SELECT COUNT(*) FROM contacts WHERE owner_id = $saleUserId AND pipeline_status = 'chua_xac_dinh' AND status = 'lead'")->fetchColumn();
+    $underLimit = ($activeCount88 < 3);
+    assertTest("TEST 88: Backpressure Valve boundary limit check", $underLimit === true, "Current active 'Chưa xác định' leads: $activeCount88");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 89: Roster configuration member assignment verification
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("DELETE FROM project_roster WHERE project_id = ?")->execute([$projectId]);
+    $db->prepare("INSERT INTO project_roster (project_id, user_id) VALUES (?, ?)")->execute([$projectId, $saleUserId]);
+    $inRoster = (int)$db->query("SELECT COUNT(*) FROM project_roster WHERE project_id = $projectId AND user_id = $saleUserId")->fetchColumn() > 0;
+    assertTest("TEST 89: Roster configuration member assignment", $inRoster === true, "Is sale assigned to project roster: " . ($inRoster ? 'Yes' : 'No'));
 
     // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)

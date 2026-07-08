@@ -915,6 +915,19 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Table: quyen_truy_cap
+CREATE TABLE IF NOT EXISTS `quyen_truy_cap` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `contact_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `invited_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `contact_user_unique` (`contact_id`,`user_id`),
+  KEY `user_id_idx` (`user_id`),
+  KEY `contact_id_idx` (`contact_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Table: pipeline_stages (Imported from CRM database.sql)
 CREATE TABLE IF NOT EXISTS `pipeline_stages` (
   `id` int(11) NOT NULL,

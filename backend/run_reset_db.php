@@ -2,6 +2,16 @@
 // D:\RICH_LAND_DATA_UI\backend\run_reset_db.php
 // Script to safely drop, re-create tables, apply migrations, and seed beautiful test data.
 
+// Safe check: Allow CLI, inclusion by diagnostic script, or token validation
+$isCli = (php_sapi_name() === 'cli');
+$hasValidToken = (($_GET['token'] ?? '') === 'RichLand_Diag_Secure_Token_2026_9e88d6c701fbc6b7') || defined('DIAG_TOKEN');
+if (!$isCli && !$hasValidToken) {
+    http_response_code(403);
+    header("Content-Type: application/json; charset=UTF-8");
+    echo json_encode(['success' => false, 'message' => 'Forbidden: Direct access to database reset is not allowed']);
+    exit;
+}
+
 require_once __DIR__ . '/db_connect.php';
 
 header("Content-Type: text/plain; charset=UTF-8");

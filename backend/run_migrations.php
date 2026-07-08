@@ -1,6 +1,13 @@
 <?php
-// backend/run_migrations.php
-// Safe database migration check and execution script.
+// Safe check: Allow CLI, inclusion by diagnostic script, or token validation
+$isCli = (php_sapi_name() === 'cli');
+$hasValidToken = (($_GET['token'] ?? '') === 'RichLand_Diag_Secure_Token_2026_9e88d6c701fbc6b7') || defined('DIAG_TOKEN');
+if (!$isCli && !$hasValidToken) {
+    http_response_code(403);
+    header("Content-Type: application/json; charset=UTF-8");
+    echo json_encode(['success' => false, 'message' => 'Forbidden: Direct access to database migrations is not allowed']);
+    exit;
+}
 
 require_once __DIR__ . '/db_connect.php';
 
@@ -1891,6 +1898,22 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_day', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '10')");
+
+    // Self-healing check: ensure quyen_truy_cap table exists
+    $conn->query("
+        CREATE TABLE IF NOT EXISTS `quyen_truy_cap` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `contact_id` int(11) NOT NULL,
+          `user_id` int(11) NOT NULL,
+          `invited_by` int(11) DEFAULT NULL,
+          `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+          PRIMARY KEY (`id`),
+          UNIQUE KEY `contact_user_unique` (`contact_id`,`user_id`),
+          KEY `user_id_idx` (`user_id`),
+          KEY `contact_id_idx` (`contact_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+    $logMsg("Đã tạo hoặc kiểm tra cấu trúc bảng quyen_truy_cap", "success");
 
     // Self-healing check: seed default pipeline stages if table is empty
     $chkStages = $conn->query("SELECT COUNT(*) FROM pipeline_stages");
