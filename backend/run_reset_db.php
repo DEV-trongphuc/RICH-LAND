@@ -374,6 +374,26 @@ try {
                  VALUES (1, $vingroupId, $superAdminId, 'PO-2026-0001', '2026-07-01', 'received', 45000000000.00)");
     echo "   - Seeded Purchase Orders\n";
 
+    // Seed Public Persons (Kho Databank)
+    $publicPersons = [
+        ['name' => 'Vũ Minh Trí', 'phone' => '0934567890', 'email' => 'tri.vu@gmail.com', 'source' => 'Google Search', 'project_id' => $vinId],
+        ['name' => 'Nguyễn Thị Lan', 'phone' => '0976543210', 'email' => 'lan.nguyen@outlook.com', 'source' => 'Facebook Lead', 'project_id' => $projectIds['Diamond Crown Plaza Hải Phòng']]
+    ];
+    foreach ($publicPersons as $pp) {
+        $stmt = $conn->prepare("INSERT INTO persons (phone, email, full_name, is_public, released_to_kho_at) VALUES (?, ?, ?, 1, NOW())");
+        $stmt->bind_param("sss", $pp['phone'], $pp['email'], $pp['name']);
+        $stmt->execute();
+        $pid = $stmt->insert_id;
+        $stmt->close();
+        
+        $stmtC = $conn->prepare("INSERT INTO contacts (tenant_id, person_id, first_name, last_name, email, phone, status, pipeline_status, source, project_id) 
+                                VALUES (1, ?, ?, '', ?, ?, 'qualified', 'tu_van', ?, ?)");
+        $stmtC->bind_param("issssi", $pid, $pp['name'], $pp['email'], $pp['phone'], $pp['source'], $pp['project_id']);
+        $stmtC->execute();
+        $stmtC->close();
+    }
+    echo "   - Seeded Public Persons & Contacts in Databank\n";
+
     echo "\n=== DATABASE RESET & SEEDING COMPLETED SUCCESSFULLY ===\n";
 
 } catch (Throwable $e) {
