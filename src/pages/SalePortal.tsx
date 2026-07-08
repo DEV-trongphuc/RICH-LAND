@@ -1001,7 +1001,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const handleOpenCallsModal = async () => {
     setShowCallsModal(true);
-    setCallsModalTab('detail');
+    setCallsModalTab('chart');
     setCallsModalPage(1);
     setLoadingModalCalls(true);
     setCallsSearch('');
@@ -3262,14 +3262,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* Left side: Search & Advanced Filters Trigger */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '280px', maxWidth: isMobile ? '100%' : '500px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
-                <Search size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                 <input
                   type="text"
                   className="form-input"
                   placeholder="Tìm theo tên, mô tả..."
                   value={wsSearch}
                   onChange={e => setWsSearch(e.target.value)}
-                  style={{ height: '38px', fontSize: '0.85rem', padding: '8px 36px 8px 12px', borderRadius: '10px', width: '100%' }}
+                  style={{ height: '38px', fontSize: '0.85rem', padding: '8px 12px', borderRadius: '10px', width: '100%' }}
                 />
               </div>
               <button
@@ -5468,11 +5467,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         }}>
           {/* Search Input */}
           <div className="responsive-filter-item" style={{ position: 'relative', width: 240 }}>
-            <Search size={16} style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-muted)' }} />
             <input
               className="form-input"
               placeholder={t("Tìm theo tên, SĐT, email...")}
-              style={{ paddingLeft: 36, width: '100%', height: 38, fontSize: '0.875rem' }}
+              style={{ paddingLeft: 12, width: '100%', height: 38, fontSize: '0.875rem' }}
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               onKeyPress={handleSearchKeyPress}
@@ -10524,7 +10522,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 onClick={() => setCallsModalTab('chart')} 
                 style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: callsModalTab === 'chart' ? 'var(--color-surface)' : 'transparent', color: callsModalTab === 'chart' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: callsModalTab === 'chart' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
               >
-                {t("Biểu đồ thống cụ")}
+                {t("Biểu đồ thống kê")}
               </button>
             </div>
 
@@ -10589,12 +10587,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <div style={{ position: 'relative' }}>
                   <input
                     className="form-input"
-                    style={{ paddingLeft: '2.25rem', height: '38px', borderRadius: '10px' }}
+                    style={{ paddingLeft: '0.75rem', height: '38px', borderRadius: '10px' }}
                     value={callsSearch}
                     onChange={e => setCallsSearch(e.target.value)}
                     placeholder={t('Tìm theo tên khách hàng, nội dung cuộc gọi...')}
                   />
-                  <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>

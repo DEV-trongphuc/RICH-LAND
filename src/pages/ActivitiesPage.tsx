@@ -287,7 +287,6 @@ export const ActivitiesPage: React.FC = () => {
 
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div className="filter-search" style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
-          <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
           <input placeholder="Tìm nội dung hoạt động..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingRight: '2rem' }} />
           <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
             <AnimatePresence>

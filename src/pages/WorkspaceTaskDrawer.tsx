@@ -1762,14 +1762,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               {/* Search Box */}
               <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', background: 'rgba(0,0,0,0.01)' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <Search size={14} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)' }} />
                   <input
                     type="text"
                     className="form-input"
                     placeholder={t('Tìm kiếm thành viên...')}
                     value={participantsSearch}
                     onChange={(e) => setParticipantsSearch(e.target.value)}
-                    style={{ paddingLeft: '34px', fontSize: '0.8rem', borderRadius: '8px' }}
+                    style={{ paddingLeft: '12px', fontSize: '0.8rem', borderRadius: '8px' }}
                   />
                 </div>
               </div>
