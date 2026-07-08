@@ -73,28 +73,30 @@ export const FilesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCategories();
-    fetchProjects();
-  }, []);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  // New States for Upload Modal
+  // Restored modal state fields
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadFormData, setUploadFormData] = useState({ name: '', category: 'general', project_id: '' });
-
-  // New States for Edit File Modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingFile, setEditingFile] = useState<any>(null);
   const [editFormData, setEditFormData] = useState({ id: 0, name: '', category: 'general', visibility: 'shared', project_id: '' });
-
-  // New States for Category Modal
   const [showCatModal, setShowCatModal] = useState(false);
   const [editingCat, setEditingCat] = useState<any>(null);
   const [catFormData, setCatFormData] = useState({ label: '' });
 
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  useEffect(() => {
+    fetchCategories();
+    fetchProjects();
+    const params = new URLSearchParams(window.location.search);
+    const pId = params.get('project_id');
+    if (pId) {
+      setSelectedProjectId(pId);
+    }
+  }, []);
 
   const fetchFiles = async () => {
     if (DEV_MODE) {
@@ -111,6 +113,10 @@ export const FilesPage: React.FC = () => {
         list = list.filter(f => f.category === category);
       }
 
+      if (selectedProjectId !== 'all') {
+        list = list.filter(f => String(f.project_id) === String(selectedProjectId));
+      }
+
       setFiles(list);
       setTotal(list.length);
       setLoading(false);
@@ -124,7 +130,8 @@ export const FilesPage: React.FC = () => {
           page, 
           limit: 15, 
           category: category === 'all' ? '' : category,
-          search: searchTerm
+          search: searchTerm,
+          project_id: selectedProjectId === 'all' ? '' : selectedProjectId
         } 
       });
       const data = res.data.data;
@@ -140,7 +147,7 @@ export const FilesPage: React.FC = () => {
   // fetchFiles with auto-reset page on filter change
   useEffect(() => {
     fetchFiles();
-  }, [page, category, searchTerm]);
+  }, [page, category, searchTerm, selectedProjectId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -407,19 +414,38 @@ export const FilesPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-             <div className="filter-search" style={{ flex: 1, maxWidth: '400px' }}>
-                <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                <input 
-                  type="text"
-                  placeholder="Tìm kiếm tài liệu..." 
-                  value={searchTerm}
-                  onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
-                />
-                {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
-                    <X size={14} />
-                  </button>
-                )}
+             <div style={{ display: 'flex', gap: '1rem', flex: 1, maxWidth: '650px', alignItems: 'center' }}>
+               <div className="filter-search" style={{ flex: 1 }}>
+                  <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                  <input 
+                    type="text"
+                    placeholder="Tìm kiếm tài liệu..." 
+                    value={searchTerm}
+                    onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
+                  />
+                  {searchTerm && (
+                    <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                      <X size={14} />
+                    </button>
+                  )}
+               </div>
+
+               {/* Project Filter Dropdown */}
+               <div style={{ width: '220px', flexShrink: 0 }}>
+                 <CustomSelect
+                   options={[
+                     { value: 'all', label: 'Tất cả dự án' },
+                     ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                   ]}
+                   value={selectedProjectId}
+                   onChange={val => {
+                     setPage(1);
+                     setSelectedProjectId(String(val));
+                   }}
+                   placeholder="Lọc theo dự án"
+                   searchable
+                 />
+               </div>
              </div>
              <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
                 <button 

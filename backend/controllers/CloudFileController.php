@@ -19,6 +19,7 @@ class CloudFileController {
         $offset = ($page - 1) * $limit;
         $cat    = $_GET['category'] ?? '';
         $contactId = $_GET['contact_id'] ?? '';
+        $projectId = $_GET['project_id'] ?? '';
 
         $where = ["cf.tenant_id = ?", "(cf.visibility = 'shared' OR cf.uploaded_by = ?)"];
         $params = [$tid, $uid];
@@ -31,6 +32,11 @@ class CloudFileController {
         if ($contactId !== '') {
             $where[] = "cf.contact_id = ?";
             $params[] = (int)$contactId;
+        }
+
+        if ($projectId !== '') {
+            $where[] = "cf.project_id = ?";
+            $params[] = (int)$projectId;
         }
 
         $w = implode(' AND ', $where);

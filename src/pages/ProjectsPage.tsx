@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive } from 'lucide-react';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -160,6 +160,7 @@ export default function ProjectsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [autoCode, setAutoCode] = useState(true);
+  const quickUploadInputRef = React.useRef<HTMLInputElement>(null);
 
   const generateCodeFromName = (name: string) => {
     if (!name) return '';
@@ -293,7 +294,7 @@ export default function ProjectsPage() {
     }
   }, [editingCampaign?.id]);
 
-  const renderDrawer = (isOpen: boolean, onClose: () => void, title: string, content: React.ReactNode, width: string = '850px') => {
+  const renderDrawer = (isOpen: boolean, onClose: () => void, title: string, content: React.ReactNode, width: string = '850px', headerActions?: React.ReactNode) => {
     if (!isOpen) return null;
     return createPortal(
       <>
@@ -338,13 +339,16 @@ export default function ProjectsPage() {
             zIndex: 10
           }}>
             <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)' }}>{title}</h3>
-            <button 
-              onClick={onClose} 
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }}
-              className="hover-lift"
-            >
-              <X size={20} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {headerActions}
+              <button 
+                onClick={onClose} 
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }}
+                className="hover-lift"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
           {/* Drawer Content */}
           <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }} className="custom-scrollbar">
@@ -419,6 +423,37 @@ export default function ProjectsPage() {
     return [];
   };
 
+  const renderFolderPathLink = (path: string | undefined, projectId?: number) => {
+    if (!path) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>Không có folder liên kết</span>;
+    const isUrl = path.startsWith('http://') || path.startsWith('https://');
+    if (isUrl) {
+      return (
+        <a 
+          href={path} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <HardDrive size={14} />
+          <span>Mở Google Drive</span>
+        </a>
+      );
+    }
+    
+    const linkUrl = projectId ? `/files?project_id=${projectId}` : '/files';
+    return (
+      <a 
+        href={linkUrl} 
+        target="_blank" 
+        rel="noopener noreferrer" 
+        style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+      >
+        <Folder size={14} />
+        <span>{path} (Xem trong Kho tài liệu)</span>
+      </a>
+    );
+  };
+
   const loadProjects = async () => {
     setLoading(true);
     try {
@@ -465,6 +500,52 @@ export default function ProjectsPage() {
       }
     } catch (e) {
       console.error('Failed to load all files', e);
+    }
+  };
+
+  const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>, projectId?: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDoc(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('name', file.name.split('.')[0]);
+    fd.append('category', 'general');
+    fd.append('visibility', 'shared');
+    if (projectId) {
+      fd.append('project_id', String(projectId));
+    }
+    try {
+      const res = await fetchAPI('cloud-files', {
+        method: 'POST',
+        body: fd
+      });
+      if (res.success || res.id) {
+        addToast('Đã tải tài liệu lên thành công!', 'success');
+        loadAllFiles();
+        const newFileId = String(res.data?.id || res.id);
+        if (newFileId) {
+          if (editingProject) {
+            const currentIds = parseIds(editingProject.document_ids);
+            if (!currentIds.includes(newFileId)) {
+              const updatedIds = [...currentIds, newFileId].join(',');
+              setEditingProject({ ...editingProject, document_ids: updatedIds });
+            }
+          } else if (editingCampaign) {
+            const currentIds = parseIds(editingCampaign.document_ids);
+            if (!currentIds.includes(newFileId)) {
+              const updatedIds = [...currentIds, newFileId].join(',');
+              setEditingCampaign({ ...editingCampaign, document_ids: updatedIds });
+            }
+          }
+        }
+      } else {
+        addToast(res.message || 'Lỗi khi tải tài liệu lên', 'error');
+      }
+    } catch (err: any) {
+      addToast(err.message || 'Lỗi tải tệp tin', 'error');
+    } finally {
+      setUploadingDoc(false);
     }
   };
 
@@ -1417,9 +1498,9 @@ export default function ProjectsPage() {
                   </div>
                   <div>
                     <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
-                    <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, wordBreak: 'break-all', display: 'block' }}>
-                      {editingProject?.folder_path || 'Không có folder liên kết'}
-                    </span>
+                    <div style={{ marginTop: '4px' }}>
+                      {renderFolderPathLink(editingProject?.folder_path, editingProject?.id)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1693,7 +1774,13 @@ export default function ProjectsPage() {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSaveProject} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+          <form id="project-form" onSubmit={handleSaveProject} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+            <input 
+              type="file" 
+              ref={quickUploadInputRef} 
+              style={{ display: 'none' }} 
+              onChange={e => handleQuickUpload(e, editingProject?.id)} 
+            />
             {/* Left Column (3/5) */}
             <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
@@ -2022,7 +2109,33 @@ export default function ProjectsPage() {
                   </div>
 
                   <div>
-                    <label className="form-label">Tài liệu đính kèm</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label className="form-label" style={{ marginBottom: 0 }}>Tài liệu đính kèm</label>
+                      <button
+                        type="button"
+                        onClick={() => quickUploadInputRef.current?.click()}
+                        disabled={uploadingDoc}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: 0
+                        }}
+                      >
+                        {uploadingDoc ? (
+                          <RefreshCw className="spin" size={12} />
+                        ) : (
+                          <Plus size={12} />
+                        )}
+                        <span>Tải tệp mới</span>
+                      </button>
+                    </div>
                     <CustomSelect
                       multiple
                       searchable={true}
@@ -2047,64 +2160,67 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid var(--color-border-light)',
-                borderRadius: '16px',
-                padding: '1.25rem 1.5rem',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '0.75rem',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <button type="button" className="btn outline sm" style={{ borderRadius: '100px' }} onClick={() => setIsEditModalOpen(false)}>Hủy</button>
-                <button type="submit" className="btn primary sm" style={{ borderRadius: '100px' }}>Lưu dự án</button>
-              </div>
-
             </div>
           </form>
         )}
       </>,
-      '960px'
+      '960px',
+      projectModalMode === 'view' ? undefined : (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn secondary sm"
+            style={{ borderRadius: '100px', fontWeight: 700 }}
+            onClick={() => setIsEditModalOpen(false)}
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            form="project-form"
+            className="btn primary sm"
+            style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none' }}
+          >
+            Lưu dự án
+          </button>
+        </div>
+      )
     )}
 
-      {/* Roster Modal */}
-      <CustomModal
-        isOpen={isRosterModalOpen}
-        onClose={() => setIsRosterModalOpen(false)}
-        title="Cấu hình Roster Nhân Sự Phân Phối"
-        width="650px"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {/* Roster Search Box */}
-          <div style={{ position: 'relative', width: '100%' }}>
-            <input
-              type="text"
-              placeholder="Tìm kiếm nhân sự theo tên hoặc email..."
-              value={rosterSearch}
-              onChange={e => setRosterSearch(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.625rem 1rem',
-                borderRadius: 'var(--radius-lg)',
-                border: '1px solid var(--color-border)',
-                fontSize: '0.875rem',
-                background: 'var(--color-surface)',
-                color: 'var(--color-text)',
-                outline: 'none'
-              }}
-            />
-          </div>
+      {/* Roster Drawer */}
+      {renderDrawer(
+        isRosterModalOpen,
+        () => setIsRosterModalOpen(false),
+        "Cấu hình Roster Nhân Sự Phân Phối",
+        (() => {
+          const filtered = rosterMembers.filter(m => 
+            (m.full_name || '').toLowerCase().includes(rosterSearch.toLowerCase()) ||
+            (m.email || '').toLowerCase().includes(rosterSearch.toLowerCase())
+          );
 
-          {(() => {
-            const filtered = rosterMembers.filter(m => 
-              (m.full_name || '').toLowerCase().includes(rosterSearch.toLowerCase()) ||
-              (m.email || '').toLowerCase().includes(rosterSearch.toLowerCase())
-            );
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Roster Search Box */}
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm nhân sự theo tên hoặc email..."
+                  value={rosterSearch}
+                  onChange={e => setRosterSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.625rem 1rem',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--color-border)',
+                    fontSize: '0.875rem',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text)',
+                    outline: 'none'
+                  }}
+                />
+              </div>
 
-            return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '50vh', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', paddingRight: '4px' }}>
                 {filtered.length === 0 ? (
                   <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0', fontSize: '0.875rem' }}>
                     Không tìm thấy nhân sự phù hợp
@@ -2155,22 +2271,38 @@ export default function ProjectsPage() {
                   })
                 )}
               </div>
-            );
-          })()}
-          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-            <button type="button" className="btn outline sm" style={{ borderRadius: '100px' }} onClick={() => setIsRosterModalOpen(false)}>Hủy</button>
-            <button type="button" className="btn primary sm" style={{ borderRadius: '100px' }} onClick={handleSaveRoster}>Lưu thay đổi</button>
+            </div>
+          );
+        })(),
+        '650px',
+        (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button 
+              type="button" 
+              className="btn secondary sm" 
+              style={{ borderRadius: '100px', fontWeight: 700 }} 
+              onClick={() => setIsRosterModalOpen(false)}
+            >
+              Hủy
+            </button>
+            <button 
+              type="button" 
+              className="btn primary sm" 
+              style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none' }} 
+              onClick={handleSaveRoster}
+            >
+              Lưu thay đổi
+            </button>
           </div>
-        </div>
-      </CustomModal>
+        )
+      )}
 
-      <CustomModal
-        isOpen={isDocsModalOpen}
-        onClose={() => setIsDocsModalOpen(false)}
-        title="Kho Tài Liệu Dự Án"
-        width="700px"
-      >
-        {(() => {
+      {/* Project Docs Drawer */}
+      {renderDrawer(
+        isDocsModalOpen,
+        () => setIsDocsModalOpen(false),
+        "Kho Tài Liệu Dự Án",
+        (() => {
           const selectedProj = projects.find(p => p.id === selectedProjectId);
           const linkedDocIds = selectedProj?.document_ids ? parseIds(selectedProj.document_ids) : [];
           
@@ -2221,10 +2353,19 @@ export default function ProjectsPage() {
                       style={{ borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: '#10b981', color: '#fff', border: 'none' }}
                     >
                       <ExternalLink size={14} />
-                      Mở thư mục
+                      Mở Google Drive
                     </a>
                   ) : (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Không phải liên kết URL</span>
+                    <a
+                      href={`/files?project_id=${selectedProj.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn success sm"
+                      style={{ borderRadius: '100px', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', textDecoration: 'none', background: 'var(--color-primary)', color: '#fff', border: 'none' }}
+                    >
+                      <Folder size={14} />
+                      Kho tài liệu
+                    </a>
                   )}
                 </div>
               )}
@@ -2252,7 +2393,7 @@ export default function ProjectsPage() {
               )}
 
               {/* List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '50vh', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', paddingRight: '4px' }}>
                 {combinedDocs.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)' }}>Chưa có tài liệu nào cho dự án này</div>
                 ) : (
@@ -2318,12 +2459,13 @@ export default function ProjectsPage() {
                 )}
               </div>
               <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="button" className="btn primary sm" style={{ borderRadius: '100px' }} onClick={() => setIsDocsModalOpen(false)}>Đóng</button>
+                <button type="button" className="btn secondary sm" style={{ borderRadius: '100px' }} onClick={() => setIsDocsModalOpen(false)}>Đóng</button>
               </div>
             </div>
           );
-        })()}
-      </CustomModal>
+        })(),
+        '700px'
+      )}
 
       {/* Campaign Create/Edit Modal (converted to Drawer) */}
       {renderDrawer(
@@ -2375,9 +2517,9 @@ export default function ProjectsPage() {
                   </div>
                   <div style={{ gridColumn: 'span 2' }}>
                     <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
-                    <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, wordBreak: 'break-all', display: 'block' }}>
-                      {editingCampaign?.folder_path || 'Không có folder liên kết'}
-                    </span>
+                    <div style={{ marginTop: '4px' }}>
+                      {renderFolderPathLink(editingCampaign?.folder_path)}
+                    </div>
                   </div>
                   {editingCampaign?.reference_url && (
                     <div style={{ gridColumn: 'span 2', marginTop: '4px', borderTop: '1px dotted var(--color-border-light)', paddingTop: '8px' }}>
@@ -2550,8 +2692,8 @@ export default function ProjectsPage() {
                               <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--color-text-muted)' }}>{proj.code}</span>
                             </div>
 
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
-                              Thư mục: <strong style={{ color: 'var(--color-text)' }}>{proj.folder_path || 'Không có'}</strong>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span>Thư mục:</span> {renderFolderPathLink(proj.folder_path, proj.id)}
                             </div>
 
                             <div style={{ marginBottom: '8px' }}>
@@ -2668,7 +2810,14 @@ export default function ProjectsPage() {
 
             </div>
           </div>
-          <form onSubmit={handleSaveCampaign} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+        ) : (
+          <form id="campaign-form" onSubmit={handleSaveCampaign} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+            <input 
+              type="file" 
+              ref={quickUploadInputRef} 
+              style={{ display: 'none' }} 
+              onChange={e => handleQuickUpload(e)} 
+            />
             {/* Left Column (3/5) */}
             <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
@@ -2729,35 +2878,16 @@ export default function ProjectsPage() {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Trạng thái</label>
-                    <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--color-bg-light)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
-                      <button
-                        type="button"
-                        onClick={() => setEditingCampaign({ ...editingCampaign, status: 'active' })}
-                        style={{
-                          flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                          background: editingCampaign?.status === 'active' ? 'white' : 'transparent',
-                          color: editingCampaign?.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
-                          boxShadow: editingCampaign?.status === 'active' ? 'var(--shadow-sm)' : 'none',
-                          transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                        }}
-                      >
-                        Hoạt động
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingCampaign({ ...editingCampaign, status: 'inactive' })}
-                        style={{
-                          flex: 1, padding: '0.5rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                          background: editingCampaign?.status === 'inactive' ? 'white' : 'transparent',
-                          color: editingCampaign?.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
-                          boxShadow: editingCampaign?.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
-                          transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                        }}
-                      >
-                        Tạm dừng
-                      </button>
+                  <div>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Trạng thái chiến dịch</label>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.625rem 0.875rem', background: 'var(--color-bg-light)', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border-light)', height: '44px' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: editingCampaign?.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                        {editingCampaign?.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
+                      </span>
+                      <ToggleSwitch
+                        checked={editingCampaign?.status === 'active'}
+                        onChange={checked => setEditingCampaign({ ...editingCampaign, status: checked ? 'active' : 'inactive' })}
+                      />
                     </div>
                   </div>
                 </div>
@@ -2873,7 +3003,33 @@ export default function ProjectsPage() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Tài liệu đính kèm</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label className="form-label" style={{ fontWeight: 600, marginBottom: 0 }}>Tài liệu đính kèm</label>
+                      <button
+                        type="button"
+                        onClick={() => quickUploadInputRef.current?.click()}
+                        disabled={uploadingDoc}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--color-primary)',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: 0
+                        }}
+                      >
+                        {uploadingDoc ? (
+                          <RefreshCw className="spin" size={12} />
+                        ) : (
+                          <Plus size={12} />
+                        )}
+                        <span>Tải tệp mới</span>
+                      </button>
+                    </div>
                     <CustomSelect
                       multiple
                       searchable={true}
@@ -2886,26 +3042,31 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid var(--color-border-light)',
-                borderRadius: '16px',
-                padding: '1.25rem 1.5rem',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                gap: '0.75rem',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <button type="button" className="btn outline sm" style={{ borderRadius: '100px' }} onClick={() => setIsCampaignModalOpen(false)}>Hủy</button>
-                <button type="submit" className="btn primary sm" style={{ borderRadius: '100px' }}>Lưu lại</button>
-              </div>
-
             </div>
           </form>
         )}
       </>,
-      '850px'
+      '850px',
+      campaignModalMode === 'view' ? undefined : (
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button
+            type="button"
+            className="btn secondary sm"
+            style={{ borderRadius: '100px', fontWeight: 700 }}
+            onClick={() => setIsCampaignModalOpen(false)}
+          >
+            Hủy
+          </button>
+          <button
+            type="submit"
+            form="campaign-form"
+            className="btn primary sm"
+            style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none' }}
+          >
+            Lưu chiến dịch
+          </button>
+        </div>
+      )
     )}
     </div>
   );
