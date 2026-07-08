@@ -1617,7 +1617,7 @@ export default function ProjectsPage() {
               onChange={e => setRosterSearch(e.target.value)}
               style={{
                 width: '100%',
-                padding: '0.625rem 1rem 0.625rem 2.5rem',
+                padding: '0.625rem 1rem',
                 borderRadius: 'var(--radius-lg)',
                 border: '1px solid var(--color-border)',
                 fontSize: '0.875rem',
@@ -1626,7 +1626,6 @@ export default function ProjectsPage() {
                 outline: 'none'
               }}
             />
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
           </div>
 
           {(() => {

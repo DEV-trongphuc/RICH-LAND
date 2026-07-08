@@ -201,7 +201,6 @@ export const SuppliersPage: React.FC = () => {
             }}
             className="search-input-container-focus"
           >
-            <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
             <input 
               type="text"
               placeholder="Tìm kiếm theo tên chủ đầu tư hoặc người liên hệ..." 

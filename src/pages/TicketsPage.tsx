@@ -208,7 +208,6 @@ export const TicketsPage: React.FC = () => {
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: '1rem', flex: 1, minWidth: '300px' }}>
           <div className="filter-search" style={{ flex: 1 }}>
-            <Search size={18} className="text-light" />
             <input className="form-input" placeholder="Tìm theo ID, tiêu đề, tên khách hàng..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <div style={{ width: '180px' }}>
