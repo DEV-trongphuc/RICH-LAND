@@ -540,30 +540,59 @@ export default function ProjectsPage() {
           <>
             {/* KPI Summary Cards */}
             {projectStats && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '0.5rem' }}>
-                <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#1e3a8a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e40af' }}>{projectStats.total_deals}</span>
-                  <span style={{ fontSize: '0.7rem', color: '#60a5fa', fontWeight: 600 }}>Cơ hội bán hàng</span>
+              <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Giao dịch</span>
+                    <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><Layers size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {projectStats.total_deals}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Cơ hội bán hàng</div>
+                  </div>
                 </div>
-                <div style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#065f46', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh thu thực tế</span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#065f46', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
-                    {projectStats.actual_revenue >= 1000000000 
-                      ? `${(projectStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
-                      : `${(projectStats.actual_revenue / 1000000).toFixed(0)} triệu`}
-                  </span>
-                  <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>Từ hóa đơn đã thu</span>
+
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh thu thực tế</span>
+                    <div className="stat-icon" style={{ color: '#10b981', opacity: 0.8 }}><CheckSquare size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={projectStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                      {projectStats.actual_revenue >= 1000000000 
+                        ? `${(projectStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
+                        : `${(projectStats.actual_revenue / 1000000).toFixed(0)} triệu`}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Từ hóa đơn đã thu</div>
+                  </div>
                 </div>
-                <div style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '1px solid #fde68a', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#78350f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ chốt</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#78350f' }}>{projectStats.win_rate}%</span>
-                  <span style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 600 }}>Tỷ lệ giao dịch thành công</span>
+
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tỷ lệ chốt</span>
+                    <div className="stat-icon" style={{ color: '#f59e0b', opacity: 0.8 }}><Users size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {projectStats.win_rate}%
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Tỷ lệ giao dịch thành công</div>
+                  </div>
                 </div>
-                <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#581c87', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chăm sóc</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#6b21a8' }}>{projectStats.total_leads}</span>
-                  <span style={{ fontSize: '0.7rem', color: '#c084fc', fontWeight: 600 }}>Khách hàng tiềm năng</span>
+
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đang chăm sóc</span>
+                    <div className="stat-icon" style={{ color: '#6366f1', opacity: 0.8 }}><Building2 size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {projectStats.total_leads}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Khách hàng tiềm năng</div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1193,30 +1222,59 @@ export default function ProjectsPage() {
           <>
             {/* KPI Summary Cards */}
             {campaignStats && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '0.5rem' }}>
-                <div style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#1e3a8a', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Số Leads</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e40af' }}>{campaignStats.total_leads}</span>
-                  <span style={{ fontSize: '0.7rem', color: '#60a5fa', fontWeight: 600 }}>Nhận từ kênh Ads/Sheet</span>
+              <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Tổng Số Leads</span>
+                    <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><Layers size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {campaignStats.total_leads}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Nhận từ kênh Ads/Sheet</div>
+                  </div>
                 </div>
-                <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#581c87', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã Chuyển Đổi</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#6b21a8' }}>{campaignStats.converted_leads}</span>
-                  <span style={{ fontSize: '0.7rem', color: '#c084fc', fontWeight: 600 }}>Tỷ lệ: {campaignStats.conversion_rate}%</span>
+
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đã Chuyển Đổi</span>
+                    <div className="stat-icon" style={{ color: '#6366f1', opacity: 0.8 }}><Users size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {campaignStats.converted_leads}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Tỷ lệ: {campaignStats.conversion_rate}%</div>
+                  </div>
                 </div>
-                <div style={{ background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', border: '1px solid #fde68a', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#78350f', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giao Dịch Thành Công</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#78350f' }}>{campaignStats.won_deals}</span>
-                  <span style={{ fontSize: '0.7rem', color: '#fbbf24', fontWeight: 600 }}>Đã chốt (Đóng Deal)</span>
+
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giao Dịch Thành Công</span>
+                    <div className="stat-icon" style={{ color: '#f59e0b', opacity: 0.8 }}><CheckSquare size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)' }}>
+                      {campaignStats.won_deals}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Đã chốt (Đóng Deal)</div>
+                  </div>
                 </div>
-                <div style={{ background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#065f46', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu Thực Thu</span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#065f46', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
-                    {campaignStats.actual_revenue >= 1000000000 
-                      ? `${(campaignStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
-                      : `${(campaignStats.actual_revenue / 1000000).toFixed(0)} triệu`}
-                  </span>
-                  <span style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 600 }}>Từ hóa đơn đã thu</span>
+
+                <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '100px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Doanh Thu Thực Thu</span>
+                    <div className="stat-icon" style={{ color: '#10b981', opacity: 0.8 }}><Building2 size={18} /></div>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div className="stat-value" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={campaignStats.actual_revenue.toLocaleString('vi-VN') + ' VND'}>
+                      {campaignStats.actual_revenue >= 1000000000 
+                        ? `${(campaignStats.actual_revenue / 1000000000).toFixed(2)} tỷ` 
+                        : `${(campaignStats.actual_revenue / 1000000).toFixed(0)} triệu`}
+                    </div>
+                    <div style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 500 }}>Từ hóa đơn đã thu</div>
+                  </div>
                 </div>
               </div>
             )}
