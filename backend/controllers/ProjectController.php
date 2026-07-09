@@ -322,6 +322,11 @@ class ProjectController {
 
         $this->db->beginTransaction();
         try {
+            // Get current roster before delete
+            $stmtCurrent = $this->db->prepare("SELECT user_id FROM project_roster WHERE project_id = ?");
+            $stmtCurrent->execute([$projectId]);
+            $oldUserIds = $stmtCurrent->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
             // Remove all current roster for this project
             $stmtDel = $this->db->prepare("DELETE FROM project_roster WHERE project_id = ?");
             $stmtDel->execute([$projectId]);
@@ -331,6 +336,27 @@ class ProjectController {
                 $stmtAdd = $this->db->prepare("INSERT INTO project_roster (project_id, user_id) VALUES (?, ?)");
                 foreach ($userIds as $uid) {
                     $stmtAdd->execute([$projectId, (int)$uid]);
+                }
+            }
+
+            // Find newly added users
+            $addedUserIds = array_diff($userIds, $oldUserIds);
+
+            if (!empty($addedUserIds)) {
+                // Get project name
+                $stmtName = $this->db->prepare("SELECT name FROM projects WHERE id = ?");
+                $stmtName->execute([$projectId]);
+                $projectName = $stmtName->fetchColumn() ?: "Dự án mới";
+
+                $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_roster', ?)");
+                foreach ($addedUserIds as $newUid) {
+                    $stmtNotif->execute([
+                        (int)$newUid,
+                        $auth['tenant_id'],
+                        "Bạn được phân phối vào dự án mới",
+                        "Bạn đã được thêm vào danh sách nhân sự phân phối (roster) của dự án: " . $projectName,
+                        "/projects?id=" . $projectId
+                    ]);
                 }
             }
 
@@ -394,6 +420,55 @@ class ProjectController {
                 $auth['user_id']
             ]);
             $newDocId = $this->db->lastInsertId();
+
+            // Retrieve roster users for this project
+            $stmtRoster = $this->db->prepare("SELECT user_id FROM project_roster WHERE project_id = ?");
+            $stmtRoster->execute([$projectId]);
+            $rosterUsers = $stmtRoster->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+            // Get project details for name & managers
+            $stmtProj = $this->db->prepare("SELECT name, created_by, manager_ids FROM projects WHERE id = ?");
+            $stmtProj->execute([$projectId]);
+            $project = $stmtProj->fetch(PDO::FETCH_ASSOC);
+            $notifyUids = [];
+
+            if ($project) {
+                $projectName = $project['name'];
+                if ($project['created_by'] && (int)$project['created_by'] !== (int)$auth['user_id']) {
+                    $notifyUids[] = (int)$project['created_by'];
+                }
+                if (!empty($project['manager_ids'])) {
+                    $mIds = array_filter(array_map('intval', explode(',', $project['manager_ids'])));
+                    foreach ($mIds as $mId) {
+                        if ($mId !== (int)$auth['user_id']) {
+                            $notifyUids[] = $mId;
+                        }
+                    }
+                }
+            } else {
+                $projectName = "Dự án";
+            }
+
+            foreach ($rosterUsers as $rUid) {
+                if ((int)$rUid !== (int)$auth['user_id']) {
+                    $notifyUids[] = (int)$rUid;
+                }
+            }
+
+            $notifyUids = array_unique($notifyUids);
+
+            if (!empty($notifyUids)) {
+                $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_document', ?)");
+                foreach ($notifyUids as $nUid) {
+                    $stmtNotif->execute([
+                        $nUid,
+                        $auth['tenant_id'],
+                        "Tài liệu dự án mới được tải lên",
+                        $auth['full_name'] . " đã tải lên tài liệu mới \"" . $fileName . "\" cho dự án " . $projectName,
+                        "/projects?id=" . $projectId
+                    ]);
+                }
+            }
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPLOAD_PROJECT_DOC', 'project_document', $newDocId, "Tải lên tài liệu: $fileName cho dự án ID $projectId");
             respond(200, ['id' => $newDocId, 'name' => $fileName], 'Tải lên tài liệu dự án thành công');
@@ -509,6 +584,57 @@ class ProjectController {
         ");
         $stmt->execute([$auth['tenant_id'], $projectId, $auth['user_id'], $body]);
         $newId = $this->db->lastInsertId();
+
+        // Retrieve roster users for this project
+        $stmtRoster = $this->db->prepare("SELECT user_id FROM project_roster WHERE project_id = ?");
+        $stmtRoster->execute([$projectId]);
+        $rosterUsers = $stmtRoster->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+        // Get project details for name & managers
+        $stmtProj = $this->db->prepare("SELECT name, created_by, manager_ids FROM projects WHERE id = ?");
+        $stmtProj->execute([$projectId]);
+        $project = $stmtProj->fetch(PDO::FETCH_ASSOC);
+        $notifyUids = [];
+
+        if ($project) {
+            $projectName = $project['name'];
+            if ($project['created_by'] && (int)$project['created_by'] !== (int)$auth['user_id']) {
+                $notifyUids[] = (int)$project['created_by'];
+            }
+            if (!empty($project['manager_ids'])) {
+                $mIds = array_filter(array_map('intval', explode(',', $project['manager_ids'])));
+                foreach ($mIds as $mId) {
+                    if ($mId !== (int)$auth['user_id']) {
+                        $notifyUids[] = $mId;
+                    }
+                }
+            }
+        } else {
+            $projectName = "Dự án";
+        }
+
+        foreach ($rosterUsers as $rUid) {
+            if ((int)$rUid !== (int)$auth['user_id']) {
+                $notifyUids[] = (int)$rUid;
+            }
+        }
+
+        $notifyUids = array_unique($notifyUids);
+
+        if (!empty($notifyUids)) {
+            $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_comment', ?)");
+            $preview = mb_strimwidth($body, 0, 50, "...");
+            foreach ($notifyUids as $nUid) {
+                $stmtNotif->execute([
+                    $nUid,
+                    $auth['tenant_id'],
+                    "Bình luận mới trong dự án " . $projectName,
+                    $auth['full_name'] . " đã thêm một bình luận mới trong dự án " . $projectName . ": \"" . $preview . "\"",
+                    "/projects?id=" . $projectId
+                ]);
+            }
+        }
+
         respond(200, ['id' => $newId], 'Thêm bình luận thành công');
     }
 

@@ -181,6 +181,29 @@ export const ActivitiesPage: React.FC = () => {
   useEffect(() => { fetchActivities(); }, [fetchActivities]);
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('id') || urlParams.get('activity_id');
+    if (targetId) {
+      const aid = Number(targetId);
+      if (aid) {
+        api.get(`/activities/${aid}`).then(res => {
+          if (res.data.success && res.data.data) {
+            openEdit(res.data.data);
+            // clean url parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('id');
+            newParams.delete('activity_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }).catch(err => {
+          console.error("Error loading deep link activity:", err);
+        });
+      }
+    }
+  }, [window.location.search]);
+
+  useEffect(() => {
     setPage(1);
   }, [filterType, filterStatus]);
 

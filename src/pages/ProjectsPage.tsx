@@ -163,7 +163,24 @@ export default function ProjectsPage() {
     } else {
       setActiveSubTab('projects');
     }
-  }, [window.location.search]);
+
+    const targetId = params.get('id') || params.get('project_id');
+    if (targetId && projects.length > 0) {
+      const matched = projects.find(p => String(p.id) === targetId);
+      if (matched) {
+        setEditingProject(matched);
+        setProjectModalMode('view');
+        setIsEditModalOpen(true);
+
+        // clean url parameters
+        const newParams = new URLSearchParams(window.location.search);
+        newParams.delete('id');
+        newParams.delete('project_id');
+        const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    }
+  }, [window.location.search, projects]);
 
   const [projectPage, setProjectPage] = useState(1);
   const [projectPageSize, setProjectPageSize] = useState(12);

@@ -175,7 +175,7 @@ export const ContactsPage: React.FC = () => {
   });
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const openContactId = searchParams.get('open_contact_id');
+  const openContactId = searchParams.get('open_contact_id') || searchParams.get('id');
 
   useEffect(() => {
     if (openContactId) {
@@ -186,6 +186,7 @@ export const ContactsPage: React.FC = () => {
             setProfileContact(res.data.data);
             const newParams = new URLSearchParams(searchParams);
             newParams.delete('open_contact_id');
+            newParams.delete('id');
             setSearchParams(newParams, { replace: true });
           }
         }).catch(err => {

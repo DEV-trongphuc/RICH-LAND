@@ -133,6 +133,29 @@ export const TicketsPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('id') || urlParams.get('ticket_id');
+    if (targetId) {
+      const tid = Number(targetId);
+      if (tid) {
+        api.get(`/tickets/${tid}`).then(res => {
+          if (res.data.success && res.data.data) {
+            setSelectedTicket(res.data.data);
+            // clean url parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('id');
+            newParams.delete('ticket_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }).catch(err => {
+          console.error("Error loading deep link ticket:", err);
+        });
+      }
+    }
+  }, [window.location.search]);
+
+  useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && showCreateModal && !saving) {
         setShowCreateModal(false);

@@ -631,11 +631,25 @@ switch ($resource) {
     case 'notifications':
         $auth = requireAuth();
         $ctrl = new NotificationController($db);
-        if ($method === 'GET') $ctrl->index($auth);
-        elseif ($resourceId && $method === 'PATCH') $ctrl->markRead($auth, (int)$resourceId);
-        elseif ($method === 'DELETE') $ctrl->clearAll($auth);
-        else respond(404, null, 'Route không tồn tại', false);
+        if ($method === 'GET') {
+            $ctrl->index($auth);
+        } elseif ($method === 'PATCH') {
+            if ($resourceId) {
+                $ctrl->update($auth, (int)$resourceId);
+            } else {
+                $ctrl->markAllRead($auth);
+            }
+        } elseif ($method === 'DELETE') {
+            if ($resourceId) {
+                $ctrl->destroy($auth, (int)$resourceId);
+            } else {
+                $ctrl->clearAll($auth);
+            }
+        } else {
+            respond(404, null, 'Route không tồn tại', false);
+        }
         break;
+
 
     // REPORTS
     case 'reports':
@@ -658,6 +672,7 @@ switch ($resource) {
         $entityType = $_GET['entity_type'] ?? $segments[1] ?? '';
         $entityId   = (int)($_GET['entity_id'] ?? $segments[2] ?? 0);
         if ($method === 'GET' && $entityType && $entityId) $ctrl->index($auth, $entityType, $entityId);
+        elseif ($resourceId && $method === 'GET')           $ctrl->show($auth, (int)$resourceId);
         elseif ($method === 'POST' && $entityType && $entityId) $ctrl->store($auth, $entityType, $entityId);
         elseif ($resourceId && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);

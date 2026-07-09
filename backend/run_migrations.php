@@ -1989,6 +1989,8 @@ try {
         $safeAddIndex($conn, 'audit_logs', 'idx_audit_logs_resource_id', '`resource`, `resource_id`');
         $safeAddIndex($conn, 'activities', 'idx_activities_composite', '`related_type`, `related_id`, `status`');
         $safeAddIndex($conn, 'contacts', 'idx_contacts_composite', '`person_id`, `owner_id`, `deleted_at`');
+        $safeAddIndex($conn, 'notifications', 'idx_notifications_user_created_at', '`user_id`, `created_at`');
+
 
         // Self-healing check: ensure edit_history exists in notes
         $chkNoteEditHistory = $conn->query("SHOW COLUMNS FROM notes LIKE 'edit_history'");

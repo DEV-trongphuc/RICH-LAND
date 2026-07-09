@@ -243,4 +243,12 @@ class NoteController {
             respond(500, null, $e->getMessage(), false);
         }
     }
+
+    public function show(array $auth, int $id): void {
+        $stmt = $this->db->prepare("SELECT * FROM notes WHERE id=? AND tenant_id=? LIMIT 1");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $note = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$note) respond(404, null, 'Ghi chú không tồn tại', false);
+        respond(200, $note, 'Lấy chi tiết ghi chú thành công');
+    }
 }

@@ -854,6 +854,31 @@ try {
             $cRes = $stmt->get_result();
             if ($cRes->num_rows > 0 && $status !== 'pending_work_hours') {
                 $c = $cRes->fetch_assoc();
+
+                // Get contact id if exists
+                $contactId = null;
+                $stmtContact = $conn->prepare("SELECT id FROM contacts WHERE phone = ? AND owner_id = ? LIMIT 1");
+                if ($stmtContact) {
+                    $stmtContact->bind_param("si", $phone, $assignedConsultantId);
+                    $stmtContact->execute();
+                    $resContact = $stmtContact->get_result();
+                    if ($resContact && $resContact->num_rows > 0) {
+                        $contactId = (int)$resContact->fetch_assoc()['id'];
+                    }
+                    $stmtContact->close();
+                }
+
+                // Insert database notification for assigned consultant
+                $stmtDbNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'lead_assignment', ?)");
+                if ($stmtDbNotif) {
+                    $notifTitle = "Bạn được phân bổ khách hàng mới";
+                    $notifBody = "Khách hàng \"" . ($name ?: "Khách hàng") . "\" (" . $phone . ") đã được phân bổ cho bạn từ nguồn \"" . ($source ?: "Nguồn khác") . "\".";
+                    $notifLink = $contactId ? "/contacts?open_contact_id=" . $contactId : "/contacts";
+                    $stmtDbNotif->bind_param("isss", $assignedConsultantId, $notifTitle, $notifBody, $notifLink);
+                    $stmtDbNotif->execute();
+                    $stmtDbNotif->close();
+                }
+
                 try {
                     sendLeadAssignedEmailToSale($c['email'], $c['name'], $name, $phone, $note, $source, $ccEmails, $roundName, $leadId, $assignedConsultantId, $targetRoundId);
                 } catch (Exception $mailEx) {

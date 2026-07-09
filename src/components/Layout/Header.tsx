@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
 import { toast } from 'react-hot-toast';
@@ -65,6 +65,146 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       window.removeEventListener('uncontacted-count-changed', handleUncontactedCountChanged);
     };
   }, []);
+
+  // --- Notifications State & Logic ---
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [notifFilter, setNotifFilter] = useState<'all' | 'unread' | 'read'>('all');
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await fetchAPI('notifications');
+      if (res.success && res.data) {
+        setNotifications(res.data.items || []);
+        setUnreadCount(res.data.unread_count || 0);
+      }
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000); // Polling every 30s
+    window.addEventListener('notification-trigger', fetchNotifications);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('notification-trigger', fetchNotifications);
+    };
+  }, []);
+
+  const handleMarkRead = async (id: number, isReadVal: number = 1) => {
+    try {
+      const res = await fetchAPI(`notifications/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_read: isReadVal })
+      });
+      if (res.success) {
+        fetchNotifications();
+        toast.success(isReadVal === 1 ? 'Đã đánh dấu đã đọc' : 'Đã đánh dấu chưa đọc');
+      }
+    } catch (err) {
+      console.error("Error updating notification status:", err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await fetchAPI('notifications', {
+        method: 'PATCH'
+      });
+      if (res.success) {
+        fetchNotifications();
+        toast.success('Đã đánh dấu tất cả là đã đọc');
+      }
+    } catch (err) {
+      console.error("Error marking all read:", err);
+    }
+  };
+
+  const handleDeleteNotif = async (id: number) => {
+    try {
+      const res = await fetchAPI(`notifications/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.success) {
+        fetchNotifications();
+        toast.success('Đã xóa thông báo');
+      }
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+    }
+  };
+
+  const handleClearAllNotif = async () => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa toàn bộ thông báo?')) return;
+    try {
+      const res = await fetchAPI('notifications', {
+        method: 'DELETE'
+      });
+      if (res.success) {
+        fetchNotifications();
+        toast.success('Đã xóa toàn bộ thông báo');
+      }
+    } catch (err) {
+      console.error("Error clearing notifications:", err);
+    }
+  };
+
+  const handleNotifClick = async (notif: any) => {
+    if (!notif.is_read) {
+      await fetchAPI(`notifications/${notif.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_read: 1 })
+      });
+      fetchNotifications();
+    }
+    setIsNotifModalOpen(false);
+
+    if (notif.link) {
+      let targetLink = notif.link;
+      
+      const noteMatch = targetLink.match(/^\/notes\/(\d+)$/);
+      if (noteMatch) {
+        try {
+          const res = await fetchAPI(`notes/${noteMatch[1]}`);
+          if (res.success && res.data) {
+            const note = res.data;
+            if (note.entity_type === 'contact') {
+              targetLink = `/contacts?open_contact_id=${note.entity_id}`;
+            } else if (note.entity_type === 'deal') {
+              targetLink = `/deals?id=${note.entity_id}`;
+            } else if (note.entity_type === 'company') {
+              targetLink = `/companies?id=${note.entity_id}`;
+            } else if (note.entity_type === 'project') {
+              targetLink = `/projects?id=${note.entity_id}`;
+            }
+          }
+        } catch (e) {
+          console.error("Error resolving note redirect link:", e);
+        }
+      }
+
+      const contactMatch = targetLink.match(/^\/contacts\/(\d+)$/);
+      if (contactMatch) {
+        targetLink = `/contacts?open_contact_id=${contactMatch[1]}`;
+      }
+      const activityMatch = targetLink.match(/^\/activities\/(\d+)$/);
+      if (activityMatch) {
+        targetLink = `/activities?id=${activityMatch[1]}`;
+      }
+      const projectMatch = targetLink.match(/^\/projects\/(\d+)$/);
+      if (projectMatch) {
+        targetLink = `/projects?id=${projectMatch[1]}`;
+      }
+      const ticketMatch = targetLink.match(/^\/tickets\/(\d+)$/);
+      if (ticketMatch) {
+        targetLink = `/support-tickets?id=${ticketMatch[1]}`;
+      }
+      navigate(targetLink);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -613,6 +753,58 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           }} />
         </button>
 
+        {/* Notification Bell Button */}
+        <button
+          onClick={() => setIsNotifModalOpen(true)}
+          style={{
+            width: 36,
+            height: 36,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-light)',
+            borderRadius: 8,
+            border: 'none',
+            background: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            position: 'relative',
+            outline: 'none'
+          }}
+          title={t("Thông báo")}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'var(--color-bg)';
+            e.currentTarget.style.color = 'var(--color-primary)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'none';
+            e.currentTarget.style.color = 'var(--color-text-light)';
+          }}
+        >
+          <Bell size={20} />
+          {unreadCount > 0 && (
+            <span style={{
+              position: 'absolute',
+              top: 2,
+              right: 2,
+              minWidth: 16,
+              height: 16,
+              borderRadius: 8,
+              background: '#ef4444',
+              color: 'white',
+              fontSize: '10px',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 4px',
+              boxShadow: '0 0 0 2px var(--color-surface)',
+              lineHeight: 1
+            }}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+        </button>
 
         {/* Theme Toggle Button */}
         <button
@@ -1417,8 +1609,266 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
         >
           <Fingerprint size={24} />
-        </button>
-      )}
+      {/* Notifications Modal */}
+      <CustomModal
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+        title={t("Thông báo hệ thống")}
+        width={700}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px', maxHeight: '70vh' }}>
+          {/* Header Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+            {/* Filter Tabs */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              {(['all', 'unread', 'read'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setNotifFilter(tab)}
+                  style={{
+                    padding: '6px 16px',
+                    borderRadius: '20px',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: notifFilter === tab ? 'var(--color-primary-light)' : 'transparent',
+                    color: notifFilter === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    outline: 'none'
+                  }}
+                >
+                  {tab === 'all' && t("Tất cả")}
+                  {tab === 'unread' && `${t("Chưa đọc")} (${unreadCount})`}
+                  {tab === 'read' && t("Đã đọc")}
+                </button>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-primary)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <Check size={14} />
+                  {t("Đọc tất cả")}
+                </button>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={handleClearAllNotif}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '4px 8px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-text-muted)',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                >
+                  <Trash2 size={14} />
+                  {t("Xóa toàn bộ")}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* List area */}
+          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+            {(() => {
+              const filtered = notifications.filter(n => {
+                if (notifFilter === 'unread') return !n.is_read;
+                if (notifFilter === 'read') return !!n.is_read;
+                return true;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '1rem', color: 'var(--color-text-muted)' }}>
+                    <Bell size={48} style={{ opacity: 0.25 }} />
+                    <p style={{ fontSize: '0.875rem' }}>{t("Không có thông báo nào")}</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {filtered.map(notif => (
+                    <div
+                      key={notif.id}
+                      onClick={() => handleNotifClick(notif)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'start',
+                        gap: '0.75rem',
+                        padding: '12px 16px',
+                        borderRadius: '10px',
+                        background: notif.is_read ? 'var(--color-bg)' : 'rgba(189, 29, 45, 0.03)',
+                        border: `1px solid ${notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.08)'}`,
+                        cursor: notif.link ? 'pointer' : 'default',
+                        transition: 'all 0.2s',
+                        position: 'relative',
+                        boxShadow: notif.is_read ? 'none' : '0 2px 8px rgba(189, 29, 45, 0.04)'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        if (notif.link) {
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.borderColor = notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.08)';
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = notif.is_read ? 'none' : '0 2px 8px rgba(189, 29, 45, 0.04)';
+                      }}
+                    >
+                      {/* Icon */}
+                      <div style={{
+                        marginTop: 2,
+                        padding: 8,
+                        borderRadius: '50%',
+                        background: notif.is_read ? 'var(--color-bg-alt)' : 'var(--color-surface)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.03)'
+                      }}>
+                        {(() => {
+                          switch (notif.type) {
+                            case 'mention':
+                            case 'task_assignment':
+                            case 'task_participant':
+                            case 'approval_request':
+                              return <CheckSquare size={16} style={{ color: '#3b82f6' }} />;
+                            case 'project_roster':
+                              return <Users size={16} style={{ color: '#10b981' }} />;
+                            case 'project_document':
+                              return <FileText size={16} style={{ color: '#f59e0b' }} />;
+                            case 'project_comment':
+                              return <MessageSquare size={16} style={{ color: '#8b5cf6' }} />;
+                            case 'warning':
+                              return <AlertTriangle size={16} style={{ color: '#ef4444' }} />;
+                            default:
+                              return <Info size={16} style={{ color: '#6b7280' }} />;
+                          }
+                        })()}
+                      </div>
+
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: 2 }}>
+                          <h4 style={{
+                            margin: 0,
+                            fontSize: '0.875rem',
+                            fontWeight: notif.is_read ? 600 : 700,
+                            color: 'var(--color-text)',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}>
+                            {notif.title}
+                          </h4>
+                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                            {(() => {
+                              if (!notif.created_at) return '';
+                              const d = new Date(notif.created_at.replace(' ', 'T'));
+                              if (isNaN(d.getTime())) return notif.created_at;
+                              const now = new Date();
+                              const diffMs = now.getTime() - d.getTime();
+                              const diffMins = Math.floor(diffMs / 60000);
+                              const diffHours = Math.floor(diffMs / 3600000);
+                              const diffDays = Math.floor(diffMs / 86400000);
+                              if (diffMins < 1) return t('Vừa xong');
+                              if (diffMins < 60) return `${diffMins} ${t('phút trước')}`;
+                              if (diffHours < 24) return `${diffHours} ${t('giờ trước')}`;
+                              if (diffDays < 7) return `${diffDays} ${t('ngày trước')}`;
+                              return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            })()}
+                          </span>
+                        </div>
+                        <p style={{
+                          margin: 0,
+                          fontSize: '0.8125rem',
+                          color: 'var(--color-text-muted)',
+                          lineHeight: '1.4',
+                          wordBreak: 'break-word'
+                        }}>
+                          {notif.body}
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div
+                        style={{ display: 'flex', gap: '4px', alignSelf: 'center', opacity: 0.8 }}
+                        onClick={e => e.stopPropagation()} // Prevent card click trigger
+                      >
+                        <button
+                          onClick={() => handleMarkRead(notif.id, notif.is_read ? 0 : 1)}
+                          style={{
+                            padding: '4px 6px',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-text-light)',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s',
+                            outline: 'none'
+                          }}
+                          title={notif.is_read ? t("Đánh dấu chưa đọc") : t("Đánh dấu đã đọc")}
+                          onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-light)'}
+                        >
+                          {notif.is_read ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNotif(notif.id)}
+                          style={{
+                            padding: '4px 6px',
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--color-text-light)',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s',
+                            outline: 'none'
+                          }}
+                          title={t("Xóa")}
+                          onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-light)'}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </CustomModal>
     </header>
   );
 };
