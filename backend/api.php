@@ -2021,6 +2021,7 @@ switch ($action) {
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
+            JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = dl.assigned_to AND c.deleted_at IS NULL
             WHERE $whereClause
         ";
         $totalCount = 0;
@@ -2061,7 +2062,7 @@ switch ($action) {
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
-            LEFT JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = dl.assigned_to AND c_real.deleted_at IS NULL
+            INNER JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = dl.assigned_to AND c_real.deleted_at IS NULL
             LEFT JOIN (
                 SELECT dr1.* FROM data_reports dr1
                 INNER JOIN (
