@@ -120,7 +120,15 @@ class ContactController {
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
-            LEFT JOIN leads l ON l.person_id = c.person_id
+            LEFT JOIN (
+                SELECT l1.* FROM leads l1
+                INNER JOIN (
+                    SELECT person_id, MAX(id) as max_id 
+                    FROM leads 
+                    WHERE person_id IS NOT NULL 
+                    GROUP BY person_id
+                ) l2 ON l1.id = l2.max_id
+            ) l ON l.person_id = c.person_id
             LEFT JOIN (
                 SELECT dl1.* FROM distribution_logs dl1
                 INNER JOIN (

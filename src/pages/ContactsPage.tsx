@@ -1166,7 +1166,7 @@ export const ContactsPage: React.FC = () => {
                     const fullName = `${c.first_name} ${c.last_name}`;
                     return (
                       <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                         style={{ borderBottom: '1px solid var(--color-border)', transition: 'background 0.2s', cursor: 'pointer' }}
+                         style={{ transition: 'background 0.2s', cursor: 'pointer' }}
                          className="table-row-hover"
                          onClick={() => setProfileContact(c)}>
                         <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
