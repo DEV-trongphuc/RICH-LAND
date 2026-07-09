@@ -392,7 +392,7 @@ export const CompaniesPage: React.FC = () => {
                       key={co.id}
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       className="table-row-hover"
-                      style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
+                      style={{ cursor: 'pointer' }}
                       onClick={() => openEdit(co)}
                     >
                       <td style={{ padding: '1rem' }}>

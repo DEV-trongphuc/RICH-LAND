@@ -129,6 +129,18 @@ export const TicketsPage: React.FC = () => {
   }, [page, debouncedSearch, filterStatus]);
 
   useEffect(() => {
+    const handleRefresh = () => {
+      fetchTickets();
+    };
+    window.addEventListener('ticket-resolved', handleRefresh);
+    window.addEventListener('ticket-updated', handleRefresh);
+    return () => {
+      window.removeEventListener('ticket-resolved', handleRefresh);
+      window.removeEventListener('ticket-updated', handleRefresh);
+    };
+  }, []);
+
+  useEffect(() => {
     fetchRelatedData();
   }, []);
 

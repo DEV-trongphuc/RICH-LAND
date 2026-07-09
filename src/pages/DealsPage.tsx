@@ -417,6 +417,22 @@ export const DealsPage: React.FC = () => {
   }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, viewMode, allUsers, teams]);
 
   useEffect(() => {
+    const handleRefresh = () => {
+      if (stages.length > 0) {
+        fetchData();
+      }
+    };
+    window.addEventListener('lead-claimed', handleRefresh);
+    window.addEventListener('lead-added', handleRefresh);
+    window.addEventListener('contact-updated', handleRefresh);
+    return () => {
+      window.removeEventListener('lead-claimed', handleRefresh);
+      window.removeEventListener('lead-added', handleRefresh);
+      window.removeEventListener('contact-updated', handleRefresh);
+    };
+  }, [stages]);
+
+  useEffect(() => {
     setPage(1);
   }, [debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, pipelineView]);
 
