@@ -671,71 +671,175 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
 
       {/* Visual Pending Approvals Center */}
       {(pendingTicketsCount > 0 || heldLeadsCount > 0 || pendingCheckInsCount > 0 || pendingCoopsCount > 0) && (
-        <div
-          className="card"
-          style={{
-            padding: '1.25rem 1.5rem',
-            marginBottom: '1.25rem',
-            background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.04) 0%, rgba(244, 63, 94, 0.04) 100%)',
-            border: '1.5px solid rgba(189, 29, 45, 0.15)',
-            borderRadius: '16px',
-            animation: 'slideUp 0.4s ease-out both',
-            boxShadow: 'var(--shadow-sm)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="card approval-banner-card">
+          <style>{`
+            .approval-banner-card {
+              position: relative;
+              padding: 1.5rem 1.75rem;
+              margin-bottom: 1.5rem;
+              background: var(--color-surface) !important;
+              border: 1px solid ${theme === 'dark' ? 'rgba(189, 29, 45, 0.25)' : 'rgba(189, 29, 45, 0.12)'};
+              border-radius: 20px;
+              animation: slideUp 0.4s ease-out both;
+              box-shadow: ${theme === 'dark'
+                ? '0 10px 25px rgba(0, 0, 0, 0.3)'
+                : '0 10px 25px rgba(189, 29, 45, 0.03)'};
+              overflow: hidden;
+            }
+            .approval-banner-content {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              flex-wrap: wrap;
+              gap: 16px;
+            }
+            .approval-badges-container {
+              display: flex;
+              gap: 10px;
+              flex-wrap: wrap;
+            }
+            .approval-badge-btn {
+              padding: 6px 16px;
+              height: 34px;
+              font-size: 0.8125rem;
+              font-weight: 700;
+              border-radius: 20px;
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+              cursor: pointer;
+              transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+              border: 1px solid transparent;
+            }
+            .approval-badge-btn:hover {
+              transform: translateY(-2px);
+            }
+            .approval-badge-btn:active {
+              transform: translateY(0);
+            }
+            .badge-ticket {
+              border-color: ${theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(239, 68, 68, 0.2)'} !important;
+              color: ${theme === 'dark' ? '#f87171' : '#ef4444'} !important;
+              background: ${theme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.05)'} !important;
+            }
+            .badge-ticket:hover {
+              background: #ef4444 !important;
+              color: white !important;
+              box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            }
+            .badge-ai {
+              border-color: ${theme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.2)'} !important;
+              color: ${theme === 'dark' ? '#fbbf24' : '#d97706'} !important;
+              background: ${theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.05)'} !important;
+            }
+            .badge-ai:hover {
+              background: #d97706 !important;
+              color: white !important;
+              box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+            }
+            .badge-attendance {
+              border-color: ${theme === 'dark' ? 'rgba(189, 29, 45, 0.3)' : 'rgba(189, 29, 45, 0.2)'} !important;
+              color: ${theme === 'dark' ? '#fca5a5' : '#BD1D2D'} !important;
+              background: ${theme === 'dark' ? 'rgba(189, 29, 45, 0.15)' : 'rgba(189, 29, 45, 0.05)'} !important;
+            }
+            .badge-attendance:hover {
+              background: #BD1D2D !important;
+              color: white !important;
+              box-shadow: 0 4px 12px rgba(189, 29, 45, 0.4);
+            }
+            .badge-coop {
+              border-color: ${theme === 'dark' ? 'rgba(163, 20, 34, 0.3)' : 'rgba(163, 20, 34, 0.2)'} !important;
+              color: ${theme === 'dark' ? '#fca5a5' : '#a31422'} !important;
+              background: ${theme === 'dark' ? 'rgba(163, 20, 34, 0.15)' : 'rgba(163, 20, 34, 0.05)'} !important;
+            }
+            .badge-coop:hover {
+              background: #a31422 !important;
+              color: white !important;
+              box-shadow: 0 4px 12px rgba(163, 20, 34, 0.4);
+            }
+            @media (max-width: 768px) {
+              .approval-banner-card {
+                padding: 1.25rem 1rem !important;
+                margin-bottom: 1.25rem !important;
+              }
+              .approval-banner-content {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 16px !important;
+              }
+              .approval-badges-container {
+                width: 100%;
+                flex-direction: column;
+                gap: 8px !important;
+              }
+              .approval-badge-btn {
+                width: 100%;
+                justify-content: center;
+                height: 38px;
+              }
+          `}</style>
+
+          <div className="approval-banner-content">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(189, 29, 45, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: '12px',
+                background: theme === 'dark' ? 'rgba(189, 29, 45, 0.2)' : 'rgba(189, 29, 45, 0.08)',
+                color: theme === 'dark' ? '#ff4d6d' : '#BD1D2D',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: theme === 'dark' ? '0 0 12px rgba(189, 29, 45, 0.3)' : '0 0 8px rgba(189, 29, 45, 0.05)',
+                border: theme === 'dark' ? '1px solid rgba(189, 29, 45, 0.3)' : '1px solid rgba(189, 29, 45, 0.1)'
+              }}>
                 <ShieldAlert size={22} className="animate-pulse" />
               </div>
               <div>
-                <h4 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', margin: 0 }}>
+                <h4 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--color-text)', margin: 0, letterSpacing: '-0.02em' }}>
                   {t('Hộp thư Phê duyệt & Tồn đọng')}
                 </h4>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.4 }}>
                   {t('Hệ thống phát hiện đang có các yêu cầu chờ bạn xem xét và phê duyệt:')}
                 </p>
               </div>
             </div>
             
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div className="approval-badges-container">
               {pendingTicketsCount > 0 && (
                 <button
                   onClick={() => navigate('/tickets')}
-                  className="btn outline sm"
-                  style={{ borderRadius: '20px', borderColor: 'var(--color-danger)', color: 'var(--color-danger)', background: 'rgba(239, 68, 68, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                  className="approval-badge-btn badge-ticket"
                 >
-                  <TicketIcon size={12} />
+                  <TicketIcon size={13} />
                   <span>{pendingTicketsCount} {t('Ticket lỗi')}</span>
                 </button>
               )}
               {heldLeadsCount > 0 && (
                 <button
                   onClick={() => navigate('/gatekeeper')}
-                  className="btn outline sm"
-                  style={{ borderRadius: '20px', borderColor: 'var(--color-warning)', color: '#d97706', background: 'rgba(245, 158, 11, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                  className="approval-badge-btn badge-ai"
                 >
-                  <Filter size={12} />
+                  <Filter size={13} />
                   <span>{heldLeadsCount} {t('Lọc AI')}</span>
                 </button>
               )}
               {pendingCheckInsCount > 0 && (
                 <button
                   onClick={() => navigate('/attendance')}
-                  className="btn outline sm"
-                  style={{ borderRadius: '20px', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'rgba(189, 29, 45, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                  className="approval-badge-btn badge-attendance"
                 >
-                  <Clock size={12} />
+                  <Clock size={13} />
                   <span>{pendingCheckInsCount} {t('Chấm công')}</span>
                 </button>
               )}
               {pendingCoopsCount > 0 && (
                 <button
                   onClick={() => navigate('/cooperation-slips?status=pending_me')}
-                  className="btn outline sm"
-                  style={{ borderRadius: '20px', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'rgba(163, 20, 34, 0.05)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700 }}
+                  className="approval-badge-btn badge-coop"
                 >
-                  <Scale size={12} />
+                  <Scale size={13} />
                   <span>{pendingCoopsCount} {t('Hợp tác')}</span>
                 </button>
               )}
@@ -1552,8 +1656,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   borderRadius: '4px',
                                   fontWeight: 700,
                                   fontSize: '0.75rem',
-                                  background: acceptPct >= 80 ? 'rgba(16,185,129,0.08)' : acceptPct >= 50 ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
-                                  color: acceptPct >= 80 ? 'var(--color-success)' : acceptPct >= 50 ? 'var(--color-warning)' : 'var(--color-danger)'
+                                  background: acceptPct >= 80 ? 'rgba(79, 70, 229, 0.08)' : acceptPct >= 50 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                  color: acceptPct >= 80 ? '#4F46E5' : acceptPct >= 50 ? '#D97706' : '#DC2626'
                                 }}>
                                   {acceptPct}%
                                 </span>
@@ -1564,8 +1668,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   borderRadius: '4px',
                                   fontWeight: 700,
                                   fontSize: '0.75rem',
-                                  background: recalled > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(163,20,34,0.04)',
-                                  color: recalled > 0 ? 'var(--color-danger)' : 'var(--color-text-muted)'
+                                  background: recalled > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(163, 20, 34, 0.04)',
+                                  color: recalled > 0 ? '#DC2626' : 'var(--color-text-muted)'
                                 }}>
                                   {recalled} ({recallPct}%)
                                 </span>
@@ -1576,16 +1680,16 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   borderRadius: '4px',
                                   fontWeight: 700,
                                   fontSize: '0.75rem',
-                                  background: uncontacted >= 5 ? 'rgba(239,68,68,0.12)' : uncontacted >= 3 ? 'rgba(245,158,11,0.12)' : 'rgba(16,185,129,0.08)',
-                                  color: uncontacted >= 5 ? 'var(--color-danger)' : uncontacted >= 3 ? 'var(--color-warning)' : 'var(--color-success)'
+                                  background: uncontacted >= 5 ? 'rgba(220, 38, 38, 0.1)' : uncontacted >= 3 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(13, 148, 136, 0.08)',
+                                  color: uncontacted >= 5 ? '#DC2626' : uncontacted >= 3 ? '#D97706' : '#0D9488'
                                 }}>
                                   {uncontacted}/5
                                 </span>
                               </td>
                               <td style={{ padding: '8px 12px', minWidth: '150px' }}>
                                 <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'var(--color-bg)' }}>
-                                  <div style={{ width: `${acceptPct}%`, background: 'var(--color-success)' }} title={`Đã nhận: ${acceptPct}%`} />
-                                  <div style={{ width: `${recallPct}%`, background: 'var(--color-danger)' }} title={`Thu hồi: ${recallPct}%`} />
+                                  <div style={{ width: `${acceptPct}%`, background: 'linear-gradient(90deg, #0d9488 0%, #2563eb 100%)' }} title={`Đã nhận: ${acceptPct}%`} />
+                                  <div style={{ width: `${recallPct}%`, background: '#DC2626' }} title={`Thu hồi: ${recallPct}%`} />
                                 </div>
                               </td>
                             </tr>

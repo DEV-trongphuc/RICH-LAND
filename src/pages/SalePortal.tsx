@@ -7923,12 +7923,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               }}
               style={{
                 width: 44, height: 44, borderRadius: '50%',
-                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                background: 'linear-gradient(135deg, #FF4D6D 0%, #C9182B 50%, #800F2F 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
+                cursor: 'pointer', boxShadow: '0 4px 14px rgba(201, 24, 43, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25)', transition: 'all 0.2s'
               }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'scale(1.08)';
+                e.currentTarget.style.boxShadow = '0 6px 18px rgba(201, 24, 43, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(201, 24, 43, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25)';
+              }}
               title={t("Thêm data nhanh")}
             >
               <Plus size={20} />
@@ -7941,18 +7947,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               }}
               style={{
                 width: '100%', height: 44, borderRadius: '12px',
-                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                background: 'linear-gradient(135deg, #FF4D6D 0%, #C9182B 50%, #800F2F 100%)',
                 color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 8, fontSize: '0.9375rem', fontWeight: 700, cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s'
+                boxShadow: '0 4px 14px rgba(201, 24, 43, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25)', transition: 'all 0.2s'
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 6px 16px rgba(189, 29, 45, 0.5)';
+                e.currentTarget.style.boxShadow = '0 6px 18px rgba(201, 24, 43, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.35)';
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 12px rgba(189, 29, 45, 0.4)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(201, 24, 43, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25)';
               }}
             >
               <Plus size={18} /> {t("Thêm data nhanh")}

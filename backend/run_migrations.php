@@ -2023,6 +2023,21 @@ try {
             $logMsg("Đã thêm cột duplicate_with_id cho contacts", "success");
         }
 
+        // Self-healing check: ensure ticket_comments table exists
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS `ticket_comments` (
+              `id` int(11) NOT NULL AUTO_INCREMENT,
+              `ticket_id` int(11) NOT NULL,
+              `user_id` int(11) NOT NULL,
+              `body` text NOT NULL,
+              `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+              PRIMARY KEY (`id`),
+              KEY `ticket_id` (`ticket_id`),
+              KEY `user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+        $logMsg("Đã kiểm tra/khởi tạo cấu trúc bảng ticket_comments thành công", "success");
+
         // Self-healing check: Backfill contact's last_contact based on existing notes & activities history
         $conn->query("
             UPDATE contacts c

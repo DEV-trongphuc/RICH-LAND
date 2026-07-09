@@ -102,6 +102,19 @@ if ($action === 'run_permission_tests') {
     exit;
 }
 
+if ($action === 'run_task_tests') {
+    $code = file_get_contents(__DIR__ . '/task_test_runner.php');
+    if ($code === false) {
+        echo json_encode(['success' => false, 'message' => 'Không thể đọc file task_test_runner.php']);
+        exit;
+    }
+    if (strpos($code, '<?php') === 0) {
+        $code = substr($code, 5);
+    }
+    eval($code);
+    exit;
+}
+
 if ($action === 'reset_db') {
     require_once __DIR__ . '/run_reset_db.php';
     exit;

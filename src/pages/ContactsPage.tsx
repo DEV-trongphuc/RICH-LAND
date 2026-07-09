@@ -299,7 +299,7 @@ export const ContactsPage: React.FC = () => {
     { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
     { id: 'created_at', label: 'Ngày tạo', visible: true },
     { id: 'interaction', label: 'Tương tác', visible: true },
-    { id: 'score', label: 'Lead Score', visible: true },
+    { id: 'score', label: 'Lead Score', visible: false },
   ]);
   const [showColumns, setShowColumns] = useState(false);
 
@@ -1088,6 +1088,42 @@ export const ContactsPage: React.FC = () => {
           {viewMode === 'list' ? (
 
             <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
+              <style>{`
+                .table-wrap th, .table-wrap td {
+                  padding: 0.5rem 0.75rem !important;
+                  vertical-align: middle !important;
+                }
+                .table-wrap th {
+                  font-size: 0.7rem !important;
+                  font-weight: 700 !important;
+                  color: var(--color-text-light) !important;
+                  text-transform: uppercase !important;
+                  letter-spacing: 0.5px !important;
+                }
+                .table-wrap td p {
+                  font-size: 0.8125rem !important;
+                  margin: 0 !important;
+                }
+                .table-wrap td p + p {
+                  font-size: 0.7rem !important;
+                  margin-top: 1px !important;
+                }
+                .table-wrap td a {
+                  font-size: 0.8125rem !important;
+                }
+                .table-wrap td .badge {
+                  font-size: 0.7rem !important;
+                  padding: 2px 6px !important;
+                  border-radius: 4px !important;
+                  font-weight: 600 !important;
+                }
+                .table-wrap td span {
+                  font-size: 0.8125rem !important;
+                }
+                .table-wrap td span.text-muted, .table-wrap td span + span {
+                  font-size: 0.7rem !important;
+                }
+              `}</style>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', boxShadow: '0 1px 0 var(--color-border)' }}>
                   <tr>
@@ -1119,7 +1155,7 @@ export const ContactsPage: React.FC = () => {
                     {columns.find(c => c.id === 'created_at')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
                     {columns.find(c => c.id === 'interaction')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Tương tác</th>}
                     {columns.find(c => c.id === 'score')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Score</th>}
-                    <th style={{ width: 120, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}></th>
+                    {/* Hiding actions column header */}
                   </tr>
                 </thead>
 
@@ -1332,33 +1368,7 @@ export const ContactsPage: React.FC = () => {
                             </span>
                           </td>
                         )}
-                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', opacity: 0 }} className="row-actions">
-                            <button className="btn ghost sm" title="Xem hồ sơ" onClick={() => setProfileContact(c)}><Eye size={13} /></button>
-                            {['admin', 'superadmin', 'super_admin'].includes(user?.role || '') && (
-                              <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} title="Xóa"
-                                onClick={() => {
-                                  showConfirm({
-                                    title: 'Xóa liên hệ',
-                                    message: `Bạn có chắc chắn muốn xóa liên hệ ${fullName}? Hành động này không thể hoàn tác.`,
-                                    isDanger: true,
-                                    confirmText: 'Xóa',
-                                    onConfirm: async () => {
-                                      try {
-                                        await api.delete(`/contacts/${c.id}`);
-                                        setContacts(p => p.filter(x => x.id !== c.id));
-                                        addToast('Đã xóa liên hệ thành công', 'success');
-                                      } catch (e: any) {
-                                        addToast(e.response?.data?.message || 'Lỗi khi xóa liên hệ', 'error');
-                                      }
-                                    }
-                                  });
-                                }}>
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                        {/* Hiding row actions cell */}
                       </motion.tr>
                     );
                   })}

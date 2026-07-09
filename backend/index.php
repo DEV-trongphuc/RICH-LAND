@@ -105,6 +105,23 @@ function requireAuth(): array {
     if (!isset($payload['tenant_id']) || empty($payload['tenant_id'])) {
         $payload['tenant_id'] = 1;
     }
+
+    // Verify user actually exists and is active in the database (handles stale session tokens gracefully)
+    try {
+        $db = Database::getInstance();
+        $stmt = $db->prepare("SELECT id, role, full_name, email FROM users WHERE id = ? AND tenant_id = ? AND is_active = 1 LIMIT 1");
+        $stmt->execute([$payload['user_id'], $payload['tenant_id']]);
+        $dbUser = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$dbUser) {
+            respond(401, null, 'Tài khoản không tồn tại hoặc đã bị khóa. Vui lòng đăng nhập lại.', false);
+        }
+        $payload['role'] = $dbUser['role'] === 'sale' ? 'sales' : $dbUser['role'];
+        $payload['full_name'] = $dbUser['full_name'];
+        $payload['email'] = $dbUser['email'];
+    } catch (Throwable $e) {
+        // Fallback in case Database connection is not ready or has temporary issues during requireAuth
+    }
+
     // Normalize name and full_name keys to prevent Undefined array key warnings
     if (isset($payload['name']) && !isset($payload['full_name'])) {
         $payload['full_name'] = $payload['name'];

@@ -199,28 +199,43 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       Chưa có ghi chú nào. Hãy bắt đầu thảo luận!
                     </div>
                   ) : (
-                    comments.map((msg, i) => (
-                      <div key={msg.id || i} style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                        <Avatar name={msg.user_name || msg.user} src={msg.avatar_url} size={32} />
-                        <div style={{ maxWidth: '85%' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{(msg.created_at || msg.time) ? new Date(msg.created_at || msg.time).toLocaleString('vi-VN') : ''}</span>
-                          </div>
-                          <div style={{ 
-                            padding: '0.875rem 1.25rem', 
-                            borderRadius: '16px', 
-                            background: msg.is_internal ? 'var(--color-warning-light)' : 'var(--color-surface)',
-                            border: '1px solid var(--color-border)',
-                            color: 'var(--color-text)',
-                            fontSize: '0.9375rem', lineHeight: 1.5,
-                            borderTopLeftRadius: '4px'
-                          }}>
-                            {msg.body || msg.text}
+                    comments.map((msg, i) => {
+                      const isSelf = currentUser && String(msg.user_id) === String(currentUser.id);
+                      return (
+                        <div 
+                          key={msg.id || i} 
+                          style={{ 
+                            display: 'flex', 
+                            gap: '1rem', 
+                            flexDirection: isSelf ? 'row-reverse' : 'row', 
+                            alignSelf: isSelf ? 'flex-end' : 'flex-start',
+                            width: '100%'
+                          }}
+                        >
+                          <Avatar name={msg.user_name || msg.user} src={msg.avatar_url} size={32} />
+                          <div style={{ maxWidth: '85%', display: 'flex', flexDirection: 'column', alignItems: isSelf ? 'flex-end' : 'flex-start' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexDirection: isSelf ? 'row-reverse' : 'row' }}>
+                              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{(msg.created_at || msg.time) ? new Date(msg.created_at || msg.time).toLocaleString('vi-VN') : ''}</span>
+                            </div>
+                            <div style={{ 
+                              padding: '0.875rem 1.25rem', 
+                              borderRadius: '16px', 
+                              borderTopLeftRadius: isSelf ? '16px' : '4px',
+                              borderTopRightRadius: isSelf ? '4px' : '16px',
+                              background: isSelf ? 'rgba(201, 24, 43, 0.08)' : (msg.is_internal ? 'var(--color-warning-light)' : 'var(--color-surface)'),
+                              border: isSelf ? '1px solid rgba(201, 24, 43, 0.15)' : '1px solid var(--color-border)',
+                              color: 'var(--color-text)',
+                              fontSize: '0.9375rem', 
+                              lineHeight: 1.5,
+                              wordBreak: 'break-word'
+                            }}>
+                              {msg.body || msg.text}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
