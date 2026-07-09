@@ -1541,7 +1541,7 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '1rem', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingTop: '0.75rem', marginTop: '0.75rem', width: '100%' }}>
             <Pagination
               total={total}
               page={page}
