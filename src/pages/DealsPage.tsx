@@ -388,6 +388,31 @@ export const DealsPage: React.FC = () => {
   }, [pipelineView, teams]);
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('id') || urlParams.get('deal_id');
+    if (targetId) {
+      const did = Number(targetId);
+      if (did) {
+        api.get(`/deals/${did}`).then(res => {
+          if (res.data.success && res.data.data) {
+            setSelectedDeal(res.data.data);
+            setShowDealDrawer(true);
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('id');
+            newParams.delete('deal_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }).catch(err => {
+          console.error("Error loading deep link deal:", err);
+        });
+      }
+    }
+  }, [window.location.search]);
+
+  useEffect(() => {
     if (stages.length > 0) fetchData();
   }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, viewMode, allUsers, teams]);
 

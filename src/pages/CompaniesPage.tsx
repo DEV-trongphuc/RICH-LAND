@@ -87,6 +87,31 @@ export const CompaniesPage: React.FC = () => {
     setPage(1);
   }, [debouncedSearch, statusFilter]);
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('id') || urlParams.get('company_id');
+    if (targetId) {
+      const cid = Number(targetId);
+      if (cid) {
+        api.get(`/companies/${cid}`).then(res => {
+          if (res.data.success && res.data.data) {
+            setEditItem(res.data.data);
+            setShowModal(true);
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('id');
+            newParams.delete('company_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }).catch(err => {
+          console.error("Error loading deep link company:", err);
+        });
+      }
+    }
+  }, [window.location.search]);
+
   const openCreate = () => { setEditItem(null); setShowModal(true); };
   const openEdit = (c: any) => { setEditItem(c); setShowModal(true); };
 
