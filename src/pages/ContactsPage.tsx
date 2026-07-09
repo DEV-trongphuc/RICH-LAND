@@ -492,6 +492,22 @@ export const ContactsPage: React.FC = () => {
   }, [page, pageSize, debouncedSearch, sortBy, activeFilters, initialMetadataLoaded]);
 
   useEffect(() => {
+    const handleRefresh = () => {
+      if (initialMetadataLoaded) {
+        fetchData();
+      }
+    };
+    window.addEventListener('lead-claimed', handleRefresh);
+    window.addEventListener('lead-added', handleRefresh);
+    window.addEventListener('contact-updated', handleRefresh);
+    return () => {
+      window.removeEventListener('lead-claimed', handleRefresh);
+      window.removeEventListener('lead-added', handleRefresh);
+      window.removeEventListener('contact-updated', handleRefresh);
+    };
+  }, [initialMetadataLoaded]);
+
+  useEffect(() => {
     if (DEV_MODE) {
       const state = getFilteredMockState();
       let list = [...(state.users || [])];

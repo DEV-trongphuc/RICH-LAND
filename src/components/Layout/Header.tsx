@@ -227,7 +227,12 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         if (json.vacation_mode !== undefined) {
           setHeaderVacationMode(Boolean(Number(json.vacation_mode)));
         }
-        if (json.leads) {
+        if (json.uncontacted_count !== undefined) {
+          const count = Number(json.uncontacted_count) || 0;
+          setUncontactedCount(count);
+          sessionStorage.setItem('sale-uncontacted-count', String(count));
+          window.dispatchEvent(new CustomEvent('uncontacted-count-changed', { detail: count }));
+        } else if (json.leads) {
           const count = json.leads.filter((l: any) => 
             Number(l.is_accepted) === 1 && 
             l.contact_id && 
@@ -262,10 +267,14 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
     window.addEventListener('vacation-status-changed', handleVacationChange);
     window.addEventListener('checkin-status-changed', handleCheckInChange);
     window.addEventListener('contact-updated', handleContactUpdate);
+    window.addEventListener('lead-claimed', handleContactUpdate);
+    window.addEventListener('lead-added', handleContactUpdate);
     return () => {
       window.removeEventListener('vacation-status-changed', handleVacationChange);
       window.removeEventListener('checkin-status-changed', handleCheckInChange);
       window.removeEventListener('contact-updated', handleContactUpdate);
+      window.removeEventListener('lead-claimed', handleContactUpdate);
+      window.removeEventListener('lead-added', handleContactUpdate);
     };
   }, [user]);
 

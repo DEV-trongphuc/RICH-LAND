@@ -2300,13 +2300,40 @@ switch ($action) {
             $stmtP->close();
         }
 
-        $isAllowedToReport = true;
-
+        $uncontactedCount = 0;
+        if ($saleId > 0) {
+            $stmtKhtn = $conn->prepare("
+                SELECT COUNT(*) as cnt 
+                FROM contacts c
+                WHERE c.owner_id = ? 
+                  AND c.status != 'rejected'
+                  AND (
+                      c.pipeline_status = 'chua_xac_dinh'
+                      OR (
+                          c.pipeline_status = 'quan_tam'
+                          AND NOT EXISTS (
+                              SELECT 1 FROM notes n 
+                              WHERE n.entity_type = 'contact' 
+                                AND n.entity_id = c.id 
+                                AND n.user_id = c.owner_id
+                          )
+                      )
+                  )
+                  AND c.deleted_at IS NULL
+            ");
+            if ($stmtKhtn) {
+                $stmtKhtn->bind_param("i", $saleId);
+                $stmtKhtn->execute();
+                $uncontactedCount = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
+                $stmtKhtn->close();
+            }
+        }
         $leadRecallMinutes = (int) get_system_setting($conn, 'lead_recall_minutes');
 
         echo json_encode([
             'success' => true,
             'leads' => $leads,
+            'uncontacted_count' => $uncontactedCount,
             'total_count' => $totalCount,
             'rounds' => $rounds,
             'consultants' => $consultantsList,
