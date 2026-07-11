@@ -228,12 +228,14 @@ class DepositController {
             ");
             $stmt->execute([$auth['user_id'], $milestoneId, $id]);
 
-            // Fetch deposit details to link the invoice
+            // Fetch deposit details to link the invoice and notify owner
             $stmtDep = $this->db->prepare("
-                SELECT d.*, c.company_id, c.first_name, c.last_name, p.name as project_name 
+                SELECT d.*, c.company_id, c.first_name, c.last_name, p.name as project_name,
+                       u.email as owner_email, u.full_name as owner_name, u.zalo_chat_id as owner_zalo_chat_id
                 FROM deposits d
                 JOIN contacts c ON d.contact_id = c.id
                 LEFT JOIN projects p ON d.project_id = p.id
+                LEFT JOIN users u ON c.owner_id = u.id
                 WHERE d.id = ?
             ");
             $stmtDep->execute([$id]);
@@ -277,6 +279,43 @@ class DepositController {
 
             $this->db->commit();
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'APPROVE_DEPOSIT_MILESTONE', 'deposit_milestone', $milestoneId, "Duyệt đóng tiền đợt ID: $milestoneId");
+
+            // Email owner about milestone approval
+            if ($depositData && !empty($depositData['owner_email'])) {
+                try {
+                    require_once __DIR__ . '/../mailer.php';
+                    $emailSubject = "[RICH LAND] Phê duyệt đợt thanh toán cọc khách hàng: " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '');
+                    $emailTitle = "PHÊ DUYỆT ĐỢT THANH TOÁN CỌC";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($depositData['owner_name']) . "</strong>,<br/><br/>" .
+                                    "Đợt thanh toán <strong>" . htmlspecialchars($mileData['milestone_name']) . "</strong> của khách hàng <strong>" . htmlspecialchars($depositData['first_name'] . " " . ($depositData['last_name'] ?? '')) . "</strong> (Phiếu cọc #" . $id . ") đã được phê duyệt thành công bởi Admin.<br/>" .
+                                    "Số tiền đợt: <strong>" . number_format($total, 0, ',', '.') . " VND</strong>.<br/>" .
+                                    "Hệ thống đã tự động xuất hóa đơn tương ứng.<br/>" .
+                                    "Vui lòng kiểm tra thông tin trên RICH LAND CRM.";
+                    sendEmailNotification($depositData['owner_email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                } catch (Exception $mailEx) {
+                    error_log("Error sending deposit milestone approval email: " . $mailEx->getMessage());
+                }
+            }
+
+            // Zalo message if bot token and chat ID are configured
+            if ($depositData && !empty($depositData['owner_zalo_chat_id'])) {
+                try {
+                    $stmtToken = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+                    $botToken = $stmtToken ? $stmtToken->fetchColumn() : '';
+                    if (!empty($botToken)) {
+                        require_once __DIR__ . '/../zalo_bot.php';
+                        $zaloMsg = "✅ [ DUYỆT ĐỢT THANH TOÁN CỌC ]\n\n"
+                            . "Chào " . $depositData['owner_name'] . ", đợt thanh toán " . $mileData['milestone_name'] . " của khách hàng " . $depositData['first_name'] . " " . ($depositData['last_name'] ?? '') . " đã được phê duyệt thành công.\n"
+                            . "• Số tiền: " . number_format($total, 0, ',', '.') . " VND\n"
+                            . "• Trạng thái phiếu cọc: " . ($remaining === 0 ? "Đã duyệt hoàn tất (Approved)" : "Đang chờ thanh toán tiếp (Pending)") . "\n\n"
+                            . "Hệ thống đã tự động xuất hóa đơn tương ứng.";
+                        sendZaloMessage($botToken, $depositData['owner_zalo_chat_id'], $zaloMsg, false);
+                    }
+                } catch (Exception $zaloEx) {
+                    error_log("Error sending deposit milestone approval Zalo: " . $zaloEx->getMessage());
+                }
+            }
+
             respond(200, null, 'Phê duyệt đợt thanh toán cọc thành công');
         } catch (Exception $e) {
             $this->db->rollBack();

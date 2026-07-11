@@ -21,8 +21,25 @@ class CloudFileController {
         $contactId = $_GET['contact_id'] ?? '';
         $projectId = $_GET['project_id'] ?? '';
 
-        $where = ["cf.tenant_id = ?", "(cf.visibility = 'shared' OR cf.uploaded_by = ?)"];
-        $params = [$tid, $uid];
+        $role = $auth['role'] ?? '';
+        $isSale = $role === 'sales' || $role === 'sale';
+
+        if ($isSale) {
+            $where = [
+                "cf.tenant_id = ?",
+                "(
+                    cf.uploaded_by = ? 
+                    OR (
+                        cf.visibility = 'shared' 
+                        AND (cf.category NOT LIKE 'consultant_%' OR cf.category = ?)
+                    )
+                )"
+            ];
+            $params = [$tid, $uid, 'consultant_' . $uid];
+        } else {
+            $where = ["cf.tenant_id = ?"];
+            $params = [$tid];
+        }
 
         if ($cat) {
             $where[] = "cf.category = ?";
@@ -67,6 +84,13 @@ class CloudFileController {
 
     public function store(array $auth): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
+        
+        $b = getBody();
+        $category = $_POST['category'] ?? $b['category'] ?? 'general';
+        if (in_array($auth['role'], ['sales', 'sale'], true) && strpos($category, 'consultant_') === 0) {
+            respond(403, null, 'Bạn không có quyền tải lên tài liệu nhân sự (consultant_*)', false);
+        }
+
         if (empty($_FILES['file'])) respond(422, null, 'Vui lòng chọn tệp tin để tải lên', false);
         
         $file = $_FILES['file'];
@@ -83,7 +107,6 @@ class CloudFileController {
         $tid = $auth['tenant_id'];
         $uid = $auth['user_id'];
         $name = $_POST['name'] ?? $file['name'];
-        $category = $_POST['category'] ?? 'general';
         $visibility = $_POST['visibility'] ?? 'shared';
         $project_id = isset($_POST['project_id']) && $_POST['project_id'] !== '' ? (int)$_POST['project_id'] : null;
         $contact_id = isset($_POST['contact_id']) && $_POST['contact_id'] !== '' ? (int)$_POST['contact_id'] : null;
@@ -133,12 +156,17 @@ class CloudFileController {
         }
 
         // Permission check: Only uploader or admin/manager
-        $checkStmt = $this->db->prepare("SELECT uploaded_by FROM cloud_files WHERE id = ? AND tenant_id = ?");
+        $checkStmt = $this->db->prepare("SELECT uploaded_by, category FROM cloud_files WHERE id = ? AND tenant_id = ?");
         $checkStmt->execute([$id, $tid]);
         $file = $checkStmt->fetch();
         if (!$file) respond(404, null, 'Không tìm thấy tệp tin', false);
-        if (in_array($auth['role'], ['sales', 'sale'], true) && (int)$file['uploaded_by'] !== (int)$auth['user_id']) {
-            respond(403, null, 'Bạn không có quyền sửa thông tin tệp tin của người khác', false);
+        if (in_array($auth['role'], ['sales', 'sale'], true)) {
+            if ((int)$file['uploaded_by'] !== (int)$auth['user_id']) {
+                respond(403, null, 'Bạn không có quyền sửa thông tin tệp tin của người khác', false);
+            }
+            if (strpos($category, 'consultant_') === 0 || ($file['category'] && strpos($file['category'], 'consultant_') === 0)) {
+                respond(403, null, 'Bạn không có quyền cập nhật tài liệu nhân sự (consultant_*)', false);
+            }
         }
 
         $stmt = $this->db->prepare("
@@ -156,15 +184,20 @@ class CloudFileController {
         $tid = $auth['tenant_id'];
         
         // 1. Get file details first
-        $stmt = $this->db->prepare("SELECT file_path, uploaded_by FROM cloud_files WHERE id = ? AND tenant_id = ?");
+        $stmt = $this->db->prepare("SELECT file_path, uploaded_by, category FROM cloud_files WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $tid]);
         $file = $stmt->fetch();
         
         if (!$file) respond(404, null, 'Không tìm thấy tệp tin', false);
 
         // Permission check: Only uploader or admin/manager
-        if (in_array($auth['role'], ['sales', 'sale'], true) && (int)$file['uploaded_by'] !== (int)$auth['user_id']) {
-            respond(403, null, 'Bạn không có quyền xóa tệp tin của người khác', false);
+        if (in_array($auth['role'], ['sales', 'sale'], true)) {
+            if ((int)$file['uploaded_by'] !== (int)$auth['user_id']) {
+                respond(403, null, 'Bạn không có quyền xóa tệp tin của người khác', false);
+            }
+            if (strpos($file['category'], 'consultant_') === 0) {
+                respond(403, null, 'Bạn không có quyền xóa tài liệu nhân sự (consultant_*)', false);
+            }
         }
         $path = $file['file_path'];
 

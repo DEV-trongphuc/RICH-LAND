@@ -353,6 +353,24 @@ try {
         'tenant_id' => $tenantId
     ]);
 
+    $sales1Token = JWT::encode([
+        'username' => 'perm_s1_' . $suffix,
+        'email' => $sales1Email,
+        'role' => 'sales',
+        'user_id' => $sales1UserId,
+        'id' => $sales1UserId,
+        'tenant_id' => $tenantId
+    ]);
+
+    $sales2Token = JWT::encode([
+        'username' => 'perm_s2_' . $suffix,
+        'email' => $sales2Email,
+        'role' => 'sales',
+        'user_id' => $sales2UserId,
+        'id' => $sales2UserId,
+        'tenant_id' => $tenantId
+    ]);
+
     // Test 1: get_consultants
     $resConsultants = $callApi('get_consultants', 'GET', [], $mgrToken);
     $consultantsData = $resConsultants['data'] ?? [];
@@ -590,6 +608,85 @@ try {
         "Response: " . json_encode($resUndefinedAction, JSON_UNESCAPED_UNICODE)
     );
 
+    // Test 22: HR Documents (consultant_*) category isolation for Sales
+    // We insert a mock file belonging to Sales 1 with category 'consultant_([sales1UserId])'
+    $db->prepare("INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility) VALUES (?, ?, 'HR Doc S1', 'uploads/cloud/1/test_s1.pdf', 'application/pdf', 1024, ?, 'shared')")
+       ->execute([$tenantId, $adminUserId, 'consultant_' . $sales1UserId]);
+    $fileS1Id = (int)$db->lastInsertId();
+
+    // S1 requests files: should see their own HR Doc
+    $resS1List = $callApi('cloud-files', 'GET', [], $sales1Token);
+    $s1Files = $resS1List['data']['items'] ?? [];
+    $hasSelfFile = false;
+    foreach ($s1Files as $f) {
+        if ((int)$f['id'] === $fileS1Id) $hasSelfFile = true;
+    }
+
+    // S2 requests files: should NOT see Sales 1's HR Doc
+    $resS2List = $callApi('cloud-files', 'GET', [], $sales2Token);
+    $s2Files = $resS2List['data']['items'] ?? [];
+    $hasOtherFile = false;
+    foreach ($s2Files as $f) {
+        if ((int)$f['id'] === $fileS1Id) $hasOtherFile = true;
+    }
+
+    assertPermTest(
+        "HR Documents: Sales can only view their own consultant_* documents",
+        $hasSelfFile && !$hasOtherFile,
+        "S1 Has Self: " . ($hasSelfFile ? 'Yes' : 'No') . ", S2 Has Other: " . ($hasOtherFile ? 'Yes' : 'No') . ", S1 Resp: " . json_encode($resS1List, JSON_UNESCAPED_UNICODE)
+    );
+
+    // Test 23: HR Documents: Sales cannot upload, edit, or delete consultant_* files
+    // S1 tries to upload a file with category consultant_s2
+    $resS1UploadOther = $callApi('cloud-files', 'POST', ['category' => 'consultant_' . $sales2UserId, 'name' => 'Hack.pdf'], $sales1Token);
+    // S1 tries to delete the file
+    $resS1Delete = $callApi("cloud-files/$fileS1Id", 'DELETE', [], $sales1Token);
+
+    assertPermTest(
+        "HR Documents: Sales cannot upload or delete consultant_* documents",
+        $resS1UploadOther['http_status_code'] === 403 && $resS1Delete['http_status_code'] === 403,
+        "S1 Upload Code: {$resS1UploadOther['http_status_code']}, S1 Delete Code: {$resS1Delete['http_status_code']}"
+    );
+
+    // Test 24: Quotes Access Isolation for Sales
+    $quotePayload = [
+        'title' => 'E2E Quote S1 ' . $suffix,
+        'total' => 15000000.00,
+        'status' => 'draft'
+    ];
+    $resS1QuoteCreate = $callApi('quotes', 'POST', $quotePayload, $sales1Token);
+    $quoteId = isset($resS1QuoteCreate['data']['id']) ? (int)$resS1QuoteCreate['data']['id'] : 0;
+    if ($quoteId === 0) {
+        $quoteId = (int)$db->query("SELECT id FROM quotes ORDER BY id DESC LIMIT 1")->fetchColumn();
+    }
+
+    $resS1QuoteShow = $callApi("quotes/$quoteId", 'GET', [], $sales1Token);
+    $resS2QuoteShow = $callApi("quotes/$quoteId", 'GET', [], $sales2Token);
+
+    assertPermTest(
+        "Quotes: Access isolation for Sales",
+        isset($resS1QuoteShow['success']) && $resS1QuoteShow['success'] === true && isset($resS2QuoteShow['success']) && $resS2QuoteShow['success'] === false,
+        "S1 Show Code: " . ($resS1QuoteShow['http_status_code'] ?? 'null') . ", S2 Show Code: " . ($resS2QuoteShow['http_status_code'] ?? 'null')
+    );
+
+    // Test 25: Quotes Update/Delete constraints for Sales
+    $resS1QuoteDelete = $callApi("quotes/$quoteId", 'DELETE', [], $sales1Token);
+    $resS2QuoteUpdate = $callApi("quotes/$quoteId", 'PUT', ['title' => 'Hack Quote'], $sales2Token);
+
+    assertPermTest(
+        "Quotes: Sales cannot delete owned quotes or edit other's quotes",
+        $resS1QuoteDelete['http_status_code'] === 403 && $resS2QuoteUpdate['http_status_code'] === 404,
+        "S1 Delete Code: {$resS1QuoteDelete['http_status_code']}, S2 Update Code: {$resS2QuoteUpdate['http_status_code']}"
+    );
+
+    // Test 26: Quotes Role restrictions
+    $resViewerQuoteCreate = $callApi('quotes', 'POST', $quotePayload, $viewerToken);
+    assertPermTest(
+        "Quotes: Viewer role cannot create quotes",
+        $resViewerQuoteCreate['http_status_code'] === 403,
+        "Viewer Create Code: {$resViewerQuoteCreate['http_status_code']}"
+    );
+
     // Clean up temporary DB records
     $db->exec("SET FOREIGN_KEY_CHECKS = 0");
     $db->prepare("DELETE FROM users WHERE id IN (?, ?, ?, ?, ?, ?)")->execute([$salesUserId, $viewerUserId, $adminUserId, $mgrUserId, $sales1UserId, $sales2UserId]);
@@ -598,6 +695,8 @@ try {
     $db->prepare("DELETE FROM consultant_leaves WHERE consultant_id IN (?, ?)")->execute([$sales1UserId, $sales2UserId]);
     $db->prepare("DELETE FROM data_reports WHERE id IN (?, ?, ?)")->execute([$repS1Id, $repS2Id, $repS1Id_2]);
     $db->prepare("DELETE FROM distribution_logs WHERE id IN (?, ?)")->execute([$logS1Id, $logS2Id]);
+    $db->prepare("DELETE FROM cloud_files WHERE id = ?")->execute([$fileS1Id]);
+    $db->prepare("DELETE FROM quotes WHERE id = ?")->execute([$quoteId]);
     if ($supplierId) $db->prepare("DELETE FROM suppliers WHERE id = ?")->execute([$supplierId]);
     if ($companyId) $db->prepare("DELETE FROM companies WHERE id = ?")->execute([$companyId]);
     if ($projectId) $db->prepare("DELETE FROM projects WHERE id = ?")->execute([$projectId]);
