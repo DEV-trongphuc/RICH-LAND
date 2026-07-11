@@ -558,6 +558,29 @@ try {
             'notifications' => [
                 'idx_notifications_user_unread' => ['user_id', 'is_read'],
             ],
+            'deals' => [
+                'idx_deals_contact_id' => ['contact_id'],
+                'idx_deals_company_id' => ['company_id'],
+                'idx_deals_created_at' => ['created_at'],
+            ],
+            'invoices' => [
+                'idx_invoices_deal_id' => ['deal_id'],
+                'idx_invoices_contact_id' => ['contact_id'],
+                'idx_invoices_status' => ['status'],
+            ],
+            'quotes' => [
+                'idx_quotes_deal_id' => ['deal_id'],
+                'idx_quotes_contact_id' => ['contact_id'],
+            ],
+            'expenses' => [
+                'idx_expenses_project_id' => ['project_id'],
+                'idx_expenses_supplier_id' => ['supplier_id'],
+            ],
+            'tickets' => [
+                'idx_tickets_contact_id' => ['contact_id'],
+                'idx_tickets_assigned_to' => ['assigned_to'],
+                'idx_tickets_status' => ['status'],
+            ],
         ];
 
         foreach ($indices_to_create as $table => $indexes) {
