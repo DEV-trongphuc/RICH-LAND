@@ -54,6 +54,7 @@ export const SuppliersPage: React.FC = () => {
   });
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchSuppliers = async () => {
     if (DEV_MODE) {
@@ -120,7 +121,9 @@ export const SuppliersPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSaving) return;
     try {
+      setIsSaving(true);
       if (selectedSupplier) {
         await api.put(`/suppliers/${selectedSupplier.id}`, formData);
         addToast('Đã cập nhật chủ đầu tư', 'success');
@@ -132,6 +135,8 @@ export const SuppliersPage: React.FC = () => {
       fetchSuppliers();
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi lưu dữ liệu', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -773,8 +778,8 @@ export const SuppliersPage: React.FC = () => {
 
                     <div className="modal-footer">
                       <button type="button" className="btn secondary" onClick={() => setShowModal(false)}>Hủy bỏ</button>
-                      <button type="submit" className="btn primary">
-                        {selectedSupplier ? 'Lưu thay đổi' : 'Tạo chủ đầu tư'}
+                      <button type="submit" className="btn primary" disabled={isSaving}>
+                        {isSaving ? 'Đang lưu...' : (selectedSupplier ? 'Lưu thay đổi' : 'Tạo chủ đầu tư')}
                       </button>
                     </div>
                   </form>

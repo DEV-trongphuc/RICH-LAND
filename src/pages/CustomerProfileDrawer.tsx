@@ -72,6 +72,14 @@ const EditHistoryIndicator = ({ history }: { history: any }) => {
   );
 };
 
+const tempLabels: Record<string, { label: string; color: string; bg: string }> = {
+  hot: { label: '🌋 Sôi', color: '#b91c1c', bg: 'rgba(185, 28, 28, 0.1)' },
+  warm: { label: '🔥 Nóng', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+  neutral: { label: '☀️ Ấm', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+  cool: { label: '🍃 Nguội', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+  cold: { label: '❄️ Lạnh', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' }
+};
+
 /* ─── Types ─────────────────────────────────────────────────── */
 interface Props {
   isOpen: boolean;
@@ -873,7 +881,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [noteDuration, setNoteDuration] = useState<string>('');
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
   const [noteObstacle, setNoteObstacle] = useState<string>('');
-  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; attachment_url?: string | null; edit_history?: any }[]>([]);
+  const [noteSaleTemp, setNoteSaleTemp] = useState<'cold' | 'cool' | 'neutral' | 'warm' | 'hot' | ''>('');
+  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; attachment_url?: string | null; edit_history?: any; channel?: string; note_type?: string; duration_minutes?: number; stuck_tag?: string; suggested_temperature?: string; sale_temperature?: string; documents_sent?: string }[]>([]);
+  
+  const calculatedSuggestedTemp = useMemo(() => {
+    if (noteChannel === 'meet') {
+      return 'warm'; // Nóng
+    }
+    const durationSec = parseInt(noteDuration, 10) || 0;
+    if (noteChannel === 'call' && durationSec > 300 && notes.length >= 2) {
+      return 'neutral'; // Ấm
+    }
+    return 'cold'; // Lạnh
+  }, [noteChannel, noteDuration, notes.length]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
   const [users, setUsers] = useState<any[]>([]);
@@ -1500,7 +1520,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           user: n.user_name || 'Hệ thống',
           user_id: n.user_id,
           attachment_url: n.attachment_url,
-          edit_history: n.edit_history
+          edit_history: n.edit_history,
+          channel: n.channel,
+          note_type: n.note_type,
+          duration_minutes: n.duration_minutes,
+          stuck_tag: n.stuck_tag,
+          sale_temperature: n.sale_temperature,
+          suggested_temperature: n.suggested_temperature,
+          documents_sent: n.documents_sent
         })));
       }
 
@@ -1982,9 +2009,43 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         uploadedUrl = res.data.data?.url ?? '';
       }
 
+      const channelMap: Record<string, string> = {
+        text: 'noi_dat',
+        call: 'noi_dong',
+        meet: 'noi_ap_suat'
+      };
+
+      const typeMap: Record<string, string> = {
+        normal: 'regular',
+        quality: 'quality'
+      };
+
+      const obstacleMap: Record<string, string> = {
+        trust: 'sales',
+        project: 'project',
+        unit: 'unit',
+        smooth: 'smooth',
+        other: 'sales'
+      };
+
+      const docsArray = noteDocsSent ? noteDocsSent.split(', ').map(d => d.trim()) : [];
+      const docsFinal = docsArray.map(d => d === 'Khác' ? (customDocs.trim() || 'Khác') : d).filter(Boolean).join(', ');
+
       await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
-        body: text, type: 'internal', attachment_url: uploadedUrl || null
+        body: text,
+        type: 'internal',
+        attachment_url: uploadedUrl || null,
+        channel: channelMap[noteChannel] || 'noi_dat',
+        note_type: typeMap[noteType] || 'regular',
+        duration_minutes: noteChannel === 'call' ? Math.ceil((parseInt(noteDuration, 10) || 0) / 60) : 0,
+        client_feedback: customObstacle.trim() || null,
+        stuck_tag: noteObstacle === 'other' ? (customObstacle.trim() || 'sales') : (obstacleMap[noteObstacle] || null),
+        suggested_temperature: calculatedSuggestedTemp,
+        sale_temperature: noteSaleTemp || calculatedSuggestedTemp,
+        documents_sent: docsFinal || null,
+        is_heritage: 0
       });
+
       setNewNote('');
       if (noteAttachmentPreview) {
         URL.revokeObjectURL(noteAttachmentPreview);
@@ -1998,8 +2059,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setCustomDocs('');
       setNoteObstacle('');
       setCustomObstacle('');
+      setNoteSaleTemp('');
       fetchData(); // Reload all to stay in sync
-      addToast('Đã lưu ghi chú', 'success');
+      addToast('Đã lưu ghi chú và cập nhật nhiệt độ!', 'success');
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi lưu ghi chú', 'error');
     } finally {
@@ -3013,6 +3075,40 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 8px', fontSize: '0.6875rem', borderRadius: '6px' }}>
                           {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
                         </span>
+                        {formData.temperature && tempLabels[formData.temperature] && (
+                          <span 
+                            style={{ 
+                              padding: '2px 8px', 
+                              fontSize: '0.6875rem', 
+                              borderRadius: '6px',
+                              fontWeight: 700,
+                              color: tempLabels[formData.temperature].color,
+                              background: tempLabels[formData.temperature].bg,
+                              border: `1px solid ${tempLabels[formData.temperature].color}33`,
+                              marginLeft: '6px'
+                            }}
+                            title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
+                          >
+                            Nhiệt: {tempLabels[formData.temperature].label}
+                          </span>
+                        )}
+                        {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
+                          <span 
+                            style={{ 
+                              padding: '2px 8px', 
+                              fontSize: '0.6875rem', 
+                              borderRadius: '6px',
+                              fontWeight: 600,
+                              color: '#64748b',
+                              background: 'var(--color-bg)',
+                              border: '1px solid var(--color-border-light)',
+                              marginLeft: '6px'
+                            }}
+                            title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
+                          >
+                            🤖 {tempLabels[formData.suggested_temperature].label}
+                          </span>
+                        )}
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '6px', flexWrap: 'wrap' }}>
@@ -3144,6 +3240,38 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>
                               {formData.status === 'customer' ? 'VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
                             </span>
+                            {formData.temperature && tempLabels[formData.temperature] && (
+                              <span 
+                                style={{ 
+                                  padding: '2px 6px', 
+                                  fontSize: '0.625rem', 
+                                  borderRadius: '4px',
+                                  fontWeight: 700,
+                                  color: tempLabels[formData.temperature].color,
+                                  background: tempLabels[formData.temperature].bg,
+                                  border: `1px solid ${tempLabels[formData.temperature].color}33`
+                                }}
+                                title={`Nhiệt độ sale chốt: ${tempLabels[formData.temperature].label}`}
+                              >
+                                {tempLabels[formData.temperature].label}
+                              </span>
+                            )}
+                            {formData.suggested_temperature && tempLabels[formData.suggested_temperature] && (
+                              <span 
+                                style={{ 
+                                  padding: '2px 6px', 
+                                  fontSize: '0.625rem', 
+                                  borderRadius: '4px',
+                                  fontWeight: 600,
+                                  color: '#64748b',
+                                  background: 'var(--color-bg)',
+                                  border: '1px solid var(--color-border-light)'
+                                }}
+                                title={`Máy đề xuất: ${tempLabels[formData.suggested_temperature].label}`}
+                              >
+                                🤖 {tempLabels[formData.suggested_temperature].label}
+                              </span>
+                            )}
                             {formData.not_lead_proposed === 1 && (
                               <span className="badge danger" style={{ padding: '2px 6px', fontSize: '0.625rem', borderRadius: '4px' }}>Chờ duyệt loại</span>
                             )}
@@ -4047,7 +4175,41 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   >
                                     <div>
                                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                                        <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap', flex: 1 }}>{formatNote(n.text)}</p>
+                                        <div style={{ flex: 1 }}>
+                                          <p style={{ fontSize: '0.9rem', lineHeight: 1.5, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
+                                        
+                                        {/* Hiển thị thông tin ghi chú cấu trúc Bếp Đun Nước */}
+                                        {(n.channel || n.stuck_tag || n.sale_temperature || n.note_type === 'quality' || n.documents_sent) && (
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', marginBottom: '4px' }}>
+                                            {n.channel && (
+                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)' }}>
+                                                {n.channel === 'noi_dat' ? '🟫 Nồi Đất' : n.channel === 'noi_dong' ? '🟨 Nồi Đồng' : '🟥 Nồi Áp Suất'}
+                                                {n.channel === 'noi_dong' && n.duration_minutes ? ` (${n.duration_minutes}m)` : ''}
+                                              </span>
+                                            )}
+                                            {n.note_type === 'quality' && (
+                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                                                ⭐ Chất lượng
+                                              </span>
+                                            )}
+                                            {n.stuck_tag && (
+                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--color-danger)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                                                📍 Vướng: {n.stuck_tag === 'sales' ? 'Sales' : n.stuck_tag === 'project' ? 'Dự án' : n.stuck_tag === 'unit' ? 'Căn' : n.stuck_tag === 'smooth' ? 'Đang xuôi' : n.stuck_tag}
+                                              </span>
+                                            )}
+                                            {n.sale_temperature && tempLabels[n.sale_temperature] && (
+                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: tempLabels[n.sale_temperature].bg, color: tempLabels[n.sale_temperature].color, border: `1px solid ${tempLabels[n.sale_temperature].color}33` }}>
+                                                🌡️ {tempLabels[n.sale_temperature].label}
+                                              </span>
+                                            )}
+                                            {n.documents_sent && (
+                                              <span style={{ fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }} title={n.documents_sent}>
+                                                📁 Đã gửi tài liệu
+                                              </span>
+                                            )}
+                                          </div>
+                                        )}
+                                        </div>
                                         <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
                                           {canDeleteNote(n.user_id) && (
                                             <>
@@ -6870,6 +7032,44 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </span>
                       </div>
                     )}
+                    {/* Nhiệt độ khách hàng & Máy đoán đề xuất */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '0.5rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block' }}>
+                        Nhiệt độ khách hàng (Sale chốt)
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {[
+                          { id: 'cold', label: '❄️ Lạnh', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
+                          { id: 'cool', label: '🍃 Nguội', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
+                          { id: 'neutral', label: '☀️ Ấm', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
+                          { id: 'warm', label: '🔥 Nóng', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
+                          { id: 'hot', label: '🌋 Sôi', color: 'rgba(185, 28, 28, 0.1)', border: 'rgba(185, 28, 28, 0.2)', text: '#b91c1c' }
+                        ].map(item => {
+                          const isSelected = noteSaleTemp === item.id || (noteSaleTemp === '' && calculatedSuggestedTemp === item.id);
+                          return (
+                            <button
+                              key={item.id}
+                              type="button"
+                              onClick={() => setNoteSaleTemp(item.id as any)}
+                              style={{
+                                padding: '6px 14px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                background: isSelected ? item.color : 'var(--color-bg)',
+                                color: isSelected ? item.text : 'var(--color-text-muted)',
+                                border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
+                                boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                              }}
+                            >
+                              {item.label}
+                              {calculatedSuggestedTemp === item.id && (
+                                <span style={{ marginLeft: '6px', fontSize: '0.65rem', background: 'rgba(100, 116, 139, 0.2)', padding: '2px 6px', borderRadius: '10px', color: 'var(--color-text)' }}>
+                                  Máy đoán
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </>
                 )}
 

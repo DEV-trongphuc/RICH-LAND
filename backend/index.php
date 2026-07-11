@@ -396,7 +396,7 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $applied = $db->query("SELECT migration FROM schema_migrations")->fetchAll(PDO::FETCH_COLUMN) ?: [];
-    $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql'];
+    $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql', 'migrate_pipeline_stage_slugs.sql'];
     
     foreach ($sqlFiles as $file) {
         if (!in_array($file, $applied, true)) {

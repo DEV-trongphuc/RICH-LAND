@@ -130,6 +130,7 @@ export default function CooperationSlipsPage() {
   const [signingSlip, setSigningSlip] = useState<CooperationSlip | null>(null);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
   const [uploadedSignatureImg, setUploadedSignatureImg] = useState<string | null>(null);
+  const [isSigning, setIsSigning] = useState(false);
 
   // Custom Confirm/Prompt Modal state
   const [customConfirm, setCustomConfirm] = useState<{
@@ -571,6 +572,7 @@ export default function CooperationSlipsPage() {
 
   const handleSignSlip = async (slipId: number, signatureImg: string) => {
     try {
+      setIsSigning(true);
       const res = await fetchAPI(`cooperation-slips/${slipId}/sign`, { 
         method: 'POST',
         body: JSON.stringify({ signature_img: signatureImg })
@@ -585,6 +587,8 @@ export default function CooperationSlipsPage() {
       }
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setIsSigning(false);
     }
   };
 
@@ -1357,6 +1361,7 @@ export default function CooperationSlipsPage() {
 
             <button
               onClick={() => {
+                if (isSigning) return;
                 if (signatureMethod === 'upload') {
                   if (!uploadedSignatureImg) {
                     alert('Vui lòng tải file ảnh chữ ký của bạn lên trước khi bấm xác nhận.');
@@ -1381,10 +1386,11 @@ export default function CooperationSlipsPage() {
                   handleSignSlip(signingSlip.id, signatureImg);
                 }
               }}
+              disabled={isSigning}
               className="btn primary w-full"
-              style={{ height: '42px', fontWeight: 700 }}
+              style={{ height: '42px', fontWeight: 700, opacity: isSigning ? 0.7 : 1, cursor: isSigning ? 'not-allowed' : 'pointer' }}
             >
-              Tôi đồng ý và Ký xác nhận
+              {isSigning ? 'Đang xử lý chữ ký số...' : 'Tôi đồng ý và Ký xác nhận'}
             </button>
           </div>
         </div>,

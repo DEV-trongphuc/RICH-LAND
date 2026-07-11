@@ -1687,8 +1687,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setLoading(false);
   };
 
+  const [togglingVacation, setTogglingVacation] = useState(false);
+
   const handleTogglePortalVacation = async () => {
+    if (togglingVacation) return;
     try {
+      setTogglingVacation(true);
       const json = await fetchAPI('toggle_consultant_vacation', {
         method: 'POST',
         body: JSON.stringify({ id: displayUser?.consultant_id })
@@ -1703,6 +1707,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       }
     } catch (err: any) {
       toast.error(t('Lỗi kết nối: ') + err.message);
+    } finally {
+      setTogglingVacation(false);
     }
   };
 

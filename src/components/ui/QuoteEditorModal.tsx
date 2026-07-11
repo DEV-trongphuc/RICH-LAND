@@ -215,6 +215,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
   const total = subtotal - (Number(form.discount) || 0) + taxAmount;
 
   const handleSave = async () => {
+    if (loading) return;
     if (!form.title) return addToast('Vui lòng nhập tiêu đề báo giá', 'warning');
     if (!selectedContact) return addToast('Vui lòng chọn khách hàng', 'warning');
     if (items.length === 0) return addToast('Báo giá phải có ít nhất 1 sản phẩm', 'warning');

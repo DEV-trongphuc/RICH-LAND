@@ -459,7 +459,8 @@ class ContactController {
             'birthday','address','city','ward',
             'expected_revenue','win_probability','last_contact','stage_id',
             'pipeline_status', 'ttl1_completed', 'ttl1_data',
-            'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range'
+            'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
+            'temperature', 'suggested_temperature'
         ];
         $sets = []; $params = [];
         
@@ -870,45 +871,16 @@ class ContactController {
     }
 
     private function getSlugFromStageId(int $stageId, int $tenantId): string {
-        $stmt = $this->db->prepare("SELECT id, order_index FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
-        $stmt->execute([$tenantId]);
-        $stages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $stmtH = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
-        $stmtH->execute();
-        $hierarchyJson = $stmtH->fetchColumn();
-        $hierarchy = $hierarchyJson ? json_decode($hierarchyJson, true) : [];
-        if (empty($hierarchy)) {
-            $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
-        }
-
-        foreach ($stages as $idx => $stage) {
-            if ((int)$stage['id'] === $stageId) {
-                return $hierarchy[$idx] ?? 'chua_xac_dinh';
-            }
-        }
-        return 'chua_xac_dinh';
+        $stmt = $this->db->prepare("SELECT system_slug FROM pipeline_stages WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$stageId, $tenantId]);
+        $slug = $stmt->fetchColumn();
+        return $slug ?: 'chua_xac_dinh';
     }
 
     private function getStageIdFromSlug(string $slug, int $tenantId): int {
-        $stmt = $this->db->prepare("SELECT id, order_index FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
-        $stmt->execute([$tenantId]);
-        $stages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $stmtH = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
-        $stmtH->execute();
-        $hierarchyJson = $stmtH->fetchColumn();
-        $hierarchy = $hierarchyJson ? json_decode($hierarchyJson, true) : [];
-        if (empty($hierarchy)) {
-            $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
-        }
-
-        foreach ($hierarchy as $idx => $s) {
-            if ($s === $slug) {
-                return isset($stages[$idx]) ? (int)$stages[$idx]['id'] : 0;
-            }
-        }
-        return 0;
+        $stmt = $this->db->prepare("SELECT id FROM pipeline_stages WHERE system_slug = ? AND tenant_id = ? LIMIT 1");
+        $stmt->execute([$slug, $tenantId]);
+        return (int)($stmt->fetchColumn() ?: 0);
     }
 
     public function releaseDatabank(array $auth, int $id): void {

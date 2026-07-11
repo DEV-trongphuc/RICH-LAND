@@ -81,6 +81,7 @@ export const DealsPage: React.FC = () => {
     isCancellation?: boolean;
     hasRevenue?: 'yes' | 'no' | null;
   } | null>(null);
+  const [isConfirmingTransition, setIsConfirmingTransition] = useState(false);
   const [stagePickerItem, setStagePickerItem] = useState<{ id: number, fromStageId: number } | null>(null);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -486,7 +487,7 @@ export const DealsPage: React.FC = () => {
   };
 
   const handleConfirmTransition = async () => {
-    if (!transitionModal) return;
+    if (!transitionModal || isConfirmingTransition) return;
 
     if (transitionModal.isCancellation) {
       if (!transitionModal.hasRevenue) {
@@ -502,6 +503,7 @@ export const DealsPage: React.FC = () => {
     if (!transitionModal.note.trim()) { addToast('Vui lòng nhập ghi chú bắt buộc (Audit Trail)', 'warning'); return; }
 
     try {
+      setIsConfirmingTransition(true);
       const endpoint = pipelineView === 'contacts' ? `/contacts/${transitionModal.itemId}/stage` : (pipelineView === 'companies' ? `/companies/${transitionModal.itemId}/stage` : `/deals/${transitionModal.itemId}/stage`);
       await api.patch(endpoint, { 
         stage_id: transitionModal.toStage,
@@ -519,9 +521,25 @@ export const DealsPage: React.FC = () => {
       } else {
         addToast('Đã chuyển trạng thái & lưu Audit Log', 'success');
       }
-    } catch (err: any) { addToast(err.response?.data?.message || 'Lỗi khi di chuyển thẻ', 'error'); }
-    
-    setTransitionModal(null);
+    } catch (err: any) { 
+      addToast(err.response?.data?.message || 'Lỗi khi di chuyển thẻ', 'error'); 
+    } finally {
+      setIsConfirmingTransition(false);
+      setTransitionModal(null);
+    }
+  };
+
+  const handleSaveDeal = async (formData: any) => {
+    try {
+      if (selectedDeal) {
+        await api.put(`/deals/${selectedDeal.id}`, formData);
+        addToast('Đã cập nhật cơ hội thành công', 'success');
+      }
+      setShowDealDrawer(false);
+      fetchData();
+    } catch (err: any) {
+      addToast(err.response?.data?.message || 'Lỗi khi lưu cơ hội', 'error');
+    }
   };
 
   const totalRevenue = Object.values(filteredItems).flat().reduce((sum, d) => sum + (Number(d.expected_revenue) || Number(d.value) || 0), 0);
@@ -1227,7 +1245,7 @@ export const DealsPage: React.FC = () => {
           isOpen={showDealDrawer}
           onClose={() => setShowDealDrawer(false)}
           deal={selectedDeal}
-          onSave={() => fetchData()}
+          onSave={handleSaveDeal}
           stages={stages}
         />
       )}
@@ -1413,17 +1431,18 @@ export const DealsPage: React.FC = () => {
                 )}
                 
                 <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                  <button className="btn outline" onClick={() => setTransitionModal(null)}>Hủy</button>
+                  <button className="btn outline" onClick={() => setTransitionModal(null)} disabled={isConfirmingTransition}>Hủy</button>
                   <button 
                     className="btn primary" 
                     onClick={handleConfirmTransition}
                     disabled={
-                      transitionModal.isCancellation 
+                      isConfirmingTransition ||
+                      (transitionModal.isCancellation 
                         ? (transitionModal.hasRevenue === 'yes' || !transitionModal.hasRevenue || !transitionModal.note.trim())
-                        : !transitionModal.note.trim()
+                        : !transitionModal.note.trim())
                     }
                   >
-                    Lưu cập nhật
+                    {isConfirmingTransition ? 'Đang lưu...' : 'Lưu cập nhật'}
                   </button>
                 </div>
               </motion.div>

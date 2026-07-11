@@ -1762,6 +1762,26 @@ try {
         $conn->query("ALTER TABLE notes ADD COLUMN attachment_url VARCHAR(500) DEFAULT NULL");
     }
 
+    // Bếp Đun Nước (Luồng 3): Bổ sung các cột ghi chú cấu trúc
+    $newNoteCols = [
+        'channel' => 'VARCHAR(50) DEFAULT NULL',
+        'note_type' => 'VARCHAR(50) DEFAULT NULL',
+        'duration_minutes' => 'INT DEFAULT 0',
+        'client_feedback' => 'TEXT DEFAULT NULL',
+        'stuck_tag' => 'VARCHAR(100) DEFAULT NULL',
+        'suggested_temperature' => 'VARCHAR(20) DEFAULT NULL',
+        'sale_temperature' => 'VARCHAR(20) DEFAULT NULL',
+        'documents_sent' => 'TEXT DEFAULT NULL',
+        'is_heritage' => 'TINYINT(1) DEFAULT 0'
+    ];
+    foreach ($newNoteCols as $col => $definition) {
+        $chkCol = $conn->query("SHOW COLUMNS FROM notes LIKE '$col'");
+        if ($chkCol && $chkCol->num_rows === 0) {
+            $conn->query("ALTER TABLE notes ADD COLUMN `$col` $definition");
+            $logMsg("Đã bổ sung cột `$col` vào bảng `notes`", "success");
+        }
+    }
+
     // Self-healing check: ensure detailed fields exist in suppliers table
     $newSupplierCols = [
         'contact_position' => 'VARCHAR(255) DEFAULT NULL',

@@ -8891,14 +8891,14 @@ switch ($action) {
                     
                     if (isset($existingStages[$idx])) {
                         $stageId = (int)$existingStages[$idx]['id'];
-                        $stmtUp = $conn->prepare("UPDATE pipeline_stages SET name = ?, color = ?, order_index = ?, is_won = ?, is_lost = ? WHERE id = ?");
-                        $stmtUp->bind_param("ssiiii", $name, $color, $idx, $isWon, $isLost, $stageId);
+                        $stmtUp = $conn->prepare("UPDATE pipeline_stages SET name = ?, color = ?, order_index = ?, is_won = ?, is_lost = ?, system_slug = ? WHERE id = ?");
+                        $stmtUp->bind_param("ssiiiisi", $name, $color, $idx, $isWon, $isLost, $slug, $stageId);
                         $stmtUp->execute();
                         $stmtUp->close();
                         $keepIds[] = $stageId;
                     } else {
-                        $stmtIns = $conn->prepare("INSERT INTO pipeline_stages (tenant_id, name, color, order_index, is_won, is_lost) VALUES (?, ?, ?, ?, ?, ?)");
-                        $stmtIns->bind_param("issiii", $tenantId, $name, $color, $idx, $isWon, $isLost);
+                        $stmtIns = $conn->prepare("INSERT INTO pipeline_stages (tenant_id, name, color, order_index, is_won, is_lost, system_slug) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                        $stmtIns->bind_param("issiiis", $tenantId, $name, $color, $idx, $isWon, $isLost, $slug);
                         $stmtIns->execute();
                         $keepIds[] = (int)$stmtIns->insert_id;
                         $stmtIns->close();

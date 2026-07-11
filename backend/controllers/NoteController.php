@@ -99,21 +99,48 @@ class NoteController {
 
         $b = getBody();
         if (empty($b['body'])) respond(422, null, 'Nội dung ghi chú là bắt buộc', false);
+        
         $this->db->prepare("
-            INSERT INTO notes (tenant_id, user_id, entity_type, entity_id, body, type, parent_id, is_pinned, attachment_url)
-            VALUES (?,?,?,?,?,?,?,?,?)
+            INSERT INTO notes (
+                tenant_id, user_id, entity_type, entity_id, body, type, parent_id, is_pinned, attachment_url,
+                channel, note_type, duration_minutes, client_feedback, stuck_tag, suggested_temperature, sale_temperature, documents_sent, is_heritage
+            )
+            VALUES (?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $auth['user_id'], $type, $entityId,
             $b['body'], $b['type'] ?? 'internal',
             $b['parent_id'] ?? null, $b['is_pinned'] ?? 0,
-            $b['attachment_url'] ?? null
+            $b['attachment_url'] ?? null,
+            $b['channel'] ?? null,
+            $b['note_type'] ?? 'regular',
+            (int)($b['duration_minutes'] ?? 0),
+            $b['client_feedback'] ?? null,
+            $b['stuck_tag'] ?? null,
+            $b['suggested_temperature'] ?? null,
+            $b['sale_temperature'] ?? null,
+            $b['documents_sent'] ?? null,
+            (int)($b['is_heritage'] ?? 0)
         ]);
         $id = (int)$this->db->lastInsertId();
 
         // Maintain quyen_truy_cap audit log for Cooperation Slips
         if ($type === 'contact') {
-            // Update last_contact on contact to mark as contacted
-            $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")->execute([$entityId, $auth['tenant_id']]);
+            // Update last_contact on contact to mark as contacted, and update temperature/suggested_temperature
+            $updateSql = "UPDATE contacts SET last_contact = CURRENT_DATE";
+            $updateParams = [];
+            if (!empty($b['sale_temperature'])) {
+                $updateSql .= ", temperature = ?";
+                $updateParams[] = $b['sale_temperature'];
+            }
+            if (!empty($b['suggested_temperature'])) {
+                $updateSql .= ", suggested_temperature = ?";
+                $updateParams[] = $b['suggested_temperature'];
+            }
+            $updateSql .= " WHERE id = ? AND tenant_id = ?";
+            $updateParams[] = $entityId;
+            $updateParams[] = $auth['tenant_id'];
+
+            $this->db->prepare($updateSql)->execute($updateParams);
 
             $stmtOwner = $this->db->prepare("SELECT owner_id FROM contacts WHERE id = ?");
             $stmtOwner->execute([$entityId]);

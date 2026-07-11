@@ -1692,7 +1692,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
             return "Failed Gate 2: No approved check-in for today";
         }
     } else if ($dayOfWeek == 7) { // Sun
-        // Chủ nhật = cơ chế đăng ký tự nguyện như ca đêm (đăng ký cuối tuần)
+        // Chủ nhật = cơ chế đăng ký tự nguyện như ca đêm (đăng ký cuối tuần) + selfie check-in
         $todayStr = date('Y-m-d');
         $stmtCheckReg = $conn->prepare("SELECT 1 FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
         $stmtCheckReg->bind_param("is", $consultantId, $todayStr);
@@ -1701,6 +1701,16 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         $stmtCheckReg->close();
         if (!$hasReg) {
             return "Failed Gate 2: No weekend registration for Sunday";
+        }
+
+        // Đảm bảo phải có selfie check-in được duyệt trong ngày Chủ Nhật
+        $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
+        $stmtCheck->bind_param("is", $consultantId, $todayStr);
+        $stmtCheck->execute();
+        $hasCheckIn = $stmtCheck->get_result()->fetch_assoc();
+        $stmtCheck->close();
+        if (!$hasCheckIn) {
+            return "Failed Gate 2: No approved selfie check-in today (Sunday)";
         }
     }
 
@@ -1740,6 +1750,13 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
                       WHERE n.entity_type = 'contact' 
                         AND n.entity_id = c.id 
                         AND n.user_id = c.owner_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM activities a
+                      WHERE a.related_type = 'contact'
+                        AND a.related_id = c.id
+                        AND a.user_id = c.owner_id
+                        AND a.status = 'done'
                   )
               )
           )
@@ -3336,13 +3353,18 @@ function ensurePersonAndContact($conn, $leadId) {
         }
 
         if (!$hasOwnerContact) {
+            $initTemp = 'cold'; // Mặc định lạnh cho các nguồn MKT (R3, R2, R3_Fb, Messenger...)
+            if ($source === 'gioi_thieu' || $source === 'ca_nhan') {
+                $initTemp = 'neutral'; // Ấm sẵn cho khách cá nhân hoặc giới thiệu
+            }
+
             $stmtContact = $conn->prepare("
-                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?)
+                INSERT INTO contacts (person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, security_expires_at, notes, customer_type, temperature, suggested_temperature)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', ?, ?, ?, ?, ?)
             ");
             if ($stmtContact) {
                 $createdBy = 1;
-                $stmtContact->bind_param("iiiissssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type);
+                $stmtContact->bind_param("iiiissssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type, $initTemp, $initTemp);
                 $stmtContact->execute();
                 $stmtContact->close();
             }

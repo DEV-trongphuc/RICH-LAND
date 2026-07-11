@@ -79,6 +79,7 @@ export default function InventoryPage() {
   const [exportForm, setExportForm] = useState({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' });
   const [adjustForm, setAdjustForm] = useState({ new_qty: '', reason: 'Điều chỉnh kiểm kho' });
   const [receivers, setReceivers] = useState<{value: string, label: string, sublabel?: string, avatar?: string}[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { showConfirm, addToast, closeConfirm } = useUIStore();
 
@@ -208,9 +209,10 @@ export default function InventoryPage() {
 
   const handleInternalExport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBatch) return;
+    if (!selectedBatch || isSaving) return;
     
     try {
+      setIsSaving(true);
       const res = await api.post('/inventory/export', {
         batch_id: selectedBatch.id,
         qty: Number(exportForm.qty),
@@ -226,14 +228,17 @@ export default function InventoryPage() {
       }
     } catch (err: any) {
       addToast('Không thể kết nối máy chủ', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleAdjust = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedBatch) return;
+    if (!selectedBatch || isSaving) return;
     
     try {
+      setIsSaving(true);
       const res = await api.post('/inventory/adjust', {
         batch_id: selectedBatch.id,
         new_qty: Number(adjustForm.new_qty),
@@ -248,6 +253,8 @@ export default function InventoryPage() {
       }
     } catch (err: any) {
       addToast('Không thể kết nối máy chủ', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -778,8 +785,10 @@ export default function InventoryPage() {
                   </AnimatePresence>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn outline" onClick={() => setShowExportModal(false)}>Hủy bỏ</button>
-                  <button type="submit" className="btn primary" style={{ minWidth: '140px' }}>Xác nhận xuất</button>
+                  <button type="button" className="btn outline" onClick={() => setShowExportModal(false)} disabled={isSaving}>Hủy bỏ</button>
+                  <button type="submit" className="btn primary" style={{ minWidth: '140px' }} disabled={isSaving}>
+                    {isSaving ? 'Đang xuất...' : 'Xác nhận xuất'}
+                  </button>
                 </div>
               </form>
             </motion.div>
@@ -838,8 +847,10 @@ export default function InventoryPage() {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn outline" onClick={() => setShowAdjustModal(false)}>Hủy bỏ</button>
-                  <button type="submit" className="btn primary" style={{ minWidth: '140px' }}>Lưu thay đổi</button>
+                  <button type="button" className="btn outline" onClick={() => setShowAdjustModal(false)} disabled={isSaving}>Hủy bỏ</button>
+                  <button type="submit" className="btn primary" style={{ minWidth: '140px' }} disabled={isSaving}>
+                    {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                  </button>
                 </div>
               </form>
             </motion.div>

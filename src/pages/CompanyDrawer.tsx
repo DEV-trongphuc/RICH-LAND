@@ -43,6 +43,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
   const [tags, setTags] = useState<string[]>(entity?.tags || []);
+  const [isSaving, setIsSaving] = useState(false);
 
   const visibleTabs = useMemo(() => {
     return disableEdit ? TABS.filter(t => t.id !== 'settings') : TABS;
@@ -85,13 +86,16 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   }, [formData, baseData, tags, baseTags, entity]);
 
   const handleSave = useCallback(async () => {
+    if (isSaving) return;
     try {
+      setIsSaving(true);
       const payload = { ...formData, tags };
       if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
         for (const f of formData.custom_fields) {
           const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
           if (f.is_required && isEmpty) {
             addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
+            setIsSaving(false);
             return;
           }
         }
@@ -106,8 +110,10 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       onSave(updated);
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Lỗi khi lưu thông tin công ty', 'error');
+    } finally {
+      setIsSaving(false);
     }
-  }, [formData, tags, entity, onSave, addToast]);
+  }, [formData, tags, entity, onSave, addToast, isSaving]);
 
   const handleClose = useCallback(() => {
     if (hasChanges) {
@@ -164,8 +170,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   };
 
   const handleCreateDeal = async () => {
-    if (!dealForm.title.trim()) return;
+    if (!dealForm.title.trim() || isSaving) return;
     try {
+      setIsSaving(true);
       await api.post('/deals', {
         company_id: entity.id,
         title: dealForm.title,
@@ -186,6 +193,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       addToast('Đã tạo cơ hội mới thành công', 'success');
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Lỗi khi tạo cơ hội', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -819,10 +828,10 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   <button className="btn ghost" onClick={handleClose}>Hủy bỏ</button>
                   <button 
                     className={`btn ${hasChanges ? 'primary' : 'outline'}`} 
-                    disabled={!hasChanges}
+                    disabled={!hasChanges || isSaving}
                     onClick={handleSave}
                   >
-                    {hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ'}
+                    {isSaving ? 'Đang lưu...' : (hasChanges ? 'Lưu thông tin Công ty' : 'Đã đồng bộ')}
                   </button>
                 </>
               )}
@@ -919,8 +928,10 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     </div>
                   </div>
                   <div className="modal-footer">
-                    <button className="btn outline" onClick={() => setShowDealModal(false)}>Hủy</button>
-                    <button className="btn primary" onClick={handleCreateDeal}>Tạo Deal</button>
+                    <button className="btn outline" onClick={() => setShowDealModal(false)} disabled={isSaving}>Hủy</button>
+                    <button className="btn primary" onClick={handleCreateDeal} disabled={isSaving}>
+                      {isSaving ? 'Đang tạo...' : 'Tạo Deal'}
+                    </button>
                   </div>
                 </motion.div>
               </div>

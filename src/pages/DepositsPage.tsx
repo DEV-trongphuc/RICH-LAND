@@ -105,6 +105,7 @@ export default function DepositsPage() {
   const [isCancelOpen, setIsCancelOpen] = useState(false);
   const [cancelDepositId, setCancelDepositId] = useState<number | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director'].includes(user.role);
 
@@ -161,7 +162,10 @@ export default function DepositsPage() {
       return;
     }
 
+    if (isSaving) return;
+
     try {
+      setIsSaving(true);
       const res = await fetchAPI('deposits', {
         method: 'POST',
         body: JSON.stringify({
@@ -190,6 +194,8 @@ export default function DepositsPage() {
       }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -274,9 +280,10 @@ export default function DepositsPage() {
   };
 
   const handleConfirmCancel = async () => {
-    if (!cancelDepositId || !cancelReason) return;
+    if (!cancelDepositId || !cancelReason || isSaving) return;
 
     try {
+      setIsSaving(true);
       const res = await fetchAPI(`deposits/${cancelDepositId}/cancel`, {
         method: 'POST',
         body: JSON.stringify({ reason: cancelReason })
@@ -291,6 +298,8 @@ export default function DepositsPage() {
       }
     } catch (e: any) {
       setError(e.message || 'Lỗi kết nối');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -818,10 +827,11 @@ export default function DepositsPage() {
 
             <button
               type="submit"
+              disabled={isSaving}
               className="btn primary w-full"
-              style={{ height: '38px', marginTop: '0.5rem' }}
+              style={{ height: '38px', marginTop: '0.5rem', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
             >
-              Tạo phiếu đặt cọc
+              {isSaving ? 'Đang khởi tạo...' : 'Tạo phiếu đặt cọc'}
             </button>
           </form>
         </div>
@@ -852,10 +862,11 @@ export default function DepositsPage() {
               </div>
               <button
                 onClick={handleConfirmCancel}
+                disabled={isSaving}
                 className="btn primary w-full"
-                style={{ height: '38px', backgroundColor: 'var(--color-danger)', border: 'none' }}
+                style={{ height: '38px', backgroundColor: 'var(--color-danger)', border: 'none', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
               >
-                Xác nhận bể cọc
+                {isSaving ? 'Đang xử lý...' : 'Xác nhận bể cọc'}
               </button>
             </div>
           </div>

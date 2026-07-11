@@ -293,6 +293,17 @@ class DealController {
                 $note = $b['note'] ?? '';
                 logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Chuyển giai đoạn Deal', "Deal đã được chuyển sang giai đoạn mới." . ($note ? " Ghi chú: " . $note : ""), 'deal', $id);
                 logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'deal', $id, json_encode(['from_stage' => $old, 'to_stage' => $b['stage_id'], 'note' => $note]));
+
+                // Update contact temperature to hot if deal is won (Sôi = xuống tiền)
+                if ($stageInfo['is_won']) {
+                    $stmtCId = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ?");
+                    $stmtCId->execute([$id]);
+                    $contactId = $stmtCId->fetchColumn();
+                    if ($contactId) {
+                        $this->db->prepare("UPDATE contacts SET status = 'customer', temperature = 'hot', suggested_temperature = 'hot' WHERE id = ? AND tenant_id = ?")
+                                 ->execute([$contactId, $auth['tenant_id']]);
+                    }
+                }
             }
             
             $this->db->commit();

@@ -2065,6 +2065,88 @@ try {
     assertTest("TEST 89: Roster configuration member assignment", $inRoster === true, "Is sale assigned to project roster: " . ($inRoster ? 'Yes' : 'No'));
 
     // ─────────────────────────────────────────────────────────────────
+    // TEST 90: Stage system_slug mapping verification
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("DELETE FROM contacts WHERE phone = '0990909993'")->execute();
+    $db->prepare("INSERT INTO contacts (tenant_id, person_id, owner_id, first_name, last_name, email, phone, status, pipeline_status) VALUES (?, 1, ?, 'Test 90', 'Slug', 't90@richland.com', '0990909993', 'lead', 'chua_xac_dinh')")
+       ->execute([$tenantId, $saleUserId]);
+    $t90ContactId = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO pipeline_stages (tenant_id, name, color, order_index, system_slug) VALUES (?, 'Custom Intermediary Stage', '#000000', 99, NULL)")->execute([$tenantId]);
+    $customStageId = (int)$db->lastInsertId();
+    
+    $bookingStageIdReal = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId AND system_slug = 'booking' LIMIT 1")->fetchColumn();
+    $db->prepare("UPDATE contacts SET stage_id = ? WHERE id = ?")->execute([$bookingStageIdReal, $t90ContactId]);
+    
+    $stmtC93 = $db->prepare("SELECT system_slug FROM pipeline_stages WHERE id = (SELECT stage_id FROM contacts WHERE id = ?)");
+    $stmtC93->execute([$t90ContactId]);
+    $mappedSlug = $stmtC93->fetchColumn();
+    
+    $db->prepare("DELETE FROM pipeline_stages WHERE id = ?")->execute([$customStageId]);
+    $db->prepare("DELETE FROM contacts WHERE id = ?")->execute([$t90ContactId]);
+    assertTest("TEST 90: Stage system_slug mapping independent of count", $mappedSlug === 'booking', "Resolved mapping slug: $mappedSlug");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 91: Van chống ôm lead với hoạt động tương tác (Activities)
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("DELETE FROM contacts WHERE owner_id = ? AND phone = '0990889494'")->execute([$saleUserId]);
+    $db->prepare("DELETE FROM activities WHERE user_id = ? AND related_type = 'contact'")->execute([$saleUserId]);
+    
+    $db->prepare("INSERT INTO contacts (tenant_id, person_id, owner_id, first_name, last_name, email, phone, status, pipeline_status) VALUES (?, 1, ?, 'Test 91', 'Activity', 'test91@richland.com', '0990889494', 'lead', 'quan_tam')")
+       ->execute([$tenantId, $saleUserId]);
+    $test91ContactId = (int)$db->lastInsertId();
+    
+    $db->prepare("INSERT INTO activities (tenant_id, user_id, type, subject, status, related_type, related_id, done_at) VALUES (?, ?, 'call', 'Called Customer', 'done', 'contact', ?, NOW())")
+       ->execute([$tenantId, $saleUserId, $test91ContactId]);
+    
+    $stmtCheck91 = $db->prepare("
+        SELECT COUNT(*) as cnt 
+        FROM contacts c
+        WHERE c.id = ? 
+          AND c.owner_id = ? 
+          AND c.status != 'rejected'
+          AND (
+              c.pipeline_status = 'chua_xac_dinh'
+              OR (
+                  c.pipeline_status = 'quan_tam'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM notes n WHERE n.entity_type = 'contact' AND n.entity_id = c.id AND n.user_id = c.owner_id
+                  )
+                  AND NOT EXISTS (
+                      SELECT 1 FROM activities a WHERE a.related_type = 'contact' AND a.related_id = c.id AND a.user_id = c.owner_id AND a.status = 'done'
+                  )
+              )
+          )
+    ");
+    $stmtCheck91->execute([$test91ContactId, $saleUserId]);
+    $count91 = (int)$stmtCheck91->fetchColumn();
+    
+    assertTest("TEST 91: Backpressure valve ignores contacts with completed activities", $count91 === 0, "Uncontacted count: $count91 (Should be 0)");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 92: Kiểm duyệt check-in Chủ nhật bắt buộc (Gate 2)
+    // ─────────────────────────────────────────────────────────────────
+    $todayStrSim = date('Y-m-d');
+    $db->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?")->execute([$saleUserId, $todayStrSim]);
+    $db->prepare("DELETE FROM check_ins WHERE user_id = ? AND check_in_date = ?")->execute([$saleUserId, $todayStrSim]);
+    
+    $db->prepare("INSERT INTO night_shift_registrations (user_id, shift_date) VALUES (?, ?)")->execute([$saleUserId, $todayStrSim]);
+    
+    $hasRegSim = (bool)$db->query("SELECT 1 FROM night_shift_registrations WHERE user_id = $saleUserId AND shift_date = '$todayStrSim'")->fetchColumn();
+    $hasCheckInSim = (bool)$db->query("SELECT 1 FROM check_ins WHERE user_id = $saleUserId AND check_in_date = '$todayStrSim' AND status = 'approved'")->fetchColumn();
+    $failedWithoutCheckIn = ($hasRegSim && !$hasCheckInSim);
+    
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, status) VALUES (?, ?, 'approved')")->execute([$saleUserId, $todayStrSim]);
+    $hasCheckInSimAfter = (bool)$db->query("SELECT 1 FROM check_ins WHERE user_id = $saleUserId AND check_in_date = '$todayStrSim' AND status = 'approved'")->fetchColumn();
+    $passedWithCheckIn = ($hasRegSim && $hasCheckInSimAfter);
+    
+    $db->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?")->execute([$saleUserId, $todayStrSim]);
+    $db->prepare("DELETE FROM check_ins WHERE user_id = ? AND check_in_date = ?")->execute([$saleUserId, $todayStrSim]);
+    
+    $test92Success = ($failedWithoutCheckIn && $passedWithCheckIn);
+    assertTest("TEST 92: Sunday Gate 2 requires both shift registration and approved check-in", $test92Success, "Failed without checkin: " . ($failedWithoutCheckIn?'Yes':'No') . ", Passed with checkin: " . ($passedWithCheckIn?'Yes':'No'));
+
+    // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)
     // We intentionally do not delete these records so they are visible in the CRM frontend UI.
     $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId, $viewerUserId)")->fetchColumn();

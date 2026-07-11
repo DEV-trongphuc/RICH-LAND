@@ -87,6 +87,7 @@ export const FilesPage: React.FC = () => {
   const [showCatModal, setShowCatModal] = useState(false);
   const [editingCat, setEditingCat] = useState<any>(null);
   const [catFormData, setCatFormData] = useState({ label: '' });
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -167,7 +168,7 @@ export const FilesPage: React.FC = () => {
   };
 
   const confirmUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || loading) return;
     setLoading(true);
     try {
       const compressedFile = await compressToWebP(selectedFile);
@@ -209,7 +210,7 @@ export const FilesPage: React.FC = () => {
   };
 
   const handleUpdateFile = async () => {
-    if (!editFormData.name) return;
+    if (!editFormData.name || loading) return;
     setLoading(true);
     try {
       await api.put(`/cloud-files/${editFormData.id}`, {
@@ -233,8 +234,9 @@ export const FilesPage: React.FC = () => {
       addToast('Bạn không có quyền thực hiện hành động này', 'error');
       return;
     }
-    if (!catFormData.label) return;
+    if (!catFormData.label || isSavingCategory) return;
     try {
+      setIsSavingCategory(true);
       if (editingCat) {
         if (!DEV_MODE) await api.put(`/file-categories/${editingCat.id}`, { label: catFormData.label });
         addToast('Đã cập nhật danh mục', 'success');
@@ -243,12 +245,14 @@ export const FilesPage: React.FC = () => {
         addToast('Đã thêm danh mục mới', 'success');
       }
       fetchCategories();
+      setShowCatModal(false);
+      setEditingCat(null);
+      setCatFormData({ label: '' });
     } catch (e: any) {
       addToast('Lỗi lưu danh mục', 'error');
+    } finally {
+      setIsSavingCategory(false);
     }
-    setShowCatModal(false);
-    setEditingCat(null);
-    setCatFormData({ label: '' });
   };
 
   const deleteCategory = (id: string) => {
@@ -802,10 +806,10 @@ export const FilesPage: React.FC = () => {
                 </div>
               </div>
               <div className="modal-footer" style={{ gap: '1rem' }}>
-                <button className="btn secondary flex-1" onClick={() => setShowCatModal(false)}>Hủy</button>
-                <button className="btn primary flex-1" onClick={handleSaveCategory}>
-                  {editingCat ? 'Cập nhật' : 'Thêm ngay'}
-                </button>
+                 <button className="btn secondary flex-1" onClick={() => setShowCatModal(false)} disabled={isSavingCategory}>Hủy</button>
+                 <button className="btn primary flex-1" onClick={handleSaveCategory} disabled={isSavingCategory}>
+                   {isSavingCategory ? 'Đang lưu...' : (editingCat ? 'Cập nhật' : 'Thêm ngay')}
+                 </button>
               </div>
             </motion.div>
           </div>

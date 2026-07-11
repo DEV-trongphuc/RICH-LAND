@@ -191,6 +191,7 @@ export default function ProjectsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [autoCode, setAutoCode] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const quickUploadInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -1896,8 +1897,10 @@ export default function ProjectsPage() {
       addToast('Tên chiến dịch là bắt buộc', 'error');
       return;
     }
+    if (isSaving) return;
 
     try {
+      setIsSaving(true);
       const isNew = !editingCampaign.id;
       const action = isNew ? 'campaigns' : `campaigns/${editingCampaign.id}`;
       const method = isNew ? 'POST' : 'PUT';
@@ -1916,6 +1919,8 @@ export default function ProjectsPage() {
       }
     } catch (err: any) {
       addToast(err.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1977,8 +1982,10 @@ export default function ProjectsPage() {
       addToast('Mã dự án là bắt buộc khi tắt tự động sinh mã', 'error');
       return;
     }
+    if (isSaving) return;
 
     try {
+      setIsSaving(true);
       const isNew = !editingProject.id;
       const action = isNew ? 'projects' : `projects/${editingProject.id}`;
       const method = isNew ? 'POST' : 'PUT';
@@ -1997,6 +2004,8 @@ export default function ProjectsPage() {
       }
     } catch (e: any) {
       addToast(e.message || 'Lỗi kết nối', 'error');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -3529,9 +3538,10 @@ export default function ProjectsPage() {
             type="submit"
             form="project-form"
             className="btn primary sm"
-            style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none' }}
+            disabled={isSaving}
+            style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
           >
-            Lưu dự án
+            {isSaving ? 'Đang lưu...' : 'Lưu dự án'}
           </button>
         </div>
       )
@@ -4512,9 +4522,10 @@ export default function ProjectsPage() {
             type="submit"
             form="campaign-form"
             className="btn primary sm"
-            style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none' }}
+            disabled={isSaving}
+            style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none', opacity: isSaving ? 0.7 : 1, cursor: isSaving ? 'not-allowed' : 'pointer' }}
           >
-            Lưu chiến dịch
+            {isSaving ? 'Đang lưu...' : 'Lưu chiến dịch'}
           </button>
         </div>
       )

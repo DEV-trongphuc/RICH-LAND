@@ -128,8 +128,8 @@ class DepositController {
                 $stmtM->execute([$depositId, trim($m['name']), (float)$m['amount']]);
             }
 
-            // Update contact pipeline stage to 'dat_coc' (Placed Deposit)
-            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer' WHERE id = ? AND tenant_id = ?");
+            // Update contact pipeline stage to 'dat_coc' (Placed Deposit) and set temperature to 'hot' (Sôi = xuống tiền)
+            $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer', temperature = 'hot', suggested_temperature = 'hot' WHERE id = ? AND tenant_id = ?");
             $stmtUpC->execute([$contactId, $auth['tenant_id']]);
 
             // Side effect: Automatically generate cooperation slip for commissions
@@ -356,29 +356,18 @@ class DepositController {
                 ];
                 $nextTemp = $tempDecayMap[$currTemp] ?? 'neutral';
 
-                // Resolve stage_ids for 'booking' and 'da_gap'
+                // Resolve stage_ids for 'booking' and 'da_gap' using system_slug column
                 $stmtStages = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
                 $stmtStages->execute([$auth['tenant_id']]);
                 $stages = $stmtStages->fetchAll(PDO::FETCH_COLUMN);
 
-                $stmtH = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'pipeline_status_hierarchy'");
-                $stmtH->execute();
-                $hierarchyJson = $stmtH->fetchColumn();
-                $hierarchy = $hierarchyJson ? json_decode($hierarchyJson, true) : [];
-                if (empty($hierarchy)) {
-                    $hierarchy = ['chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'];
-                }
+                $stmtBooking = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? AND system_slug = 'booking' LIMIT 1");
+                $stmtBooking->execute([$auth['tenant_id']]);
+                $bookingStageId = (int)$stmtBooking->fetchColumn();
 
-                $bookingStageId = 0;
-                $daGapStageId = 0;
-                foreach ($hierarchy as $idx => $s) {
-                    if ($s === 'booking') {
-                        $bookingStageId = isset($stages[$idx]) ? (int)$stages[$idx] : 0;
-                    }
-                    if ($s === 'da_gap') {
-                        $daGapStageId = isset($stages[$idx]) ? (int)$stages[$idx] : 0;
-                    }
-                }
+                $stmtDaGap = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? AND system_slug = 'da_gap' LIMIT 1");
+                $stmtDaGap->execute([$auth['tenant_id']]);
+                $daGapStageId = (int)$stmtDaGap->fetchColumn();
 
                 // Check if the contact ever had an active booking in their audit logs
                 $stmtHasBooking = $this->db->prepare("
