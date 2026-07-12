@@ -4016,4 +4016,63 @@ html, body {
     max-height: 100dvh !important;
     overflow: hidden;
   }
+
+  /* Thu nhỏ page title & page subtitle tránh to quá khổ */
+  .page-title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.015em !important;
+  }
+  .page-subtitle {
+    font-size: 0.75rem !important;
+    margin-top: 2px !important;
+  }
+
+  /* Thu nhỏ padding của cards */
+  .card, .card-panel, .card-table {
+    padding: 1rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* Thu nhỏ size chữ và label form */
+  .form-label {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 4px !important;
+    color: var(--color-text-light) !important;
+  }
+  .form-group {
+    margin-bottom: 0.875rem !important;
+  }
+
+  /* Thu nhỏ kích thước input, select, textarea */
+  .form-input, .form-select, select, input:not([type="checkbox"]):not([type="radio"]), textarea {
+    padding: 8px 12px !important;
+    font-size: 0.8125rem !important;
+    border-radius: 8px !important;
+    height: 38px !important;
+  }
+  textarea {
+    height: auto !important;
+    min-height: 80px !important;
+  }
+
+  /* Thu nhỏ nút bấm để ngón tay dễ thao tác và không bị thô */
+  .btn {
+    padding: 8px 14px !important;
+    font-size: 0.8rem !important;
+    height: 38px !important;
+    border-radius: 8px !important;
+  }
+  .btn.sm, .btn-icon.sm {
+    padding: 6px 10px !important;
+    font-size: 0.75rem !important;
+    height: 30px !important;
+  }
+
+  /* Thu nhỏ chiều cao header thanh công cụ di động */
+  .portal-header {
+    height: 54px !important;
+    padding: 0 1rem !important;
+  }
 }

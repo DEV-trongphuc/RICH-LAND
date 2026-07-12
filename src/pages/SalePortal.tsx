@@ -8231,6 +8231,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* Switch to CRM Button */}
             <button 
               onClick={() => navigate('/contacts')}
+              className="responsive-hide-mobile"
               style={{
                 background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
                 color: 'white',
@@ -8286,6 +8287,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
+              className="responsive-hide-mobile"
               style={{
                 width: 36,
                 height: 36,
@@ -8314,7 +8316,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </button>
 
             {/* Language Selector Dropdown */}
-            <div style={{ position: 'relative' }}>
+            <div className="responsive-hide-mobile" style={{ position: 'relative' }}>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
