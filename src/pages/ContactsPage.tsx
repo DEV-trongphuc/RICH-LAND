@@ -778,34 +778,11 @@ export const ContactsPage: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Quick Add Button next to title on Mobile */}
-            {isMobile && user?.role !== 'viewer' && (
-              <button 
-                onClick={() => setShowCreateModal(true)} 
-                style={{
-                  background: 'var(--color-primary)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: 'var(--shadow-md)',
-                  flexShrink: 0
-                }}
-                title="Thêm liên hệ"
-              >
-                <Plus size={18} />
-              </button>
-            )}
           </div>
           <p className="page-subtitle" style={{ marginTop: '4px' }}>{loading ? '...' : `${total} liên hệ`}</p>
         </div>
         
-        {/* Render export buttons only if not on mobile, or hide Add button on mobile */}
+        {/* Render export buttons only if not on mobile */}
         <div className="flex gap-2" style={{ display: isMobile && user?.role === 'sale' ? 'none' : 'flex' }}>
           {user?.role !== 'viewer' && !isSale && (
             <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
@@ -817,12 +794,6 @@ export const ContactsPage: React.FC = () => {
             <button className="btn outline" onClick={bulkExport} title="Xuất dữ liệu theo bộ lọc">
               <Download size={14}/>
               <span> Xuất theo bộ lọc</span>
-            </button>
-          )}
-          {!isMobile && user?.role !== 'viewer' && (
-            <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
-              <Plus size={15}/>
-              <span className="hide-on-mobile"> Thêm liên hệ</span>
             </button>
           )}
         </div>
