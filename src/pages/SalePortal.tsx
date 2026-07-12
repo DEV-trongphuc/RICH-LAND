@@ -6039,22 +6039,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {t('Danh sách các khách hàng tiềm năng đã công khai. Bấm "Nhận Data" để trực tiếp nhận chăm sóc.')}
             </p>
           </div>
-          <button
-            onClick={fetchPublicLeads}
-            disabled={publicLoading}
-            className="btn outline sm"
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '34px', fontSize: '0.8125rem' }}
-          >
-            <RefreshCw size={14} className={publicLoading ? 'animate-spin' : ''} />
-            {t('Làm mới')}
-          </button>
         </div>
 
         {publicQuota && (
           <div style={{
-            display: 'flex',
-            gap: '1rem',
-            flexWrap: 'wrap',
+            display: isMobile ? 'grid' : 'flex',
+            gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : undefined,
+            gap: isMobile ? '0.5rem' : '1rem',
+            flexWrap: isMobile ? undefined : 'wrap',
             marginBottom: '1rem',
             width: '100%'
           }}>
@@ -6090,14 +6082,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               const percent = Math.min(100, (q.value / q.limit) * 100);
               return (
                 <div key={idx} style={{
-                  flex: '1 1 200px',
+                  flex: isMobile ? undefined : '1 1 200px',
                   background: 'var(--color-surface)',
                   border: '1px solid var(--color-border-light)',
-                  borderRadius: '16px',
-                  padding: '1rem 1.25rem',
+                  borderRadius: isMobile ? '12px' : '16px',
+                  padding: isMobile ? '0.5rem 0.35rem' : '1rem 1.25rem',
                   display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
                   alignItems: 'center',
-                  gap: '12px',
+                  justifyContent: 'center',
+                  gap: isMobile ? '6px' : '12px',
                   boxShadow: 'var(--shadow-sm)',
                   position: 'relative',
                   overflow: 'hidden'
@@ -6113,9 +6107,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }} />
 
                   <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '12px',
+                    width: isMobile ? '28px' : '36px',
+                    height: isMobile ? '28px' : '36px',
+                    borderRadius: isMobile ? '8px' : '12px',
                     background: q.bg,
                     border: `1px solid ${q.border}`,
                     color: q.color,
@@ -6124,14 +6118,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     justifyContent: 'center',
                     flexShrink: 0
                   }}>
-                    {q.icon}
+                    {isMobile ? React.cloneElement(q.icon as React.ReactElement, { size: 12 }) : q.icon}
                   </div>
 
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{q.label}</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginTop: '2px' }}>
-                      <span style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)' }}>{q.value}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>/ {q.limit} lead</span>
+                  <div style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start', minWidth: 0, width: '100%' }}>
+                    <div style={{ fontSize: isMobile ? '0.625rem' : '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }} title={q.label}>
+                      {isMobile ? q.label.replace('Hạn mức ', '') : q.label}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px', marginTop: '2px' }}>
+                      <span style={{ fontSize: isMobile ? '0.9rem' : '1.125rem', fontWeight: 800, color: 'var(--color-text)' }}>{q.value}</span>
+                      <span style={{ fontSize: isMobile ? '0.65rem' : '0.75rem', color: 'var(--color-text-light)' }}>/ {q.limit} {isMobile ? '' : 'lead'}</span>
                     </div>
                   </div>
                 </div>
