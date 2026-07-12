@@ -3974,4 +3974,28 @@ table td.wrap-cell, table th.wrap-cell {
 }
 .segmented-control-wrapper::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
+}
+
+/* --- NATIVE MOBILE OS UX STYLES --- */
+@media (max-width: 768px) {
+  /* Tắt màu nhấp nháy tap mặc định và tối ưu touch target */
+  button, 
+  a, 
+  .clickable, 
+  [role="button"], 
+  .responsive-filter-item, 
+  .segmented-control-wrapper button {
+    -webkit-tap-highlight-color: transparent !important;
+    user-select: none !important;
+    touch-action: manipulation; /* Tắt double-tap zoom delay */
+  }
+
+  /* Hiệu ứng chạm Micro-scale khi nhấn giữ */
+  .mobile-tab-btn:active,
+  .btn:active,
+  .btn-icon:active,
+  .closeBtn:active {
+    transform: scale(0.96) !important;
+    transition: transform 0.1s ease !important;
+  }
 }

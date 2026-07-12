@@ -8810,6 +8810,67 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </main>
       </div>
 
+      {/* Mobile Bottom Navigation Bar */}
+      {!embedMode && (
+        <div className="mobile-bottom-nav">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`mobile-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+          >
+            <LayoutDashboard />
+            <span className="mobile-bottom-nav-item-label">{t('Tổng quan')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('workspace')}
+            className={`mobile-bottom-nav-item ${activeTab === 'workspace' ? 'active' : ''}`}
+          >
+            <CheckSquare />
+            <span className="mobile-bottom-nav-item-label">{t('Bàn làm việc')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('data')}
+            className={`mobile-bottom-nav-item ${activeTab === 'data' ? 'active' : ''}`}
+          >
+            <Database />
+            <span className="mobile-bottom-nav-item-label">{t('Nhật ký Data')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('tickets')}
+            className={`mobile-bottom-nav-item ${activeTab === 'tickets' ? 'active' : ''}`}
+          >
+            <div style={{ position: 'relative' }}>
+              <Ticket />
+              {data?.stats?.tickets_pending !== undefined && data.stats.tickets_pending > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-4px',
+                  right: '-10px',
+                  background: 'var(--color-danger)',
+                  color: 'white',
+                  fontSize: '8px',
+                  fontWeight: 'bold',
+                  padding: '1px 5px',
+                  borderRadius: '10px',
+                  lineHeight: '1',
+                  minWidth: '14px',
+                  textAlign: 'center'
+                }}>
+                  {data.stats.tickets_pending}
+                </span>
+              )}
+            </div>
+            <span className="mobile-bottom-nav-item-label">{t('Hộp thư')}</span>
+          </button>
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="mobile-bottom-nav-item"
+          >
+            <Menu />
+            <span className="mobile-bottom-nav-item-label">{t('Xem thêm')}</span>
+          </button>
+        </div>
+      )}
+
       {/* Check-in Modal */}
       {checkInModalOpen && (
         <CustomModal

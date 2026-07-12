@@ -33,6 +33,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
+  const [isMobile, setIsMobile] = React.useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const resolvedWidth = React.useMemo(() => {
     if (!width) return '680px';
     const num = parseInt(String(width), 10);
@@ -41,6 +49,18 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     }
     return width;
   }, [width]);
+
+  const motionProps = isMobile ? {
+    initial: { y: '100%', opacity: 1 },
+    animate: { y: 0, opacity: 1 },
+    exit: { y: '100%', opacity: 1 },
+    transition: { type: 'spring', damping: 25, stiffness: 220 }
+  } : {
+    initial: { opacity: 0, scale: 0.95, y: 15 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.95, y: 15 },
+    transition: { type: "spring", duration: 0.4, bounce: 0.12 }
+  };
 
   const modalContent = (
     <AnimatePresence>
@@ -54,8 +74,9 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <div
               className={styles.modal}
-              style={{ width: resolvedWidth, maxWidth: '95vw' }}
+              style={{ width: isMobile ? '100vw' : resolvedWidth }}
             >
+              <div className={styles.dragHandle} />
               {title && (
                 <div className={styles.header}>
                   <h3 className={styles.title}>{title}</h3>
@@ -89,12 +110,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <motion.div
               className={styles.modal}
-              style={{ width: resolvedWidth, maxWidth: '95vw' }}
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ type: "spring", duration: 0.4, bounce: 0.12 }}
+              style={{ width: isMobile ? '100vw' : resolvedWidth }}
+              {...motionProps}
             >
+              <div className={styles.dragHandle} />
               {title && (
                 <div className={styles.header}>
                   <h3 className={styles.title}>{title}</h3>
