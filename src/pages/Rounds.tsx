@@ -30,6 +30,14 @@ const getColorForName = (name: string) => {
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 const RoundsInner = ({ isActive }: { isActive: boolean }) => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const navigate = useNavigate();
   const user = useAuthStore(state => state.user);
   const isReadOnly = user?.role === 'director';
@@ -1249,7 +1257,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             </div>
 
             {editingRound && (
-              <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', margin: '0.75rem 1.25rem', width: 'fit-content', gap: '4px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', margin: '0.75rem 1.25rem', width: 'fit-content', gap: '4px', maxWidth: 'calc(100% - 2.5rem)' }}>
                 <button type="button" onClick={() => setActiveTab('config')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'config' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'config' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'config' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}>{t("Cấu hình chung")}</button>
                 <button type="button" onClick={() => setActiveTab('reports')} style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, border: 'none', background: activeTab === 'reports' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'reports' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'reports' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }}>
                   {t("Data Lỗi & Đền Bù")}
@@ -1266,7 +1274,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             {activeTab === 'config' ? (
               <form onSubmit={handleSave} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
                 <fieldset disabled={isReadOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
-                  <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
+                  <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : undefined, gridTemplateColumns: isMobile ? undefined : '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
 
                   {/* LEFT COLUMN */}
                   <div className="custom-scrollbar modal-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }}>

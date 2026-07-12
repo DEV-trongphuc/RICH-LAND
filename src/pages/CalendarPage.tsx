@@ -10,6 +10,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { AttendancePageInner } from './AttendancePage';
 
 export const CalendarPage: React.FC = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const { addToast } = useUIStore();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'calendar' | 'attendance'>('calendar');
@@ -158,16 +166,20 @@ export const CalendarPage: React.FC = () => {
       </div>
 
       {activeTab === 'calendar' ? (
-        <div className="flex-1 overflow-hidden flex flex-col card-panel p-0 bg-[var(--color-surface)] border border-[var(--color-border)] animate-fade">
-          <div className="grid grid-cols-7 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
-            {weekDays.map(wd => (
-              <div key={wd} className="py-3 text-center text-xs font-black uppercase tracking-widest" style={{ color: 'var(--color-text-light)' }}>
-                {wd}
+        <div className="flex-1 overflow-hidden flex flex-col card-panel p-0 bg-[var(--color-surface)] border border-[var(--color-border)] animate-fade" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ overflowX: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ minWidth: isMobile ? '700px' : 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div className="grid grid-cols-7 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
+                {weekDays.map(wd => (
+                  <div key={wd} className="py-3 text-center text-xs font-black uppercase tracking-widest" style={{ color: 'var(--color-text-light)' }}>
+                    {wd}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="flex-1 grid grid-cols-7 auto-rows-fr overflow-y-auto">
-            {days}
+              <div className="flex-1 grid grid-cols-7 auto-rows-fr overflow-y-auto">
+                {days}
+              </div>
+            </div>
           </div>
         </div>
       ) : (

@@ -271,6 +271,14 @@ const parseMarkdownToHtml = (markdown: string) => {
 };
 
 const RuleSettingsInner = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const { t } = useLanguage();
   const user = useAuthStore(state => state.user);
   const isReadOnly = user?.role === 'director';
@@ -997,8 +1005,8 @@ const RuleSettingsInner = () => {
                         {branch.inject.fields.map((f: any, fi: number) => {
                           const isCustomMode = f.isCustom || !['source', 'type', 'note', 'name', ''].includes(f.col);
                           return (
-                            <div key={fi} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                              <div style={{ flex: isCustomMode ? '0 0 180px' : 1, background: 'var(--color-surface)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
+                            <div key={fi} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '0.5rem', alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none', paddingBottom: isMobile ? '10px' : '0', marginBottom: isMobile ? '10px' : '0' }}>
+                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? '0 0 180px' : 1), width: isMobile ? '100%' : 'auto', background: 'var(--color-surface)', borderRadius: 20, border: '1px solid var(--color-border)' }}>
                                 <CustomSelect
                                   options={[
                                     { value: 'source', label: t('Nguồn Khách (Source)') },
@@ -1026,7 +1034,7 @@ const RuleSettingsInner = () => {
                               </div>
 
                               {isCustomMode && (
-                                <div style={{ flex: 1, minWidth: 120 }}>
+                                <div style={{ flex: isMobile ? 'none' : 1, width: isMobile ? '100%' : 'auto', minWidth: 120 }}>
                                   <input
                                     style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
                                     placeholder={t("Tên trường custom (vd: utm_source)...")}
@@ -1040,7 +1048,7 @@ const RuleSettingsInner = () => {
                                 </div>
                               )}
 
-                              <div style={{ flex: isCustomMode ? 1.5 : 2, minWidth: 150 }}>
+                              <div style={{ flex: isMobile ? 'none' : (isCustomMode ? 1.5 : 2), width: isMobile ? '100%' : 'auto', minWidth: 150 }}>
                                 <input
                                   style={{ width: '100%', padding: '8px 16px', borderRadius: 20, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: '0.875rem', outline: 'none' }}
                                   placeholder={t("Giá trị muốn gán tự động...")}
