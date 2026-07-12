@@ -557,13 +557,7 @@ export const DealsPage: React.FC = () => {
     if (id === 'my') {
       setFilterAssignee(String(currentUserId || 1));
     } else {
-      setFilterAssignee('');
-    }
-  };
-
-  return (
-    <div style={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
-      <div className="page-header" style={{ marginBottom: '1.5rem', flexShrink: 0 }}>
+       <div className="page-header" style={{ marginBottom: isMobile ? '0.75rem' : '1.5rem', flexShrink: 0, flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? '0.75rem' : '1rem' }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Target size={24} color="var(--color-primary)" />
@@ -573,151 +567,100 @@ export const DealsPage: React.FC = () => {
             <strong>{Object.values(items).flat().length}</strong> thẻ đang quản lý · Tổng giá trị dự kiến: <strong style={{ color: 'var(--color-primary)', fontSize: '1.25rem', marginLeft: '4px' }}>{FMT(totalRevenue)}</strong>
           </p>
         </div>
-        <div style={{ flex: 1 }} />
+        {!isMobile && <div style={{ flex: 1 }} />}
 
-        {/* Desktop Pipeline Tabs Switcher (Moved to Left) */}
-        <div className="hide-on-mobile" style={{ 
-          display: 'flex', 
-          background: 'rgba(15, 23, 42, 0.05)', 
-          padding: '4px', 
-          borderRadius: '12px', 
-          gap: '4px',
-          height: '38px', 
-          marginRight: '0.5rem', 
-          border: '1px solid var(--color-border-light)',
-          position: 'relative',
-          width: 'fit-content'
-        }}>
-          {/* Sliding Pill Background Indicator */}
-          <div style={{
-            position: 'absolute',
-            top: '4px',
-            bottom: '4px',
-            width: '140px',
-            borderRadius: '10px',
-            background: 'var(--color-surface)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${
-              pipelineView === 'contacts' ? '0px' : 
-              pipelineView === 'deals' ? '144px' : '288px'
-            })`,
-            zIndex: 1
-          }} />
+        {/* Row 2 on Mobile or Row 1 on Desktop containing Pipeline tabs, Kanban/List toggle & Import/Export */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: isMobile ? '100%' : 'auto', justifyContent: 'space-between' }}>
+          {/* Pipeline Switcher Tabs */}
+          <div className="pipeline-tabs-wrapper">
+            {[
+              { id: 'contacts', label: 'Khách hàng', icon: <User size={14} /> },
+              { id: 'deals', label: 'Cơ hội', icon: <DollarSign size={14} /> },
+              { id: 'companies', label: 'Doanh nghiệp', icon: <Building2 size={14} /> }
+            ].map(tab => {
+              const isSelected = pipelineView === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setPipelineView(tab.id as any)}
+                  className={`pipeline-tab-item ${isSelected ? 'active' : ''}`}
+                >
+                  {tab.icon}
+                  <span>{isMobile ? tab.label.replace('Khách hàng', 'KH').replace('Doanh nghiệp', 'DN') : tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
 
-          {[
-            { id: 'contacts', label: 'Khách hàng', icon: <User size={14} /> },
-            { id: 'deals', label: 'Cơ hội', icon: <DollarSign size={14} /> },
-            { id: 'companies', label: 'Doanh nghiệp', icon: <Building2 size={14} /> }
-          ].map(tab => {
-            const isSelected = pipelineView === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setPipelineView(tab.id as any)}
-                style={{
-                  width: '140px',
-                  height: '28px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  fontSize: '0.825rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  position: 'relative',
-                  zIndex: 2,
-                  transition: 'color 0.25s ease',
-                  outline: 'none'
-                }}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
+            {/* Kanban vs List Toggle */}
+            <div style={{ 
+              display: 'flex', 
+              background: 'rgba(15, 23, 42, 0.05)', 
+              padding: '4px', 
+              borderRadius: '12px', 
+              gap: '4px',
+              height: '38px', 
+              border: '1px solid var(--color-border-light)',
+              position: 'relative',
+              width: 'fit-content'
+            }}>
+              {/* Sliding Pill Background Indicator */}
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                bottom: '4px',
+                width: '36px',
+                borderRadius: '10px',
+                background: 'var(--color-primary)',
+                boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
+                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: `translateX(${viewMode === 'kanban' ? '0px' : '40px'})`,
+                zIndex: 1
+              }} />
+
+              {[
+                { id: 'kanban', icon: <LayoutGrid size={15} />, title: "Dạng bảng (Kanban)" },
+                { id: 'list', icon: <List size={15} />, title: "Dạng danh sách" }
+              ].map(tab => {
+                const isSelected = viewMode === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setViewMode(tab.id as any)}
+                    title={tab.title}
+                    style={{
+                      width: '36px',
+                      height: '28px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: 'transparent',
+                      color: isSelected ? '#ffffff' : 'var(--color-text-light)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      zIndex: 2,
+                      transition: 'color 0.25s ease',
+                      outline: 'none'
+                    }}
+                  >
+                    {tab.icon}
+                  </button>
+                );
+              })}
+            </div>
+
+            {currentUser?.role !== 'viewer' && currentUser?.role !== 'sale' && (
+              <button className="btn outline" style={{ height: 38, borderRadius: '12px', fontSize: '0.8rem', padding: '0 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+                <Download size={14} />
+                {!isMobile && <span style={{ marginLeft: '0.25rem' }}> Nhập/Xuất</span>}
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
-
-        {/* Mobile Pipeline Selector Dropdown */}
-        <div className="mobile-only" style={{ marginRight: '0.5rem' }}>
-          <select 
-            value={pipelineView} 
-            onChange={e => setPipelineView(e.target.value as any)}
-            className="form-select"
-            style={{ height: 38, borderRadius: 'var(--radius-md)', padding: '0 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600, fontSize: '0.875rem' }}
-          >
-            <option value="contacts">KH</option>
-            <option value="deals">Cơ hội</option>
-            <option value="companies">DN</option>
-          </select>
-        </div>
-
-        {/* Kanban vs List Toggle (Moved to Right) */}
-        <div style={{ 
-          display: 'flex', 
-          background: 'rgba(15, 23, 42, 0.05)', 
-          padding: '4px', 
-          borderRadius: '12px', 
-          gap: '4px',
-          marginRight: '0.5rem', 
-          height: '38px', 
-          border: '1px solid var(--color-border-light)',
-          position: 'relative',
-          width: 'fit-content'
-        }}>
-          {/* Sliding Pill Background Indicator */}
-          <div style={{
-            position: 'absolute',
-            top: '4px',
-            bottom: '4px',
-            width: '36px',
-            borderRadius: '10px',
-            background: 'var(--color-primary)',
-            boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
-            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${viewMode === 'kanban' ? '0px' : '40px'})`,
-            zIndex: 1
-          }} />
-
-          {[
-            { id: 'kanban', icon: <LayoutGrid size={15} />, title: "Dạng bảng (Kanban)" },
-            { id: 'list', icon: <List size={15} />, title: "Dạng danh sách" }
-          ].map(tab => {
-            const isSelected = viewMode === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setViewMode(tab.id as any)}
-                title={tab.title}
-                style={{
-                  width: '36px',
-                  height: '28px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  color: isSelected ? '#ffffff' : 'var(--color-text-light)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative',
-                  zIndex: 2,
-                  transition: 'color 0.25s ease',
-                  outline: 'none'
-                }}
-              >
-                {tab.icon}
-              </button>
-            );
-          })}
-        </div>
-
-        {currentUser?.role !== 'viewer' && currentUser?.role !== 'sale' && (
-          <button className="btn outline" style={{ height: 38, borderRadius: 'var(--radius-md)', marginRight: '0.5rem', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+      </div>�p/Xuất">
             <Download size={14} />
             <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Nhập/Xuất</span>
           </button>
@@ -781,8 +724,8 @@ export const DealsPage: React.FC = () => {
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
             >
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div className="filter-search" style={{ width: '400px', position: 'relative' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%' }}>
+                <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto' }}>
                   <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
                   <input placeholder="Tìm tên, email, điện thoại..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} style={{ paddingRight: '2rem' }} />
                   <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
@@ -805,10 +748,14 @@ export const DealsPage: React.FC = () => {
                   </div>
                 </div>
                 
-                <div style={{ flex: 1 }} />
-
-                <button className={`btn ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => setShowFilterPanel(!showFilterPanel)} style={{ borderRadius: 'var(--radius-md)', padding: '0 1rem', height: 38, fontSize: '0.8125rem' }}>
-                  <Filter size={14} /> {showFilterPanel ? 'Đóng bộ lọc' : 'Bộ lọc nâng cao'}
+                <button 
+                  className={`btn sm ${showFilterPanel ? 'primary' : 'outline'}`} 
+                  onClick={() => setShowFilterPanel(!showFilterPanel)} 
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '38px', width: isMobile ? '38px' : 'auto', minWidth: isMobile ? '38px' : 'auto', padding: isMobile ? 0 : '0 1rem', borderRadius: '10px', flexShrink: 0 }}
+                  title="Bộ lọc nâng cao"
+                >
+                  <Filter size={14} />
+                  {!isMobile && <span>{showFilterPanel ? 'Đóng bộ lọc' : 'Bộ lọc nâng cao'}</span>}
                 </button>
               </div>
 

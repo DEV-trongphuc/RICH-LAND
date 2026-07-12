@@ -4163,4 +4163,56 @@ div[role="status"] {
   border: 1px solid var(--color-border-light) !important;
   background-color: var(--color-surface) !important;
   color: var(--color-text) !important;
+}
+
+/* Premium Responsive Segmented Tabs Control for Pipeline Switcher */
+.pipeline-tabs-wrapper {
+  display: flex;
+  background: rgba(15, 23, 42, 0.05);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+  height: 38px;
+  border: 1px solid var(--color-border-light);
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+}
+
+[data-theme="dark"] .pipeline-tabs-wrapper {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pipeline-tab-item {
+  flex: 1;
+  height: 28px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--color-text-light);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+.pipeline-tab-item svg {
+  flex-shrink: 0;
+}
+
+.pipeline-tab-item.active {
+  background: var(--color-surface);
+  color: var(--color-primary) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="dark"] .pipeline-tab-item.active {
+  background: var(--color-surface);
+  color: var(--color-primary) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
 }
