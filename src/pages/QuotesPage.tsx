@@ -350,7 +350,7 @@ export const QuotesPage: React.FC = () => {
       {/* Table */}
       <div className="card overflow-hidden">
         <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
-          <table>
+          <table style={{ minWidth: 850 }}>
             <thead>
               <tr>
                 <th className="col-check">

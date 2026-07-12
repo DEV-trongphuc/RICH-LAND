@@ -218,7 +218,7 @@ export const ProductsPage: React.FC = () => {
 
       <div className="card" style={{ overflow: 'visible' }}>
         <div className="table-wrap">
-          <table>
+          <table style={{ minWidth: 700 }}>
             <thead>
               <tr>
                 <th style={{ width: 40 }}>
@@ -498,7 +498,7 @@ export const ProductsPage: React.FC = () => {
                 </div>
 
                 <div className="table-wrap" style={{ border: '1px solid var(--color-border-light)', borderRadius: '12px' }}>
-                  <table>
+                  <table style={{ minWidth: 600 }}>
                     <thead>
                       <tr>
                         <th>Tên danh mục</th>
