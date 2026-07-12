@@ -4101,4 +4101,35 @@ html, body {
   .modal-title, .drawer-title {
     font-size: 1.1rem !important;
   }
+
+  /* Thu nhỏ và tối ưu hóa stat cards KPI trên di động */
+  .stat-kpi {
+    padding: 0.875rem !important;
+  }
+  .stat-kpi__header {
+    margin-bottom: 6px !important;
+  }
+  .stat-kpi__label {
+    font-size: 0.65rem !important;
+  }
+  .stat-kpi__value {
+    font-size: 1.15rem !important;
+    margin: 2px 0 !important;
+  }
+  .stat-kpi__sub {
+    font-size: 0.65rem !important;
+  }
+}
+
+/* Customizing react-hot-toast style to make it look premium, dark-mode adaptive and native */
+div[role="status"] {
+  border-radius: 12px !important;
+  font-family: inherit !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
+  padding: 8px 14px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid var(--color-border-light) !important;
+  background-color: var(--color-surface) !important;
+  color: var(--color-text) !important;
 }
