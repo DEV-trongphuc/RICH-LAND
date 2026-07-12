@@ -350,8 +350,8 @@ export default function DepositsPage() {
         />
       ) : (
         <div className="card" style={{ padding: 0, borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>
-          <div className="table-wrap" style={{ maxHeight: '480px', overflowY: 'auto' }}>
-            <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+          <div className="table-wrap" style={{ maxHeight: '480px', overflowY: 'auto', overflowX: 'auto' }}>
+            <table className="w-full text-left" style={{ borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
                 <tr>
                   <th style={{ padding: '1rem', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.5px', width: '110px', position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>Căn hộ</th>

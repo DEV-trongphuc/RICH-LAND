@@ -373,8 +373,8 @@ export const CompaniesPage: React.FC = () => {
       {/* List View */}
       {!loading && viewMode === 'list' && (
         <div className="card" style={{ overflow: 'visible' }}>
-          <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
-            <table style={{ width: '100%' }}>
+          <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto', overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: 700 }}>
               <thead>
                 <tr style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                   <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Công ty</th>

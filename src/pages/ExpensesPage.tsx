@@ -398,8 +398,8 @@ export const ExpensesPage: React.FC = () => {
 
       {/* Main table */}
       <div className="card" style={{ overflow: 'visible' }}>
-        <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
-          <table>
+        <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto', overflowX: 'auto' }}>
+          <table style={{ minWidth: 850 }}>
             <thead>
               <tr>
                 <th style={{ width: 44, padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border)' }}>

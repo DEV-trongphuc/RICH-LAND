@@ -417,8 +417,8 @@ export default function InventoryPage() {
             </div>
             <span className="badge info">{globalLogs.length} giao dịch</span>
           </div>
-          <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
-            <table>
+          <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto', overflowX: 'auto' }}>
+            <table style={{ minWidth: 850 }}>
               <thead>
                 <tr>
                   <th>THỜI GIAN</th>
@@ -492,8 +492,8 @@ export default function InventoryPage() {
         <>
           {viewMode === 'list' ? (
             <div className="card" style={{ borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
-              <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto' }}>
-                <table>
+              <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 340px)', overflowY: 'auto', overflowX: 'auto' }}>
+                <table style={{ minWidth: 900 }}>
                   <thead>
                     <tr>
                       <th>MÃ CĂN / DỰ ÁN <Tooltip content="Bảng giỏ hàng dự án bất động sản được đồng bộ theo dòng tiền cọc và giỏ hàng của Chủ đầu tư." /></th>
