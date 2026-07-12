@@ -748,38 +748,65 @@ export const ContactsPage: React.FC = () => {
   return (
     <div>
       {/* Header */}
-      <div className="page-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <h1 className="page-title" style={{ margin: 0 }}>Liên hệ & Khách hàng</h1>
-            {user?.role === 'sale' && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: uncontactedCount >= 5 
-                  ? 'rgba(239, 68, 68, 0.1)' 
-                  : 'var(--color-bg-light)',
-                border: uncontactedCount >= 5 
-                  ? '1px solid rgba(239, 68, 68, 0.25)' 
-                  : '1px solid var(--color-border)',
-                color: uncontactedCount >= 5 
-                  ? 'var(--color-danger)' 
-                  : 'var(--color-text)',
-                borderRadius: '20px',
-                padding: '4px 12px',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
-              }}>
-                <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
-                <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
-              </div>
+      <div className="page-header" style={{ marginBottom: isMobile ? '0.75rem' : '1.5rem' }}>
+        <div style={{ width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', width: '100%', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h1 className="page-title" style={{ margin: 0 }}>Liên hệ & Khách hàng</h1>
+              {user?.role === 'sale' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: uncontactedCount >= 5 
+                    ? 'rgba(239, 68, 68, 0.1)' 
+                    : 'var(--color-bg-light)',
+                  border: uncontactedCount >= 5 
+                    ? '1px solid rgba(239, 68, 68, 0.25)' 
+                    : '1px solid var(--color-border)',
+                  color: uncontactedCount >= 5 
+                    ? 'var(--color-danger)' 
+                    : 'var(--color-text)',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.03)'
+                }}>
+                  <AlertTriangle size={12} style={{ color: uncontactedCount >= 5 ? 'var(--color-danger)' : 'var(--color-warning)' }} />
+                  <span>Chưa tương tác: <strong>{uncontactedCount}/5</strong></span>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Add Button next to title on Mobile */}
+            {isMobile && user?.role !== 'viewer' && (
+              <button 
+                onClick={() => setShowCreateModal(true)} 
+                style={{
+                  background: 'var(--color-primary)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: 'var(--shadow-md)',
+                  flexShrink: 0
+                }}
+                title="Thêm liên hệ"
+              >
+                <Plus size={18} />
+              </button>
             )}
           </div>
           <p className="page-subtitle" style={{ marginTop: '4px' }}>{loading ? '...' : `${total} liên hệ`}</p>
         </div>
-        <div className="flex gap-2">
+        
+        {/* Render export buttons only if not on mobile, or hide Add button on mobile */}
+        <div className="flex gap-2" style={{ display: isMobile && user?.role === 'sale' ? 'none' : 'flex' }}>
           {user?.role !== 'viewer' && !isSale && (
             <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
               <Download size={14}/>
@@ -792,7 +819,7 @@ export const ContactsPage: React.FC = () => {
               <span> Xuất theo bộ lọc</span>
             </button>
           )}
-          {user?.role !== 'viewer' && (
+          {!isMobile && user?.role !== 'viewer' && (
             <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
               <Plus size={15}/>
               <span className="hide-on-mobile"> Thêm liên hệ</span>
@@ -801,84 +828,87 @@ export const ContactsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Smart Segments Removed */}
-
       {/* Search + filter row */}
-      <div className="card" style={{ padding:'0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', alignItems:'center', flexWrap: 'wrap' }}>
-        <div className="filter-search" style={{ width: '300px', position: 'relative' }}>
-          <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
-          <input placeholder="Tìm tên, email, điện thoại..." value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{ paddingRight: '2rem' }}/>
-          <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
-            <AnimatePresence>
-              {search && (
-                <motion.button 
-                  initial={{ opacity: 0, scale: 0.8 }} 
-                  animate={{ opacity: 1, scale: 1 }} 
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.15 }}
-                  className="btn-icon-bare" 
-                  onClick={() => setSearch('')} 
-                  style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Xóa tìm kiếm"
-                >
-                  <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
-                </motion.button>
-              )}
-            </AnimatePresence>
+      <div className="card" style={{ padding: isMobile ? '10px' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
+        {/* Row 1: Search and Filter Button */}
+        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+          <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto' }}>
+            <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
+            <input placeholder="Tìm tên, email, điện thoại..." value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{ paddingRight: '2rem' }}/>
+            <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+              <AnimatePresence>
+                {search && (
+                  <motion.button 
+                    initial={{ opacity: 0, scale: 0.8 }} 
+                    animate={{ opacity: 1, scale: 1 }} 
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                    className="btn-icon-bare" 
+                    onClick={() => setSearch('')} 
+                    style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    title="Xóa tìm kiếm"
+                  >
+                    <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
+
+          <button 
+            className={`btn sm ${showAdvancedFilters ? 'primary' : 'outline'}`} 
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '38px', width: isMobile ? '38px' : 'auto', minWidth: isMobile ? '38px' : 'auto', borderRadius: '10px', padding: isMobile ? 0 : '8px 12px', flexShrink: 0 }}
+            title="Bộ lọc nâng cao"
+          >
+            <Filter size={14} />
+            {!isMobile && <span>Bộ lọc nâng cao</span>}
+          </button>
         </div>
 
-        {/* Advanced filter toggle */}
-        <button 
-          className={`btn sm ${showAdvancedFilters ? 'primary' : 'outline'}`} 
-          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', borderRadius: '10px' }}
-        >
-          <Filter size={14} />
-          <span>Bộ lọc nâng cao</span>
-        </button>
-        
-        <div style={{ flex: 1 }} />
-        
-        {/* View Mode & Layout Controls */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <div style={{ width: 170 }}>
+        {/* Row 2: Sort Select & View Mode switchers */}
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', flex: isMobile ? undefined : 1 }}>
+          {!isMobile && <div style={{ flex: 1 }} />}
+          
+          <div style={{ width: isMobile ? '130px' : 170 }}>
             <CustomSelect 
               value={sortBy} 
               onChange={val => setSortBy(val as any)} 
               options={[
                 { value: 'newest', label: 'Mới nhất', icon: <ArrowDownUp size={14} /> },
-                { value: 'score_desc', label: 'Score giảm dần', icon: <ArrowDownUp size={14} /> },
-                { value: 'deal_desc', label: 'Deal lớn nhất', icon: <ArrowDownUp size={14} /> }
+                { value: 'score_desc', label: 'Score', icon: <ArrowDownUp size={14} /> },
+                { value: 'deal_desc', label: 'Deal', icon: <ArrowDownUp size={14} /> }
               ]} 
             />
           </div>
 
-          <button 
-            className={`btn sm ${viewMode === 'list' ? 'primary' : 'ghost'}`} 
-            onClick={() => setViewMode('list')} 
-            title="Danh sách"
-            style={{ padding: '0.5rem' }}
-          >
-            <List size={16} />
-          </button>
-          <button 
-            className={`btn sm ${viewMode === 'card' ? 'primary' : 'ghost'}`} 
-            onClick={() => setViewMode('card')} 
-            title="Dạng thẻ"
-            style={{ padding: '0.5rem' }}
-          >
-            <LayoutGrid size={16} />
-          </button>
-          
-          <button 
-            className="btn outline" 
-            onClick={() => setShowColumns(true)} 
-            title="Tùy chỉnh cột"
-            style={{ padding: '0 0.75rem' }}
-          >
-            <Columns size={16} />
-          </button>
+          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            <button 
+              className={`btn sm ${viewMode === 'list' ? 'primary' : 'ghost'}`} 
+              onClick={() => setViewMode('list')} 
+              title="Danh sách"
+              style={{ padding: '0.5rem', height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}
+            >
+              <List size={16} />
+            </button>
+            <button 
+              className={`btn sm ${viewMode === 'card' ? 'primary' : 'ghost'}`} 
+              onClick={() => setViewMode('card')} 
+              title="Dạng thẻ"
+              style={{ padding: '0.5rem', height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            
+            <button 
+              className="btn outline" 
+              onClick={() => setShowColumns(true)} 
+              title="Tùy chỉnh cột"
+              style={{ padding: 0, height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}
+            >
+              <Columns size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
