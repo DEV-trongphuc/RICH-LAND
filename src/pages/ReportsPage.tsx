@@ -514,53 +514,53 @@ export const ReportsPage: React.FC = () => {
         ];
         const activeTabIndex = TABS.findIndex(t => t.key === tab);
         return (
-          <div style={{
-            display: 'flex',
-            background: 'rgba(15, 23, 42, 0.05)',
-            padding: '4px',
-            borderRadius: '12px',
-            gap: '4px',
-            width: 'fit-content',
-            position: 'relative',
-            border: '1px solid var(--color-border-light)',
-            alignSelf: 'flex-start',
-            marginBottom: '1.5rem'
-          }}>
-            {/* Sliding Pill Background Indicator */}
+          <div className="segmented-control-wrapper" style={{ marginBottom: '1.5rem' }}>
             <div style={{
-              position: 'absolute',
-              top: '4px',
-              bottom: '4px',
-              width: '110px',
-              borderRadius: '10px',
-              background: 'var(--color-surface)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: `translateX(${activeTabIndex * (110 + 4)}px)`,
-              zIndex: 1
-            }} />
-            {TABS.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key as any)}
-                style={{
-                  width: '110px',
-                  height: '36px',
-                  border: 'none',
-                  outline: 'none',
-                  background: 'none',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  color: tab === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  position: 'relative',
-                  zIndex: 2,
-                  transition: 'color 0.25s'
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
+              display: 'flex',
+              background: 'rgba(15, 23, 42, 0.05)',
+              padding: '4px',
+              borderRadius: '12px',
+              gap: '4px',
+              width: 'fit-content',
+              position: 'relative',
+              border: '1px solid var(--color-border-light)'
+            }}>
+              {/* Sliding Pill Background Indicator */}
+              <div style={{
+                position: 'absolute',
+                top: '4px',
+                bottom: '4px',
+                width: '110px',
+                borderRadius: '10px',
+                background: 'var(--color-surface)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: `translateX(${activeTabIndex * (110 + 4)}px)`,
+                zIndex: 1
+              }} />
+              {TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key as any)}
+                  style={{
+                    width: '110px',
+                    height: '36px',
+                    border: 'none',
+                    outline: 'none',
+                    background: 'none',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    color: tab === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    position: 'relative',
+                    zIndex: 2,
+                    transition: 'color 0.25s'
+                  }}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         );
       })()}

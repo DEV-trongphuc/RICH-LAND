@@ -723,6 +723,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         {/* Live Activity Feed Button */}
         <button 
           onClick={onActivityFeedClick}
+          className="responsive-hide-mobile"
           style={{
             width: 36,
             height: 36,
@@ -846,7 +847,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         </button>
 
         {/* Language Selector Dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div className="responsive-hide-mobile" style={{ position: 'relative' }}>
           <button
             onClick={(e) => {
               e.stopPropagation();

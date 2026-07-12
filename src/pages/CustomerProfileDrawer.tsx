@@ -4791,10 +4791,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       {/* Timeline Type Filters */}
-                      <div style={{
-                        display: 'flex',
-                        gap: '4px',
-                        marginBottom: '1.25rem',
+                      <div className="segmented-control-wrapper" style={{ marginBottom: '1.25rem' }}>
+                        <div style={{
+                          display: 'flex',
+                          gap: '4px',
+                          marginBottom: 0,
                         background: 'rgba(15, 23, 42, 0.05)',
                         padding: '4px',
                         borderRadius: '10px',
@@ -4866,6 +4867,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           );
                         })}
                       </div>
+                    </div>
 
                       {timeline.length === 0 ? (
                         <EmptyCard
@@ -5457,10 +5459,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       {/* Quick Task Role Filters */}
-                      <div style={{
-                        display: 'flex',
-                        gap: '4px',
-                        marginBottom: '1rem',
+                      <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
+                        <div style={{
+                          display: 'flex',
+                          gap: '4px',
+                          marginBottom: 0,
                         background: 'rgba(15, 23, 42, 0.05)',
                         padding: '4px',
                         borderRadius: '10px',
@@ -5528,6 +5531,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           );
                         })}
                       </div>
+                    </div>
 
                       {(() => {
                         const filteredTasks = tasks.filter(t => {

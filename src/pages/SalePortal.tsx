@@ -2979,90 +2979,92 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
 
         {/* Main Subtabs Selection (iOS Segmented Control style) */}
-        <div style={{
-          display: 'flex',
-          background: 'rgba(15, 23, 42, 0.05)',
-          padding: '4px',
-          borderRadius: '12px',
-          gap: '4px',
-          width: 'fit-content',
-          position: 'relative',
-          border: '1px solid var(--color-border-light)'
-        }}>
-          {/* Sliding Pill Background Indicator */}
+        <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
           <div style={{
-            position: 'absolute',
-            top: '4px',
-            bottom: '4px',
-            width: '210px',
-            borderRadius: '10px',
-            background: 'var(--color-surface)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${
-              wsSubTab === 'customer' ? '0px' : 
-              wsSubTab === 'team' ? '214px' : '428px'
-            })`,
-            zIndex: 1
-          }} />
+            display: 'flex',
+            background: 'rgba(15, 23, 42, 0.05)',
+            padding: '4px',
+            borderRadius: '12px',
+            gap: '4px',
+            width: 'fit-content',
+            position: 'relative',
+            border: '1px solid var(--color-border-light)'
+          }}>
+            {/* Sliding Pill Background Indicator */}
+            <div style={{
+              position: 'absolute',
+              top: '4px',
+              bottom: '4px',
+              width: '210px',
+              borderRadius: '10px',
+              background: 'var(--color-surface)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: `translateX(${
+                wsSubTab === 'customer' ? '0px' : 
+                wsSubTab === 'team' ? '214px' : '428px'
+              })`,
+              zIndex: 1
+            }} />
 
-          {[
-            { id: 'customer', label: t('Công việc khách hàng'), count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
-            { id: 'team', label: t('Công việc nội bộ team'), count: wsTasks.filter(task => {
-                const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
-                const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                return !isClient && !tagsList.includes('personal_task');
-              }).length
-            },
-            { id: 'personal', label: t('Công việc cá nhân'), count: wsTasks.filter(task => {
-                const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
-                return tagsList.includes('personal_task');
-              }).length
-            }
-          ].map(tab => {
-            const isSelected = wsSubTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setWsSubTab(tab.id as any);
-                  setWsTeamSubFilter('all');
-                }}
-                style={{
-                  width: '210px',
-                  height: '38px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  position: 'relative',
-                  zIndex: 2,
-                  transition: 'color 0.25s ease'
-                }}
-                className=""
-              >
-                <span>{tab.label}</span>
-                <span style={{
-                  fontSize: '0.75rem',
-                  padding: '2px 6px',
-                  borderRadius: '10px',
-                  background: isSelected ? 'var(--color-primary-light)' : 'rgba(15, 23, 42, 0.05)',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                  fontWeight: 800,
-                  transition: 'background 0.25s ease, color 0.25s ease'
-                }}>
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
+            {[
+              { id: 'customer', label: t('Công việc khách hàng'), count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
+              { id: 'team', label: t('Công việc nội bộ team'), count: wsTasks.filter(task => {
+                  const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
+                  const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+                  return !isClient && !tagsList.includes('personal_task');
+                }).length
+              },
+              { id: 'personal', label: t('Công việc cá nhân'), count: wsTasks.filter(task => {
+                  const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+                  return tagsList.includes('personal_task');
+                }).length
+              }
+            ].map(tab => {
+              const isSelected = wsSubTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setWsSubTab(tab.id as any);
+                    setWsTeamSubFilter('all');
+                  }}
+                  style={{
+                    width: '210px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    position: 'relative',
+                    zIndex: 2,
+                    transition: 'color 0.25s ease'
+                  }}
+                  className=""
+                >
+                  <span>{tab.label}</span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    padding: '2px 6px',
+                    borderRadius: '10px',
+                    background: isSelected ? 'var(--color-primary-light)' : 'rgba(15, 23, 42, 0.05)',
+                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    fontWeight: 800,
+                    transition: 'background 0.25s ease, color 0.25s ease'
+                  }}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Team sub-filters */}
@@ -3357,67 +3359,69 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: '4px', background: 'rgba(15, 23, 42, 0.05)', padding: '4px', borderRadius: '10px', width: 'fit-content', position: 'relative', border: '1px solid var(--color-border-light)' }}>
-                {/* Sliding Pill Background Indicator */}
-                {(() => {
-                  const tabs = [
+              <div className="segmented-control-wrapper">
+                <div style={{ display: 'flex', gap: '4px', background: 'rgba(15, 23, 42, 0.05)', padding: '4px', borderRadius: '10px', width: 'fit-content', position: 'relative', border: '1px solid var(--color-border-light)' }}>
+                  {/* Sliding Pill Background Indicator */}
+                  {(() => {
+                    const tabs = [
+                      { value: 'all', label: t('Tất cả') },
+                      { value: 'assigned_to_me', label: t('Tôi thực hiện') },
+                      currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
+                      { value: 'collaborator', label: t('Tôi liên quan') }
+                    ].filter(Boolean) as any[];
+                    const activeIndex = tabs.findIndex(t => t.value === wsTaskFilter);
+                    const safeIndex = activeIndex === -1 ? 0 : activeIndex;
+                    return (
+                      <div style={{
+                        position: 'absolute',
+                        top: '4px',
+                        bottom: '4px',
+                        width: '110px',
+                        borderRadius: '7px',
+                        background: 'var(--color-surface)',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                        transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: `translateX(${safeIndex * 114}px)`,
+                        zIndex: 1
+                      }} />
+                    );
+                  })()}
+
+                  {[
                     { value: 'all', label: t('Tất cả') },
                     { value: 'assigned_to_me', label: t('Tôi thực hiện') },
                     currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
                     { value: 'collaborator', label: t('Tôi liên quan') }
-                  ].filter(Boolean) as any[];
-                  const activeIndex = tabs.findIndex(t => t.value === wsTaskFilter);
-                  const safeIndex = activeIndex === -1 ? 0 : activeIndex;
-                  return (
-                    <div style={{
-                      position: 'absolute',
-                      top: '4px',
-                      bottom: '4px',
-                      width: '110px',
-                      borderRadius: '7px',
-                      background: 'var(--color-surface)',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-                      transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                      transform: `translateX(${safeIndex * 114}px)`,
-                      zIndex: 1
-                    }} />
-                  );
-                })()}
-
-                {[
-                  { value: 'all', label: t('Tất cả') },
-                  { value: 'assigned_to_me', label: t('Tôi thực hiện') },
-                  currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: t('Tôi duyệt') },
-                  { value: 'collaborator', label: t('Tôi liên quan') }
-                ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
-                  const isSelected = wsTaskFilter === tab.value;
-                  return (
-                    <button
-                      key={tab.value}
-                      onClick={() => setWsTaskFilter(tab.value as any)}
-                      style={{
-                        width: '110px',
-                        height: '28px',
-                        borderRadius: '7px',
-                        border: 'none',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        background: 'transparent',
-                        color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        position: 'relative',
-                        zIndex: 2,
-                        transition: 'color 0.25s ease'
-                      }}
-                      className=""
-                    >
-                      {tab.label}
-                    </button>
-                  );
-                })}
+                  ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
+                    const isSelected = wsTaskFilter === tab.value;
+                    return (
+                      <button
+                        key={tab.value}
+                        onClick={() => setWsTaskFilter(tab.value as any)}
+                        style={{
+                          width: '110px',
+                          height: '28px',
+                          borderRadius: '7px',
+                          border: 'none',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          background: 'transparent',
+                          color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          position: 'relative',
+                          zIndex: 2,
+                          transition: 'color 0.25s ease'
+                        }}
+                        className=""
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div style={{

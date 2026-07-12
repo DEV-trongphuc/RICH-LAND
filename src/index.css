@@ -3957,4 +3957,17 @@ table td.wrap-cell, table th.wrap-cell {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   border: none;
+}
+
+/* Scrollable container for segmented tab controls */
+.segmented-control-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+  padding-bottom: 4px;
+}
+.segmented-control-wrapper::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }

@@ -706,70 +706,70 @@ const ConsultantsInner = () => {
 
       {/* Tab bar */}
       {showAllTabs && (
-        <div style={{
-          display: 'flex',
-          background: 'rgba(15, 23, 42, 0.05)',
-          padding: '4px',
-          borderRadius: '12px',
-          gap: '4px',
-          width: 'fit-content',
-          position: 'relative',
-          border: '1px solid var(--color-border-light)',
-          alignSelf: 'flex-start',
-          marginBottom: '1.5rem'
-        }}>
-          {/* Sliding Pill Background Indicator */}
+        <div className="segmented-control-wrapper" style={{ marginBottom: '1.5rem' }}>
           <div style={{
-            position: 'absolute',
-            top: '4px',
-            bottom: '4px',
-            width: '160px',
-            borderRadius: '10px',
-            background: 'var(--color-surface)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-            transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${
-              activeTab === 'consultants' ? '0px' : 
-              activeTab === 'teams' ? '164px' : '328px'
-            })`,
-            zIndex: 1
-          }} />
+            display: 'flex',
+            background: 'rgba(15, 23, 42, 0.05)',
+            padding: '4px',
+            borderRadius: '12px',
+            gap: '4px',
+            width: 'fit-content',
+            position: 'relative',
+            border: '1px solid var(--color-border-light)'
+          }}>
+            {/* Sliding Pill Background Indicator */}
+            <div style={{
+              position: 'absolute',
+              top: '4px',
+              bottom: '4px',
+              width: '160px',
+              borderRadius: '10px',
+              background: 'var(--color-surface)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              transform: `translateX(${
+                activeTab === 'consultants' ? '0px' : 
+                activeTab === 'teams' ? '164px' : '328px'
+              })`,
+              zIndex: 1
+            }} />
 
-          {[
-            { id: 'consultants', label: t('Tư vấn viên'), icon: <User size={14} /> },
-            { id: 'teams', label: t('Nhóm (Team)'), icon: <Users size={14} /> },
-            { id: 'branches', label: t('Chi nhánh'), icon: <Building2 size={14} /> }
-          ].map(tab => {
-            const isSelected = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => navigate(`/consultants?tab=${tab.id}`)}
-                style={{
-                  width: '160px',
-                  height: '38px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: 'transparent',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  position: 'relative',
-                  zIndex: 2,
-                  transition: 'color 0.25s ease'
-                }}
-                className=""
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
+            {[
+              { id: 'consultants', label: t('Tư vấn viên'), icon: <User size={14} /> },
+              { id: 'teams', label: t('Nhóm (Team)'), icon: <Users size={14} /> },
+              { id: 'branches', label: t('Chi nhánh'), icon: <Building2 size={14} /> }
+            ].map(tab => {
+              const isSelected = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => navigate(`/consultants?tab=${tab.id}`)}
+                  style={{
+                    width: '160px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    background: 'transparent',
+                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    position: 'relative',
+                    zIndex: 2,
+                    transition: 'color 0.25s ease'
+                  }}
+                  className=""
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
