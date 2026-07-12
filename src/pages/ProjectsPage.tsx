@@ -111,6 +111,14 @@ const CampaignCardSkeleton = () => (
 );
 
 export default function ProjectsPage() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const { user } = useAuth();
   const { addToast, showConfirm } = useUIStore();
   const navigate = useNavigate();
@@ -648,9 +656,9 @@ export default function ProjectsPage() {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'start' }}>
               {/* Left Column (3/5) */}
-              <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: 3, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
                 {/* Section 1: Thông tin cơ bản */}
                 <div style={{
@@ -948,7 +956,7 @@ export default function ProjectsPage() {
               </div>
 
               {/* Right Column (2/5) */}
-              <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: 2, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
                 {/* Section 3: Nhân sự & Tài liệu */}
                 <div style={{
@@ -1292,9 +1300,9 @@ export default function ProjectsPage() {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'start' }}>
               {/* Left Column (3/5) */}
-              <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: 3, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
                 {/* Section 1: Thông tin cơ bản */}
                 <div style={{
@@ -1544,7 +1552,7 @@ export default function ProjectsPage() {
               </div>
 
               {/* Right Column (2/5) */}
-              <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ flex: 2, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
                 {/* Section 2: Dự án & Nhân sự phụ trách */}
                 <div style={{
@@ -3089,7 +3097,7 @@ export default function ProjectsPage() {
           )}
           </>
         ) : (
-          <form id="project-form" onSubmit={handleSaveProject} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+          <form id="project-form" onSubmit={handleSaveProject} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'start' }}>
             <input 
               type="file" 
               ref={quickUploadInputRef} 
@@ -3097,7 +3105,7 @@ export default function ProjectsPage() {
               onChange={e => handleQuickUpload(e, editingProject?.id)} 
             />
             {/* Left Column (3/5) */}
-            <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ flex: 3, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
               {/* Card 1: Thông tin cơ bản */}
               <div style={{
@@ -3369,7 +3377,7 @@ export default function ProjectsPage() {
             </div>
 
             {/* Right Column (2/5) */}
-            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ flex: 2, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
               {/* Card 1: Nhân sự quản lý */}
               <div style={{
@@ -4230,7 +4238,7 @@ export default function ProjectsPage() {
           )}
           </>
         ) : (
-          <form id="campaign-form" onSubmit={handleSaveCampaign} style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
+          <form id="campaign-form" onSubmit={handleSaveCampaign} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: '1.5rem', alignItems: 'start' }}>
             <input 
               type="file" 
               ref={quickUploadInputRef} 
@@ -4238,7 +4246,7 @@ export default function ProjectsPage() {
               onChange={e => handleQuickUpload(e)} 
             />
             {/* Left Column (3/5) */}
-            <div style={{ flex: 3, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ flex: 3, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
               {/* Card 1: Thông tin cơ bản */}
               <div style={{
@@ -4337,7 +4345,7 @@ export default function ProjectsPage() {
             </div>
 
             {/* Right Column (2/5) */}
-            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ flex: 2, width: isMobile ? '100%' : 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               
               {/* Card 1: Nhân sự & Dự án liên kết */}
               <div style={{

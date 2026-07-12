@@ -2153,7 +2153,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           gap: '4px',
           alignItems: 'center',
           width: 'fit-content',
-          margin: '10px 18px'
+          margin: '10px 18px',
+          flexWrap: 'wrap',
+          maxWidth: 'calc(100% - 36px)'
         }}>
           {[
             { id: 'queue', label: t('Hàng chờ duyệt'), count: tabCounts.queue, color: 'var(--color-warning)' },

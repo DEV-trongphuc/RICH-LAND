@@ -476,7 +476,7 @@ export const InvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
+                <div className="responsive-grid-1-1" style={{ gap: '2rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
                   <div>
                     <p className="text-xs text-light mb-1 uppercase tracking-wider font-bold">Khách hàng</p>
                     <p style={{ fontWeight: 700 }}>{previewItem.contact_name}</p>
