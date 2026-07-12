@@ -214,18 +214,22 @@ export default function CooperationSlipsPage() {
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     
+    let clientX = 0;
+    let clientY = 0;
+    
     if ('touches' in e) {
       if (e.touches.length === 0) return { x: 0, y: 0 };
-      return {
-        x: e.touches[0].clientX - rect.left,
-        y: e.touches[0].clientY - rect.top
-      };
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
     } else {
-      return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      };
+      clientX = e.clientX;
+      clientY = e.clientY;
     }
+    
+    // Scale coordinates back to canvas original width/height to support responsiveness
+    const x = (clientX - rect.left) * (canvas.width / rect.width);
+    const y = (clientY - rect.top) * (canvas.height / rect.height);
+    return { x, y };
   };
 
   const clearCanvas = () => {

@@ -16,8 +16,14 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
-  const isSales = user?.role === 'sale';
-  
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [checkIns, setCheckIns] = useState<any[]>([]);
   const [consultants, setConsultants] = useState<any[]>([]);
@@ -409,15 +415,16 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           </div>
         </div>
 
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(7, 1fr)',
-          gap: '2px',
-          backgroundColor: 'var(--color-border-light)',
-          borderRadius: '12px',
-          overflow: 'hidden',
-          border: '1px solid var(--color-border-light)'
-        }}>
+        <div style={{ overflowX: 'auto', width: '100%', borderRadius: '12px' }} className="custom-scrollbar">
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(7, 1fr)',
+            gap: '2px',
+            backgroundColor: 'var(--color-border-light)',
+            overflow: 'hidden',
+            border: '1px solid var(--color-border-light)',
+            minWidth: isMobile ? '700px' : 'auto'
+          }}>
           {weekDays.map((day, idx) => (
             <div key={idx} style={{
               backgroundColor: 'var(--color-bg)',
@@ -586,6 +593,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               </div>
             );
           })}
+          </div>
         </div>
 
         <style>{`
@@ -605,7 +613,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Header */}
       {!embedMode && (
-        <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="page-header flex-col-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
             <h1 className="page-title">
               {t('Quản lý Chấm công')}
@@ -1093,9 +1101,9 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           title={`${t('Chi tiết chấm công ngày')} ${selectedDateForDetail}`}
           width="960px"
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem', minHeight: '400px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: '1.5rem', minHeight: '400px' }}>
             {/* Left Panel: Real-time Check-ins list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderRight: '1px solid var(--color-border-light)', paddingRight: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderRight: isMobile ? 'none' : '1px solid var(--color-border-light)', paddingRight: isMobile ? 0 : '1.5rem', borderBottom: isMobile ? '1px dashed var(--color-border-light)' : 'none', paddingBottom: isMobile ? '1.5rem' : 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h4 style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--color-text)', margin: 0 }}>
                   📋 {t('Nhật ký Check-in')}
