@@ -33,7 +33,8 @@ if (in_array($baseAction, [
     'cloud-files', 'file-categories', 'tickets', 'suppliers', 'purchase-orders', 
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
     'users', 'reports', 'quotes', 'invoices', 'expenses', 'products',
-    'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'upload', 'teams', 'dashboard'
+    'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'upload', 'teams', 'dashboard',
+    'notifications', 'workflow-task-templates', 'search', 'export', 'import', 'system'
 ], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action;
     require_once __DIR__ . '/index.php';
@@ -389,7 +390,26 @@ if (!in_array($action, $publicActions)) {
         }
     }
 
-    if (($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') && !in_array($action, ['get_settings', 'get_sale_portal_data', 'get_sale_lead_timeline', 'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 'get_lead_notification_status', 'get_reports', 'get_rounds', 'get_fair_share_stats', 'get_consultant_compensation_details', 'upload_avatar', 'update_consultant_self_profile', 'consultant-profile', 'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 'expenses', 'tickets', 'activities', 'users', 'notes', 'cooperation-slips', 'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 'delete_consultant_leave'])) {
+    $salesAllowedActions = [
+        'get_settings', 'get_sale_portal_data', 'get_sale_lead_timeline', 
+        'toggle_consultant_vacation', 'accept_lead', 'check_lead_duplicate', 
+        'get_lead_notification_status', 'get_reports', 'get_rounds', 
+        'get_fair_share_stats', 'get_consultant_compensation_details', 
+        'upload_avatar', 'update_consultant_self_profile', 'consultant-profile', 
+        'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 
+        'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 
+        'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 
+        'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 
+        'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 
+        'expenses', 'tickets', 'activities', 'users', 'notes', 'cooperation-slips', 
+        'get_accounts', 'edit_account', 'unlink_zalo', 'get_night_shift_status', 
+        'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 
+        'delete_consultant_leave',
+        // Whitelisted missing front-controller routes for Sales
+        'notifications', 'check-ins', 'deposits', 'search', 'workflow-task-templates', 'products', 'dashboard'
+    ];
+
+    if (($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') && !in_array($baseAction, $salesAllowedActions, true)) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
         exit();
@@ -8892,7 +8912,7 @@ switch ($action) {
                     if (isset($existingStages[$idx])) {
                         $stageId = (int)$existingStages[$idx]['id'];
                         $stmtUp = $conn->prepare("UPDATE pipeline_stages SET name = ?, color = ?, order_index = ?, is_won = ?, is_lost = ?, system_slug = ? WHERE id = ?");
-                        $stmtUp->bind_param("ssiiiisi", $name, $color, $idx, $isWon, $isLost, $slug, $stageId);
+                        $stmtUp->bind_param("ssiiisi", $name, $color, $idx, $isWon, $isLost, $slug, $stageId);
                         $stmtUp->execute();
                         $stmtUp->close();
                         $keepIds[] = $stageId;
@@ -10368,7 +10388,7 @@ switch ($action) {
             $token = bin2hex(random_bytes(32));
 
             $stmt = $conn->prepare("INSERT INTO accounts (username, password_hash, name, role, email, is_confirmed, confirm_token, zalo_chat_id, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param("ssssssssssssssssi", $username, $hash, $name, $role, $email, $token, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $is_active);
+            $stmt->bind_param("sssssssssssssssi", $username, $hash, $name, $role, $email, $token, $zalo_chat_id, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $is_active);
 
             if ($stmt->execute()) {
                 $newId = $conn->insert_id;
