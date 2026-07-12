@@ -62,6 +62,17 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     transition: { type: "spring", duration: 0.4, bounce: 0.12 }
   };
 
+  const dragProps = isMobile ? {
+    drag: 'y' as const,
+    dragConstraints: { top: 0 },
+    dragElastic: 0.2,
+    onDragEnd: (event: any, info: any) => {
+      if (info.offset.y > 120 || info.velocity.y > 500) {
+        onClose();
+      }
+    }
+  } : {};
+
   const modalContent = (
     <AnimatePresence>
       {isOpen && (
@@ -112,6 +123,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               className={styles.modal}
               style={{ width: isMobile ? '100vw' : resolvedWidth }}
               {...motionProps}
+              {...dragProps}
             >
               <div className={styles.dragHandle} />
               {title && (

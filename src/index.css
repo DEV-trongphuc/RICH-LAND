@@ -31,8 +31,13 @@
     left: 0;
     height: 100vh;
     transform: translateX(-100%);
-    z-index: 1000 !important;
+    z-index: 10002 !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     /* Ensure mobile drawer is always on top of sticky page elements */
+  }
+
+  .responsive-sidebar-overlay {
+    z-index: 10001 !important;
   }
 
   .responsive-sidebar.responsive-sidebar-open {
@@ -3997,5 +4002,18 @@ table td.wrap-cell, table th.wrap-cell {
   .closeBtn:active {
     transform: scale(0.96) !important;
     transition: transform 0.1s ease !important;
+  }
+}
+
+/* Khóa cuộn kéo nảy đàn hồi (Elastic Scroll Bounce) trên di động */
+html, body {
+  overscroll-behavior-y: none;
+}
+
+@media (max-width: 768px) {
+  .app-layout-main-wrapper {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    overflow: hidden;
   }
 }
