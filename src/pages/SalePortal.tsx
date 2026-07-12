@@ -2942,7 +2942,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* Workspace Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 className="page-title">{t("Bàn làm việc")}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h1 className="page-title" style={{ margin: 0 }}>{t("Bàn làm việc")}</h1>
+              
+              {/* Completed Calls Count Pill */}
+              <div 
+                onClick={handleOpenCallsModal}
+                className="hover-lift"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.15)',
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: '#10b981',
+                  cursor: 'pointer',
+                  userSelect: 'none',
+                  whiteSpace: 'nowrap',
+                  height: '24px'
+                }}
+              >
+                <Phone size={11} style={{ flexShrink: 0 }} />
+                <span>
+                  {t('Đã gọi:')} <strong>{completedCallsCount}</strong>
+                </span>
+              </div>
+            </div>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
               {t("Quản lý toàn bộ công việc cần thực hiện, lọc chi tiết theo tiến độ và độ ưu tiên.")}
             </p>
@@ -3069,19 +3098,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
         {/* Team sub-filters */}
         {wsSubTab === 'team' && (
-          <div style={{
+          <div className="no-scrollbar" style={{
             display: 'flex',
             gap: '8px',
             alignItems: 'center',
-            flexWrap: 'wrap',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border-light)',
-            padding: '8px 12px',
-            borderRadius: '12px'
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            padding: isMobile ? '4px 0' : '8px 12px',
+            background: isMobile ? 'transparent' : 'var(--color-surface)',
+            border: isMobile ? 'none' : '1px solid var(--color-border-light)',
+            borderRadius: '12px',
+            width: '100%',
+            marginBottom: '0.75rem'
           }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', marginRight: '6px' }}>
-              {t('Phân loại nội bộ:')}
-            </span>
+            {!isMobile && (
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text-muted)', marginRight: '6px', whiteSpace: 'nowrap' }}>
+                {t('Phân loại nội bộ:')}
+              </span>
+            )}
             {[
               { id: 'all', label: t('Tất cả'), color: 'var(--color-text-light)' },
               { id: 'task', label: t('Nhiệm vụ'), color: 'var(--color-success)' },
@@ -3102,8 +3136,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    background: isSelected ? sub.color : 'rgba(0,0,0,0.03)',
-                    color: isSelected ? 'white' : 'var(--color-text-light)'
+                    background: isSelected ? sub.color : 'rgba(128, 128, 128, 0.12)',
+                    color: isSelected ? 'white' : 'var(--color-text-light)',
+                    whiteSpace: 'nowrap'
                   }}
                   className="hover-lift"
                 >
@@ -3333,32 +3368,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
 
             {/* Right side: Role filters & View Mode switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
-              {/* Completed Calls Count Pill */}
-              <div 
-                onClick={handleOpenCallsModal}
-                className="hover-lift"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  border: '1px solid rgba(16, 185, 129, 0.15)',
-                  padding: '6px 12px',
-                  borderRadius: '10px',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  color: '#10b981',
-                  cursor: 'pointer',
-                  userSelect: 'none'
-                }}
-              >
-                <Phone size={13} style={{ flexShrink: 0 }} />
-                <span>
-                  {t('Đã gọi:')} <strong>{completedCallsCount}</strong> {t('cuộc')}
-                </span>
-              </div>
-
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
               <div className="segmented-control-wrapper">
                 <div style={{ display: 'flex', gap: '4px', background: 'rgba(15, 23, 42, 0.05)', padding: '4px', borderRadius: '10px', width: 'fit-content', position: 'relative', border: '1px solid var(--color-border-light)' }}>
                   {/* Sliding Pill Background Indicator */}
@@ -3424,80 +3434,82 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               </div>
 
-              <div style={{
-                display: 'flex',
-                background: 'var(--color-border-light)',
-                padding: '4px',
-                borderRadius: '10px',
-                gap: '4px'
-              }}>
-                <button
-                  onClick={() => setWsViewMode('grid')}
-                  title={t('Dạng lưới')}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '7px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: wsViewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
-                    color: wsViewMode === 'grid' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    boxShadow: wsViewMode === 'grid' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 0,
-                    transform: 'none'
-                  }}
-                >
-                  <LayoutGrid size={16} />
-                </button>
-                <button
-                  onClick={() => setWsViewMode('kanban')}
-                  title={t('Dạng Kanban')}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '7px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: wsViewMode === 'kanban' ? 'var(--color-surface)' : 'transparent',
-                    color: wsViewMode === 'kanban' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    boxShadow: wsViewMode === 'kanban' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 0,
-                    transform: 'none'
-                  }}
-                >
-                  <Layers size={16} />
-                </button>
-                <button
-                  onClick={() => setWsViewMode('focus')}
-                  title={t('Chế độ Focus')}
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '7px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: (wsViewMode as string) === 'focus' ? 'var(--color-surface)' : 'transparent',
-                    color: (wsViewMode as string) === 'focus' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    boxShadow: (wsViewMode as string) === 'focus' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 0,
-                    transform: 'none'
-                  }}
-                >
-                  <Monitor size={16} />
-                </button>
-              </div>
+              {!isMobile && (
+                <div style={{
+                  display: 'flex',
+                  background: 'var(--color-border-light)',
+                  padding: '4px',
+                  borderRadius: '10px',
+                  gap: '4px'
+                }}>
+                  <button
+                    onClick={() => setWsViewMode('grid')}
+                    title={t('Dạng lưới')}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '7px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: wsViewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
+                      color: wsViewMode === 'grid' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: wsViewMode === 'grid' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      transform: 'none'
+                    }}
+                  >
+                    <LayoutGrid size={16} />
+                  </button>
+                  <button
+                    onClick={() => setWsViewMode('kanban')}
+                    title={t('Dạng Kanban')}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '7px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: wsViewMode === 'kanban' ? 'var(--color-surface)' : 'transparent',
+                      color: wsViewMode === 'kanban' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: wsViewMode === 'kanban' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      transform: 'none'
+                    }}
+                  >
+                    <Layers size={16} />
+                  </button>
+                  <button
+                    onClick={() => setWsViewMode('focus')}
+                    title={t('Chế độ Focus')}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '7px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      background: (wsViewMode as string) === 'focus' ? 'var(--color-surface)' : 'transparent',
+                      color: (wsViewMode as string) === 'focus' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                      boxShadow: (wsViewMode as string) === 'focus' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      transform: 'none'
+                    }}
+                  >
+                    <Monitor size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
