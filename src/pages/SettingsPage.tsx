@@ -272,16 +272,11 @@ export const SettingsPage: React.FC = () => {
 
       {/* Mobile Tab Selector */}
       <div className="mobile-only" style={{ width: '100%', marginBottom: '1.5rem' }}>
-        <select 
-          value={tab} 
-          onChange={e => setTab(e.target.value)}
-          className="form-select"
-          style={{ width: '100%', height: 44 }}
-        >
-          {TABS.map(({ id, label }) => (
-            <option key={id} value={id}>{label}</option>
-          ))}
-        </select>
+        <CustomSelect
+          value={tab}
+          onChange={val => setTab(val)}
+          options={TABS.map(({ id, label }) => ({ value: id, label }))}
+        />
       </div>
 
       {/* Desktop/Tablet Tab Buttons */}

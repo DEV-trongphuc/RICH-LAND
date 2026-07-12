@@ -12,6 +12,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { PhoneLink } from '../components/ui/PhoneLink';
 import { useDebounce } from '../hooks/useDebounce';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 const STATUSES = ['active', 'inactive', 'prospect'];
 const ST_LABEL: Record<string, string> = { active: 'Hoạt động', inactive: 'Ngừng', prospect: 'Tiềm năng' };
@@ -191,17 +192,16 @@ export const CompaniesPage: React.FC = () => {
 
         {/* Mobile Status Select */}
         <div className="mobile-only" style={{ width: '100%' }}>
-          <select
+          <CustomSelect
             value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="form-select"
-            style={{ width: '100%', height: 40 }}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Ngừng hoạt động</option>
-            <option value="prospect">Tiềm năng</option>
-          </select>
+            onChange={val => setStatusFilter(val as any)}
+            options={[
+              { value: '', label: 'Tất cả trạng thái' },
+              { value: 'active', label: 'Hoạt động' },
+              { value: 'inactive', label: 'Ngừng hoạt động' },
+              { value: 'prospect', label: 'Tiềm năng' }
+            ]}
+          />
         </div>
 
         {/* Desktop Status Buttons */}

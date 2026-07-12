@@ -404,17 +404,12 @@ export const FilesPage: React.FC = () => {
         {/* Main Content Area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
           {/* Mobile Folder/Category Dropdown */}
-          <div className="mobile-only" style={{ width: '100%' }}>
-            <select 
-              value={category} 
-              onChange={e => { setPage(1); setCategory(e.target.value); }}
-              className="form-select"
-              style={{ width: '100%', height: 44, marginBottom: '0.5rem' }}
-            >
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
+          <div className="mobile-only" style={{ width: '100%', marginBottom: '0.5rem' }}>
+            <CustomSelect
+              value={category}
+              onChange={val => { setPage(1); setCategory(val); }}
+              options={categories.map(c => ({ value: c.id, label: c.label }))}
+            />
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
