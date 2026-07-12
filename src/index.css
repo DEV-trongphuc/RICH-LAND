@@ -4075,4 +4075,30 @@ html, body {
     height: 54px !important;
     padding: 0 1rem !important;
   }
+
+  /* Thu nhỏ font chữ trong các bảng dữ liệu để hiển thị nhiều thông tin hơn */
+  .table th, .table td, table th, table td {
+    font-size: 0.8rem !important;
+    padding: 10px 8px !important;
+  }
+
+  /* Thu nhỏ các thẻ badge / tag để đỡ chiếm không gian */
+  .badge, .tag {
+    font-size: 0.65rem !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+  }
+
+  /* Thu nhỏ cỡ chữ của các trường thông tin trong trang chi tiết / profile */
+  .detail-label, .info-label {
+    font-size: 0.75rem !important;
+  }
+  .detail-value, .info-value {
+    font-size: 0.825rem !important;
+  }
+
+  /* Tối ưu kích thước font chữ modal & drawer content */
+  .modal-title, .drawer-title {
+    font-size: 1.1rem !important;
+  }
 }
