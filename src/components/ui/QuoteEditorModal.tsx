@@ -500,8 +500,8 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                             </div>
                             
                             {/* Row 2: Description & Number Inputs */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-end' }}>
-                              <div style={{ flex: 1 }}>
+                            <div className="quote-item-row2">
+                              <div style={{ flex: 1, width: '100%' }}>
                                 <textarea 
                                   style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: '0.8125rem', color: 'var(--color-text-muted)', resize: 'none', minHeight: '24px', height: 'auto', lineHeight: 1.5 }}
                                   placeholder="Mô tả chi tiết (không bắt buộc)..."
@@ -511,7 +511,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                 />
                               </div>
                               
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, background: 'var(--color-bg)', padding: '6px 12px', borderRadius: '12px' }}>
+                              <div className="quote-item-controls">
                                 {/* Quantity */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SL</span>

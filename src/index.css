@@ -4119,6 +4119,37 @@ html, body {
   .stat-kpi__sub {
     font-size: 0.65rem !important;
   }
+
+  /* Quote editor item controls responsiveness on mobile */
+  .quote-item-row2 {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .quote-item-controls {
+    flex-wrap: wrap !important;
+    width: 100% !important;
+    justify-content: space-between !important;
+    padding: 10px 14px !important;
+    border-radius: 12px !important;
+  }
+}
+
+/* Quote editor item controls default styles */
+.quote-item-row2 {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+}
+.quote-item-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  background: var(--color-bg);
+  padding: 6px 12px;
+  border-radius: 12px;
 }
 
 /* Customizing react-hot-toast style to make it look premium, dark-mode adaptive and native */
