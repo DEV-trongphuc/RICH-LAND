@@ -1049,8 +1049,8 @@ export const ReportsPage: React.FC = () => {
             <div style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontWeight: 700 }}>Chi tiết hoạt động theo loại</h3>
             </div>
-            <div className="table-wrap" style={{ maxHeight: '280px', overflowY: 'auto' }}>
-              <table>
+            <div className="table-wrap" style={{ maxHeight: '280px', overflowY: 'auto', overflowX: 'auto' }}>
+              <table style={{ minWidth: 700 }}>
                 <thead>
                   <tr><th>Nhân viên</th><th>Cuộc gọi</th><th>Email</th><th>Cuộc họp</th><th>Task</th><th>Ghi chú</th><th>Tổng</th></tr>
                 </thead>

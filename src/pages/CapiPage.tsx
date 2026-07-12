@@ -176,7 +176,7 @@ export default function CapiPage() {
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', textAlign: 'left', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', minWidth: 650, textAlign: 'left', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 700 }}>
                       <th style={{ padding: '0.5rem 0', textAlign: 'left' }}>Sự kiện</th>
