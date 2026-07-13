@@ -12,6 +12,9 @@ class ActivityController {
         if ((int)$activity['user_id'] === (int)$auth['user_id']) {
             return true;
         }
+        if (isset($activity['created_by']) && (int)$activity['created_by'] === (int)$auth['user_id']) {
+            return true;
+        }
         
         // 2. Check Approver
         if (isset($activity['approver_id']) && (int)$activity['approver_id'] === (int)$auth['user_id']) {
@@ -295,10 +298,10 @@ class ActivityController {
         }
 
         $this->db->prepare("
-            INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,done_at,related_type,related_id,tags,participant_ids,progress,require_approval,approver_id,approval_status,link)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO activities (tenant_id,user_id,created_by,type,subject,body,status,priority,due_date,done_at,related_type,related_id,tags,participant_ids,progress,require_approval,approver_id,approval_status,link)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ")->execute([
-            $auth['tenant_id'], $targetUserId, $b['type'],
+            $auth['tenant_id'], $targetUserId, $auth['user_id'], $b['type'],
             $b['subject'], $b['body']??null, $status, $b['priority']??'medium',
             $due_date, $done_at, $b['related_type']??null, $b['related_id']??null,
             $b['tags']??null, $b['participant_ids']??null,
@@ -428,7 +431,7 @@ class ActivityController {
         if (isset($b['approval_status']) && $b['approval_status'] !== $activity['approval_status']) {
             $isApprover = $activity['approver_id'] && (int)$auth['user_id'] === (int)$activity['approver_id'];
             $isAdmin = in_array(strtolower($auth['role'] ?? ''), ['admin', 'superadmin', 'super_admin', 'director', 'manager'], true);
-            $isClearingOrSubmitting = in_array($b['approval_status'], ['pending', null, ''], true) || ($b['approval_status'] === 'rejected' && $isAdmin); // Allow rejection for admin
+            $isClearingOrSubmitting = in_array($b['approval_status'], ['pending', 'none', null, ''], true) || ($b['approval_status'] === 'rejected' && $isAdmin); // Allow rejection for admin
             
             if (!$isApprover && !$isAdmin && !$isClearingOrSubmitting) {
                 respond(403, null, 'Bạn không có quyền phê duyệt hoặc từ chối công việc này', false);
@@ -816,14 +819,18 @@ class ActivityController {
         $sql = "UPDATE activities SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $sql .= " AND user_id=?";
+            $sql .= " AND (user_id=? OR created_by=? OR approver_id=?)";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
-            $sql .= " AND (user_id = ? OR user_id IN (
+            $sql .= " AND (user_id = ? OR created_by = ? OR approver_id = ? OR user_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
                 )
             ))";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }

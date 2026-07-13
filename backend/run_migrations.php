@@ -2049,6 +2049,14 @@ try {
             $logMsg("Đã thêm cột edit_history cho activities", "success");
         }
 
+        // Self-healing check: ensure created_by exists in activities
+        $chkActCreatedBy = $conn->query("SHOW COLUMNS FROM activities LIKE 'created_by'");
+        if ($chkActCreatedBy && $chkActCreatedBy->num_rows === 0) {
+            $conn->query("ALTER TABLE activities ADD COLUMN created_by INT(11) NULL DEFAULT NULL AFTER user_id");
+            $conn->query("UPDATE activities SET created_by = user_id WHERE created_by IS NULL");
+            $logMsg("Đã thêm cột created_by cho activities", "success");
+        }
+
         // Self-healing check: ensure switched_from_deal_id exists in deals
         $chkSwitchedFrom = $conn->query("SHOW COLUMNS FROM deals LIKE 'switched_from_deal_id'");
         if ($chkSwitchedFrom && $chkSwitchedFrom->num_rows === 0) {

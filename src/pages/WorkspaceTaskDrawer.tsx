@@ -407,6 +407,30 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     onClose();
   };
 
+  const handleDeleteTask = async () => {
+    if (!task?.id || task.id === 'new') return;
+    if (window.confirm(t('Bạn có chắc chắn muốn xóa công việc này?'))) {
+      try {
+        const res = await api.delete(`/activities/${task.id}`);
+        if (res.data.success) {
+          toast.success(t('Đã xóa công việc'));
+          onUpdate();
+          onClose();
+        } else {
+          toast.error(res.data.message || t('Không có quyền xóa'));
+        }
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || t('Lỗi kết nối server'));
+      }
+    }
+  };
+
+  const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(currentUser?.role || '');
+  const isAssignee = Number(currentUser?.id) === Number(formData.user_id || task?.user_id);
+  const isCreator = Number(currentUser?.id) === Number(formData.created_by || task?.created_by);
+  const isApprover = Number(currentUser?.id) === Number(formData.approver_id || task?.approver_id);
+  const canDelete = task?.id && task.id !== 'new' && (isAdminOrManager || isAssignee || isCreator || isApprover);
+
   const handleUpdateField = async (field: string, value: any) => {
     if (!task) return;
     if (task.id === 'new') {
@@ -1986,6 +2010,41 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 }}
               />
             </div>
+            {/* Nút xóa công việc ở dưới cùng */}
+            {canDelete && (
+              <div style={{ marginTop: '2rem' }}>
+                <button
+                  onClick={handleDeleteTask}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--color-danger)',
+                    background: 'rgba(239, 68, 68, 0.05)',
+                    color: 'var(--color-danger)',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--color-danger)';
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
+                    e.currentTarget.style.color = 'var(--color-danger)';
+                  }}
+                >
+                  <Trash2 size={16} />
+                  {t('Xóa công việc')}
+                </button>
+              </div>
+            )}
+
             {/* Bottom Spacer to prevent content from being flush against the bottom */}
             <div style={{ height: '5rem', flexShrink: 0 }} />
           </div>
