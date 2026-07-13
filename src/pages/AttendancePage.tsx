@@ -16,6 +16,7 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean }) => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const isSales = user?.role === 'sale';
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);

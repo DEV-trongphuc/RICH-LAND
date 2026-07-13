@@ -6118,7 +6118,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     justifyContent: 'center',
                     flexShrink: 0
                   }}>
-                    {isMobile ? React.cloneElement(q.icon as React.ReactElement, { size: 12 }) : q.icon}
+                    {isMobile ? React.cloneElement(q.icon as any, { size: 12 }) : q.icon}
                   </div>
 
                   <div style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start', minWidth: 0, width: '100%' }}>

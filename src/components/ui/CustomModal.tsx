@@ -54,12 +54,12 @@ export const CustomModal: React.FC<CustomModalProps> = ({
     initial: { y: '100%', opacity: 1 },
     animate: { y: 0, opacity: 1 },
     exit: { y: '100%', opacity: 1 },
-    transition: { type: 'spring', damping: 25, stiffness: 220 }
+    transition: { type: 'spring' as const, damping: 25, stiffness: 220 }
   } : {
     initial: { opacity: 0, scale: 0.95, y: 15 },
     animate: { opacity: 1, scale: 1, y: 0 },
     exit: { opacity: 0, scale: 0.95, y: 15 },
-    transition: { type: "spring", duration: 0.4, bounce: 0.12 }
+    transition: { type: "spring" as const, duration: 0.4, bounce: 0.12 }
   };
 
   const dragProps = isMobile ? {
