@@ -193,7 +193,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
       setErpMeta(parsedMeta);
       setCampaignTarget(parsedMeta.campaign_target || '');
-      loadComments(normalizedTask.id);
+      if (normalizedTask.id !== 'new') {
+        loadComments(normalizedTask.id);
+      } else {
+        setComments([]);
+      }
 
       // Compute and store original hash
       const cleanObj = (obj: any) => {
@@ -217,6 +221,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const handleSaveMeta = async (updatedMeta: any) => {
     if (!task) return;
+    if (task.id === 'new') {
+      setErpMeta(updatedMeta);
+      return;
+    }
     try {
       const bodyPayload = JSON.stringify({ erp_task: updatedMeta });
       let finalTags = task.tags || '';
@@ -305,6 +313,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     setIsSaving(true);
     try {
       const isJustSubmittedForApproval = 
+        task.id !== 'new' &&
         formData.progress === 100 &&
         formData.require_approval === 1 &&
         formData.approver_id &&
@@ -315,11 +324,18 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         ? users.find(u => Number(u.id) === Number(formData.approver_id))?.full_name || 'Người duyệt'
         : null;
 
-      const bodyPayload = JSON.stringify({ erp_task: erpMeta });
+      // Sync description
+      const finalDesc = erpMeta.description || formData.body || '';
+      const updatedErpMeta = {
+        ...erpMeta,
+        description: finalDesc
+      };
+
+      const bodyPayload = JSON.stringify({ erp_task: updatedErpMeta });
       let finalTags = formData.tags || '';
 
       // Manage pinned tag
-      if (erpMeta.internal_type === 'announcement') {
+      if (updatedErpMeta.internal_type === 'announcement') {
         if (isPinned && !finalTags.includes('pinned')) {
           finalTags += (finalTags ? ',' : '') + 'pinned';
         } else if (!isPinned && finalTags.includes('pinned')) {
@@ -328,36 +344,52 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       }
 
       // Sync tags with type
-      const newTag = `internal_${erpMeta.internal_type}`;
+      const newTag = `internal_${updatedErpMeta.internal_type}`;
       let tagArray = finalTags.split(',').map((t: string) => t.trim()).filter(Boolean);
       tagArray = tagArray.filter((t: string) => !t.startsWith('internal_'));
       tagArray.push(newTag);
       finalTags = tagArray.join(',');
 
       const payload: any = {
+        subject: formData.subject || formData.title || '',
+        description: finalDesc,
         body: bodyPayload,
         tags: finalTags,
-        progress: formData.progress,
-        priority: formData.priority,
-        status: formData.status,
-        due_date: formData.due_date,
-        subject: formData.subject,
-        user_id: formData.user_id,
-        require_approval: formData.require_approval,
-        approver_id: formData.approver_id,
-        approval_status: formData.approval_status,
-        participant_ids: formData.participant_ids
+        progress: formData.progress || 0,
+        priority: formData.priority || 'medium',
+        status: formData.status || 'planned',
+        due_date: formData.due_date || new Date().toISOString().slice(0, 10),
+        user_id: formData.user_id ? Number(formData.user_id) : null,
+        require_approval: formData.require_approval || 0,
+        approver_id: formData.require_approval === 1 ? Number(formData.approver_id) : null,
+        approval_status: formData.approval_status || 'none',
+        participant_ids: formData.participant_ids ? String(formData.participant_ids) : null,
+        related_id: formData.related_id || null,
+        related_type: formData.related_type || null
       };
 
-      const res = await api.put(`/activities/${task.id}`, payload);
+      let res;
+      if (task.id === 'new') {
+        res = await api.post('/activities', {
+          ...payload,
+          type: 'task'
+        });
+      } else {
+        res = await api.put(`/activities/${task.id}`, payload);
+      }
+
       if (res.data && res.data.success) {
-        toast.success(t('Đã lưu tất cả thay đổi thành công!'));
+        toast.success(task.id === 'new' ? t('Tạo công việc thành công!') : t('Đã lưu tất cả thay đổi thành công!'));
         setOriginalHash(currentHash);
         onUpdate();
         
         if (isJustSubmittedForApproval && approverName) {
           toast.success(t('Đã gửi thông báo email thành công!'));
           setShowApprovalSuccessModal(approverName);
+        }
+
+        if (task.id === 'new') {
+          onClose();
         }
       }
     } catch (e: any) {
@@ -377,6 +409,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const handleUpdateField = async (field: string, value: any) => {
     if (!task) return;
+    if (task.id === 'new') {
+      setFormData((prev: any) => ({ ...prev, [field]: value }));
+      return;
+    }
     try {
       const payload: any = { [field]: value };
       const res = await api.put(`/activities/${task.id}`, payload);
@@ -1126,114 +1162,116 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
 
             {/* Bình luận & Trao đổi */}
-            <div className="card" style={cardStyle}>
-              <label style={cardLabelStyle}>
-                {t('Bình luận & Trao đổi')} ({comments.length})
-              </label>
+            {task?.id !== 'new' && (
+              <div className="card" style={cardStyle}>
+                <label style={cardLabelStyle}>
+                  {t('Bình luận & Trao đổi')} ({comments.length})
+                </label>
 
-              {/* Add comment input */}
-              <div style={{ background: 'rgba(0, 0, 0, 0.015)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.01)' }}>
-                <MentionInput
-                  users={users}
-                  value={newCommentText}
-                  onChange={e => setNewCommentText(e.target.value)}
-                  placeholder={t('Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)')}
-                  style={{ minHeight: '55px' }}
-                />
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '10px', marginTop: '4px' }}>
-                  {/* File attach trigger */}
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)' }} className="hover-lift">
-                      <Paperclip size={12} color="var(--color-text-muted)" />
-                      <span>{t('Đính kèm file')}</span>
-                      <input type="file" onChange={handleCommentAttachmentUpload} style={{ display: 'none' }} />
-                    </label>
-                    {commentAttachments.map((att: any, idx: number) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.625rem' }}>
-                        <span style={{ maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
-                        <button onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.7rem' }}>×</button>
-                      </div>
-                    ))}
+                {/* Add comment input */}
+                <div style={{ background: 'rgba(0, 0, 0, 0.015)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.01)' }}>
+                  <MentionInput
+                    users={users}
+                    value={newCommentText}
+                    onChange={e => setNewCommentText(e.target.value)}
+                    placeholder={t('Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)')}
+                    style={{ minHeight: '55px' }}
+                  />
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '10px', marginTop: '4px' }}>
+                    {/* File attach trigger */}
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)' }} className="hover-lift">
+                        <Paperclip size={12} color="var(--color-text-muted)" />
+                        <span>{t('Đính kèm file')}</span>
+                        <input type="file" onChange={handleCommentAttachmentUpload} style={{ display: 'none' }} />
+                      </label>
+                      {commentAttachments.map((att: any, idx: number) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.625rem' }}>
+                          <span style={{ maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name}</span>
+                          <button onClick={() => setCommentAttachments(prev => prev.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.7rem' }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handlePostComment}
+                      disabled={isSubmittingComment}
+                      className="btn primary sm"
+                      style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px' }}
+                    >
+                      {t('Gửi bình luận')}
+                    </button>
                   </div>
+                </div>
 
-                  <button
-                    onClick={handlePostComment}
-                    disabled={isSubmittingComment}
-                    className="btn primary sm"
-                    style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px' }}
-                  >
-                    {t('Gửi bình luận')}
-                  </button>
+                {/* Comments feed list */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', marginTop: '4px' }} className="custom-scrollbar">
+                  {loadingComments ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <StatRowSkeleton />
+                      <StatRowSkeleton />
+                      <StatRowSkeleton />
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
+                      {t('Chưa có thảo luận nào.')}
+                    </div>
+                  ) : (
+                    comments.map((comment: any) => {
+                      const commUser = users.find(u => Number(u.id) === Number(comment.user_id));
+                      let commentParsedAtts = [];
+                      if (comment.attachments) {
+                        try {
+                          commentParsedAtts = typeof comment.attachments === 'string' ? JSON.parse(comment.attachments) : comment.attachments;
+                        } catch (e) {
+                          console.error(e);
+                        }
+                      }
+                      if (!Array.isArray(commentParsedAtts)) commentParsedAtts = [];
+
+                      return (
+                        <div 
+                          key={comment.id} 
+                          style={{ 
+                            display: 'flex', 
+                            gap: '12px', 
+                            background: 'rgba(0, 0, 0, 0.01)', 
+                            border: '1px solid var(--color-border-light)', 
+                            padding: '12px 16px', 
+                            borderRadius: '14px',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <Avatar src={commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || 'User'} size={28} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || 'Đồng nghiệp'}</span>
+                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
+                            </div>
+                            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{comment.content}</p>
+                            {commentParsedAtts.length > 0 && (
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                {commentParsedAtts.map((url: any, aIdx: number) => {
+                                  const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
+                                  const href = typeof url === 'string' ? url : (url.url || '#');
+                                  return (
+                                    <a key={aIdx} href={href} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
+                                      <FileText size={10} />
+                                      <span>{name}</span>
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
-
-              {/* Comments feed list */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', marginTop: '4px' }} className="custom-scrollbar">
-                {loadingComments ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <StatRowSkeleton />
-                    <StatRowSkeleton />
-                    <StatRowSkeleton />
-                  </div>
-                ) : comments.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
-                    {t('Chưa có thảo luận nào.')}
-                  </div>
-                ) : (
-                  comments.map((comment: any) => {
-                    const commUser = users.find(u => Number(u.id) === Number(comment.user_id));
-                    let commentParsedAtts = [];
-                    if (comment.attachments) {
-                      try {
-                        commentParsedAtts = typeof comment.attachments === 'string' ? JSON.parse(comment.attachments) : comment.attachments;
-                      } catch (e) {
-                        console.error(e);
-                      }
-                    }
-                    if (!Array.isArray(commentParsedAtts)) commentParsedAtts = [];
-
-                    return (
-                      <div 
-                        key={comment.id} 
-                        style={{ 
-                          display: 'flex', 
-                          gap: '12px', 
-                          background: 'rgba(0, 0, 0, 0.01)', 
-                          border: '1px solid var(--color-border-light)', 
-                          padding: '12px 16px', 
-                          borderRadius: '14px',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <Avatar src={commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || 'User'} size={28} />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || 'Đồng nghiệp'}</span>
-                            <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
-                          </div>
-                          <p style={{ fontSize: '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{comment.content}</p>
-                          {commentParsedAtts.length > 0 && (
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
-                              {commentParsedAtts.map((url: any, aIdx: number) => {
-                                const name = typeof url === 'string' ? url.substring(url.lastIndexOf('/') + 1) : (url.name || 'File');
-                                const href = typeof url === 'string' ? url : (url.url || '#');
-                                return (
-                                  <a key={aIdx} href={href} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', color: 'var(--color-primary)', fontSize: '0.65rem' }}>
-                                    <FileText size={10} />
-                                    <span>{name}</span>
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+            )}
             {/* Bottom Spacer to prevent content from being flush against the bottom */}
             <div style={{ height: '5rem', flexShrink: 0 }} />
           </div>
@@ -1245,10 +1283,23 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             <div className="card" style={cardStyle}>
               
               {/* Primary Contact (if any) */}
-              {(formData.related_type === 'contact' || formData.contact_id) && (formData.related_id || formData.contact_id) && (
+              {((formData.related_type === 'contact' || formData.contact_id) && (formData.related_id || formData.contact_id)) ? (
                 <div style={{ marginBottom: '8px' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
-                    {t('Khách hàng chính')}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                      {t('Khách hàng chính')}
+                    </div>
+                    {task.id === 'new' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, related_id: '', contact_id: null, contact_name: '' });
+                        }}
+                        style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.75rem', padding: '2px' }}
+                      >
+                        {t('Thay đổi')}
+                      </button>
+                    )}
                   </div>
                   <div 
                     className="hover-lift"
@@ -1278,6 +1329,35 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     </div>
                     <ArrowUpRight size={16} />
                   </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                    {t('Khách hàng chính *')}
+                  </div>
+                  <CustomSelect
+                    searchable
+                    showAvatars
+                    options={[
+                      { value: '', label: t('Chọn khách hàng chính...') },
+                      ...allowedContacts.map(c => ({
+                        value: String(c.id),
+                        label: `${getContactFullName(c)} ${c.phone ? `(${c.phone})` : ''}`,
+                        avatar: c.avatar_url || c.avatar
+                      }))
+                    ]}
+                    value={formData.related_id ? String(formData.related_id) : ''}
+                    onChange={val => {
+                      const selected = allowedContacts.find(c => String(c.id) === String(val));
+                      setFormData({
+                        ...formData,
+                        related_id: val ? Number(val) : null,
+                        related_type: val ? 'contact' : null,
+                        contact_name: selected ? getContactFullName(selected) : ''
+                      });
+                    }}
+                    placeholder={t('Chọn khách hàng chính...')}
+                  />
                 </div>
               )}
 

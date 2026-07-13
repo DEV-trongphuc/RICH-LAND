@@ -756,7 +756,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}>
                     <span>{t('Duyệt ngay')}</span>
                     <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
@@ -796,7 +798,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}>
                     <span>{t('Duyệt ngay')}</span>
                     <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
@@ -836,7 +840,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}>
                     <span>{t('Duyệt ngay')}</span>
                     <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
@@ -876,7 +882,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}>
                     <span>{t('Duyệt ngay')}</span>
                     <ChevronRight className="chevron-arrow" size={12} style={{ transition: 'all 0.25s' }} />
