@@ -114,7 +114,7 @@ export const InvoicesPage: React.FC = () => {
   // Client-side items match server-paginated data
 
   const userRole = useAuthStore.getState().user?.role;
-  const canEditInvoice = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager' || userRole === 'director';
+  const canEditInvoice = userRole === 'admin' || userRole === 'superadmin' || userRole === 'super_admin' || userRole === 'manager' || userRole === 'director' || userRole === 'sale' || userRole === 'sales';
 
   // KPIs from server summary
   const totalRev = Number(summary.total_rev || 0);

@@ -279,7 +279,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     recurrence_monthly_day: 1,
     participant_ids: [] as string[],
     related_contact_ids: [] as string[],
-    checklist: [] as any[]
+    checklist: [] as any[],
+    project_id: '',
+    campaign_id: '',
+    team_id: '',
+    campaign_target: ''
   });
 
   // Local states for subtasks creation
@@ -460,12 +464,31 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const contactName = task.contact_name ? String(task.contact_name).toLowerCase() : '';
       const companyName = task.company_name ? String(task.company_name).toLowerCase() : '';
       const dealName = task.deal_name ? String(task.deal_name).toLowerCase() : '';
+      const userName = task.user_name ? String(task.user_name).toLowerCase() : '';
+      const teamName = task.team_name ? String(task.team_name).toLowerCase() : '';
+      const projectName = task.project_name ? String(task.project_name).toLowerCase() : '';
+      const campaignName = task.campaign_name ? String(task.campaign_name).toLowerCase() : '';
+      
+      // Parse description from JSON body if present
+      let description = '';
+      if (task.body && task.body.trim().startsWith('{"erp_task":')) {
+        try {
+          const parsed = JSON.parse(task.body);
+          description = (parsed.erp_task?.description || '').toLowerCase();
+        } catch (e) {}
+      }
+
       return (
         subject.includes(searchVal) ||
         body.includes(searchVal) ||
+        description.includes(searchVal) ||
         contactName.includes(searchVal) ||
         companyName.includes(searchVal) ||
-        dealName.includes(searchVal)
+        dealName.includes(searchVal) ||
+        userName.includes(searchVal) ||
+        teamName.includes(searchVal) ||
+        projectName.includes(searchVal) ||
+        campaignName.includes(searchVal)
       );
     });
   }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser]);
@@ -478,6 +501,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [loadingWsTasks, setLoadingWsTasks] = useState(false);
   const [wsContacts, setWsContacts] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [allowedProjects, setAllowedProjects] = useState<any[]>([]);
+  const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
+  const [allowedTeams, setAllowedTeams] = useState<any[]>([]);
 
   // Task details modal states inside SalePortal
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<any>(null);
@@ -1218,6 +1244,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         });
         setUsers(team);
       }).catch(() => {});
+      api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
+      api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
+      api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
     }
   }, [token]);
 
@@ -1870,6 +1899,16 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
 
   useEffect(() => {
+    const handleContactUpdated = () => {
+      loadPortalData();
+    };
+    window.addEventListener('contact-updated', handleContactUpdated);
+    return () => {
+      window.removeEventListener('contact-updated', handleContactUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeTab === 'databank') {
       fetchPublicLeads();
     }
@@ -2265,6 +2304,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         description: taskForm.description.trim(),
         internal_type: taskTypeTab === 'team' ? (taskForm.internal_type || 'task') : 'task',
         scope: taskTypeTab === 'team' ? (taskForm.scope || 'team') : 'personal',
+        project_id: taskForm.project_id || '',
+        campaign_id: taskForm.campaign_id || '',
+        team_id: taskForm.team_id || '',
+        campaign_target: taskForm.campaign_target || '',
         recurrence: {
           pattern: taskForm.recurrence_pattern || 'none',
           weekly_days: taskForm.recurrence_weekly_days || [],
@@ -2284,14 +2327,33 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     const bodyPayload = JSON.stringify(erpPayload);
 
+    let relatedType = null;
+    let relatedId = null;
+
+    if (taskTypeTab === 'customer' && taskForm.related_id) {
+      relatedType = 'contact';
+      relatedId = Number(taskForm.related_id);
+    }
+
+    if (taskForm.project_id) {
+      relatedType = 'project';
+      relatedId = Number(taskForm.project_id);
+    } else if (taskForm.campaign_id) {
+      relatedType = 'campaign';
+      relatedId = Number(taskForm.campaign_id);
+    } else if (taskForm.team_id) {
+      relatedType = 'team';
+      relatedId = Number(taskForm.team_id);
+    }
+
     try {
       await api.post('/activities', {
         subject: taskForm.title,
         type: 'task',
         priority: taskForm.priority,
         due_date: taskForm.due_date,
-        related_type: (taskTypeTab === 'customer' && taskForm.related_id) ? 'contact' : null,
-        related_id: (taskTypeTab === 'customer' && taskForm.related_id) ? Number(taskForm.related_id) : null,
+        related_type: relatedType,
+        related_id: relatedId,
         user_id: taskForm.user_id ? Number(taskForm.user_id) : currentUser?.id,
         body: bodyPayload,
         status: 'planned',
@@ -2320,7 +2382,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         recurrence_monthly_day: 1,
         participant_ids: [] as string[],
         related_contact_ids: [] as string[],
-        checklist: [] as any[]
+        checklist: [] as any[],
+        project_id: '',
+        campaign_id: '',
+        team_id: '',
+        campaign_target: ''
       });
       fetchPortalTasks();
       fetchWorkspaceTasks();
@@ -2997,7 +3063,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 recurrence_monthly_day: 1,
                 participant_ids: [] as string[],
                 related_contact_ids: [] as string[],
-                checklist: [] as any[]
+                checklist: [] as any[],
+                project_id: '',
+                campaign_id: '',
+                team_id: '',
+                campaign_target: ''
               });
               setTaskTypeTab(wsSubTab);
               setShowTaskModal(true);
@@ -9931,6 +10001,64 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   autoFocus
                 />
               </div>
+
+              {/* Projects / Campaigns / Teams row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '0.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Dự án')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn dự án...') },
+                      ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
+                    ]}
+                    value={taskForm.project_id || ''}
+                    onChange={val => setTaskForm({ ...taskForm, project_id: val.toString() })}
+                    placeholder={t('Chọn dự án...')}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Chiến dịch')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn chiến dịch...') },
+                      ...allowedCampaigns.map(c => ({ value: String(c.id), label: c.name }))
+                    ]}
+                    value={taskForm.campaign_id || ''}
+                    onChange={val => setTaskForm({ ...taskForm, campaign_id: val.toString() })}
+                    placeholder={t('Chọn chiến dịch...')}
+                  />
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Nhóm / Team')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn nhóm...') },
+                      ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))
+                    ]}
+                    value={taskForm.team_id || ''}
+                    onChange={val => setTaskForm({ ...taskForm, team_id: val.toString() })}
+                    placeholder={t('Chọn nhóm...')}
+                  />
+                </div>
+              </div>
+
+              {/* Campaign target input */}
+              {taskForm.campaign_id && (
+                <div className="form-group animate-fade" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Chỉ tiêu chiến dịch (Campaign Target)')}</label>
+                  <input
+                    className="form-input"
+                    placeholder={t('Nhập chỉ tiêu cho chiến dịch này...')}
+                    value={taskForm.campaign_target || ''}
+                    onChange={e => setTaskForm({ ...taskForm, campaign_target: e.target.value })}
+                  />
+                </div>
+              )}
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 700 }}>{t('Mô tả chi tiết công việc')}</label>

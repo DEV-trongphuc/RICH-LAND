@@ -208,7 +208,8 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                               options={[
                                 { value: 'website', label: 'Từ Website' },
                                 { value: 'facebook', label: 'Facebook Ads' },
-                                { value: 'referral', label: 'Giới thiệu' },
+                                { value: 'gioi_thieu', label: 'Giới thiệu' },
+                                { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
                                 { value: 'cold_call', label: 'Cold Call' }
                               ]}
                               value={formData?.source || 'website'}

@@ -1272,9 +1272,9 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             )}
 
             {activeTab === 'config' ? (
-              <form onSubmit={handleSave} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
-                <fieldset disabled={isReadOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'visible' }}>
-                  <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : undefined, gridTemplateColumns: isMobile ? undefined : '1fr 1fr', gap: '2rem', flex: 1, overflow: 'visible', minHeight: 0 }}>
+              <form onSubmit={handleSave} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                <fieldset disabled={isReadOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                  <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : undefined, gridTemplateColumns: isMobile ? undefined : '1fr 1fr', gap: '2rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
                   {/* LEFT COLUMN */}
                   <div className="custom-scrollbar modal-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }}>
@@ -1616,10 +1616,10 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                               </div>
 
                               {/* Special Rule: Ratio + Data Per Turn */}
-                              <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                              <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                                 {/* Row 1: Data per turn */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Nhận")}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500, minWidth: '40px' }}>{t("Nhận:")}</span>
                                   <input
                                     type="number"
                                     min="1"
@@ -1628,7 +1628,11 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                     onChange={e => setFormData({ ...formData, data_per_turns: { ...formData.data_per_turns, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
                                     style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: theme === 'dark' ? '#34d399' : '#059669', fontWeight: 700, background: theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5' }}
                                   />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Data liên tiếp mỗi lượt, sau mỗi")}</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("data liên tiếp mỗi lượt")}</span>
+                                </div>
+                                {/* Row 2: Ratios */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500, minWidth: '40px' }}>{t("Sau:")}</span>
                                   <input
                                     type="number"
                                     min="1"
@@ -1637,7 +1641,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                                     onChange={e => setFormData({ ...formData, ratios: { ...formData.ratios, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
                                     style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: 'var(--color-primary)', fontWeight: 700, background: 'var(--color-bg)' }}
                                   />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("vòng")}</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("vòng phân bổ")}</span>
                                 </div>
                               </div>
                             </div>

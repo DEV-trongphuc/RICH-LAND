@@ -18,6 +18,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { CustomModal } from '../components/ui/CustomModal';
 import { compressToWebP } from '../utils/imageCompress';
 import { TicketDrawer } from './TicketDrawer';
+import { Skeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { numberToText } from '../utils/numberToText';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -895,6 +896,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return 'cold'; // Lạnh
   }, [noteChannel, noteDuration, notes.length]);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [allowedProjects, setAllowedProjects] = useState<any[]>([]);
+  const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
+  const [allowedTeams, setAllowedTeams] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
   const [users, setUsers] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
@@ -1266,7 +1270,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       checklist: [] as any[],
       recurrence_pattern: 'none',
       recurrence_weekly_days: [] as number[],
-      recurrence_monthly_day: 1
+      recurrence_monthly_day: 1,
+      project_id: '',
+      campaign_id: '',
+      team_id: '',
+      campaign_target: ''
     };
   });
 
@@ -1511,7 +1519,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
 
       // 3. Tab-specific lazy data fetching
-      if (tabToLoad === 'timeline') {
+      if (tabToLoad === 'timeline' || tabToLoad === 'tags') {
         const notesRes = await api.get(`/notes?entity_type=contact&entity_id=${contact.id}`);
         setNotes((notesRes.data.data || []).map((n: any) => ({
           id: n.id,
@@ -1531,7 +1539,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         })));
       }
 
-      if (tabToLoad === 'tasks' || tabToLoad === 'timeline') {
+      if (true || tabToLoad === 'tasks' || tabToLoad === 'timeline') {
         const [tasksRes, allTasksRes] = await Promise.all([
           api.get(`/activities?related_type=contact&related_id=${contact.id}`),
           api.get(`/activities?type=task&limit=200`)
@@ -1760,6 +1768,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
       api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
+      api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
+      api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
+      api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
 
       // Fetch dynamic business configurations (decay days & pipeline status hierarchy)
       fetchAPI('get_settings')
@@ -1838,7 +1849,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
     // Source
     if (formData.source === 'website') { s += 15; r.push({ rule: 'Nguồn khách từ Website', pts: 15, type: 'Behavioral' }); }
-    if (formData.source === 'referral') { s += 20; r.push({ rule: 'Khách được giới thiệu (Referral)', pts: 20, type: 'Behavioral' }); }
+    if (formData.source === 'referral' || formData.source === 'gioi_thieu') { s += 20; r.push({ rule: 'Khách được giới thiệu (Referral)', pts: 20, type: 'Behavioral' }); }
 
     // Projects / Companies / Segmentations
     if (formData.project_id) { s += 15; r.push({ rule: 'Liên kết dự án quan tâm', pts: 15, type: 'Behavioral' }); }
@@ -2300,15 +2311,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (!taskForm.title.trim() || isSubmitting) return;
     setIsSubmitting(true);
 
-    const additionalContactIds = (taskForm.related_contact_ids || [])
-      .filter((id: any) => id !== 'all' && id !== '')
-      .map(Number);
+    const additionalContactIds = Array.from(new Set([
+      Number(contact.id),
+      ...(taskForm.related_contact_ids || [])
+        .filter((id: any) => id !== 'all' && id !== '')
+        .map(Number)
+    ]));
 
     const erpPayload = {
       erp_task: {
         description: taskForm.description.trim(),
         internal_type: 'task',
         scope: 'personal',
+        project_id: taskForm.project_id || '',
+        campaign_id: taskForm.campaign_id || '',
+        team_id: taskForm.team_id || '',
+        campaign_target: taskForm.campaign_target || '',
         recurrence: {
           pattern: taskForm.recurrence_pattern || 'none',
           weekly_days: taskForm.recurrence_weekly_days || [],
@@ -2326,10 +2344,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       .filter((id: any) => id !== 'all' && Number(id) !== Number(mainAssignee))
       .join(',');
 
+    let relatedType = 'contact';
+    let relatedId = contact.id;
+
+    if (taskForm.project_id) {
+      relatedType = 'project';
+      relatedId = Number(taskForm.project_id);
+    } else if (taskForm.campaign_id) {
+      relatedType = 'campaign';
+      relatedId = Number(taskForm.campaign_id);
+    } else if (taskForm.team_id) {
+      relatedType = 'team';
+      relatedId = Number(taskForm.team_id);
+    }
+
     try {
       await api.post('/activities', {
-        related_type: 'contact',
-        related_id: contact.id,
+        related_type: relatedType,
+        related_id: relatedId,
         subject: taskForm.title,
         type: 'task',
         priority: taskForm.priority,
@@ -2358,7 +2390,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         checklist: [] as any[],
         recurrence_pattern: 'none',
         recurrence_weekly_days: [] as number[],
-        recurrence_monthly_day: 1
+        recurrence_monthly_day: 1,
+        project_id: '',
+        campaign_id: '',
+        team_id: '',
+        campaign_target: ''
       });
       fetchData();
       addToast('Đã thêm công việc mới', 'success');
@@ -2922,7 +2958,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </h3>
                   </div>
                   <button
-                    disabled={!hasChanges || isSubmitting}
+                    disabled={isSubmitting}
                     onClick={handleSave}
                     className="btn success sm"
                     style={{
@@ -2934,10 +2970,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                      background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                      borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                      color: hasChanges ? 'white' : '#9ca3af',
-                      cursor: hasChanges ? 'pointer' : 'not-allowed'
+                      background: 'var(--color-primary)',
+                      borderColor: 'var(--color-primary)',
+                      color: 'white',
+                      cursor: 'pointer'
                     }}
                   >
                     <CheckSquare size={14} />
@@ -3178,7 +3214,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       <button
-                        disabled={!hasChanges || isSubmitting}
+                        disabled={isSubmitting}
                         onClick={handleSave}
                         className="btn hover-lift"
                         style={{ 
@@ -3189,14 +3225,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           borderRadius: '10px', 
                           height: '40px', 
                           fontSize: '0.875rem',
-                          background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                          borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                          color: hasChanges ? 'white' : '#9ca3af',
-                          cursor: hasChanges ? 'pointer' : 'not-allowed',
+                          background: 'var(--color-primary)',
+                          borderColor: 'var(--color-primary)',
+                          color: 'white',
+                          cursor: 'pointer',
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        <CheckSquare size={14} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
+                        <CheckSquare size={14} /> Lưu thay đổi
                       </button>
                     </div>
                   </div>
@@ -3928,7 +3964,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               options={[
                                 { value: 'website', label: 'Từ Website' },
                                 { value: 'facebook', label: 'Facebook Ads' },
-                                { value: 'referral', label: 'Giới thiệu' },
+                                { value: 'gioi_thieu', label: 'Giới thiệu' },
+                                { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
                                 { value: 'cold_call', label: 'Cold Call' }
                               ]}
                               value={formData.source || 'website'}
@@ -4295,8 +4332,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       {coopLoading ? (
-                        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-                          <Loader2 className="animate-spin" size={32} style={{ color: 'var(--color-primary)' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
+                          <StatRowSkeleton />
                         </div>
                       ) : coopError ? (
                         <div className="card-panel error" style={{ padding: '1.5rem', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -4321,7 +4360,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {/* Status and summary */}
                           {(() => {
                             const status = coopSlip.status;
-                            const isPendingSignatures = coopSlip.shareholders?.some((sh: any) => !sh.signed) || status === 'pending_signatures';
+                            const isPendingSignatures = (status === 'pending_signatures' || status === 'approved_pending_signatures') && coopSlip.shareholders?.some((sh: any) => !sh.signed);
                             
                             let bg = 'var(--color-bg-light)';
                             let border = '1px solid var(--color-border)';
@@ -4730,7 +4769,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </div>
 
                           {/* Signature section */}
-                          {coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && !isViewer && (
+                          {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures') && coopSlip.shareholders?.some((s: any) => String(s.user_id) === String(currentUser?.id) && !s.signed) && !isViewer && (
                             <div className="card-panel" style={{ padding: '1.5rem', background: 'rgba(189, 29, 45, 0.1)', border: '1px solid #BD1D2D' }}>
                               <h4 style={{ fontWeight: 700, color: '#BD1D2D', marginBottom: '0.5rem' }}>Bạn có yêu cầu ký xác nhận</h4>
                               <p style={{ fontSize: '0.875rem', marginBottom: '1rem', color: 'var(--color-text)' }}>
@@ -5450,7 +5489,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 checklist: [] as any[],
                                 recurrence_pattern: 'none',
                                 recurrence_weekly_days: [] as number[],
-                                recurrence_monthly_day: 1
+                                recurrence_monthly_day: 1,
+                                project_id: '',
+                                campaign_id: '',
+                                team_id: '',
+                                campaign_target: ''
                               });
                               setShowTaskModal(true);
                             }}><Plus size={14} /> Thêm công việc</button>
@@ -6831,7 +6874,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <div className="overlay-backdrop" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setShowNoteModal(false); setEditingNote(null); }}>
             <motion.div 
               className="modal-sheet" 
-              style={{ width: '100%', maxWidth: 640, padding: 0 }}
+              style={{ width: '100%', maxWidth: 780, padding: 0 }}
               initial={{ opacity: 0, y: 20, scale: 0.95 }} 
               animate={{ opacity: 1, y: 0, scale: 1 }} 
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -7421,6 +7464,64 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   autoFocus
                 />
               </div>
+
+              {/* Projects / Campaigns / Teams row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '0.25rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Dự án')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn dự án...') },
+                      ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
+                    ]}
+                    value={taskForm.project_id || ''}
+                    onChange={val => setTaskForm({ ...taskForm, project_id: val.toString() })}
+                    placeholder={t('Chọn dự án...')}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Chiến dịch')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn chiến dịch...') },
+                      ...allowedCampaigns.map(c => ({ value: String(c.id), label: c.name }))
+                    ]}
+                    value={taskForm.campaign_id || ''}
+                    onChange={val => setTaskForm({ ...taskForm, campaign_id: val.toString() })}
+                    placeholder={t('Chọn chiến dịch...')}
+                  />
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Nhóm / Team')}</span>
+                  <CustomSelect
+                    searchable
+                    options={[
+                      { value: '', label: t('Chọn nhóm...') },
+                      ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))
+                    ]}
+                    value={taskForm.team_id || ''}
+                    onChange={val => setTaskForm({ ...taskForm, team_id: val.toString() })}
+                    placeholder={t('Chọn nhóm...')}
+                  />
+                </div>
+              </div>
+
+              {/* Campaign target input */}
+              {taskForm.campaign_id && (
+                <div className="form-group animate-fade" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Chỉ tiêu chiến dịch (Campaign Target)')}</label>
+                  <input
+                    className="form-input"
+                    placeholder={t('Nhập chỉ tiêu cho chiến dịch này...')}
+                    value={taskForm.campaign_target || ''}
+                    onChange={e => setTaskForm({ ...taskForm, campaign_target: e.target.value })}
+                  />
+                </div>
+              )}
 
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: 700 }}>{t('Mô tả chi tiết công việc')}</label>

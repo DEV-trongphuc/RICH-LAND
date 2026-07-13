@@ -884,7 +884,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 />
                 <motion.div
                   className="modal-sheet"
-                  style={{ position: 'relative', width: '100%', maxWidth: 500, zIndex: 1110 }}
+                  style={{ position: 'relative', width: '100%', maxWidth: 680, zIndex: 1110 }}
                   initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                   onClick={e => e.stopPropagation()}
                 >

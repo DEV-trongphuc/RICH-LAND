@@ -1655,7 +1655,7 @@ const AccountsInner = () => {
         <div className="overlay-backdrop" onClick={() => setShowReplacementModal(false)}>
           <div
             className="card"
-            style={{ width: '100%', maxWidth: 500, maxHeight: '90vh', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', display: 'flex', flexDirection: 'column' }}
+            style={{ width: '100%', maxWidth: 680, maxHeight: '90vh', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', display: 'flex', flexDirection: 'column' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>

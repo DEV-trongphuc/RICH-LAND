@@ -59,8 +59,10 @@ class ContactController {
         }
 
         if ($search) {
-            $where[]  = '(MATCH(c.first_name, c.last_name, c.email) AGAINST(? IN BOOLEAN MODE) OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ?)';
-            $params[] = "$search*";
+            $where[]  = '(CONCAT(c.first_name, \' \', c.last_name) LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ? OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ?)';
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";

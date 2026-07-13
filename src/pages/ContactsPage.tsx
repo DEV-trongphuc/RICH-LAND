@@ -61,7 +61,7 @@ const calcScore = (c: any) => {
 
   // 5. Nguồn
   if (c.source === 'website') s += 15;
-  if (c.source === 'referral') s += 20;
+  if (c.source === 'referral' || c.source === 'gioi_thieu') s += 20;
 
   // 6. Liên kết dự án/công ty/phân khúc
   if (c.project_id) s += 15;
@@ -128,7 +128,8 @@ const SOURCE_OPTIONS = [
   { value: '', label: 'Tất cả nguồn' },
   { value: 'facebook', label: 'Facebook' },
   { value: 'google', label: 'Google Ads' },
-  { value: 'referral', label: 'Giới thiệu' },
+  { value: 'gioi_thieu', label: 'Giới thiệu' },
+  { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
   { value: 'website', label: 'Website' },
   { value: 'other', label: 'Khác' }
 ];
@@ -1692,7 +1693,7 @@ export const ContactsPage: React.FC = () => {
                 maxWidth: '100vw', zIndex: 1010, overflow: 'hidden', borderRadius: 0,
                 display: 'flex', flexDirection: 'column'
               } : { 
-                width: 640, 
+                width: 780, 
                 maxWidth: 'calc(100vw - 2rem)', zIndex: 1010, overflow: 'visible',
                 margin: 'auto'
               }}
@@ -1812,7 +1813,8 @@ export const ContactsPage: React.FC = () => {
                   <CustomSelect 
                     options={[
                       { value: 'website', label: 'Đăng ký từ Website' },
-                      { value: 'referral', label: 'Được giới thiệu' },
+                      { value: 'gioi_thieu', label: 'Được giới thiệu' },
+                      { value: 'ca_nhan', label: 'Cá nhân tự khai thác' },
                       { value: 'social', label: 'Mạng xã hội (FB/Zalo)' },
                       { value: 'cold_call', label: 'Telesale / Cold Call' },
                       { value: 'event', label: 'Sự kiện / Workshop' },

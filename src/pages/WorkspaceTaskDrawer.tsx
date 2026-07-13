@@ -11,6 +11,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { MentionInput } from '../components/ui/MentionInput';
 import { Avatar } from '../components/ui/Avatar';
 import styles from './EntityDrawer.module.css';
+import { Skeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -175,7 +176,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         scope: 'team',
         recurrence: { pattern: 'none', weekly_days: [], monthly_day: 1, last_generated: '' },
         checklist: [],
-        links: []
+        links: [],
+        project_id: normalizedTask.related_type === 'project' ? normalizedTask.related_id : null,
+        campaign_id: normalizedTask.related_type === 'campaign' ? normalizedTask.related_id : null,
+        team_id: normalizedTask.related_type === 'team' ? normalizedTask.related_id : null
       };
 
       if (normalizedTask.body && normalizedTask.body.trim().startsWith('{"erp_task":')) {
@@ -233,6 +237,22 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       tagArray.push(newTag);
       finalTags = tagArray.join(',');
 
+      let relType = formData.related_type || task.related_type || null;
+      let relId = formData.related_id || task.related_id || null;
+      if (updatedMeta.project_id) {
+        relType = 'project';
+        relId = updatedMeta.project_id;
+      } else if (updatedMeta.campaign_id) {
+        relType = 'campaign';
+        relId = updatedMeta.campaign_id;
+      } else if (updatedMeta.team_id) {
+        relType = 'team';
+        relId = updatedMeta.team_id;
+      } else if (formData.contact_id || task.contact_id) {
+        relType = 'contact';
+        relId = formData.contact_id || task.contact_id;
+      }
+
       const payload: any = {
         body: bodyPayload,
         tags: finalTags,
@@ -241,7 +261,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         status: formData.status,
         due_date: formData.due_date,
         subject: formData.subject,
-        user_id: formData.user_id
+        user_id: formData.user_id,
+        related_type: relType,
+        related_id: relId
       };
 
       const res = await api.put(`/activities/${task.id}`, payload);
@@ -752,7 +774,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
             <button
               onClick={handleManualSave}
-              disabled={isSaving || !hasChanges}
+              disabled={isSaving}
               className="btn hover-lift"
               style={{
                 display: 'flex',
@@ -763,11 +785,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 fontSize: '0.85rem',
                 fontWeight: 700,
                 height: '36px',
-                background: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                borderColor: hasChanges ? 'var(--color-primary)' : '#e5e7eb',
-                color: hasChanges ? 'white' : '#9ca3af',
-                cursor: hasChanges ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s ease'
+                background: 'var(--color-primary)',
+                borderColor: 'var(--color-primary)',
+                color: 'white',
+                cursor: 'pointer',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.2s'
               }}
             >
               {isSaving ? <RefreshCw className="spin" size={14} /> : <CheckSquare2 size={14} />}
@@ -1113,7 +1136,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 <MentionInput
                   users={users}
                   value={newCommentText}
-                  onChange={setNewCommentText}
+                  onChange={e => setNewCommentText(e.target.value)}
                   placeholder={t('Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)')}
                   style={{ minHeight: '55px' }}
                 />
@@ -1148,8 +1171,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
               {/* Comments feed list */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto', marginTop: '4px' }} className="custom-scrollbar">
                 {loadingComments ? (
-                  <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-                    <RefreshCw className="spin" size={18} color="var(--color-text-muted)" />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <StatRowSkeleton />
+                    <StatRowSkeleton />
+                    <StatRowSkeleton />
                   </div>
                 ) : comments.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.78rem' }}>
@@ -1360,15 +1385,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       { value: '', label: t('Chọn dự án...') },
                       ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
                     ]}
-                    value={formData.related_type === 'project' ? String(formData.related_id || '') : ''}
+                    value={erpMeta.project_id ? String(erpMeta.project_id) : ''}
                     onChange={val => {
-                      if (val) {
-                        handleUpdateField('related_type', 'project');
-                        handleUpdateField('related_id', Number(val));
-                      } else if (formData.related_type === 'project') {
-                        handleUpdateField('related_type', null);
-                        handleUpdateField('related_id', null);
-                      }
+                      const nextProject = val ? Number(val) : null;
+                      const nextMeta = { ...erpMeta, project_id: nextProject };
+                      setErpMeta(nextMeta);
+                      handleSaveMeta(nextMeta);
                     }}
                     placeholder={t('Chọn dự án...')}
                   />
@@ -1382,15 +1404,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       { value: '', label: t('Chọn chiến dịch...') },
                       ...allowedCampaigns.map(c => ({ value: String(c.id), label: c.name }))
                     ]}
-                    value={formData.related_type === 'campaign' ? String(formData.related_id || '') : ''}
+                    value={erpMeta.campaign_id ? String(erpMeta.campaign_id) : ''}
                     onChange={val => {
-                      if (val) {
-                        handleUpdateField('related_type', 'campaign');
-                        handleUpdateField('related_id', Number(val));
-                      } else if (formData.related_type === 'campaign') {
-                        handleUpdateField('related_type', null);
-                        handleUpdateField('related_id', null);
-                      }
+                      const nextCampaign = val ? Number(val) : null;
+                      const nextMeta = { ...erpMeta, campaign_id: nextCampaign };
+                      setErpMeta(nextMeta);
+                      handleSaveMeta(nextMeta);
                     }}
                     placeholder={t('Chọn chiến dịch...')}
                   />
@@ -1404,15 +1423,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       { value: '', label: t('Chọn nhóm...') },
                       ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))
                     ]}
-                    value={formData.related_type === 'team' ? String(formData.related_id || '') : ''}
+                    value={erpMeta.team_id ? String(erpMeta.team_id) : ''}
                     onChange={val => {
-                      if (val) {
-                        handleUpdateField('related_type', 'team');
-                        handleUpdateField('related_id', Number(val));
-                      } else if (formData.related_type === 'team') {
-                        handleUpdateField('related_type', null);
-                        handleUpdateField('related_id', null);
-                      }
+                      const nextTeam = val ? Number(val) : null;
+                      const nextMeta = { ...erpMeta, team_id: nextTeam };
+                      setErpMeta(nextMeta);
+                      handleSaveMeta(nextMeta);
                     }}
                     placeholder={t('Chọn nhóm...')}
                   />

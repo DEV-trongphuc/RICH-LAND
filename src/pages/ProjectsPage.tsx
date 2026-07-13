@@ -908,7 +908,7 @@ export default function ProjectsPage() {
                     <MentionInput
                       users={users}
                       value={newCommentText}
-                      onChange={setNewCommentText}
+                      onChange={e => setNewCommentText(e.target.value)}
                       placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
                       style={{ minHeight: '55px', fontSize: '0.85rem' }}
                     />
@@ -1504,7 +1504,7 @@ export default function ProjectsPage() {
                     <MentionInput
                       users={users}
                       value={newCommentText}
-                      onChange={setNewCommentText}
+                      onChange={e => setNewCommentText(e.target.value)}
                       placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
                       style={{ minHeight: '55px', fontSize: '0.85rem' }}
                     />
@@ -2862,7 +2862,7 @@ export default function ProjectsPage() {
                   <MentionInput
                     users={users}
                     value={newCommentText}
-                    onChange={setNewCommentText}
+                    onChange={e => setNewCommentText(e.target.value)}
                     placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
                     style={{ minHeight: '55px', fontSize: '0.85rem' }}
                   />
@@ -4016,7 +4016,7 @@ export default function ProjectsPage() {
                   <MentionInput
                     users={users}
                     value={newCommentText}
-                    onChange={setNewCommentText}
+                    onChange={e => setNewCommentText(e.target.value)}
                     placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
                     style={{ minHeight: '55px', fontSize: '0.85rem' }}
                   />

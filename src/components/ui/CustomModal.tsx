@@ -42,10 +42,10 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   }, []);
 
   const resolvedWidth = React.useMemo(() => {
-    if (!width) return '680px';
+    if (!width) return '800px';
     const num = parseInt(String(width), 10);
-    if (!isNaN(num) && num < 580) {
-      return '580px';
+    if (!isNaN(num) && num < 680) {
+      return '680px';
     }
     return width;
   }, [width]);

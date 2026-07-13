@@ -284,7 +284,7 @@ export default function CooperationSlipsPage() {
         const hasSigned = slip.shareholders.find(s => String(s.user_id) === String(user?.id))?.signed;
         const isShareholder = slip.shareholders.some(s => String(s.user_id) === String(user?.id));
         const allSigned = slip.shareholders.every(s => s.signed);
-        const isPendingSignatures = !allSigned || slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures';
+        const isPendingSignatures = (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && !allSigned;
 
         if (statusFilter === 'pending_me') {
           const needsMySignature = isShareholder && isPendingSignatures && !hasSigned;
@@ -345,7 +345,7 @@ export default function CooperationSlipsPage() {
       const hasSigned = slip.shareholders.find(s => String(s.user_id) === String(user?.id))?.signed;
       const isShareholder = slip.shareholders.some(s => String(s.user_id) === String(user?.id));
       const allSigned = slip.shareholders.every(s => s.signed);
-      const isPendingSignatures = !allSigned || slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures';
+      const isPendingSignatures = (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && !allSigned;
 
       const needsMySignature = isShareholder && isPendingSignatures && !hasSigned;
       const needsMyManagerApproval = isManager && slip.status === 'pending_manager_approval';
@@ -768,7 +768,7 @@ export default function CooperationSlipsPage() {
             const hasSigned = slip.shareholders.find(s => String(s.user_id) === String(user?.id))?.signed;
             const isShareholder = slip.shareholders.some(s => String(s.user_id) === String(user?.id));
             const allSigned = slip.shareholders.every(s => s.signed);
-            const isPendingSignatures = !allSigned || slip.status === 'pending_signatures';
+            const isPendingSignatures = (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && !allSigned;
             const isExpanded = !!expandedSlips[slip.id];
             const baseComm = Number(slip.expected_commission) || Number(slip.expected_revenue) || 0;
             const baseActual = Number(slip.actual_revenue) || 0;
