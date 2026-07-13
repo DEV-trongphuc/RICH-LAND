@@ -1803,30 +1803,111 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
 
             {/* Lặp lại định kỳ */}
-            {erpMeta.recurrence && erpMeta.recurrence.pattern !== 'none' && (
-              <div className="card" style={{ ...cardStyle, background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '1.1rem' }}>🔄</span>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text)' }}>
-                      {t('Tác vụ lặp định kỳ')}
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                      {erpMeta.recurrence.pattern === 'daily' && t('Lặp lại hàng ngày')}
-                      {erpMeta.recurrence.pattern === 'weekly' && `${t('Hàng tuần vào:')} ${
-                        (erpMeta.recurrence.weekly_days || [])
-                          .map((d: number) => {
-                            const days = { 1: 'T2', 2: 'T3', 3: 'T4', 4: 'T5', 5: 'T6', 6: 'T7', 0: 'CN' } as any;
-                            return days[d] || '';
-                          })
-                          .join(', ')
-                      }`}
-                      {erpMeta.recurrence.pattern === 'monthly' && `${t('Hàng tháng vào ngày:')} ${erpMeta.recurrence.monthly_day}`}
-                    </span>
-                  </div>
-                </div>
+            <div className="card" style={cardStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={cardLabelStyle}>🔄 {t('Lặp lại định kỳ')}</span>
+                {erpMeta.recurrence?.pattern && erpMeta.recurrence.pattern !== 'none' && (
+                  <span className="badge success" style={{ fontSize: '0.625rem', borderRadius: '4px', padding: '2px 6px' }}>
+                    {t('Đang bật')}
+                  </span>
+                )}
               </div>
-            )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <CustomSelect
+                  options={[
+                    { value: 'none', label: t('Không lặp lại') },
+                    { value: 'daily', label: t('Hàng ngày') },
+                    { value: 'weekly', label: t('Hàng tuần') },
+                    { value: 'monthly', label: t('Hàng tháng') }
+                  ]}
+                  value={erpMeta.recurrence?.pattern || 'none'}
+                  onChange={val => {
+                    const nextPattern = val.toString();
+                    const nextRecurrence = {
+                      ...(erpMeta.recurrence || { weekly_days: [], monthly_day: 1, last_generated: '' }),
+                      pattern: nextPattern
+                    };
+                    const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
+                    setErpMeta(nextMeta);
+                    handleSaveMeta(nextMeta);
+                  }}
+                  width="100%"
+                />
+
+                {erpMeta.recurrence?.pattern === 'weekly' && (
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                    {[
+                      { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
+                      { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
+                      { key: 0, label: 'CN' }
+                    ].map(day => {
+                      const isSelected = (erpMeta.recurrence?.weekly_days || []).includes(day.key);
+                      return (
+                        <button
+                          key={day.key}
+                          type="button"
+                          onClick={() => {
+                            let newDays = [...(erpMeta.recurrence?.weekly_days || [])];
+                            if (newDays.includes(day.key)) {
+                              newDays = newDays.filter(d => d !== day.key);
+                            } else {
+                              newDays.push(day.key);
+                            }
+                            const nextRecurrence = {
+                              ...(erpMeta.recurrence || { monthly_day: 1, last_generated: '' }),
+                              weekly_days: newDays
+                            };
+                            const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
+                            setErpMeta(nextMeta);
+                            handleSaveMeta(nextMeta);
+                          }}
+                          style={{
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '6px',
+                            border: '1px solid var(--color-border)',
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                            color: isSelected ? 'white' : 'var(--color-text)',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          {day.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {erpMeta.recurrence?.pattern === 'monthly' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Vào ngày:')}</span>
+                    <input
+                      type="number"
+                      className="form-input"
+                      min={1}
+                      max={31}
+                      value={erpMeta.recurrence?.monthly_day || 1}
+                      onChange={e => {
+                        const dayVal = Math.min(31, Math.max(1, Number(e.target.value)));
+                        const nextRecurrence = {
+                          ...(erpMeta.recurrence || { weekly_days: [], last_generated: '' }),
+                          monthly_day: dayVal
+                        };
+                        const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
+                        setErpMeta(nextMeta);
+                      }}
+                      onBlur={() => {
+                        handleSaveMeta(erpMeta);
+                      }}
+                      style={{ width: '60px', height: '32px', textAlign: 'center', padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Độ ưu tiên & Hạn hoàn thành */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
