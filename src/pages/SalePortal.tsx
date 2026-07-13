@@ -859,7 +859,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           return s.status !== 'rejected' && sh && !sh.signed;
         });
         setPendingCoopSlips(filtered);
-        if (filtered.length > 0 && ['sale', 'sales'].includes(effectiveRole)) {
+        if (filtered.length > 0 && ['sale', 'sales'].includes(effectiveRole) && ['/', '/workspace'].includes(loc.pathname)) {
           navigate(`/cooperation-slips?sign_id=${filtered[0].id}`);
         }
       }

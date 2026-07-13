@@ -1491,7 +1491,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         if (freshContact && freshContact.id) {
           setFormData(prev => ({ ...prev, ...freshContact }));
           setBaseData(freshContact);
-          window.dispatchEvent(new CustomEvent('contact-updated'));
         }
       } catch (err) {}
 
