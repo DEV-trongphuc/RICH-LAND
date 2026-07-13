@@ -415,7 +415,7 @@ CREATE TABLE IF NOT EXISTS `cooperation_slips` (
   `total_percentage` int(11) NOT NULL DEFAULT 100,
   `shares_json` longtext NOT NULL, -- JSON of user_id -> percentage mapping
   `signatures_json` longtext DEFAULT NULL, -- JSON of user_id -> signature timestamp, ip, role mapping
-  `status` enum('pending_signatures','pending_manager_approval','approved','rejected','disputed') NOT NULL DEFAULT 'pending_signatures',
+  `status` enum('pending_signatures','pending_manager_approval','approved','rejected','disputed','approved_pending_signatures') NOT NULL DEFAULT 'pending_signatures',
   `dispute_details` text DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),

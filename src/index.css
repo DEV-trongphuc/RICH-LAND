@@ -492,13 +492,13 @@
   --color-success-light: rgba(52, 199, 89, 0.08);
   --color-warning: #FF9500; /* iOS system orange */
   --color-warning-light: rgba(255, 149, 0, 0.08);
-  --color-danger: #FF3B30; /* iOS system red */
-  --color-danger-light: rgba(255, 59, 48, 0.08);
+  --color-danger: #BD1D2D; /* Richland brand red */
+  --color-danger-light: rgba(189, 29, 45, 0.08);
   --color-info: #5856D6; /* iOS system purple */
   --color-info-light: rgba(88, 86, 214, 0.08);
 
   /* Lead Score colors */
-  --score-hot: #FF3B30;
+  --score-hot: #BD1D2D;
   --score-warm: #FF9500;
   --score-neutral: #8E8E93;
   --score-cool: #007AFF;
@@ -561,13 +561,13 @@
   --color-success-light: rgba(48, 209, 88, 0.12);
   --color-warning: #FF9F0A;
   --color-warning-light: rgba(255, 159, 10, 0.12);
-  --color-danger: #FF453A;
-  --color-danger-light: rgba(255, 69, 58, 0.12);
+  --color-danger: #E2263C;
+  --color-danger-light: rgba(226, 38, 60, 0.12);
   --color-info: #BF5AF2;
   --color-info-light: rgba(191, 90, 242, 0.12);
 
   /* Lead Score colors dark theme */
-  --score-hot: #FF453A;
+  --score-hot: #E2263C;
   --score-warm: #FF9F0A;
   --score-neutral: #8E8E93;
   --score-cool: #0A84FF;

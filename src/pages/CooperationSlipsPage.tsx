@@ -511,6 +511,18 @@ export default function CooperationSlipsPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const signIdParam = searchParams.get('sign_id');
+    if (signIdParam && slips.length > 0) {
+      const match = slips.find((s: any) => String(s.id) === String(signIdParam));
+      if (match) {
+        setSigningSlip(match);
+        setIsSignModalOpen(true);
+      }
+    }
+  }, [location.search, slips]);
+
   const handleOpenUpdateShares = (slip: CooperationSlip) => {
     setSelectedSlipId(slip.id);
     const initialShares = slip.shareholders.map(s => ({
