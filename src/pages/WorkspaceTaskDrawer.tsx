@@ -15,6 +15,7 @@ import { Skeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useUIStore } from '../store/uiStore';
 
 interface WorkspaceTaskDrawerProps {
   isOpen: boolean;
@@ -37,6 +38,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 }) => {
   const { t } = useLanguage();
   const { user: currentUser } = useAuth();
+  const { showConfirm, closeConfirm } = useUIStore();
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
 
   useEffect(() => {
@@ -409,20 +411,29 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const handleDeleteTask = async () => {
     if (!task?.id || task.id === 'new') return;
-    if (window.confirm(t('Bạn có chắc chắn muốn xóa công việc này?'))) {
-      try {
-        const res = await api.delete(`/activities/${task.id}`);
-        if (res.data.success) {
-          toast.success(t('Đã xóa công việc'));
-          onUpdate();
-          onClose();
-        } else {
-          toast.error(res.data.message || t('Không có quyền xóa'));
+    
+    showConfirm({
+      title: t('Xóa công việc?'),
+      message: t('Bạn có chắc chắn muốn xóa vĩnh viễn công việc này? Thao tác này không thể hoàn tác.'),
+      isDanger: true,
+      confirmText: t('Xác nhận xóa'),
+      onConfirm: async () => {
+        try {
+          const res = await api.delete(`/activities/${task.id}`);
+          if (res.data.success) {
+            toast.success(t('Đã xóa công việc'));
+            onUpdate();
+            onClose();
+          } else {
+            toast.error(res.data.message || t('Không có quyền xóa'));
+          }
+        } catch (err: any) {
+          toast.error(err.response?.data?.message || t('Lỗi kết nối server'));
+        } finally {
+          closeConfirm();
         }
-      } catch (err: any) {
-        toast.error(err.response?.data?.message || t('Lỗi kết nối server'));
       }
-    }
+    });
   };
 
   const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(currentUser?.role || '');
