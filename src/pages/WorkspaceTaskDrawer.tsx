@@ -603,8 +603,21 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
   };
 
+  const getParticipantIds = (ids: any): string[] => {
+    if (Array.isArray(ids)) {
+      return ids.map(String).filter(Boolean);
+    }
+    if (typeof ids === 'string') {
+      return ids.split(',').filter(Boolean);
+    }
+    if (typeof ids === 'number') {
+      return [String(ids)];
+    }
+    return [];
+  };
+
   const handleToggleParticipant = (userId: number) => {
-    const current = (formData.participant_ids || '').split(',').filter(Boolean);
+    const current = getParticipantIds(formData.participant_ids);
     const next = current.includes(String(userId))
       ? current.filter(id => id !== String(userId))
       : [...current, String(userId)];
@@ -662,7 +675,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     letterSpacing: '0.05em'
   };
 
-  const participantIds = (formData.participant_ids || '').split(',').filter(Boolean).map(Number);
+  const participantIds = getParticipantIds(formData.participant_ids).map(Number);
   const participants = users.filter(u => participantIds.includes(Number(u.id)));
 
   const isSale = currentUser && ['sales', 'sale'].includes(currentUser.role?.toLowerCase());

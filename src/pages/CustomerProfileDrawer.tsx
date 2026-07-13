@@ -5493,7 +5493,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 progress: 0,
                                 require_approval: 0,
                                 approver_id: '',
-                                participant_ids: [],
+                                participant_ids: '',
                                 related_contact_ids: [],
                                 checklist: [],
                                 recurrence_pattern: 'none',

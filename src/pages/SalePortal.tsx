@@ -3059,7 +3059,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 tags: wsSubTab === 'personal' ? 'personal_task' : '',
                 internal_type: wsSubTab === 'team' ? 'task' : '',
                 scope: wsSubTab === 'team' ? 'team' : '',
-                participant_ids: [],
+                participant_ids: '',
                 related_contact_ids: [],
                 checklist: [],
                 project_id: '',
