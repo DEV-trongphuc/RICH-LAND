@@ -8,7 +8,7 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import { CopyButton } from '../components/ui/CopyButton';
 
@@ -106,6 +106,7 @@ export default function CooperationSlipsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSale, setFilterSale] = useState('all');
   const location = useLocation();
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [changeReason, setChangeReason] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -517,11 +518,16 @@ export default function CooperationSlipsPage() {
     if (signIdParam && slips.length > 0) {
       const match = slips.find((s: any) => String(s.id) === String(signIdParam));
       if (match) {
-        setSigningSlip(match);
-        setIsSignModalOpen(true);
+        const sh = match.shareholders?.find((x: any) => String(x.user_id) === String(user?.id));
+        if (sh && !sh.signed) {
+          setSigningSlip(match);
+          setIsSignModalOpen(true);
+        } else {
+          navigate(location.pathname, { replace: true });
+        }
       }
     }
-  }, [location.search, slips]);
+  }, [location.search, slips, user?.id, location.pathname, navigate]);
 
   const handleOpenUpdateShares = (slip: CooperationSlip) => {
     setSelectedSlipId(slip.id);
@@ -597,6 +603,7 @@ export default function CooperationSlipsPage() {
         addToast('Ký xác nhận phiếu hợp tác thành công!', 'success');
         setIsSignModalOpen(false);
         setSigningSlip(null);
+        navigate(location.pathname, { replace: true });
         loadData();
       } else {
         addToast(res.message || 'Lỗi ký xác nhận', 'error');
@@ -1236,7 +1243,7 @@ export default function CooperationSlipsPage() {
           <div className="card animate-fade" style={{ maxWidth: '800px', width: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Đọc tài liệu &amp; Ký xác nhận điện tử</h2>
-              <button onClick={() => { setIsSignModalOpen(false); setSigningSlip(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
+              <button onClick={() => { setIsSignModalOpen(false); setSigningSlip(null); navigate(location.pathname, { replace: true }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
 
             {/* Document Reader Area */}
