@@ -21,7 +21,11 @@ class SearchController {
         $sqlC = "SELECT id, CONCAT(first_name,' ',last_name) as label, email as sublabel, 'contact' as type, status FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND (CONCAT(first_name,' ',last_name) LIKE ? OR email LIKE ? OR phone LIKE ?)";
         $pC = [$tid, $like, $like, $like];
         if ($isSale) { 
-            $sqlC .= " AND owner_id=?"; 
+            $sqlC .= " AND (owner_id=? OR id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))"; 
+            $pC[] = $uid; 
             $pC[] = $uid; 
         } else if ($isManager) {
             $sqlC .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
@@ -50,12 +54,20 @@ class SearchController {
         $pN = [$tid, $like];
         if ($isSale) {
             $sqlN .= " AND (n.user_id=? OR EXISTS (
-                SELECT 1 FROM contacts c WHERE c.id=n.entity_id AND n.entity_type='contact' AND c.owner_id=?
+                SELECT 1 FROM contacts c WHERE c.id=n.entity_id AND n.entity_type='contact' AND (c.owner_id=? OR c.id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))
                 UNION ALL
                 SELECT 1 FROM companies co WHERE co.id=n.entity_id AND n.entity_type='company' AND co.owner_id=?
                 UNION ALL
-                SELECT 1 FROM deals d WHERE d.id=n.entity_id AND n.entity_type='deal' AND d.owner_id=?
+                SELECT 1 FROM deals d WHERE d.id=n.entity_id AND n.entity_type='deal' AND (d.owner_id=? OR d.contact_id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))
             ))";
+            $pN[] = $uid;
+            $pN[] = $uid;
             $pN[] = $uid;
             $pN[] = $uid;
             $pN[] = $uid;
@@ -102,7 +114,11 @@ class SearchController {
             $saleFilter = "";
             $params = [$tid, $tid, $days];
             if ($isSale) {
-                $saleFilter = " AND c.owner_id = ?";
+                $saleFilter = " AND (c.owner_id = ? OR c.id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))";
+                $params[] = $uid;
                 $params[] = $uid;
             } else if ($isManager) {
                 $saleFilter = " AND (c.owner_id = ? OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
@@ -132,7 +148,11 @@ class SearchController {
             $saleFilter = "";
             $params = [$tid, $val];
             if ($isSale) {
-                $saleFilter = " AND c.owner_id = ?";
+                $saleFilter = " AND (c.owner_id = ? OR c.id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))";
+                $params[] = $uid;
                 $params[] = $uid;
             } else if ($isManager) {
                 $saleFilter = " AND (c.owner_id = ? OR c.owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";

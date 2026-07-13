@@ -86,7 +86,11 @@ class DealController {
 
         $where=['d.tenant_id=?', 'd.deleted_at IS NULL']; $params=[$tid];
         if (in_array($auth['role'], ['sales', 'sale'], true)) {
-            $where[] = 'd.owner_id = ?';
+            $where[] = '(d.owner_id = ? OR d.contact_id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             $where[] = '(d.owner_id = ? OR d.owner_id IN (
@@ -203,7 +207,11 @@ class DealController {
         
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $sql .= " AND d.owner_id=?";
+            $sql .= " AND (d.owner_id=? OR d.contact_id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             $sql .= " AND (d.owner_id=? OR d.owner_id IN (
@@ -258,7 +266,11 @@ class DealController {
             $permissionSql = "SELECT stage_id FROM deals WHERE id=? AND tenant_id=?";
             $cp = [$id, $auth['tenant_id']];
             if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-                $permissionSql .= " AND owner_id=?";
+                $permissionSql .= " AND (owner_id=? OR contact_id IN (
+                    SELECT contact_id FROM cooperation_slips 
+                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                ))";
+                $cp[] = $auth['user_id'];
                 $cp[] = $auth['user_id'];
             } else if ($auth['role'] === 'manager') {
                 $permissionSql .= " AND (owner_id=? OR owner_id IN (
@@ -355,7 +367,11 @@ class DealController {
         $permissionSql = "SELECT id, stage_id FROM deals WHERE id=? AND tenant_id=?";
         $cp = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $permissionSql .= " AND owner_id=?";
+            $permissionSql .= " AND (owner_id=? OR contact_id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))";
+            $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             $permissionSql .= " AND (owner_id=? OR owner_id IN (

@@ -31,8 +31,22 @@ class ActivityController {
             $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
             
             if (in_array($auth['role'], ['sales', 'sale'], true)) {
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
-                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($activity['related_type'] === 'contact') {
+                    $checkOwner = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? AND (owner_id=? OR id IN (
+                        SELECT contact_id FROM cooperation_slips 
+                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                    ))");
+                    $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
+                } else if ($activity['related_type'] === 'deal') {
+                    $checkOwner = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=? AND (owner_id=? OR contact_id IN (
+                        SELECT contact_id FROM cooperation_slips 
+                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                    ))");
+                    $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
+                } else {
+                    $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
+                    $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                }
                 if ($checkOwner->fetch()) {
                     return true;
                 }
@@ -133,10 +147,24 @@ class ActivityController {
                 a.user_id = ? 
                 OR a.approver_id = ?
                 OR FIND_IN_SET(?, a.participant_ids)
-                OR (a.related_type = \'contact\' AND EXISTS (SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND ct.owner_id = ?)) 
-                OR (a.related_type = \'deal\' AND EXISTS (SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (d.owner_id = ? OR ct.owner_id = ?)))
+                OR (a.related_type = \'contact\' AND EXISTS (
+                    SELECT 1 FROM contacts ct WHERE ct.id = a.related_id AND (ct.owner_id = ? OR ct.id IN (
+                        SELECT contact_id FROM cooperation_slips 
+                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                    ))
+                )) 
+                OR (a.related_type = \'deal\' AND EXISTS (
+                    SELECT 1 FROM deals d LEFT JOIN contacts ct ON d.contact_id = ct.id WHERE d.id = a.related_id AND (
+                        d.owner_id = ? OR ct.owner_id = ? OR ct.id IN (
+                            SELECT contact_id FROM cooperation_slips 
+                            WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                        )
+                    )
+                ))
                 OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id = (SELECT team_id FROM users WHERE id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
             )';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
