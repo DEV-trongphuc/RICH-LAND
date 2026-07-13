@@ -28,7 +28,7 @@ export const CompaniesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 350);
+  const debouncedSearch = useDebounce(search.trim(), 350);
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);

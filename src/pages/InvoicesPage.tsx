@@ -36,7 +36,7 @@ export const InvoicesPage: React.FC = () => {
   const [period, setPeriod] = useState<Period>('this_month');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search.trim(), 300);
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());

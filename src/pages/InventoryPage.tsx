@@ -57,7 +57,7 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search.trim(), 300);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
   const [page, setPage] = useState(1);

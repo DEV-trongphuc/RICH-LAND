@@ -59,7 +59,7 @@ export const ActivitiesPage: React.FC = () => {
   const [teamsList, setTeamsList] = useState<any[]>([]);
   const [consultantsList, setConsultantsList] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search.trim(), 300);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState<any>(EMPTY);

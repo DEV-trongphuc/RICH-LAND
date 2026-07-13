@@ -170,7 +170,7 @@ export const ContactsPage: React.FC = () => {
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300); // 300ms debounce
+  const debouncedSearch = useDebounce(search.trim(), 300); // 300ms debounce
   const [pageSize, setPageSize] = useState<number>(() => {
     return Number(localStorage.getItem('richland_contacts_page_size')) || 10;
   });

@@ -93,18 +93,18 @@ class CooperationController {
 
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             // Only show slips where the sales is a shareholder
-            $sql .= " AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR))) OR cs.created_by = ?)";
+            $sql .= " AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR))) OR cs.created_by = ?)";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             // Manager can see their own, or slips of team members
             $sql .= " AND (
-                JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR))) 
+                JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR))) 
                 OR cs.created_by = ?
                 OR EXISTS (
                     SELECT 1 FROM users u2 
                     WHERE u2.team_id IN (SELECT id FROM teams WHERE leader_id = ?)
-                    AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE '{}' END), JSON_QUOTE(CAST(u2.id AS CHAR))) OR cs.created_by = u2.id)
+                    AND (JSON_CONTAINS(JSON_KEYS(CASE WHEN (cs.shares_json IS NOT NULL AND JSON_VALID(cs.shares_json)) THEN cs.shares_json ELSE "{}" END), JSON_QUOTE(CAST(u2.id AS CHAR))) OR cs.created_by = u2.id)
                 )
             )";
             $params[] = $auth['user_id'];

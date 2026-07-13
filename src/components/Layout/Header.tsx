@@ -441,7 +441,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
     const delayDebounce = setTimeout(async () => {
       setSearching(true);
       try {
-        const json = await fetchAPI(`get_logs&search=${encodeURIComponent(searchQuery)}&page=1&pageSize=5`);
+        const json = await fetchAPI(`get_logs&search=${encodeURIComponent(searchQuery.trim())}&page=1&pageSize=5`);
         if (json.success && Array.isArray(json.data)) {
           setLeadResults(json.data.slice(0, 5));
         }

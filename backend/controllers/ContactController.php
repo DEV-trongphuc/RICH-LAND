@@ -343,7 +343,7 @@ class ContactController {
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND (c.owner_id=? OR c.id IN (
                 SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
             ))";
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
@@ -566,7 +566,7 @@ class ContactController {
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $permissionSql .= " AND (owner_id=? OR id IN (
                 SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
             ))";
             $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
@@ -728,7 +728,7 @@ class ContactController {
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $sql .= " AND (owner_id=? OR id IN (
                 SELECT contact_id FROM cooperation_slips 
-                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
             ))";
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];

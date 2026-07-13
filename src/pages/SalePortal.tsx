@@ -2497,7 +2497,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      setSearch(searchInput);
+      setSearch(searchInput.trim());
     }, 400);
     return () => clearTimeout(delayDebounceFn);
   }, [searchInput]);
@@ -2587,12 +2587,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   // Handle manual apply for Custom date and search button
   const handleApplyFilters = () => {
-    setSearch(searchInput);
+    setSearch(searchInput.trim());
   };
 
   const handleSearchKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      setSearch(searchInput);
+      setSearch(searchInput.trim());
     }
   };
 

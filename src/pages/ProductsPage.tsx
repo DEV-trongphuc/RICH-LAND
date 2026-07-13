@@ -29,7 +29,7 @@ export const ProductsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search.trim(), 300);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showCatModal, setShowCatModal] = useState(false);

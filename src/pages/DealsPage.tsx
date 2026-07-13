@@ -101,7 +101,7 @@ export const DealsPage: React.FC = () => {
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearch = useDebounce(searchTerm, 300);
+  const debouncedSearch = useDebounce(searchTerm.trim(), 300);
   const [dateFilterType, setDateFilterType] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');

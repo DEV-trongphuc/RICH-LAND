@@ -33,7 +33,7 @@ export const TicketsPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [tickets, setTickets] = useState<any[]>([]);
   const [search, setSearch] = useState('');
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search.trim(), 300);
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
