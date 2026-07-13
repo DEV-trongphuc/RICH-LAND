@@ -44,9 +44,13 @@ class ContactController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
-        // Role-based visibility: Sale can only see their own contacts
+        // Role-based visibility: Sale can only see their own contacts OR cooperating ones
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $where[] = 'c.owner_id = ?';
+            $where[] = '(c.owner_id = ? OR c.id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             $where[] = '(c.owner_id = ? OR c.owner_id IN (
@@ -337,7 +341,11 @@ class ContactController {
         
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $sql .= " AND c.owner_id=?";
+            $sql .= " AND (c.owner_id=? OR c.id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             $sql .= " AND (c.owner_id=? OR c.owner_id IN (
@@ -556,7 +564,11 @@ class ContactController {
         $permissionSql = "SELECT id FROM contacts WHERE id=? AND tenant_id=?";
         $cp = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $permissionSql .= " AND owner_id=?";
+            $permissionSql .= " AND (owner_id=? OR id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))";
+            $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
             $permissionSql .= " AND (owner_id=? OR owner_id IN (
@@ -713,8 +725,12 @@ class ContactController {
 
         $sql = "UPDATE contacts SET stage_id=?, pipeline_status=? WHERE id=? AND tenant_id=?";
         $p = [$stageId, $newStatus, $id, $auth['tenant_id']];
-        if ($auth['role'] === 'sales') {
-            $sql .= " AND owner_id=?";
+        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            $sql .= " AND (owner_id=? OR id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '{}' END), JSON_QUOTE(CAST(? AS CHAR)))
+            ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);

@@ -1419,6 +1419,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Nhóm / Team')}</span>
                   <CustomSelect
                     searchable
+                    showAvatars
                     options={[
                       { value: '', label: t('Chọn nhóm...') },
                       ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))

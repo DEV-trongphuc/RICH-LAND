@@ -932,6 +932,7 @@ export const ContactsPage: React.FC = () => {
                         { value: '', label: 'Tất cả dự án' },
                         ...projects.map(p => ({ value: String(p.id), label: p.name }))
                       ]}
+                      searchable
                     />
                   </div>
 
@@ -954,8 +955,15 @@ export const ContactsPage: React.FC = () => {
                         onChange={v => setFilterOwnerId(v)}
                         options={[
                           { value: '', label: 'Tất cả sales' },
-                          ...users.map(u => ({ value: String(u.id), label: u.full_name }))
+                          ...users.map(u => ({ 
+                            value: String(u.id), 
+                            label: u.full_name,
+                            avatar: u.avatar_url || u.avatar,
+                            sublabel: u.email
+                          }))
                         ]}
+                        searchable
+                        showAvatars
                       />
                     </div>
                   )}

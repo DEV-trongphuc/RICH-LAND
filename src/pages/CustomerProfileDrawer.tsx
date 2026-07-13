@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -4679,14 +4679,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                       <span style={{ fontWeight: 600 }}>%</span>
                                     </div>
                                     {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
-                                      <button 
-                                        type="button"
-                                        className="btn ghost text-danger sm" 
-                                        onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
-                                        style={{ padding: '8px' }}
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
+                                      (String(share.user_id) === String(contact?.owner_id || formData?.owner_id) || 
+                                       String(share.user_id) === String(currentUser?.id) || 
+                                       (currentUser?.consultant_id && String(share.user_id) === String(currentUser.consultant_id))) ? (
+                                        <div style={{ width: '32px' }} />
+                                      ) : (
+                                        <button 
+                                          type="button"
+                                          className="btn ghost text-danger sm" 
+                                          onClick={() => setCoopShares(prev => prev.filter((_, i) => i !== idx))}
+                                          style={{ padding: '8px' }}
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      )
                                     ) : (
                                       <div style={{ width: '40px', display: 'flex', justifyContent: 'center' }} title={isSigned ? "Đã ký xác nhận" : "Chờ ký"}>
                                         {isSigned ? (
@@ -7442,503 +7448,638 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         )}
       </AnimatePresence>
 
-      {/* CREATE TASK MODAL */}
-      <CustomModal
-        isOpen={showTaskModal}
-        onClose={() => setShowTaskModal(false)}
-        title={t('Thêm công việc mới')}
-        width="960px"
-      >
-        <div style={{ padding: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-            {/* Left Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 700 }}>{t('Tên công việc *')}</label>
-                <input
-                  className="form-input"
-                  placeholder={t('VD: Gửi báo giá, Demo tính năng...')}
-                  value={taskForm.title}
-                  onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
-                  autoFocus
-                />
-              </div>
-
-              {/* Projects / Campaigns / Teams row */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginTop: '0.25rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Dự án')}</span>
-                  <CustomSelect
-                    searchable
-                    options={[
-                      { value: '', label: t('Chọn dự án...') },
-                      ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
-                    ]}
-                    value={taskForm.project_id || ''}
-                    onChange={val => setTaskForm({ ...taskForm, project_id: val.toString() })}
-                    placeholder={t('Chọn dự án...')}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Chiến dịch')}</span>
-                  <CustomSelect
-                    searchable
-                    options={[
-                      { value: '', label: t('Chọn chiến dịch...') },
-                      ...allowedCampaigns.map(c => ({ value: String(c.id), label: c.name }))
-                    ]}
-                    value={taskForm.campaign_id || ''}
-                    onChange={val => setTaskForm({ ...taskForm, campaign_id: val.toString() })}
-                    placeholder={t('Chọn chiến dịch...')}
-                  />
-                </div>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>{t('Nhóm / Team')}</span>
-                  <CustomSelect
-                    searchable
-                    options={[
-                      { value: '', label: t('Chọn nhóm...') },
-                      ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))
-                    ]}
-                    value={taskForm.team_id || ''}
-                    onChange={val => setTaskForm({ ...taskForm, team_id: val.toString() })}
-                    placeholder={t('Chọn nhóm...')}
-                  />
-                </div>
-              </div>
-
-              {/* Campaign target input */}
-              {taskForm.campaign_id && (
-                <div className="form-group animate-fade" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Chỉ tiêu chiến dịch (Campaign Target)')}</label>
-                  <input
-                    className="form-input"
-                    placeholder={t('Nhập chỉ tiêu cho chiến dịch này...')}
-                    value={taskForm.campaign_target || ''}
-                    onChange={e => setTaskForm({ ...taskForm, campaign_target: e.target.value })}
-                  />
-                </div>
-              )}
-
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 700 }}>{t('Mô tả chi tiết công việc')}</label>
-                <textarea
-                  className="form-input"
-                  placeholder={t('Nhập ghi chú hoặc mô tả chi tiết công việc...')}
-                  value={taskForm.description}
-                  onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
-                  style={{ minHeight: 120, resize: 'vertical' }}
-                />
-              </div>
-
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
-                  <span>{t('Tài liệu hoặc Link đính kèm (Tùy chọn)')}</span>
-                  {uploadingFile && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }} className="animate-pulse">{t('Đang tải tệp lên...')}</span>}
-                </label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input 
-                    className="form-input" 
-                    placeholder={t('Nhập link tài liệu...')} 
-                    value={taskForm.link || ''} 
-                    onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} 
-                    style={{ flex: 1 }}
-                  />
-                  <label className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, padding: '0 0.75rem', height: '38px', borderRadius: '8px' }}>
-                    <Paperclip size={16} />
-                    {t('Tải tệp')}
-                    <input 
-                      type="file" 
-                      onChange={handleTaskFileUpload} 
-                      style={{ display: 'none' }} 
-                      disabled={uploadingFile}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Công việc con (Checklist) */}
-              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label className="form-label" style={{ fontWeight: 800, marginBottom: '2px' }}>📋 {t('Công việc con (Checklist)')}</label>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '0.5rem', alignItems: 'start' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Tên việc con')}</label>
-                    <input
-                      className="form-input"
-                      placeholder={t('VD: Gửi file pdf, Gọi lại...')}
-                      value={subTaskTitle}
-                      onChange={e => setSubTaskTitle(e.target.value)}
-                      style={{ height: '38px', fontSize: '0.8125rem' }}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Giao cho')}</label>
-                    <CustomSelect
-                      showAvatars={true}
-                      searchable={true}
-                      options={[
-                        { value: '', label: t('Người nhận...') },
-                        ...users.map(u => ({
-                          value: String(u.id),
-                          label: u.full_name,
-                          avatar: u.avatar_url || undefined
-                        }))
-                      ]}
-                      value={subTaskAssignee}
-                      onChange={val => setSubTaskAssignee(val.toString())}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, visibility: 'hidden' }}>{'\u00A0'}</label>
-                    <button
-                      type="button"
-                      className="btn primary"
-                      onClick={() => {
-                        if (!subTaskTitle.trim()) {
-                          addToast(t('Vui lòng nhập tên công việc con'), 'error');
-                          return;
-                        }
-                        const newItem = {
-                          id: 'sub_' + Date.now(),
-                          title: subTaskTitle.trim(),
-                          assignee_id: subTaskAssignee ? Number(subTaskAssignee) : null,
-                          done: false
-                        };
-                        setTaskForm(prev => ({
-                          ...prev,
-                          checklist: [...(prev.checklist || []), newItem]
-                        }));
-                        setSubTaskTitle('');
-                        setSubTaskAssignee('');
-                        addToast(t('Đã thêm việc con'), 'success');
-                      }}
-                      style={{ height: '38px', width: '38px', minWidth: '38px', padding: 0, border: 'none', margin: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}
-                    >
-                      <Plus size={16} />
-                    </button>
+      {/* CREATE TASK DRAWER */}
+      <AnimatePresence>
+        {showTaskModal && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 10500 }}>
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="drawer-backdrop" 
+              onClick={() => setShowTaskModal(false)}
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.65)',
+                backdropFilter: 'blur(4px)',
+              }}
+            />
+            {/* Drawer Container */}
+            <motion.div 
+              initial={{ x: '100%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0 }}
+              transition={{ type: 'tween', duration: 0.35, ease: 'easeOut' }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                bottom: 0,
+                right: 0,
+                left: isMobileOrTablet ? 0 : 'var(--sidebar-width, 220px)',
+                zIndex: 10600,
+                background: 'linear-gradient(180deg, var(--color-bg) 0%, var(--color-border-light) 100%)',
+                boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.15)',
+                display: 'flex',
+                flexDirection: 'column',
+                willChange: 'transform'
+              }}
+            >
+              {/* Drawer Header */}
+              <div style={{
+                padding: isMobileOrTablet ? '0.5rem 0.75rem' : '1.25rem 1.5rem',
+                borderBottom: '1px solid var(--color-border-light)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--color-surface)',
+                zIndex: 100,
+                position: 'sticky',
+                top: 0,
+                flexShrink: 0
+              }}>
+                <div style={{ display: 'flex', gap: isMobileOrTablet ? '8px' : '12px', alignItems: 'center', minWidth: 0, flex: 1 }}>
+                  {!isMobileOrTablet && (
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'rgba(16, 185, 129, 0.08)',
+                      color: 'var(--color-success)',
+                      flexShrink: 0
+                    }}>
+                      <CheckSquare size={20} />
+                    </div>
+                  )}
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h3 style={{ fontSize: isMobileOrTablet ? '0.9rem' : '1.1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t('Thêm công việc mới')}
+                    </h3>
+                    {!isMobileOrTablet && (
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                        {t('Người tạo:')} <span style={{ fontWeight: 700 }}>{currentUser?.name || t('Hệ thống / Admin')}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {/* Subtasks List */}
-                {taskForm.checklist && taskForm.checklist.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
-                    {taskForm.checklist.map((item) => {
-                      const assigneeUser = users.find(u => Number(u.id) === Number(item.assignee_id));
-                      return (
-                        <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ color: 'var(--color-text)' }}>• {item.title}</span>
-                            {assigneeUser && (
-                              <span style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.72rem' }}>({assigneeUser.full_name})</span>
-                            )}
-                          </div>
-                          <button 
-                            type="button" 
-                            className="btn-icon sm" 
-                            onClick={() => setTaskForm(prev => ({
-                              ...prev,
-                              checklist: prev.checklist.filter(x => x.id !== item.id)
-                            }))}
-                            style={{ color: 'var(--color-text-muted)' }}
-                          >
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+                  <button
+                    onClick={handleAddTask}
+                    disabled={isSubmitting}
+                    className="btn hover-lift"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: isMobileOrTablet ? '6px 12px' : '8px 18px',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      height: '36px',
+                      background: 'var(--color-primary)',
+                      borderColor: 'var(--color-primary)',
+                      color: 'white',
+                      cursor: 'pointer',
+                      boxShadow: 'var(--shadow-sm)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {isSubmitting ? <RefreshCw className="spin" size={14} /> : <CheckSquare size={14} />}
+                    <span>{isSubmitting ? t('Đang lưu...') : t('Tạo công việc')}</span>
+                  </button>
 
-            {/* Right Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng chính')}</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', borderRadius: '8px', height: '38px' }}>
-                  <Avatar name={fullName || t('Khách hàng')} size={24} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{fullName}</span>
+                  <button 
+                    onClick={() => setShowTaskModal(false)} 
+                    className="hover-lift"
+                    style={{
+                      background: 'var(--color-bg)',
+                      border: '1px solid var(--color-border)',
+                      padding: '8px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      color: 'var(--color-text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '36px',
+                      width: '36px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
                 </div>
               </div>
 
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng liên kết thêm (Tùy chọn)')}</label>
-                <CustomSelect
-                  multiple={true}
-                  showAvatars={true}
-                  align="right"
-                  options={[
-                    { value: 'all', label: t('Không có khách hàng khác') },
-                    ...contacts
-                      .filter(c => Number(c.id) !== Number(contact.id))
-                      .map(c => ({
-                        value: String(c.id),
-                        label: `${c.full_name || c.name || t('Không tên')} (${c.phone || ''})`,
-                        avatar: c.avatar_url || undefined
-                      }))
-                  ]}
-                  value={taskForm.related_contact_ids || ['all']}
-                  onChange={val => setTaskForm({ ...taskForm, related_contact_ids: val })}
-                  width="100%"
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 750 }}>{t('Người thực hiện')}</label>
-                  <CustomSelect
-                    showAvatars={true}
-                    searchable={true}
-                    options={[
-                      { value: '', label: t('Chưa giao cho ai') },
-                      ...users.map(u => ({
-                        value: String(u.id),
-                        label: u.full_name,
-                        avatar: u.avatar_url || undefined
-                      }))
-                    ]}
-                    value={taskForm.user_id}
-                    onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
-                  />
-                </div>
-
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 750 }}>{t('Người liên quan (Tùy chọn)')}</label>
-                  <CustomSelect
-                    multiple={true}
-                    showAvatars={true}
-                    align="right"
-                    searchable={true}
-                    options={[
-                      { value: 'all', label: t('Không có người liên quan') },
-                      ...users.filter(u => String(u.id) !== String(taskForm.user_id)).map(u => ({
-                        value: String(u.id),
-                        label: u.full_name,
-                        avatar: u.avatar_url || undefined
-                      }))
-                    ]}
-                    value={taskForm.participant_ids || ['all']}
-                    onChange={val => setTaskForm({ ...taskForm, participant_ids: val })}
-                  />
-                </div>
-              </div>
-
-              {/* Progress Slider */}
-              <div className="form-group" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <label className="form-label" style={{ margin: 0 }}>{t('Tiến độ công việc')}</label>
-                  <span style={{ fontSize: '0.825rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="10"
-                  value={taskForm.progress || 0}
-                  onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
-                  style={{
-                    width: '100%',
-                    cursor: 'pointer',
-                    accentColor: 'var(--color-primary)',
-                    height: '6px',
-                    borderRadius: '3px',
-                    background: '#e5e7eb'
-                  }}
-                />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
-                </div>
-              </div>
-
-              {/* Approval Row (Toggle & Approver) */}
-              <div style={{ display: 'grid', gridTemplateColumns: taskForm.require_approval === 1 ? '1.2fr 1.8fr' : '1fr', gap: '1rem', alignItems: 'end' }}>
-                {/* Approval Toggle */}
-                <div className="form-group" style={{ margin: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '6px 10px', borderRadius: '10px', border: '1px solid var(--color-border-light)', height: '38px' }}>
-                    <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cần duyệt')}</span>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
-                      <div 
-                        style={{
-                          width: 34,
-                          height: 18,
-                          borderRadius: 9,
-                          background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
-                          position: 'relative',
-                          transition: 'background 0.2s'
-                        }}
-                        onClick={() => {
-                          const next = taskForm.require_approval === 1 ? 0 : 1;
-                          setTaskForm({ ...taskForm, require_approval: next });
-                        }}
-                      >
-                        <div 
-                          style={{
-                            width: 14,
-                            height: 14,
-                            borderRadius: '50%',
-                            background: 'white',
-                            position: 'absolute',
-                            top: 2,
-                            left: taskForm.require_approval === 1 ? 18 : 2,
-                            transition: 'left 0.2s',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
-                          }}
+              {/* Drawer Body */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: isMobileOrTablet ? '1rem' : '1.5rem 2rem', background: 'var(--color-bg-light)' }} className="custom-scrollbar">
+                <div style={{
+                  display: 'flex',
+                  flexDirection: isMobileOrTablet ? 'column' : 'row',
+                  gap: isMobileOrTablet ? '1.5rem' : '2rem',
+                  alignItems: 'start'
+                }}>
+                  {/* Left Column (3/5) */}
+                  <div style={{ flex: isMobileOrTablet ? 'none' : 3, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : '1.5rem', minWidth: 0, width: '100%' }}>
+                    
+                    {/* Card 1: Tên công việc */}
+                    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>{t('Tên công việc *')}</label>
+                        <input
+                          className="form-input"
+                          placeholder={t('VD: Gửi báo giá, Demo tính năng...')}
+                          value={taskForm.title}
+                          onChange={e => setTaskForm({ ...taskForm, title: e.target.value })}
+                          autoFocus
                         />
                       </div>
-                    </label>
-                  </div>
-                </div>
+                    </div>
 
-                {/* Approver Select */}
-                {taskForm.require_approval === 1 && (
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <CustomSelect
-                      showAvatars={true}
-                      searchable={true}
-                      direction="up"
-                      align="right"
-                      options={[
-                        { value: '', label: t('Chọn người duyệt...') },
-                        ...users.map(u => ({
-                          value: String(u.id),
-                          label: `${u.full_name} (${u.role})`,
-                          avatar: u.avatar_url || undefined
-                        }))
-                      ]}
-                      value={taskForm.approver_id}
-                      onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
-                    />
-                  </div>
-                )}
-              </div>
+                    {/* Card 2: Mô tả chi tiết */}
+                    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>{t('Mô tả chi tiết công việc')}</label>
+                        <textarea
+                          className="form-input"
+                          placeholder={t('Nhập ghi chú hoặc mô tả chi tiết công việc...')}
+                          value={taskForm.description}
+                          onChange={e => setTaskForm({ ...taskForm, description: e.target.value })}
+                          style={{ minHeight: 120, resize: 'vertical' }}
+                        />
+                      </div>
+                    </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Mức độ ưu tiên')}</label>
-                  <CustomSelect
-                    direction="up"
-                    options={[
-                      { value: 'low', label: t('Thấp') },
-                      { value: 'medium', label: t('Trung bình') },
-                      { value: 'high', label: t('Cao') }
-                    ]}
-                    value={taskForm.priority}
-                    onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
-                    width="100%"
-                  />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 700 }}>{t('Hạn hoàn thành')}</label>
-                  <input
-                    className="form-input"
-                    type="date"
-                    value={taskForm.due_date}
-                    onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Recurrence Settings Block */}
-              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
-                <label className="form-label" style={{ fontWeight: 800, marginBottom: '6px' }}>🔄 {t('Lặp lại định kỳ')}</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem', alignItems: 'center' }}>
-                  <CustomSelect
-                    direction="up"
-                    options={[
-                      { value: 'none', label: t('Không lặp lại') },
-                      { value: 'daily', label: t('Hàng ngày') },
-                      { value: 'weekly', label: t('Hàng tuần') },
-                      { value: 'monthly', label: t('Hàng tháng') }
-                    ]}
-                    value={taskForm.recurrence_pattern}
-                    onChange={val => setTaskForm({ ...taskForm, recurrence_pattern: val.toString() })}
-                  />
-
-                  {taskForm.recurrence_pattern === 'weekly' && (
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {[
-                        { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
-                        { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
-                        { key: 0, label: 'CN' }
-                      ].map(day => {
-                        const isSelected = taskForm.recurrence_weekly_days.includes(day.key);
-                        return (
+                    {/* Card 3: Checklist (Công việc con) */}
+                    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <label className="form-label" style={{ fontWeight: 800, marginBottom: '2px' }}>📋 {t('Công việc con (Checklist)')}</label>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '0.5rem', alignItems: 'start' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Tên việc con')}</label>
+                          <input
+                            className="form-input"
+                            placeholder={t('VD: Gửi file pdf, Gọi lại...')}
+                            value={subTaskTitle}
+                            onChange={e => setSubTaskTitle(e.target.value)}
+                            style={{ height: '38px', fontSize: '0.8125rem' }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t('Giao cho')}</label>
+                          <CustomSelect
+                            showAvatars={true}
+                            searchable={true}
+                            options={[
+                              { value: '', label: t('Người nhận...') },
+                              ...users.map(u => ({
+                                value: String(u.id),
+                                label: u.full_name,
+                                avatar: u.avatar_url || undefined
+                              }))
+                            ]}
+                            value={subTaskAssignee}
+                            onChange={val => setSubTaskAssignee(val.toString())}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, visibility: 'hidden' }}>{' '}</label>
                           <button
-                            key={day.key}
                             type="button"
+                            className="btn primary"
                             onClick={() => {
-                              let newDays = [...taskForm.recurrence_weekly_days];
-                              if (newDays.includes(day.key)) {
-                                newDays = newDays.filter(d => d !== day.key);
-                              } else {
-                                newDays.push(day.key);
+                              if (!subTaskTitle.trim()) {
+                                addToast(t('Vui lòng nhập tên công việc con'), 'error');
+                                return;
                               }
-                              setTaskForm({ ...taskForm, recurrence_weekly_days: newDays });
+                              const newItem = {
+                                id: 'sub_' + Date.now(),
+                                title: subTaskTitle.trim(),
+                                assignee_id: subTaskAssignee ? Number(subTaskAssignee) : null,
+                                done: false
+                              };
+                              setTaskForm(prev => ({
+                                ...prev,
+                                checklist: [...(prev.checklist || []), newItem]
+                              }));
+                              setSubTaskTitle('');
+                              setSubTaskAssignee('');
+                              addToast(t('Đã thêm việc con'), 'success');
                             }}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '6px',
-                              border: '1px solid var(--color-border)',
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
-                              color: isSelected ? 'white' : 'var(--color-text)'
-                            }}
+                            style={{ height: '38px', width: '38px', minWidth: '38px', padding: 0, border: 'none', margin: 0, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxSizing: 'border-box' }}
                           >
-                            {day.label}
+                            <Plus size={16} />
                           </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                        </div>
+                      </div>
 
-                  {taskForm.recurrence_pattern === 'monthly' && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t('Vào ngày:')}</span>
-                      <input
-                        type="number"
-                        className="form-input"
-                        min={1}
-                        max={31}
-                        value={taskForm.recurrence_monthly_day}
-                        onChange={e => setTaskForm({ ...taskForm, recurrence_monthly_day: Math.min(31, Math.max(1, Number(e.target.value))) })}
-                        style={{ width: '60px', height: '32px', textAlign: 'center', padding: 0 }}
-                      />
+                      {/* Subtasks List */}
+                      {taskForm.checklist && taskForm.checklist.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '8px 12px', background: 'var(--color-bg-light)', borderRadius: '10px', border: '1px solid var(--color-border-light)' }}>
+                          {taskForm.checklist.map((item) => {
+                            const assigneeUser = users.find(u => Number(u.id) === Number(item.assignee_id));
+                            return (
+                              <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.03)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <span style={{ color: 'var(--color-text)' }}>• {item.title}</span>
+                                  {assigneeUser && (
+                                    <span style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: '0.72rem' }}>({assigneeUser.full_name})</span>
+                                  )}
+                                </div>
+                                <button 
+                                  type="button" 
+                                  className="btn-icon sm" 
+                                  onClick={() => setTaskForm(prev => ({
+                                    ...prev,
+                                    checklist: prev.checklist.filter(x => x.id !== item.id)
+                                  }))}
+                                  style={{ color: 'var(--color-text-muted)' }}
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {/* Card 4: Tài liệu hoặc Link đính kèm */}
+                    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 700 }}>
+                          <span>{t('Tài liệu hoặc Link đính kèm (Tùy chọn)')}</span>
+                          {uploadingFile && <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)' }} className="animate-pulse">{t('Đang tải tệp lên...')}</span>}
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <input 
+                            className="form-input" 
+                            placeholder={t('Nhập link tài liệu...')} 
+                            value={taskForm.link || ''} 
+                            onChange={e => setTaskForm({ ...taskForm, link: e.target.value })} 
+                            style={{ flex: 1 }}
+                          />
+                          <label className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', margin: 0, padding: '0 0.75rem', height: '38px', borderRadius: '8px' }}>
+                            <Paperclip size={16} />
+                            {t('Tải tệp')}
+                            <input 
+                              type="file" 
+                              onChange={handleTaskFileUpload} 
+                              style={{ display: 'none' }} 
+                              disabled={uploadingFile}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column (2/5) */}
+                  <div style={{ flex: isMobileOrTablet ? 'none' : 2, display: 'flex', flexDirection: 'column', gap: isMobileOrTablet ? '1rem' : '1.5rem', minWidth: 0, width: '100%' }}>
+                    
+                    {/* Card 1: Khách hàng liên kết */}
+                    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <h4 style={{ margin: 0, fontWeight: 750, fontSize: '0.9rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>{t('Khách hàng liên kết')}</h4>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng chính')}</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', borderRadius: '8px', height: '38px' }}>
+                          <Avatar name={fullName || t('Khách hàng')} size={24} />
+                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{fullName}</span>
+                        </div>
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>{t('Khách hàng liên kết thêm (Tùy chọn)')}</label>
+                        <CustomSelect
+                          multiple={true}
+                          showAvatars={true}
+                          align="right"
+                          options={[
+                            { value: 'all', label: t('Không có khách hàng khác') },
+                            ...contacts
+                              .filter(c => Number(c.id) !== Number(contact.id))
+                              .map(c => ({
+                                value: String(c.id),
+                                label: `${c.full_name || c.name || t('Không tên')} (${c.phone || ''})`,
+                                avatar: c.avatar_url || undefined
+                              }))
+                          ]}
+                          value={taskForm.related_contact_ids || ['all']}
+                          onChange={val => setTaskForm({ ...taskForm, related_contact_ids: val })}
+                          width="100%"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Card 2: Liên kết Dự án / Chiến dịch / Team */}
+                    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <h4 style={{ margin: 0, fontWeight: 750, fontSize: '0.9rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>{t('Liên kết Dự án / Chiến dịch / Team')}</h4>
+                      
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>{t('Dự án')}</label>
+                        <CustomSelect
+                          searchable
+                          options={[
+                            { value: '', label: t('Chọn dự án...') },
+                            ...allowedProjects.map(p => ({ value: String(p.id), label: p.name }))
+                          ]}
+                          value={taskForm.project_id || ''}
+                          onChange={val => setTaskForm({ ...taskForm, project_id: val.toString() })}
+                          placeholder={t('Chọn dự án...')}
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>{t('Chiến dịch')}</label>
+                        <CustomSelect
+                          searchable
+                          options={[
+                            { value: '', label: t('Chọn chiến dịch...') },
+                            ...allowedCampaigns.map(c => ({ value: String(c.id), label: c.name }))
+                          ]}
+                          value={taskForm.campaign_id || ''}
+                          onChange={val => setTaskForm({ ...taskForm, campaign_id: val.toString() })}
+                          placeholder={t('Chọn chiến dịch...')}
+                        />
+                      </div>
+                      
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 700 }}>{t('Nhóm / Team')}</label>
+                        <CustomSelect
+                          searchable
+                          showAvatars
+                          options={[
+                            { value: '', label: t('Chọn nhóm...') },
+                            ...allowedTeams.map(t => ({ value: String(t.id), label: t.name }))
+                          ]}
+                          value={taskForm.team_id || ''}
+                          onChange={val => setTaskForm({ ...taskForm, team_id: val.toString() })}
+                          placeholder={t('Chọn nhóm...')}
+                        />
+                      </div>
+
+                      {taskForm.campaign_id && (
+                        <div className="form-group animate-fade" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 700 }}>{t('Chỉ tiêu chiến dịch (Campaign Target)')}</label>
+                          <input
+                            className="form-input"
+                            placeholder={t('Nhập chỉ tiêu cho chiến dịch này...')}
+                            value={taskForm.campaign_target || ''}
+                            onChange={e => setTaskForm({ ...taskForm, campaign_target: e.target.value })}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card 3: Thông tin thực hiện */}
+                    <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                      <h4 style={{ margin: 0, fontWeight: 750, fontSize: '0.9rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>{t('Thông tin thực hiện')}</h4>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 750 }}>{t('Người thực hiện')}</label>
+                          <CustomSelect
+                            showAvatars={true}
+                            searchable={true}
+                            options={[
+                              { value: '', label: t('Chưa giao cho ai') },
+                              ...users.map(u => ({
+                                value: String(u.id),
+                                label: u.full_name,
+                                avatar: u.avatar_url || undefined
+                              }))
+                            ]}
+                            value={taskForm.user_id}
+                            onChange={val => setTaskForm({ ...taskForm, user_id: val.toString() })}
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 750 }}>{t('Người liên quan (Tùy chọn)')}</label>
+                          <CustomSelect
+                            multiple={true}
+                            showAvatars={true}
+                            align="right"
+                            searchable={true}
+                            options={[
+                              { value: 'all', label: t('Không có người liên quan') },
+                              ...users.filter(u => String(u.id) !== String(taskForm.user_id)).map(u => ({
+                                value: String(u.id),
+                                label: u.full_name,
+                                avatar: u.avatar_url || undefined
+                              }))
+                            ]}
+                            value={taskForm.participant_ids || ['all']}
+                            onChange={val => setTaskForm({ ...taskForm, participant_ids: val })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Progress Slider */}
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <label className="form-label" style={{ margin: 0 }}>{t('Tiến độ công việc')}</label>
+                          <span style={{ fontSize: '0.825rem', fontWeight: 750, color: 'var(--color-primary)' }}>{taskForm.progress || 0}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="10"
+                          value={taskForm.progress || 0}
+                          onChange={e => setTaskForm({ ...taskForm, progress: Number(e.target.value) })}
+                          style={{
+                            width: '100%',
+                            cursor: 'pointer',
+                            accentColor: 'var(--color-primary)',
+                            height: '6px',
+                            borderRadius: '3px',
+                            background: '#e5e7eb'
+                          }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                          <span>0%</span>
+                          <span>50%</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
+
+                      {/* Approval Row (Toggle & Approver) */}
+                      <div style={{ display: 'grid', gridTemplateColumns: taskForm.require_approval === 1 ? '1.2fr 1.8fr' : '1fr', gap: '1rem', alignItems: 'end' }}>
+                        {/* Approval Toggle */}
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '6px 10px', borderRadius: '10px', border: '1px solid var(--color-border-light)', height: '38px' }}>
+                            <span style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cần duyệt')}</span>
+                            <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                              <div 
+                                style={{
+                                  width: 34,
+                                  height: 18,
+                                  borderRadius: 9,
+                                  background: taskForm.require_approval === 1 ? 'var(--color-success)' : '#e5e7eb',
+                                  position: 'relative',
+                                  transition: 'background 0.2s'
+                                }}
+                                onClick={() => {
+                                  const next = taskForm.require_approval === 1 ? 0 : 1;
+                                  setTaskForm({ ...taskForm, require_approval: next });
+                                }}
+                              >
+                                <div 
+                                  style={{
+                                    width: 14,
+                                    height: 14,
+                                    borderRadius: '50%',
+                                    background: 'white',
+                                    position: 'absolute',
+                                    top: 2,
+                                    left: taskForm.require_approval === 1 ? 18 : 2,
+                                    transition: 'left 0.2s',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                                  }}
+                                />
+                              </div>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Approver Select */}
+                        {taskForm.require_approval === 1 && (
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <CustomSelect
+                              showAvatars={true}
+                              searchable={true}
+                              direction="up"
+                              align="right"
+                              options={[
+                                { value: '', label: t('Chọn người duyệt...') },
+                                ...users.map(u => ({
+                                  value: String(u.id),
+                                  label: `${u.full_name} (${u.role})`,
+                                  avatar: u.avatar_url || undefined
+                                }))
+                              ]}
+                              value={taskForm.approver_id}
+                              onChange={val => setTaskForm({ ...taskForm, approver_id: val.toString() })}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 700 }}>{t('Mức độ ưu tiên')}</label>
+                          <CustomSelect
+                            direction="up"
+                            options={[
+                              { value: 'low', label: t('Thấp') },
+                              { value: 'medium', label: t('Trung bình') },
+                              { value: 'high', label: t('Cao') }
+                            ]}
+                            value={taskForm.priority}
+                            onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
+                            width="100%"
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 700 }}>{t('Hạn hoàn thành')}</label>
+                          <input
+                            className="form-input"
+                            type="date"
+                            value={taskForm.due_date}
+                            onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Recurrence Settings Block */}
+                      <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+                        <label className="form-label" style={{ fontWeight: 800, marginBottom: '6px' }}>🔄 {t('Lặp lại định kỳ')}</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1rem', alignItems: 'center' }}>
+                          <CustomSelect
+                            direction="up"
+                            options={[
+                              { value: 'none', label: t('Không lặp lại') },
+                              { value: 'daily', label: t('Hàng ngày') },
+                              { value: 'weekly', label: t('Hàng tuần') },
+                              { value: 'monthly', label: t('Hàng tháng') }
+                            ]}
+                            value={taskForm.recurrence_pattern}
+                            onChange={val => setTaskForm({ ...taskForm, recurrence_pattern: val.toString() })}
+                          />
+
+                          {taskForm.recurrence_pattern === 'weekly' && (
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                              {[
+                                { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
+                                { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
+                                { key: 0, label: 'CN' }
+                              ].map(day => {
+                                const isSelected = taskForm.recurrence_weekly_days.includes(day.key);
+                                return (
+                                  <button
+                                    key={day.key}
+                                    type="button"
+                                    onClick={() => {
+                                      let newDays = [...taskForm.recurrence_weekly_days];
+                                      if (newDays.includes(day.key)) {
+                                        newDays = newDays.filter(d => d !== day.key);
+                                      } else {
+                                        newDays.push(day.key);
+                                      }
+                                      setTaskForm({ ...taskForm, recurrence_weekly_days: newDays });
+                                    }}
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '6px',
+                                      border: '1px solid var(--color-border)',
+                                      fontSize: '0.7rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                                      color: isSelected ? 'white' : 'var(--color-text)'
+                                    }}
+                                  >
+                                    {day.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {taskForm.recurrence_pattern === 'monthly' && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{t('Vào ngày:')}</span>
+                              <input
+                                type="number"
+                                className="form-input"
+                                min={1}
+                                max={31}
+                                value={taskForm.recurrence_monthly_day}
+                                onChange={e => setTaskForm({ ...taskForm, recurrence_monthly_day: Math.min(31, Math.max(1, Number(e.target.value))) })}
+                                style={{ width: '60px', height: '32px', textAlign: 'center', padding: 0 }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
+        )}
+      </AnimatePresence>
 
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '12px',
-            marginTop: '1.5rem',
-            borderTop: '1px solid var(--color-border-light)',
-            position: 'sticky',
-            bottom: '-24px',
-            background: 'var(--color-surface)',
-            zIndex: 10,
-            margin: '1.5rem -24px -24px -24px',
-            padding: '16px 24px 24px 24px'
-          }}>
-            <button className="btn outline" type="button" onClick={() => setShowTaskModal(false)} disabled={isSubmitting}>{t('Hủy')}</button>
-            <button className="btn primary" type="button" onClick={handleAddTask} disabled={isSubmitting}>
-              {isSubmitting ? t('Đang lưu...') : t('Tạo công việc')}
-            </button>
-          </div>
-        </div>
-      </CustomModal>
+
 
       {/* TASK DETAILS MODAL */}
       <AnimatePresence>

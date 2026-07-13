@@ -11,6 +11,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
+import { Pagination } from '../components/ui/Pagination';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#0d9488', '#ec4899', '#f43f5e', '#a31422'];
 const T_LABEL: Record<string, string> = {
@@ -55,6 +56,8 @@ export const ReportsPage: React.FC = () => {
   const [activityData, setActivityData] = useState<any>(null);
   const [teams, setTeams] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [ownerPage, setOwnerPage] = useState(1);
+  const [ownerPageSize] = useState(10);
 
   useEffect(() => {
     if (user && ['manager', 'admin', 'superadmin'].includes(user.role)) {
@@ -648,41 +651,60 @@ export const ReportsPage: React.FC = () => {
             {loading ? (
               <TableSkeleton rows={4} cols={4} />
             ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr><th>Nhân viên</th><th>Số Deal</th><th>Doanh thu</th><th>% Đóng góp</th></tr>
-                  </thead>
-                  <tbody>
-                    {(() => {
-                      const rows = salesData?.by_owner || BY_OWNER;
-                      const total = rows.reduce((s: number, o: any) => s + Number(o.revenue || 0), 0);
-                      return rows.map((o: any) => {
-                        const pct = total > 0 ? Math.round((Number(o.revenue || 0) / total) * 100) : 0;
-                        return (
-                          <tr key={o.id || o.user_id || o.name || o.user_name}>
-                            <td>
-                              <div className="flex items-center gap-2">
-                                <Avatar name={o.name || o.user_name || 'U'} size={28} />
-                                <span style={{ fontWeight: 600 }}>{o.name || o.user_name || 'Unknown'}</span>
-                              </div>
-                            </td>
-                            <td><span className="badge purple">{o.deals || o.total_deals || 0} deals</span></td>
-                            <td className="font-semi" style={{ color: 'var(--color-primary)' }}>{FMT_VND(Number(o.revenue || 0))}</td>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ flex: 1, height: 7, background: 'var(--color-border)', borderRadius: 4 }}>
-                                  <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: 'var(--color-primary)', borderRadius: 4 }} />
+              <div>
+                <div className="table-wrap custom-scrollbar" style={{ maxHeight: '420px', overflowY: 'auto' }}>
+                  <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)' }}>Nhân viên</th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)' }}>Số Deal</th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)' }}>Doanh thu</th>
+                        <th style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)' }}>% Đóng góp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        const rows = salesData?.by_owner || BY_OWNER;
+                        const total = rows.reduce((s: number, o: any) => s + Number(o.revenue || 0), 0);
+                        const startIndex = (ownerPage - 1) * ownerPageSize;
+                        const paginatedRows = rows.slice(startIndex, startIndex + ownerPageSize);
+                        return paginatedRows.map((o: any) => {
+                          const pct = total > 0 ? Math.round((Number(o.revenue || 0) / total) * 100) : 0;
+                          return (
+                            <tr key={o.id || o.user_id || o.name || o.user_name}>
+                              <td>
+                                <div className="flex items-center gap-2">
+                                  <Avatar name={o.name || o.user_name || 'U'} size={28} />
+                                  <span style={{ fontWeight: 600 }}>{o.name || o.user_name || 'Unknown'}</span>
                                 </div>
-                                <span className="text-sm font-semi" style={{ minWidth: 36 }}>{pct}%</span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      });
-                    })()}
-                  </tbody>
-                </table>
+                              </td>
+                              <td><span className="badge purple">{o.deals || o.total_deals || 0} deals</span></td>
+                              <td className="font-semi" style={{ color: 'var(--color-primary)' }}>{FMT_VND(Number(o.revenue || 0))}</td>
+                              <td>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                  <div style={{ flex: 1, height: 7, background: 'var(--color-border)', borderRadius: 4 }}>
+                                    <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: 'var(--color-primary)', borderRadius: 4 }} />
+                                  </div>
+                                  <span className="text-sm font-semi" style={{ minWidth: 36 }}>{pct}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+                {(salesData?.by_owner || BY_OWNER).length > ownerPageSize && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+                    <Pagination
+                      total={(salesData?.by_owner || BY_OWNER).length}
+                      page={ownerPage}
+                      pageSize={ownerPageSize}
+                      onChange={setOwnerPage}
+                    />
+                  </div>
+                )}
               </div>
             )}
           </div>
