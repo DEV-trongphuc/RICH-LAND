@@ -32,16 +32,16 @@ class ActivityController {
             
             if (in_array($auth['role'], ['sales', 'sale'], true)) {
                 if ($activity['related_type'] === 'contact') {
-                    $checkOwner = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? AND (owner_id=? OR id IN (
+                    $checkOwner = $this->db->prepare('SELECT id FROM contacts WHERE id=? AND tenant_id=? AND (owner_id=? OR id IN (
                         SELECT contact_id FROM cooperation_slips 
                         WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-                    ))");
+                    ))');
                     $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
                 } else if ($activity['related_type'] === 'deal') {
-                    $checkOwner = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=? AND (owner_id=? OR contact_id IN (
+                    $checkOwner = $this->db->prepare('SELECT id FROM deals WHERE id=? AND tenant_id=? AND (owner_id=? OR contact_id IN (
                         SELECT contact_id FROM cooperation_slips 
                         WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-                    ))");
+                    ))');
                     $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
                 } else {
                     $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
