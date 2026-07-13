@@ -2012,34 +2012,33 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             </div>
             {/* Nút xóa công việc ở dưới cùng */}
             {canDelete && (
-              <div style={{ marginTop: '2rem' }}>
+              <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   onClick={handleDeleteTask}
                   style={{
-                    width: '100%',
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: '1px solid var(--color-danger)',
-                    background: 'rgba(239, 68, 68, 0.05)',
+                    border: 'none',
+                    background: 'transparent',
                     color: 'var(--color-danger)',
-                    fontWeight: 600,
-                    display: 'flex',
+                    fontSize: '0.78rem',
+                    fontWeight: 500,
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
+                    gap: '6px',
                     cursor: 'pointer',
-                    transition: 'all 0.2s ease'
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    transition: 'all 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--color-danger)';
-                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.textDecoration = 'underline';
+                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.04)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
-                    e.currentTarget.style.color = 'var(--color-danger)';
+                    e.currentTarget.style.textDecoration = 'none';
+                    e.currentTarget.style.background = 'transparent';
                   }}
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={13} />
                   {t('Xóa công việc')}
                 </button>
               </div>
