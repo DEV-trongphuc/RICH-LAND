@@ -202,8 +202,23 @@ const AppTabs = () => {
     }
   };
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handleRefresh = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.path === location.pathname) {
+        setRefreshKey(prev => prev + 1);
+      }
+    };
+    window.addEventListener('refresh-page', handleRefresh);
+    return () => {
+      window.removeEventListener('refresh-page', handleRefresh);
+    };
+  }, [location.pathname]);
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+    <div key={location.pathname + '_' + refreshKey} style={{ position: 'relative', width: '100%', height: '100%' }}>
       <Suspense fallback={<PageLoader />}>
         {renderPageComponent()}
       </Suspense>

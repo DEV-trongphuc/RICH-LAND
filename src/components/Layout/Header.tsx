@@ -409,15 +409,11 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   };
 
   const handleProfileClick = () => {
-    if (user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') {
-      window.dispatchEvent(new CustomEvent('open-profile-modal'));
-    }
+    window.dispatchEvent(new CustomEvent('open-profile-modal'));
   };
 
   const handleActivityClick = () => {
-    if (user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') {
-      window.dispatchEvent(new CustomEvent('open-profile-modal', { detail: { tab: 'activity' } }));
-    }
+    window.dispatchEvent(new CustomEvent('open-profile-modal', { detail: { tab: 'activity' } }));
   };
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -1001,7 +997,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
               gap: '0.625rem',
               paddingLeft: '0.875rem',
               borderLeft: '1px solid var(--color-border)',
-              cursor: (user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') ? 'pointer' : 'default',
+              cursor: 'pointer',
               padding: '4px 8px',
               borderRadius: '6px',
               transition: 'background 0.2s',
@@ -1039,86 +1035,57 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                   transformOrigin: 'top right'
                 }}
               >
-                {(user?.role === 'admin' || user?.role === 'assistant' || user?.role === 'superadmin') && (
-                  <>
-                    <button
-                      onClick={handleProfileClick}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '8px 10px',
-                        border: 'none',
-                        background: 'transparent',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        color: 'var(--color-text)',
-                        fontSize: '0.8125rem',
-                        textAlign: 'left',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <User size={14} />
-                      {t('Thông tin')}
-                    </button>
-                    <button
-                      onClick={handleActivityClick}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '8px 10px',
-                        border: 'none',
-                        background: 'transparent',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        color: 'var(--color-text)',
-                        fontSize: '0.8125rem',
-                        textAlign: 'left',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <Activity size={14} />
-                      {t('Hoạt động (Nhật ký)')}
-                    </button>
-                  </>
-                )}
+                <>
+                  <button
+                    onClick={handleProfileClick}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 10px',
+                      border: 'none',
+                      background: 'transparent',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      color: 'var(--color-text)',
+                      fontSize: '0.8125rem',
+                      textAlign: 'left',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <User size={14} />
+                    {t('Thông tin')}
+                  </button>
+                  <button
+                    onClick={handleActivityClick}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      width: '100%',
+                      padding: '8px 10px',
+                      border: 'none',
+                      background: 'transparent',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      color: 'var(--color-text)',
+                      fontSize: '0.8125rem',
+                      textAlign: 'left',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <Activity size={14} />
+                    {t('Hoạt động (Nhật ký)')}
+                  </button>
+                </>
 
                 {((user?.role as any) === 'sale' || (user?.role as any) === 'sales') && (
                   <>
-                    <button
-                      onClick={() => {
-                        navigate('/accounts');
-                        setIsProfileMenuOpen(false);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '8px 10px',
-                        border: 'none',
-                        background: 'transparent',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        color: 'var(--color-text)',
-                        fontSize: '0.8125rem',
-                        textAlign: 'left',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <User size={14} style={{ color: 'var(--color-primary)' }} />
-                      {t('Thông tin cá nhân')}
-                    </button>
-
                     <button
                       onClick={() => {
                         navigate('/consultants');

@@ -40,7 +40,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const navigate = useNavigate();
   const user = useAuthStore(state => state.user);
-  const isReadOnly = user?.role === 'director' || user?.role === 'viewer';
+  const isReadOnly = !['admin', 'superadmin', 'super_admin', 'assistant'].includes(user?.role || '');
   const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -282,7 +282,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   };
 
   const handleSaveComp = async () => {
-    if (!compRound || isSavingComp) return;
+    if (isReadOnly || !compRound || isSavingComp) return;
     setIsSavingComp(true);
     try {
       const payload = {
@@ -393,6 +393,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isReadOnly) return;
     if (!formData.round_name) return toast.error(t("Vui lòng nhập tên vòng"));
     if (isSaving) return;
 
@@ -443,7 +444,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   };
 
   const handleDelete = async () => {
-    if (!deleteId || isDeleting) return;
+    if (isReadOnly || !deleteId || isDeleting) return;
     setIsDeleting(true);
     try {
       const json = await fetchAPI(`delete_round&id=${deleteId}`);

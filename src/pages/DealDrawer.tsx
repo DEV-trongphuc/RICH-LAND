@@ -187,9 +187,9 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   const fetchLists = async () => {
     setLoadingLists(true);
     try {
-      const isSaleOrManager = currentUser?.role === 'sale' || currentUser?.role === 'sales' || currentUser?.role === 'manager';
-      const usersEndpoint = isSaleOrManager ? '/get_consultants?all=1' : '/users';
-      const bypassProj = isSaleOrManager ? '' : '?bypass_roster=1';
+      const usersEndpoint = '/users?all=1';
+      const isRosterRestricted = ['sale', 'sales', 'manager', 'director'].includes(currentUser?.role || '');
+      const bypassProj = isRosterRestricted ? '' : '?bypass_roster=1';
       const [rC, rCo, rT, rU, rP] = await Promise.all([
         api.get('/contacts?limit=1000'),
         api.get('/companies'),
@@ -275,6 +275,20 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     }
     fetchLists();
   }, [deal]);
+
+  useEffect(() => {
+    if (isOpen && formData?.project_id && projects.length > 0) {
+      const activeProjId = Number(formData.project_id);
+      if (!projects.some((p: any) => Number(p.id) === activeProjId)) {
+        api.get(`/projects/${activeProjId}`).then(res => {
+          const pObj = res.data?.data || res.data;
+          if (pObj && pObj.id) {
+            setProjects(prev => [pObj, ...prev]);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [isOpen, formData?.project_id, projects.length > 0]);
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
@@ -434,12 +448,34 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         </div>
                         <div className="form-group">
                           <label className="form-label">Giai đoạn (Pipeline Stage)</label>
-                          <CustomSelect 
-                            options={stages.map(s => ({ value: s.id, label: s.name }))}
-                            value={formData?.stage_id}
-                            onChange={val => setFormData({...formData, stage_id: Number(val)})}
-                            disabled={isViewer}
-                          />
+                           <CustomSelect 
+                             options={stages.map(s => ({ value: s.id, label: s.name }))}
+                             value={formData?.stage_id}
+                             onChange={val => {
+                               const targetStageId = Number(val);
+                               const fromStage = deal?.stage_id || 0;
+                               
+                               const fromIdx = stages.findIndex(s => Number(s.id) === Number(fromStage));
+                               const toIdx = stages.findIndex(s => Number(s.id) === Number(targetStageId));
+                               
+                               const fromStageObj = stages[fromIdx];
+                               const toStageObj = stages[toIdx];
+                               
+                               const isFromDeposit = fromStageObj?.name?.toLowerCase()?.includes('cọc') || fromStageObj?.name?.toLowerCase()?.includes('deposit');
+                               const isToSuccess = toStageObj?.name?.toLowerCase()?.includes('hợp đồng') || toStageObj?.name?.toLowerCase()?.includes('won') || toStageObj?.name?.toLowerCase()?.includes('thành công') || toStageObj?.is_won;
+                               const isCancellation = isFromDeposit && !isToSuccess;
+                               
+                               const isBackward = fromIdx !== -1 && toIdx !== -1 && toIdx < fromIdx;
+                               
+                               if (isBackward && !isCancellation) {
+                                 addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+                                 return;
+                               }
+                               
+                               setFormData({...formData, stage_id: targetStageId});
+                             }}
+                             disabled={isViewer}
+                           />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Ngày dự kiến chốt</label>

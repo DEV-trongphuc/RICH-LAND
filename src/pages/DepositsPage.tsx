@@ -59,6 +59,7 @@ const formatMoney = (val: string | number) => {
 
 export default function DepositsPage() {
   const { user } = useAuth();
+  const isViewer = user?.role === 'viewer';
   const { showConfirm } = useUIStore();
   const { t } = useLanguage();
   const [showInfoModal, setShowInfoModal] = useState(false);
@@ -366,14 +367,16 @@ export default function DepositsPage() {
           </h1>
           <p className="page-subtitle">{t("Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC")}</p>
         </div>
-        <button
-          onClick={() => setIsCreateOpen(true)}
-          className="btn primary"
-          style={{ height: '38px' }}
-        >
-          <Plus size={16} />
-          Tạo phiếu cọc mới
-        </button>
+        {!isViewer && (
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="btn primary"
+            style={{ height: '38px' }}
+          >
+            <Plus size={16} />
+            Tạo phiếu cọc mới
+          </button>
+        )}
       </div>
 
       {/* List */}
@@ -384,8 +387,8 @@ export default function DepositsPage() {
           icon={<CreditCard />}
           title="Chưa có phiếu cọc nào"
           description="Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC."
-          actionText="Tạo phiếu cọc mới"
-          onAction={() => setIsCreateOpen(true)}
+          actionText={isViewer ? undefined : "Tạo phiếu cọc mới"}
+          onAction={isViewer ? undefined : () => setIsCreateOpen(true)}
         />
       ) : (
         <div className="card" style={{ padding: 0, borderRadius: '16px', border: '1px solid var(--color-border-light)', overflow: 'hidden', background: 'var(--color-surface)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02)' }}>

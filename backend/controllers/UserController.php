@@ -29,21 +29,24 @@ class UserController {
         $where = ["tenant_id = ?"];
         $params = [$auth['tenant_id']];
         
-        if ($auth['role'] === 'manager') {
-            $where[] = "(id = ? OR team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
-            $params[] = $auth['user_id'];
-            $params[] = $auth['user_id'];
-        } else if (in_array($auth['role'], ['sales', 'sale'], true)) {
-            $tStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
-            $tStmt->execute([$auth['user_id']]);
-            $teamRow = $tStmt->fetch();
-            $teamId = $teamRow ? $teamRow['team_id'] : null;
-            if ($teamId) {
-                $where[] = "(role IN ('admin', 'super_admin', 'superadmin', 'director', 'manager') OR team_id = ?)";
-                $params[] = $teamId;
-            } else {
-                $where[] = "(role IN ('admin', 'super_admin', 'superadmin', 'director', 'manager') OR id = ?)";
+        $all = isset($_GET['all']) && (string)$_GET['all'] === '1';
+        if (!$all) {
+            if ($auth['role'] === 'manager') {
+                $where[] = "(id = ? OR team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
                 $params[] = $auth['user_id'];
+                $params[] = $auth['user_id'];
+            } else if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                $tStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");
+                $tStmt->execute([$auth['user_id']]);
+                $teamRow = $tStmt->fetch();
+                $teamId = $teamRow ? $teamRow['team_id'] : null;
+                if ($teamId) {
+                    $where[] = "(role IN ('admin', 'super_admin', 'superadmin', 'director', 'manager') OR team_id = ?)";
+                    $params[] = $teamId;
+                } else {
+                    $where[] = "(role IN ('admin', 'super_admin', 'superadmin', 'director', 'manager') OR id = ?)";
+                    $params[] = $auth['user_id'];
+                }
             }
         }
 

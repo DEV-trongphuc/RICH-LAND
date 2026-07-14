@@ -174,10 +174,10 @@ function logInteraction(PDO $db, $tid, $uid, string $type, string $subject, ?str
     }
 
     $stmt = $db->prepare("
-        INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, due_date, done_at, related_type, related_id)
-        VALUES (?, ?, ?, ?, ?, 'done', 'medium', NOW(), NOW(), ?, ?)
+        INSERT INTO activities (tenant_id, user_id, created_by, type, subject, body, status, priority, due_date, done_at, related_type, related_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'done', 'medium', NOW(), NOW(), ?, ?)
     ");
-    $stmt->execute([$tid, $uid, $type, $subject, $body, $relType, $relId]);
+    $stmt->execute([$tid, $uid, $uid, $type, $subject, $body, $relType, $relId]);
 }
 
 function getCustomFields(PDO $db, int $tenant_id, int $entity_id, string $entity_type): array {

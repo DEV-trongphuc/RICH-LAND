@@ -1257,8 +1257,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   useEffect(() => {
     if (token) {
-      const isSaleOrManager = user?.role === 'sale' || user?.role === 'manager';
-      const usersEndpoint = isSaleOrManager ? '/get_consultants?all=1' : '/users';
+      const usersEndpoint = '/users?all=1';
       api.get(usersEndpoint).then(r => {
         const d = r.data.data;
         const list = Array.isArray(d) ? d : (d?.items || []);

@@ -387,8 +387,10 @@ try {
 
     // Create data reports (tickets)
     // S1 report
-    $db->prepare("INSERT INTO leads (name, phone, email, assigned_to) VALUES ('Lead S1', '0912345678', 's1@lead.net', ?)")
-       ->execute([$sales1UserId]);
+    $p1 = "091" . substr(strval(abs(crc32($suffix . "_s1"))), 0, 7);
+    $p2 = "098" . substr(strval(abs(crc32($suffix . "_s2"))), 0, 7);
+    $db->prepare("INSERT INTO leads (name, phone, email, assigned_to) VALUES ('Lead S1', ?, ?, ?)")
+       ->execute([$p1, "s1_$suffix@lead.net", $sales1UserId]);
     $leadS1Id = (int)$db->lastInsertId();
 
     $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, 1, 'Fake phone number', 'pending')")
@@ -396,8 +398,8 @@ try {
     $repS1Id = (int)$db->lastInsertId();
 
     // S2 report
-    $db->prepare("INSERT INTO leads (name, phone, email, assigned_to) VALUES ('Lead S2', '0987654321', 's2@lead.net', ?)")
-       ->execute([$sales2UserId]);
+    $db->prepare("INSERT INTO leads (name, phone, email, assigned_to) VALUES ('Lead S2', ?, ?, ?)")
+       ->execute([$p2, "s2_$suffix@lead.net", $sales2UserId]);
     $leadS2Id = (int)$db->lastInsertId();
 
     $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, 1, 'Spam mail', 'pending')")

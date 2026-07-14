@@ -40,8 +40,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
     }
     // Fetch users for mentions
     console.log("MentionInput fetching users from API...");
-    const isSaleOrManager = currentUser?.role === 'sale' || currentUser?.role === 'manager';
-    const usersEndpoint = isSaleOrManager ? '/get_consultants?all=1' : '/users';
+    const usersEndpoint = '/users?all=1';
     api.get(usersEndpoint).then(res => {
       const d = res.data.data;
       const list = Array.isArray(d) ? d : (d?.items || []);

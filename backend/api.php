@@ -10515,15 +10515,57 @@ switch ($action) {
         $bank_name = !empty($input['bank_name']) ? trim($input['bank_name']) : null;
         $bank_account = !empty($input['bank_account']) ? trim($input['bank_account']) : null;
 
-        if (empty($name)) {
-            echo json_encode(['success' => false, 'message' => 'Tên không được để trống']);
+        $sets = [];
+        $types = "";
+        $values = [];
+        
+        $allowedFields = [
+            'name' => ['col' => 'full_name', 'type' => 's'],
+            'avatar' => ['col' => 'avatar_url', 'type' => 's'],
+            'dob' => ['col' => 'dob', 'type' => 's'],
+            'gender' => ['col' => 'gender', 'type' => 's'],
+            'citizen_id' => ['col' => 'citizen_id', 'type' => 's'],
+            'address' => ['col' => 'address', 'type' => 's'],
+            'bank_name' => ['col' => 'bank_name', 'type' => 's'],
+            'bank_account' => ['col' => 'bank_account', 'type' => 's'],
+            'phone' => ['col' => 'phone', 'type' => 's']
+        ];
+        
+        foreach ($allowedFields as $key => $meta) {
+            if (array_key_exists($key, $input)) {
+                $val = $input[$key];
+                if ($key === 'name') {
+                    $val = trim((string)$val);
+                    if (empty($val)) {
+                        echo json_encode(['success' => false, 'message' => 'Tên không được để trống']);
+                        break 2;
+                    }
+                } elseif ($key === 'avatar' && trim((string)$val) === '') {
+                    $val = null;
+                } elseif ($val === '') {
+                    $val = null;
+                }
+                
+                $sets[] = "`" . $meta['col'] . "` = ?";
+                $types .= $meta['type'];
+                $values[] = $val;
+            }
+        }
+        
+        if (empty($sets)) {
+            echo json_encode(['success' => true]);
             break;
         }
-
-        $upd = $conn->prepare("UPDATE users SET full_name = ?, avatar_url = ?, dob = ?, gender = ?, citizen_id = ?, address = ?, bank_name = ?, bank_account = ?, phone = ? WHERE id = ?");
-        $upd->bind_param("sssssssssi", $name, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $userId);
+        
+        $types .= "i";
+        $values[] = $userId;
+        
+        $sql = "UPDATE users SET " . implode(', ', $sets) . " WHERE id = ?";
+        $upd = $conn->prepare($sql);
+        $upd->bind_param($types, ...$values);
+        
         if ($upd->execute()) {
-            logAdminAction($conn, $userId, 'UPDATE_PROFILE', ['name' => $name, 'avatar' => $avatar, 'dob' => $dob, 'gender' => $gender, 'citizen_id' => $citizen_id, 'address' => $address, 'bank_name' => $bank_name, 'bank_account' => $bank_account, 'phone' => $phone]);
+            logAdminAction($conn, $userId, 'UPDATE_PROFILE', $input);
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật hồ sơ']);

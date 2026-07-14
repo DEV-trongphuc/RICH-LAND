@@ -123,8 +123,8 @@ if (!function_exists('runRecurringTasksCron')) {
                 $childDueDate = $today . ' ' . $timePart;
 
                 $stmtInsert = $conn->prepare("
-                    INSERT INTO activities (tenant_id, user_id, type, subject, body, status, priority, due_date, done_at, related_type, related_id, tags, participant_ids, progress, require_approval, approver_id, approval_status, link)
-                    VALUES (?, ?, 'task', ?, ?, 'planned', ?, ?, NULL, ?, ?, ?, ?, 0, ?, ?, NULL, ?)
+                    INSERT INTO activities (tenant_id, user_id, created_by, type, subject, body, status, priority, due_date, done_at, related_type, related_id, tags, participant_ids, progress, require_approval, approver_id, approval_status, link)
+                    VALUES (?, ?, ?, 'task', ?, ?, 'planned', ?, ?, NULL, ?, ?, ?, ?, 0, ?, ?, NULL, ?)
                 ");
                 
                 if (!$stmtInsert) {
@@ -139,6 +139,7 @@ if (!function_exists('runRecurringTasksCron')) {
 
                 $tenantId = (int)$row['tenant_id'];
                 $userId = !empty($row['user_id']) ? (int)$row['user_id'] : null;
+                $createdBy = !empty($row['created_by']) ? (int)$row['created_by'] : null;
                 $subject = $row['subject'];
                 $priority = $row['priority'] ?: 'medium';
                 $relatedType = $row['related_type'] ?: null;
@@ -150,9 +151,10 @@ if (!function_exists('runRecurringTasksCron')) {
                 $link = $row['link'] ?: null;
 
                 $stmtInsert->bind_param(
-                    "iisssssssiiis",
+                    "iiisssssssiiis",
                     $tenantId,
                     $userId,
+                    $createdBy,
                     $subject,
                     $childBodyJson,
                     $priority,

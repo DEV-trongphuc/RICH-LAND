@@ -1045,7 +1045,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopLoading(true);
     setCoopError('');
     try {
-      const usersEndpoint = (currentUser?.role as string === 'sale' || currentUser?.role as string === 'sales' || currentUser?.role === 'manager') ? 'get_consultants?all=1' : 'users';
+      const usersEndpoint = 'users?all=1';
       const [resSlips, resUsers] = await Promise.all([
         fetchAPI('cooperation-slips'),
         fetchAPI(usersEndpoint)
@@ -1192,12 +1192,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     });
   };
-  const handleRemoveCoopAttachment = async () => {
+  const handleRemoveCoopAttachment = async (fileUrl: string) => {
     if (!coopSlip) return;
     setCoopLoading(true);
     try {
       const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/delete-attachment`, {
-        method: 'POST'
+        method: 'POST',
+        body: JSON.stringify({ file_url: fileUrl })
       });
       if (res.success) {
         addToast('Đã xóa tài liệu đính kèm', 'success');
@@ -1808,37 +1809,25 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   useEffect(() => {
     if (isOpen) {
-      if (currentUser && currentUser.role !== 'sale' && currentUser.role !== 'manager') {
-        api.get('/users').then(r => {
-          const d = r.data.data;
-          const list = Array.isArray(d) ? d : (d?.items || []);
-          const team = list.filter((u: any) => {
-            if (!u || !u.role) return false;
-            const roleLower = u.role.toLowerCase();
-            return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
-          });
-          setUsers(team);
-        }).catch(() => {});
-      } else {
-        fetchAPI('get_consultants?all=1').then(res => {
-          if (res && res.success && res.data) {
-            const mapped = res.data.map((u: any) => ({
-              ...u,
-              id: u.id,
-              full_name: u.full_name || u.name,
-              avatar_url: u.avatar || u.avatar_url
-            }));
-            const team = mapped.filter((u: any) => {
-              const r = (u.role || 'sale').toLowerCase();
-              return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(r);
-            });
-            setUsers(team);
-          }
-        }).catch(() => {});
-      }
+      api.get('/users?all=1').then(r => {
+        const d = r.data.data;
+        const list = Array.isArray(d) ? d : (d?.items || []);
+        const team = list.map((u: any) => ({
+          ...u,
+          id: u.id,
+          full_name: u.full_name || u.name,
+          avatar_url: u.avatar || u.avatar_url
+        })).filter((u: any) => {
+          if (!u || !u.role) return false;
+          const roleLower = u.role.toLowerCase();
+          return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
+        });
+        setUsers(team);
+      }).catch(() => {});
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
       api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
-      const bypassProj = (currentUser?.role === 'sale' || currentUser?.role === 'manager') ? '' : '?bypass_roster=1';
+      const isRosterRestricted = ['sale', 'sales', 'manager', 'director'].includes(currentUser?.role || '');
+      const bypassProj = isRosterRestricted ? '' : '?bypass_roster=1';
       api.get(`/projects${bypassProj}`).then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
       api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
       api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
@@ -2636,7 +2625,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
+  const isReleaseBlocked = (() => {
+    const currentStatus = contact?.pipeline_status || 'chua_xac_dinh';
+    const blockedStatuses = ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong', ...(coopEligibleStatuses || [])];
+    return blockedStatuses.includes(currentStatus);
+  })();
+
   const handleReturnToDatabank = () => {
+    if (isReleaseBlocked) return;
     showConfirm({
       title: 'Trả khách hàng về Databank',
       message: 'Bạn có chắc chắn muốn trả khách hàng này về Databank chung không? Lưu ý:\n\n• Nếu bạn là người duy nhất chăm sóc khách hàng này, khách hàng sẽ được nhả về Databank chung (không còn thuộc sở hữu của bạn).\n• Nếu có từ 2 Sale chăm sóc song song trở lên, hệ thống sẽ chỉ xóa khách hàng khỏi danh sách cá nhân của bạn, không ảnh hưởng đến Sale khác.',
@@ -3548,7 +3544,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
                             <button
                               className={styles.sidebarTabBtn}
-                              onClick={handleReturnToDatabank}
+                              onClick={isReleaseBlocked ? undefined : handleReturnToDatabank}
+                              disabled={isReleaseBlocked}
                               style={{
                                 padding: '11px 0.875rem',
                                 fontSize: '0.85rem',
@@ -3560,14 +3557,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 background: 'transparent',
                                 borderRadius: '6px',
                                 textAlign: 'left',
-                                cursor: 'pointer',
-                                color: 'var(--color-danger)',
+                                cursor: isReleaseBlocked ? 'not-allowed' : 'pointer',
+                                color: isReleaseBlocked ? 'var(--color-text-muted)' : 'var(--color-danger)',
                                 fontWeight: 600,
+                                opacity: isReleaseBlocked ? 0.5 : 1,
                                 transition: 'all 0.15s ease',
                                 marginTop: '0.15rem'
                               }}
-                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                              onMouseEnter={e => {
+                                if (!isReleaseBlocked) e.currentTarget.style.background = 'rgba(220, 38, 38, 0.05)';
+                              }}
+                              onMouseLeave={e => {
+                                if (!isReleaseBlocked) e.currentTarget.style.background = 'transparent';
+                              }}
+                              title={isReleaseBlocked ? t('Không thể trả về Databank do trạng thái khách hàng đặc biệt') : undefined}
                             >
                               <RotateCcw size={16} />
                               <span>Trả về Databank</span>
@@ -4696,54 +4699,72 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <Paperclip size={18} /> Tài liệu hợp tác đính kèm
                             </h4>
                             {coopSlip.attachment_url ? (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  {coopSlip.attachment_url.toLowerCase().endsWith('.pdf') ? (
-                                    <FileText size={24} style={{ color: '#ef4444' }} />
-                                  ) : (coopSlip.attachment_url.toLowerCase().endsWith('.doc') || coopSlip.attachment_url.toLowerCase().endsWith('.docx')) ? (
-                                    <FileText size={24} style={{ color: '#3b82f6' }} />
-                                  ) : (
-                                    <Camera size={24} style={{ color: '#10b981' }} />
-                                  )}
-                                  <div>
-                                    <a href={resolveAttachmentUrl(coopSlip.attachment_url)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
-                                      Xem tài liệu hợp tác
-                                    </a>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                                      {coopSlip.attachment_url.split('/').pop()}
-                                    </p>
-                                  </div>
-                                </div>
-                                {isOwnerOrAdmin && (
-                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                                    <button className="btn-icon sm" title="Đổi tên" onClick={() => {
-                                      const filename = coopSlip.attachment_url.split('/').pop() || '';
-                                      const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
-                                      showConfirm({
-                                        title: 'Đổi tên tài liệu hợp tác',
-                                        message: 'Nhập tên mới cho tài liệu hợp tác:',
-                                        requirePromptInput: true,
-                                        promptPlaceholder: cleanName,
-                                        confirmText: 'Lưu',
-                                        cancelText: 'Hủy',
-                                        onConfirm: async (newName) => {
-                                          if (newName && newName.trim()) {
-                                            try {
-                                              await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim() });
-                                              await fetchCoopSlip();
-                                              addToast('Đã đổi tên tài liệu hợp tác.', 'success');
-                                            } catch (err) {
-                                              addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean).map((fileUrl, fIdx) => (
+                                  <div key={fIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      {fileUrl.toLowerCase().endsWith('.pdf') ? (
+                                        <FileText size={24} style={{ color: '#ef4444' }} />
+                                      ) : (fileUrl.toLowerCase().endsWith('.doc') || fileUrl.toLowerCase().endsWith('.docx')) ? (
+                                        <FileText size={24} style={{ color: '#3b82f6' }} />
+                                      ) : (
+                                        <Camera size={24} style={{ color: '#10b981' }} />
+                                      )}
+                                      <div>
+                                        <a href={resolveAttachmentUrl(fileUrl)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-primary)', textDecoration: 'underline' }}>
+                                          Xem tài liệu hợp tác
+                                        </a>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+                                          {fileUrl.split('/').pop()}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    {isOwnerOrAdmin && (
+                                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                        <button className="btn-icon sm" title="Đổi tên" onClick={() => {
+                                          const filename = fileUrl.split('/').pop() || '';
+                                          const cleanName = filename.substring(0, filename.lastIndexOf('.')) || filename;
+                                          showConfirm({
+                                            title: 'Đổi tên tài liệu hợp tác',
+                                            message: 'Nhập tên mới cho tài liệu hợp tác:',
+                                            requirePromptInput: true,
+                                            promptPlaceholder: cleanName,
+                                            confirmText: 'Lưu',
+                                            cancelText: 'Hủy',
+                                            onConfirm: async (newName) => {
+                                              if (newName && newName.trim()) {
+                                                try {
+                                                  await api.post(`/cooperation-slips/${coopSlip.id}/rename-attachment`, { name: newName.trim(), file_url: fileUrl });
+                                                  await fetchCoopSlip();
+                                                  addToast('Đã đổi tên tài liệu hợp tác.', 'success');
+                                                } catch (err) {
+                                                  addToast('Lỗi khi đổi tên tài liệu.', 'error');
+                                                }
+                                              }
                                             }
-                                          }
-                                        }
-                                      });
-                                    }}>
-                                      <Pencil size={14} />
-                                    </button>
-                                    <button className="btn-icon sm text-danger" title="Xóa" onClick={handleRemoveCoopAttachment}>
-                                      <Trash2 size={14} />
-                                    </button>
+                                          });
+                                        }}>
+                                          <Pencil size={14} />
+                                        </button>
+                                        <button className="btn-icon sm text-danger" title="Xóa" onClick={() => handleRemoveCoopAttachment(fileUrl)}>
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                                {isOwnerOrAdmin && (
+                                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px' }}>
+                                    <input
+                                      type="file"
+                                      id="coop-attachment-upload-more"
+                                      style={{ display: 'none' }}
+                                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp,.gif"
+                                      onChange={handleCoopAttachmentUpload}
+                                    />
+                                    <label htmlFor="coop-attachment-upload-more" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                      <Upload size={14} /> Tải thêm tài liệu đính kèm
+                                    </label>
                                   </div>
                                 )}
                               </div>

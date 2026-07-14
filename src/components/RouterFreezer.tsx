@@ -14,10 +14,7 @@ export function withRouterFreezer<P extends object>(
     const [searchParams, setSearchParams] = useSearchParams();
     const pathname = location.pathname;
     
-    const pathChecker = configPathToCheck ?? props.pathToCheck;
-    const isActive = pathChecker
-      ? (typeof pathChecker === 'function' ? pathChecker(pathname) : pathname === pathChecker)
-      : true;
+    const isActive = true;
 
     return (
       <WrappedComponent

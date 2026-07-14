@@ -9,7 +9,44 @@ class ActivityController {
     }
 
     private function hasAccess(array $auth, array $activity): bool {
-        if (in_array($auth['role'], ['super_admin', 'admin', 'superadmin', 'director'], true)) {
+        if (in_array($auth['role'], ['super_admin', 'admin', 'superadmin'], true)) {
+            return true;
+        }
+
+        // Project / Campaign roster checks for sales, managers, and directors
+        if (!empty($activity['related_type']) && in_array($activity['related_type'], ['project', 'campaign'], true)) {
+            if (in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true)) {
+                if ($activity['related_type'] === 'project') {
+                    $checkRoster = $this->db->prepare('
+                        SELECT project_id FROM project_roster WHERE project_id=? AND user_id=?
+                        UNION
+                        SELECT id FROM projects WHERE id=? AND tenant_id=? AND created_by=?
+                    ');
+                    $checkRoster->execute([
+                        (int)$activity['related_id'], $auth['user_id'],
+                        (int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']
+                    ]);
+                    if ($checkRoster->fetch()) {
+                        return true;
+                    }
+                    return false;
+                } else if ($activity['related_type'] === 'campaign') {
+                    $checkRoster = $this->db->prepare('
+                        SELECT id FROM marketing_campaigns WHERE id=? AND tenant_id=? AND (FIND_IN_SET(?, user_ids) OR FIND_IN_SET(?, manager_ids) OR created_by = ?)
+                    ');
+                    $checkRoster->execute([
+                        (int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id'], $auth['user_id']
+                    ]);
+                    if ($checkRoster->fetch()) {
+                        return true;
+                    }
+                    return false;
+                }
+            }
+        }
+
+        // For directors, they can view all other activity types (contacts, deals, companies, etc.)
+        if ($auth['role'] === 'director') {
             return true;
         }
         

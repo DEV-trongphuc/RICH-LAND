@@ -801,7 +801,7 @@ class CooperationController {
                 $newFileName = time() . '_' . $newNameClean . '.' . $ext;
                 $targetDir = dirname($oldPath);
                 $newPath = $targetDir . '/' . $newFileName;
-                $dbPath = "uploads/cooperation/$tid/$newFileName";
+                $dbPath = dirname($f) . '/' . $newFileName;
 
                 if (file_exists($oldPath) && is_file($oldPath)) {
                     if (rename($oldPath, $newPath)) {

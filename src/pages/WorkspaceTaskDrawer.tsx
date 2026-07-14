@@ -83,14 +83,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      const isSale = currentUser?.role as string === 'sale' || currentUser?.role as string === 'sales';
-      const projUrl = isSale ? '/projects' : '/projects?bypass_roster=1';
+      const isRosterRestricted = ['sale', 'sales', 'manager', 'director'].includes(currentUser?.role || '');
+      const projUrl = isRosterRestricted ? '/projects' : '/projects?bypass_roster=1';
+      const campUrl = isRosterRestricted ? '/campaigns' : '/campaigns?bypass_roster=1';
       api.get(projUrl).then(res => {
         const d = res.data.data;
         setAllowedProjects(Array.isArray(d) ? d : (d?.items || []));
       }).catch(() => {});
 
-      api.get('/campaigns').then(res => {
+      api.get(campUrl).then(res => {
         const d = res.data.data;
         setAllowedCampaigns(Array.isArray(d) ? d : (d?.items || []));
       }).catch(() => {});
@@ -100,6 +101,30 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       }).catch(() => {});
     }
   }, [isOpen, currentUser]);
+
+  useEffect(() => {
+    if (isOpen && task && erpMeta) {
+      const activeProjId = erpMeta.project_id || (task.related_type === 'project' ? task.related_id : null);
+      if (activeProjId && allowedProjects.length > 0 && !allowedProjects.some((p: any) => Number(p.id) === Number(activeProjId))) {
+        api.get(`/projects/${activeProjId}`).then(res => {
+          const pObj = res.data?.data || res.data;
+          if (pObj && pObj.id) {
+            setAllowedProjects(prev => [pObj, ...prev]);
+          }
+        }).catch(() => {});
+      }
+
+      const activeCampId = erpMeta.campaign_id || (task.related_type === 'campaign' ? task.related_id : null);
+      if (activeCampId && allowedCampaigns.length > 0 && !allowedCampaigns.some((c: any) => Number(c.id) === Number(activeCampId))) {
+        api.get(`/campaigns/${activeCampId}`).then(res => {
+          const cObj = res.data?.data || res.data;
+          if (cObj && cObj.id) {
+            setAllowedCampaigns(prev => [cObj, ...prev]);
+          }
+        }).catch(() => {});
+      }
+    }
+  }, [isOpen, task, erpMeta?.project_id, erpMeta?.campaign_id, allowedProjects.length > 0, allowedCampaigns.length > 0]);
 
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);
@@ -134,8 +159,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           if (activeContactId && !list.some((c: any) => Number(c.id) === Number(activeContactId))) {
             try {
               const singleRes = await api.get(`/contacts/${activeContactId}`);
-              if (singleRes.data) {
-                list = [singleRes.data, ...list];
+              const cObj = singleRes.data?.data || singleRes.data;
+              if (cObj && cObj.id) {
+                list = [cObj, ...list];
               }
             } catch (err) {
               console.error("Lỗi tải contact chi tiết:", err);
@@ -213,6 +239,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         } catch (e) {
           parsedMeta.description = normalizedTask.body;
         }
+      }
+
+      if (normalizedTask.related_type === 'project' && normalizedTask.related_id) {
+        parsedMeta.project_id = normalizedTask.related_id;
+      }
+      if (normalizedTask.related_type === 'campaign' && normalizedTask.related_id) {
+        parsedMeta.campaign_id = normalizedTask.related_id;
+      }
+      if (normalizedTask.related_type === 'team' && normalizedTask.related_id) {
+        parsedMeta.team_id = normalizedTask.related_id;
       }
 
       setErpMeta(parsedMeta);
@@ -1534,17 +1570,36 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       }))
                     ]}
                     value={formData.contact_id ? String(formData.contact_id) : (formData.related_type === 'contact' && formData.related_id ? String(formData.related_id) : '')}
-                    onChange={val => {
+                    onChange={async val => {
                       const selected = allowedContacts.find(c => String(c.id) === String(val));
+                      const contactIdVal = val ? Number(val) : null;
+                      const contactNameVal = selected ? getContactFullName(selected) : '';
+                      const isContactRelated = (formData.related_type === 'contact' || !formData.related_type);
+                      
                       setFormData({
                         ...formData,
-                        contact_id: val ? Number(val) : null,
-                        contact_name: selected ? getContactFullName(selected) : '',
-                        ...((formData.related_type === 'contact' || !formData.related_type) ? {
-                          related_id: val ? Number(val) : null,
-                          related_type: val ? 'contact' : null
+                        contact_id: contactIdVal,
+                        contact_name: contactNameVal,
+                        ...(isContactRelated ? {
+                          related_id: contactIdVal,
+                          related_type: contactIdVal ? 'contact' : null
                         } : {})
                       });
+
+                      if (task.id !== 'new') {
+                        try {
+                          await api.put(`/activities/${task.id}`, {
+                            contact_id: contactIdVal,
+                            ...(isContactRelated ? {
+                              related_id: contactIdVal,
+                              related_type: contactIdVal ? 'contact' : null
+                            } : {})
+                          });
+                          onUpdate();
+                        } catch (e: any) {
+                          toast.error(t('Lỗi cập nhật khách hàng liên kết: ') + e.message);
+                        }
+                      }
                     }}
                     placeholder={t('Chọn khách hàng chính...')}
                   />
@@ -1863,16 +1918,26 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     const next = formData.require_approval === 1 ? 0 : 1;
-                    setFormData((prev: any) => {
-                      const nextData = { ...prev, require_approval: next };
-                      if (next === 0) {
-                        nextData.approver_id = null;
-                        nextData.approval_status = null;
+                    const nextData: any = { require_approval: next };
+                    if (next === 0) {
+                      nextData.approver_id = null;
+                      nextData.approval_status = null;
+                    } else if (formData.progress === 100 && formData.approver_id) {
+                      nextData.approval_status = 'pending';
+                    }
+                    
+                    setFormData((prev: any) => ({ ...prev, ...nextData }));
+
+                    if (task.id !== 'new') {
+                      try {
+                        await api.put(`/activities/${task.id}`, nextData);
+                        onUpdate();
+                      } catch (e: any) {
+                        toast.error(t('Lỗi cập nhật yêu cầu phê duyệt: ') + e.message);
                       }
-                      return nextData;
-                    });
+                    }
                   }}
                   style={{
                     width: '38px',
@@ -1909,15 +1974,23 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       avatar: u.avatar || u.avatar_url
                     }))}
                     value={formData.approver_id ? String(formData.approver_id) : ''}
-                    onChange={val => {
+                    onChange={async val => {
                       const nextVal = val ? Number(val) : null;
-                      setFormData((prev: any) => {
-                        const nextData = { ...prev, approver_id: nextVal };
-                        if (prev.progress === 100 && nextVal) {
-                          nextData.approval_status = 'pending';
+                      const nextData: any = { approver_id: nextVal };
+                      if (formData.progress === 100 && nextVal) {
+                        nextData.approval_status = 'pending';
+                      }
+                      
+                      setFormData((prev: any) => ({ ...prev, ...nextData }));
+
+                      if (task.id !== 'new') {
+                        try {
+                          await api.put(`/activities/${task.id}`, nextData);
+                          onUpdate();
+                        } catch (e: any) {
+                          toast.error(t('Lỗi cập nhật người phê duyệt: ') + e.message);
                         }
-                        return nextData;
-                      });
+                      }
                     }}
                     placeholder={t('Chọn người phê duyệt...')}
                     searchable

@@ -281,7 +281,7 @@ const RuleSettingsInner = () => {
 
   const { t } = useLanguage();
   const user = useAuthStore(state => state.user);
-  const isReadOnly = user?.role === 'director' || user?.role === 'viewer';
+  const isReadOnly = !['admin', 'superadmin', 'super_admin', 'assistant'].includes(user?.role || '');
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -468,6 +468,7 @@ const RuleSettingsInner = () => {
   }, [simulateConnectionType]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (isReadOnly) return;
     const { active, over } = event;
     if (active.id !== over?.id) {
       const oldIndex = rules.findIndex((r) => r.id === active.id);
@@ -551,6 +552,7 @@ const RuleSettingsInner = () => {
   };
 
   const handleSaveRule = async () => {
+    if (isReadOnly) return;
     for (const branch of branches) {
       if (!branch.conditions || branch.conditions.length === 0) return toast.error(t('Có nhánh đang trống điều kiện'));
       for (const c of branch.conditions) {
@@ -598,7 +600,7 @@ const RuleSettingsInner = () => {
   };
 
   const handleDelete = async () => {
-    if (!deleteId || isDeleting) return;
+    if (isReadOnly || !deleteId || isDeleting) return;
     setIsDeleting(true);
     try {
       const json = await fetchAPI(`delete_rule&id=${deleteId}`);

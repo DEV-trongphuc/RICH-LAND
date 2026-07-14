@@ -66,11 +66,12 @@ class ProjectController {
             respond(403, null, 'Bạn không có quyền truy cập dự án này', false);
         }
 
-        if ($auth['role'] === 'admin' || $auth['role'] === 'superadmin' || $auth['role'] === 'super_admin' || $auth['role'] === 'manager' || $auth['role'] === 'director') {
+        $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true);
+        if (!$isRosterRestricted) {
             return;
         }
 
-        // Check if sales is in roster for this project
+        // Check if user is in roster for this project
         $stmt = $this->db->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ?");
         $stmt->execute([$projectId, $auth['user_id']]);
         if (!$stmt->fetch()) {
@@ -86,7 +87,8 @@ class ProjectController {
         $params = [$auth['tenant_id']];
         
         $bypassRoster = (int)($_GET['bypass_roster'] ?? 0);
-        if (in_array($role, ['sale', 'sales'], true) && !$bypassRoster) {
+        $isRosterRestricted = in_array($role, ['sale', 'sales', 'manager', 'director'], true);
+        if ($isRosterRestricted && !$bypassRoster) {
             $where .= " AND p.id IN (SELECT project_id FROM project_roster WHERE user_id = ?)";
             $params[] = $uid;
         }

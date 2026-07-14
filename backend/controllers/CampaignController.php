@@ -61,7 +61,8 @@ class CampaignController {
         $params = [$tenantId];
 
         $bypassRoster = (int)($_GET['bypass_roster'] ?? 0);
-        if (in_array($auth['role'], ['sale', 'sales'], true) && !$bypassRoster) {
+        $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true);
+        if ($isRosterRestricted && !$bypassRoster) {
             $where .= " AND (FIND_IN_SET(?, user_ids) OR FIND_IN_SET(?, manager_ids) OR created_by = ?)";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -132,6 +133,26 @@ class CampaignController {
 
     public function update(array $auth, int $id): void {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        $tenantId = $auth['tenant_id'] ?? 1;
+        $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
+        
+        $stmtCheck = $this->db->prepare("SELECT created_by, manager_ids, user_ids FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
+        $stmtCheck->execute([$id, $tenantId]);
+        $camp = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+        if (!$camp) {
+            respond(404, null, 'Chiến dịch không tồn tại', false);
+        }
+        $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
+        if (!$isAdmin) {
+            $creatorId = $camp['created_by'];
+            $mgrs = array_filter(array_map('intval', explode(',', $camp['manager_ids'] ?? '')));
+            $users = array_filter(array_map('intval', explode(',', $camp['user_ids'] ?? '')));
+            $isCreator = ($creatorId !== null && (int)$creatorId === (int)$userId);
+            $isRoster = in_array((int)$userId, $mgrs, true) || in_array((int)$userId, $users, true);
+            if (!$isCreator && !$isRoster) {
+                respond(403, null, 'Bạn không có quyền chỉnh sửa chiến dịch này', false);
+            }
+        }
         $b = getBody();
         $name = trim($b['name'] ?? '');
         $description = trim($b['description'] ?? '');
@@ -196,11 +217,23 @@ class CampaignController {
         $tenantId = $auth['tenant_id'] ?? 1;
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
 
-        $stmtName = $this->db->prepare("SELECT name FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
-        $stmtName->execute([$id, $tenantId]);
-        $name = $stmtName->fetchColumn();
-        if (!$name) {
+        $stmtCheck = $this->db->prepare("SELECT name, created_by, manager_ids, user_ids FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
+        $stmtCheck->execute([$id, $tenantId]);
+        $camp = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+        if (!$camp) {
             respond(404, null, 'Chiến dịch không tồn tại', false);
+        }
+        $name = $camp['name'];
+        $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
+        if (!$isAdmin) {
+            $creatorId = $camp['created_by'];
+            $mgrs = array_filter(array_map('intval', explode(',', $camp['manager_ids'] ?? '')));
+            $users = array_filter(array_map('intval', explode(',', $camp['user_ids'] ?? '')));
+            $isCreator = ($creatorId !== null && (int)$creatorId === (int)$userId);
+            $isRoster = in_array((int)$userId, $mgrs, true) || in_array((int)$userId, $users, true);
+            if (!$isCreator && !$isRoster) {
+                respond(403, null, 'Bạn không có quyền xóa chiến dịch này', false);
+            }
         }
 
         $stmt = $this->db->prepare("DELETE FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");

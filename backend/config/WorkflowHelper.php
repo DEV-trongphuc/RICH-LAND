@@ -31,14 +31,15 @@ class WorkflowHelper {
             $dueDate = date('Y-m-d', strtotime("+$dueDays days"));
 
             $sqlInsert = "INSERT INTO activities (
-                tenant_id, user_id, type, subject, body, status, priority, due_date, 
+                tenant_id, user_id, created_by, type, subject, body, status, priority, due_date, 
                 related_type, related_id, require_approval, progress
-            ) VALUES (?, ?, 'task', ?, ?, 'planned', ?, ?, 'contact', ?, ?, 0)";
+            ) VALUES (?, ?, ?, 'task', ?, ?, 'planned', ?, ?, 'contact', ?, ?, 0)";
             
             $stmtInsert = $db->prepare($sqlInsert);
             $stmtInsert->execute([
                 $tenantId,
                 $ownerId ?: $userId, // assign to contact owner, default to trigger user
+                $userId,
                 $tpl['title'],
                 $tpl['description'],
                 $tpl['priority'],

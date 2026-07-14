@@ -428,9 +428,9 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                       className={() => `sidebar-nav-item ${isActive ? 'active' : ''}`}
                       title={isCollapsed ? displayName : undefined}
                       onClick={(e) => {
-                        if (location.pathname + location.search === href) {
-                          e.preventDefault();
-                          return;
+                        const targetPath = href.split('?')[0];
+                        if (location.pathname === targetPath) {
+                          window.dispatchEvent(new CustomEvent('refresh-page', { detail: { path: targetPath } }));
                         }
                         if (onMobileClose) onMobileClose();
                       }}

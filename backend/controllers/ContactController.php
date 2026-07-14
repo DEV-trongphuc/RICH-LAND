@@ -952,7 +952,7 @@ class ContactController {
         $leadId = $stmtLead->fetchColumn();
 
         // 2. Count active contacts for this Person
-        $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmtCount = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE person_id = ? AND tenant_id = ? AND owner_id IS NOT NULL AND deleted_at IS NULL");
         $stmtCount->execute([$personId, $tid]);
         $activeCount = (int)$stmtCount->fetchColumn();
 

@@ -34,6 +34,8 @@ const fmtDate = (d: any) => {
 
 export const QuotesPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
+  const currentUser = useAuthStore(state => state.user);
+  const isViewer = currentUser?.role === 'viewer';
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('this_month');
@@ -198,10 +200,12 @@ export const QuotesPage: React.FC = () => {
             <RefreshCw size={18} />
             <span className="hide-on-mobile"> Làm mới</span>
           </button>
-          <button className="btn primary" onClick={() => handleOpenEditor()} title="Tạo báo giá mới">
-            <Plus size={18} />
-            <span className="hide-on-mobile"> Tạo báo giá mới</span>
-          </button>
+          {!isViewer && (
+            <button className="btn primary" onClick={() => handleOpenEditor()} title="Tạo báo giá mới">
+              <Plus size={18} />
+              <span className="hide-on-mobile"> Tạo báo giá mới</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -383,8 +387,8 @@ export const QuotesPage: React.FC = () => {
                       icon={<FileText />}
                       title="Không tìm thấy báo giá nào"
                       description="Hệ thống không tìm thấy bản báo giá nào khớp với điều kiện lọc hiện tại. Hãy thử điều chỉnh bộ lọc hoặc tạo một báo giá mới."
-                      actionText="Tạo báo giá mới"
-                      onAction={() => handleOpenEditor()}
+                      actionText={isViewer ? undefined : "Tạo báo giá mới"}
+                      onAction={isViewer ? undefined : () => handleOpenEditor()}
                     />
                   </td>
                 </tr>

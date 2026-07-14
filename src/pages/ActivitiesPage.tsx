@@ -130,7 +130,7 @@ export const ActivitiesPage: React.FC = () => {
       const s = getFilteredMockState();
       setUsers(s.users || []);
     } else {
-      api.get('/users').then(r => {
+      api.get('/users?all=1').then(r => {
         const d = r.data.data;
         const list = Array.isArray(d) ? d : (d?.items || []);
         const team = list.filter((u: any) => {
