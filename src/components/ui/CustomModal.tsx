@@ -85,7 +85,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <div
               className={styles.modal}
-              style={{ width: isMobile ? '100vw' : resolvedWidth }}
+              style={{ width: isMobile ? '100vw' : resolvedWidth, maxWidth: isMobile ? '100vw' : resolvedWidth }}
             >
               <div className={styles.dragHandle} />
               {title && (
@@ -121,7 +121,7 @@ export const CustomModal: React.FC<CustomModalProps> = ({
 
             <motion.div
               className={styles.modal}
-              style={{ width: isMobile ? '100vw' : resolvedWidth }}
+              style={{ width: isMobile ? '100vw' : resolvedWidth, maxWidth: isMobile ? '100vw' : resolvedWidth }}
               {...motionProps}
               {...dragProps}
             >

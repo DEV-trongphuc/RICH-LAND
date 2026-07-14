@@ -4905,7 +4905,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           setSelectedLead(null);
         }}
         title={t("Chi tiết Khách hàng")}
-        width="1200px"
+        width="1050px"
       >
         {selectedLead && (
           <div className="modal-body-padding">
