@@ -4814,7 +4814,12 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
               {t("2. Phân loại lỗi data được chấp nhận duyệt bù")}
             </h4>
             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
-              {t("Hệ thống hỗ trợ duyệt bù tự động bằng AI hoặc duyệt thủ công theo 4 nhóm lỗi chuẩn:")}
+              {t("Hệ thống hỗ trợ duyệt bù tự động bằng trí tuệ nhân tạo (AI), duyệt theo từ khóa cấu hình sẵn, hoặc xét duyệt thủ công bởi Admin. Phân loại theo 4 nhóm lỗi chuẩn:")}
+              {ticketAutoApprove && (
+                <span style={{ display: 'block', marginTop: '6px', color: 'var(--color-success)', fontWeight: 700, fontSize: '0.785rem' }}>
+                  ● {t("Trạng thái hiện tại: Đang BẬT tự động duyệt đền bù khi nội dung báo cáo khớp với các quy tắc từ khóa cấu hình.")}
+                </span>
+              )}
             </p>
 
             <div style={{ 

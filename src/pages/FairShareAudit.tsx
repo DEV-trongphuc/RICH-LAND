@@ -1868,10 +1868,10 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                 <BarChart2 size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
-                    {t("1. Chuẩn hóa tỷ lệ phân bổ (Normalized Share)")}
+                    {t("1. Quy đổi công bằng theo tỉ lệ (Normalized Share)")}
                   </h5>
                   <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    {t("Khi một vòng phân bổ thiết lập tỷ lệ chia cho Sale A là x2 và Sale B là x1, thì việc Sale A nhận được số lead gấp đôi Sale B là hoàn toàn công bằng. Thuật toán đối soát công bằng sẽ tự động chia số lead của từng Sale cho Ratio của họ trước khi chạy tính toán độ lệch để đảm bảo tính khách quan tuyệt đối.")}
+                    {t("Hệ thống tự động điều chỉnh số lượng khách hàng tương ứng với tỉ lệ cấu hình của mỗi nhân viên. Ví dụ: Nếu Sale A được cài đặt nhận gấp đôi Sale B (tỷ lệ 2:1), hệ thống sẽ quy đổi sao cho chỉ so sánh độ chênh lệch sau khi đã bù trừ tỉ lệ chênh lệch này để đánh giá công bằng.")}
                   </p>
                 </div>
               </div>
@@ -1891,10 +1891,10 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                 <TrendingUp size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
-                    {t("2. Chỉ số bất bình đẳng Gini (Gini Coefficient)")}
+                    {t("2. Chỉ số chênh lệch chia số (Gini Coefficient)")}
                   </h5>
                   <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    {t("Chỉ số đo lường sự phân bố tài nguyên dao động từ 0 (công bằng tuyệt đối - mọi sale nhận lead đúng tỉ lệ) tới 1 (bất bình đẳng tuyệt đối - chỉ 1 sale nhận hết lead). Chỉ số Gini < 0.2 là trạng thái lý tưởng của phân bổ.")}
+                    {t("Chỉ số đo lường mức độ phân phối không đồng đều, dao động từ 0% (mọi sale nhận khách hàng cực kỳ đều và đúng tỷ lệ) cho đến 100% (chênh lệch hoàn toàn, chỉ 1 người nhận hết toàn bộ). Hệ thống kiểm soát để chỉ số này ở mức dưới 20% là trạng thái lý tưởng.")}
                   </p>
                 </div>
               </div>
@@ -1914,10 +1914,10 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
                 <Sparkles size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
-                    {t("3. Lượt đền bù ưu tiên (Compensation Queue)")}
+                    {t("3. Hàng đợi đền bù ưu tiên (Compensation Queue)")}
                   </h5>
                   <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    {t("Các lượt bù data (do nhận phải số lỗi) được cộng dồn vào hàng đợi và phân phối trước các lượt thông thường. Đối soát sẽ tách biệt thống kê lead thường và lead bù để tránh nhiễu chỉ số công bằng thực tế.")}
+                    {t("Khi một Sale báo cáo data lỗi và được duyệt đền bù, họ sẽ có tên trong hàng đợi ưu tiên. Khách hàng mới đổ về tiếp theo sẽ được giao trước cho những Sale này để bù lại số lỗi đã nhận, giúp đảm bảo không ai bị thiệt thòi.")}
                   </p>
                 </div>
               </div>

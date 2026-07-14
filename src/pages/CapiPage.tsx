@@ -302,7 +302,7 @@ export default function CapiPage() {
           }}>
             <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
             <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
-              Hệ thống Conversion API (CAPI) kết nối trực tiếp máy chủ CRM với Meta Events Manager, giúp ghi nhận dữ liệu chính xác tuyệt đối mà không bị ảnh hưởng bởi trình chặn quảng cáo (AdBlock) hay cơ chế hạn chế cookies của iOS.
+              Hệ thống kết nối trực tiếp máy chủ Rich Land với Meta (Facebook) để báo cáo kết quả bán hàng từ CRM. Giúp phòng Marketing đo lường quảng cáo chính xác hơn, tránh bị chặn theo dõi bởi các ứng dụng chặn quảng cáo hoặc tính năng bảo mật trên điện thoại iPhone (iOS).
             </p>
           </div>
 
@@ -325,9 +325,9 @@ export default function CapiPage() {
                   1. Các loại sự kiện gửi về Facebook (Events)
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  • <strong>Lead (Nhận số)</strong>: Bắn đi ngay khi lead được chia thành công cho Sale.<br />
-                  • <strong>Schedule (Đặt lịch hẹn)</strong>: Bắn đi khi có hoạt động hẹn gặp khách hàng phát sinh.<br />
-                  • <strong>Purchase (Mua hàng)</strong>: Bắn đi khi đợt thanh toán cọc đầu tiên của deal được duyệt.
+                  • <strong>Lead (Nhận số)</strong>: Báo về Facebook ngay khi hệ thống vừa chia khách hàng mới cho nhân viên sale.<br />
+                  • <strong>Schedule (Đặt lịch hẹn)</strong>: Báo về Facebook khi nhân viên sale hẹn gặp khách hàng thành công.<br />
+                  • <strong>Purchase (Mua hàng)</strong>: Báo về Facebook khi khách hàng đóng đợt cọc đầu tiên thành công.
                 </p>
               </div>
             </div>
@@ -350,7 +350,7 @@ export default function CapiPage() {
                   2. Nguyên tắc Bắn một chiều (Forward-only Signals)
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  Tuyệt đối <strong>không bắn lùi tín hiệu</strong> (không gửi sự kiện hoàn trả, giảm cấp hoặc hủy) về Meta khi deal/cọc bị bể hoặc tụt trạng thái. Tín hiệu chỉ đi một chiều (Forward-only) để bảo đảm độ chính xác cho AI học máy của Facebook Ads tối ưu chiến dịch.
+                  Khi giao dịch bị hủy (bể cọc), hệ thống <strong>tuyệt đối không gửi lệnh hủy hay hạ cấp</strong> về cho Facebook. Tín hiệu chỉ gửi đi một chiều. Điều này nhằm giữ cho trí tuệ nhân tạo (AI) của Facebook học tập chính xác chân dung khách hàng có khả năng chi trả thật, tránh làm nhiễu loạn mục tiêu chạy quảng cáo của công ty.
                 </p>
               </div>
             </div>
