@@ -281,7 +281,7 @@ const RuleSettingsInner = () => {
 
   const { t } = useLanguage();
   const user = useAuthStore(state => state.user);
-  const isReadOnly = user?.role === 'director';
+  const isReadOnly = user?.role === 'director' || user?.role === 'viewer';
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -806,8 +806,8 @@ const RuleSettingsInner = () => {
             icon={<Filter size={48} />}
             title={t("Không tìm thấy Quy tắc nào")}
             description={t("Thử thay đổi bộ lọc hoặc thêm quy tắc mới.")}
-            actionText={t("Thêm Quy tắc")}
-            onAction={openAddModal}
+            actionText={isReadOnly ? undefined : t("Thêm Quy tắc")}
+            onAction={isReadOnly ? undefined : openAddModal}
           />
         ) : (
           <div style={{ padding: '0.5rem' }}>

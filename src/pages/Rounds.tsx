@@ -40,7 +40,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const navigate = useNavigate();
   const user = useAuthStore(state => state.user);
-  const isReadOnly = user?.role === 'director';
+  const isReadOnly = user?.role === 'director' || user?.role === 'viewer';
   const { t } = useLanguage();
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
@@ -733,8 +733,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 icon={<Zap size={48} />}
                 title={t("Chưa có Vòng Phân Bổ")}
                 description={t("Bắt đầu bằng cách thêm mới vòng phân bổ đầu tiên của bạn để chia số cho Sale.")}
-                actionText={t("Thêm Vòng ngay")}
-                onAction={openAddModal}
+                actionText={isReadOnly ? undefined : t("Thêm Vòng ngay")}
+                onAction={isReadOnly ? undefined : openAddModal}
               />
             </div>
           ) : rounds.slice((roundsPage - 1) * roundsPageSize, roundsPage * roundsPageSize).map((r, idx) => {

@@ -33,7 +33,7 @@ if (in_array($baseAction, [
     'cloud-files', 'file-categories', 'tickets', 'suppliers', 'purchase-orders', 
     'pos', 'custom-fields', 'inventory', 'tags', 'pipeline-stages', 
     'users', 'reports', 'quotes', 'invoices', 'expenses', 'products',
-    'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'upload', 'teams', 'dashboard',
+    'contacts', 'companies', 'deals', 'activities', 'notes', 'campaigns', 'marketing-campaigns', 'upload', 'teams', 'dashboard',
     'notifications', 'workflow-task-templates', 'search', 'export', 'import', 'system'
 ], true)) {
     $_SERVER['REQUEST_URI'] = '/backend/' . $action;
@@ -397,7 +397,7 @@ if (!in_array($action, $publicActions)) {
         'get_fair_share_stats', 'get_consultant_compensation_details', 
         'upload_avatar', 'update_consultant_self_profile', 'consultant-profile', 
         'get_dashboard_stats', 'get_logs', 'get_consultants', 'invoices', 
-        'projects', 'campaigns', 'files', 'cloud-files', 'file-categories', 
+        'projects', 'campaigns', 'marketing-campaigns', 'files', 'cloud-files', 'file-categories', 
         'get_public_leads', 'claim_public_lead', 'teams', 'manual_insert_lead', 
         'get_unique_sources', 'get_calendar_stats', 'get_calendar_day_details', 
         'contacts', 'deals', 'companies', 'pipeline-stages', 'quotes', 
@@ -406,7 +406,8 @@ if (!in_array($action, $publicActions)) {
         'register_night_shift', 'get_consultant_leaves', 'add_consultant_leave', 
         'delete_consultant_leave',
         // Whitelisted missing front-controller routes for Sales
-        'notifications', 'check-ins', 'deposits', 'search', 'workflow-task-templates', 'products', 'dashboard'
+        'notifications', 'check-ins', 'deposits', 'search', 'workflow-task-templates', 'products', 'dashboard',
+        'update_profile', 'change_password', 'get_my_activity_logs'
     ];
 
     if (($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') && !in_array($baseAction, $salesAllowedActions, true)) {
@@ -3383,7 +3384,7 @@ switch ($action) {
         $currentUserId = (int)($decodedUser['id'] ?? 0);
         $where = "";
 
-        if ($role === 'sale' || $role === 'sales') {
+        if (($role === 'sale' || $role === 'sales') && !isset($_GET['all'])) {
             $tStmt = $conn->prepare("SELECT team_id FROM users WHERE id = ?");
             $tStmt->bind_param("i", $currentUserId);
             $tStmt->execute();
@@ -14908,20 +14909,60 @@ switch ($action) {
             $stmtReal->close();
             $realLeadId = $realL ? (int)$realL['id'] : null;
 
-            // Update person is_public = 1
-            $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
-            $stmtU->bind_param("i", $personId);
-            $stmtU->execute();
-            $stmtU->close();
+              // Check status of contacts for this person to prevent releasing active/deposit clients
+              $stmtStatus = $conn->prepare("SELECT pipeline_status FROM contacts WHERE person_id = ? AND deleted_at IS NULL LIMIT 1");
+              $stmtStatus->bind_param("i", $personId);
+              $stmtStatus->execute();
+              $statusRow = $stmtStatus->get_result()->fetch_assoc();
+              $stmtStatus->close();
+              $currStatus = $statusRow ? $statusRow['pipeline_status'] : '';
+              if (in_array($currStatus, ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'], true)) {
+                  throw new Exception("Không thể giải phóng khách hàng đang ở trạng thái Đặt cọc / Hoàn thành!");
+              }
 
-            // Soft delete all active contacts for this person
-            $stmtDel = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE person_id = ? AND deleted_at IS NULL");
-            $stmtDel->bind_param("i", $personId);
-            $stmtDel->execute();
-            $stmtDel->close();
-            
-            // Log
-            logDistribution($conn, $realLeadId, null, null, 'released_to_kho', 'Admin chủ động nhả về Kho chung (Databank)', false);
+              // Check for active cooperation slips
+              $stmtCoop = $conn->prepare("
+                  SELECT id FROM cooperation_slips 
+                  WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ? AND deleted_at IS NULL) 
+                    AND status != 'rejected' AND deleted_at IS NULL LIMIT 1
+              ");
+              $stmtCoop->bind_param("i", $personId);
+              $stmtCoop->execute();
+              $coopRow = $stmtCoop->get_result()->fetch_assoc();
+              $stmtCoop->close();
+              if ($coopRow) {
+                  throw new Exception("Không thể giải phóng khách hàng đang có phiếu hợp tác hoa hồng!");
+              }
+
+             // Update person is_public = 1
+             $stmtU = $conn->prepare("UPDATE persons SET is_public = 1, released_to_kho_at = NOW() WHERE id = ?");
+             $stmtU->bind_param("i", $personId);
+             $stmtU->execute();
+             $stmtU->close();
+
+             // Clear owner on contacts and reset status, and soft-delete them
+             $stmtDel = $conn->prepare("
+                 UPDATE contacts 
+                 SET owner_id = NULL, 
+                     pipeline_status = 'chua_xac_dinh',
+                     status = 'lead',
+                     security_expires_at = NULL,
+                     parallel_assigned = 0,
+                     deleted_at = NOW()
+                 WHERE person_id = ? AND deleted_at IS NULL
+             ");
+             $stmtDel->bind_param("i", $personId);
+             $stmtDel->execute();
+             $stmtDel->close();
+
+             // Clear assigned_to on leads
+             $stmtLeadUpdate = $conn->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
+             $stmtLeadUpdate->bind_param("i", $personId);
+             $stmtLeadUpdate->execute();
+             $stmtLeadUpdate->close();
+             
+             // Log
+             logDistribution($conn, $realLeadId, null, null, 'released_to_kho', 'Admin chủ động nhả về Kho chung (Databank)', false);
 
             $conn->commit();
             echo json_encode(['success' => true, 'message' => 'Đã nhả khách hàng về Kho chung (Databank) thành công!']);

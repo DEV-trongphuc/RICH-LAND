@@ -1938,7 +1938,13 @@ function releaseExpiredLeadsToKho($conn) {
               AND c.security_expires_at IS NOT NULL 
               AND p.is_public = 0 
               AND c.deleted_at IS NULL
+              AND c.pipeline_status NOT IN ('dat_coc', 'da_coc', 'dong_deal', 'thanh_cong')
               $sourcesFilter
+              AND NOT EXISTS (
+                  SELECT 1 FROM cooperation_slips cs
+                  WHERE cs.contact_id = c.id
+                    AND cs.status IN ('pending_signatures', 'approved_pending_signatures', 'pending_manager_approval', 'approved')
+              )
               AND NOT EXISTS (
                   SELECT 1 FROM contacts active_c 
                   WHERE active_c.person_id = c.person_id 
@@ -1981,6 +1987,23 @@ function releaseExpiredLeadsToKho($conn) {
                         continue;
                     }
 
+                    // Check for active cooperation slips
+                    $checkCoopStmt = $conn->prepare("
+                        SELECT id FROM cooperation_slips 
+                        WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ? AND deleted_at IS NULL) 
+                          AND status != 'rejected' AND deleted_at IS NULL LIMIT 1
+                    ");
+                    $checkCoopStmt->bind_param("i", $personId);
+                    $checkCoopStmt->execute();
+                    $coopRow = $checkCoopStmt->get_result()->fetch_assoc();
+                    $checkCoopStmt->close();
+
+                    if ($coopRow) {
+                        logSync("Person ID $personId co phieu hop tac hoa hong active. Tu choi tu dong ra Kho.");
+                        $conn->commit();
+                        continue;
+                    }
+
                     $publicCount = (int)($person['public_count'] ?? 0);
                     if ($publicCount === 0) {
                         $newPublicCount = 1;
@@ -2000,6 +2023,12 @@ function releaseExpiredLeadsToKho($conn) {
                     $updContacts->bind_param("i", $personId);
                     $updContacts->execute();
                     $updContacts->close();
+
+                    // Clear assignment on leads table
+                    $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
+                    $updLeads->bind_param("i", $personId);
+                    $updLeads->execute();
+                    $updLeads->close();
                     
                     $stmtL = $conn->prepare("SELECT id FROM leads WHERE person_id = ? ORDER BY id DESC LIMIT 1");
                     $stmtL->bind_param("i", $personId);
@@ -2040,6 +2069,11 @@ function assignParallelLeads($conn) {
               AND c.security_expires_at IS NOT NULL
               AND c.owner_id IS NOT NULL
               AND c.deleted_at IS NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM cooperation_slips cs
+                  WHERE cs.contact_id = c.id
+                    AND cs.status IN ('pending_signatures', 'approved_pending_signatures', 'pending_manager_approval', 'approved')
+              )
               $sourcesFilter";
               
     $res = $conn->query($sql);

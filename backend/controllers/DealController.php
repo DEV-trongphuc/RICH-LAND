@@ -303,7 +303,7 @@ class DealController {
                     ->execute([$id, $old, $b['stage_id'], $auth['user_id']]);
                 
                 $note = $b['note'] ?? '';
-                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Chuyển giai đoạn Deal', "Deal đã được chuyển sang giai đoạn mới." . ($note ? " Ghi chú: " . $note : ""), 'deal', $id);
+                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'system', 'Chuyển giai đoạn Deal', "Deal đã được chuyển sang giai đoạn mới." . ($note ? " Ghi chú: " . $note : ""), 'deal', $id);
                 logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'deal', $id, json_encode(['from_stage' => $old, 'to_stage' => $b['stage_id'], 'note' => $note]));
 
                 // Update contact temperature to hot if deal is won (Sôi = xuống tiền)

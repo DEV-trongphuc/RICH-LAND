@@ -30,7 +30,7 @@ const COOP_OPTIONS = [
 
 export const SuppliersPage: React.FC = () => {
   const { user } = useAuth();
-  const isSale = user && ['sales', 'sale'].includes((user.role || '').toLowerCase());
+  const isSale = user && ['sales', 'sale', 'viewer'].includes((user.role || '').toLowerCase());
   
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -272,8 +272,8 @@ export const SuppliersPage: React.FC = () => {
           icon={<Truck size={48} />}
           title="Chưa có chủ đầu tư nào"
           description="Bắt đầu thêm các chủ đầu tư dự án để quản lý."
-          actionText="Thêm ngay"
-          onAction={() => handleOpenModal()}
+          actionText={isSale ? undefined : "Thêm ngay"}
+          onAction={isSale ? undefined : () => handleOpenModal()}
         />
       ) : (
         <>

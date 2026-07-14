@@ -1267,11 +1267,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         });
         setUsers(team);
       }).catch(() => {});
-      api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
-      const isPrivileged = ['admin', 'superadmin', 'super_admin', 'manager'].includes(user?.role || '');
-      if (isPrivileged) {
-        api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
-      }
+      api.get('/projects').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
+      api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
       api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
     }
   }, [token, user?.role]);

@@ -853,6 +853,7 @@ switch ($resource) {
         break;
  
     // CAMPAIGNS (Marketing campaigns)
+    case 'marketing-campaigns':
     case 'campaigns':
         $auth = requireAuth();
         $ctrl = new CampaignController($db);

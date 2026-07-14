@@ -799,7 +799,7 @@ class ContactController {
         }
 
         $note = $b['note'] ?? "Khách hàng đã được chuyển trạng thái.";
-        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
+        // logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'contact', $id, json_encode(['stage_id' => $stageId, 'pipeline_status' => $newStatus, 'note' => $note]));
         respond(200, null, 'Đã cập nhật stage thành công');
     }
@@ -913,6 +913,25 @@ class ContactController {
 
         $personId = $contact['person_id'];
 
+        // Prevent releasing active/deposit clients to Databank
+        $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+        $stmtStatus->execute([$id]);
+        $currStatus = $stmtStatus->fetchColumn();
+        if (in_array($currStatus, ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'], true)) {
+            respond(400, null, 'Không thể giải phóng khách hàng đang ở trạng thái Đặt cọc / Hoàn thành!', false);
+        }
+
+        // Prevent releasing clients with active cooperation slips to Databank
+        $stmtCoop = $this->db->prepare("
+            SELECT id FROM cooperation_slips 
+            WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ? AND deleted_at IS NULL) 
+              AND status != 'rejected' AND deleted_at IS NULL LIMIT 1
+        ");
+        $stmtCoop->execute([$personId]);
+        if ($stmtCoop->fetch()) {
+            respond(400, null, 'Không thể giải phóng khách hàng đang có phiếu hợp tác hoa hồng!', false);
+        }
+
         // Get current consultant ID
         $stmtC = $this->db->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
         $stmtC->execute([$auth['email'] ?? '']);
@@ -949,9 +968,9 @@ class ContactController {
             $stmtPerson->execute([$personId]);
 
             // Also update leads to set assigned_to = NULL
-            if ($leadId) {
-                $stmtLeadUpdate = $this->db->prepare("UPDATE leads SET assigned_to = NULL WHERE id = ?");
-                $stmtLeadUpdate->execute([$leadId]);
+            if ($personId) {
+                $stmtLeadUpdate = $this->db->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
+                $stmtLeadUpdate->execute([$personId]);
 
                 // Log distribution log for releasing to databank
                 $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");

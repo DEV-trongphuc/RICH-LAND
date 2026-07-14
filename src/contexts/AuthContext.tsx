@@ -16,6 +16,7 @@ interface AuthContextType {
   token: string | null;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (updatedUser: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (role === 'super_admin') role = 'superadmin';
     return {
       ...u,
+      name: u.full_name || u.name || u.username || '',
+      avatar: u.avatar_url || u.avatar || '',
       role
     };
   };
@@ -63,6 +66,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('RICH LAND_DEMO_MODE');
   }, []);
 
+  const updateUser = useCallback((updatedUser: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return null;
+      const merged = { ...prev, ...updatedUser };
+      const normalized = normalizeUser(merged);
+      if (normalized) {
+        localStorage.setItem('richland_user', JSON.stringify(normalized));
+      }
+      return normalized;
+    });
+  }, []);
+
   React.useEffect(() => {
     if (user) {
       useAuthStore.getState().setUser(user as any);
@@ -74,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user, token]);
 
-  const contextValue = React.useMemo(() => ({ user, token, login, logout }), [user, token, login, logout]);
+  const contextValue = React.useMemo(() => ({ user, token, login, logout, updateUser }), [user, token, login, logout, updateUser]);
 
   return (
     <AuthContext.Provider value={contextValue}>

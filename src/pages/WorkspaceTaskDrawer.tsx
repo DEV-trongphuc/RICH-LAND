@@ -83,7 +83,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      api.get('/projects?bypass_roster=1').then(res => {
+      const isSale = currentUser?.role as string === 'sale' || currentUser?.role as string === 'sales';
+      const projUrl = isSale ? '/projects' : '/projects?bypass_roster=1';
+      api.get(projUrl).then(res => {
         const d = res.data.data;
         setAllowedProjects(Array.isArray(d) ? d : (d?.items || []));
       }).catch(() => {});
@@ -97,7 +99,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         setAllowedTeams(res.data.data || res.data || []);
       }).catch(() => {});
     }
-  }, [isOpen]);
+  }, [isOpen, currentUser]);
 
   // Resource adding state
   const [showAddChecklist, setShowAddChecklist] = useState(false);
@@ -125,9 +127,21 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   useEffect(() => {
     if (isOpen) {
       setLoadingContacts(true);
-      api.get('/contacts?limit=200').then(res => {
+      api.get('/contacts?limit=200').then(async res => {
         if (res.data && res.data.success) {
-          setContacts(res.data.data.items || res.data.data || []);
+          let list = res.data.data.items || res.data.data || [];
+          const activeContactId = task?.contact_id || (task?.related_type === 'contact' ? task?.related_id : null);
+          if (activeContactId && !list.some((c: any) => Number(c.id) === Number(activeContactId))) {
+            try {
+              const singleRes = await api.get(`/contacts/${activeContactId}`);
+              if (singleRes.data) {
+                list = [singleRes.data, ...list];
+              }
+            } catch (err) {
+              console.error("Lỗi tải contact chi tiết:", err);
+            }
+          }
+          setContacts(list);
         }
       }).catch(err => {
         console.error("Lỗi tải danh sách khách hàng:", err);
@@ -135,7 +149,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         setLoadingContacts(false);
       });
     }
-  }, [isOpen]);
+  }, [isOpen, task]);
 
   const loadComments = async (taskId: number) => {
     setLoadingComments(true);
@@ -164,13 +178,17 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   useEffect(() => {
     if (task) {
-      const isSaleRole = currentUser?.role === 'sale';
+      const isSaleRole = currentUser?.role as string === 'sale';
       const defaultUserId = task.user_id || (isSaleRole ? currentUser.id : null);
       const normalizedTask = {
         ...task,
         subject: task.subject || task.title || '',
         body: task.body || task.description || '',
-        user_id: defaultUserId ? Number(defaultUserId) : null
+        user_id: defaultUserId ? Number(defaultUserId) : null,
+        created_by: task.id === 'new' ? currentUser?.id : task.created_by,
+        created_by_name: task.id === 'new' ? (currentUser?.name || (currentUser as any)?.full_name || '') : task.created_by_name,
+        created_by_avatar: task.id === 'new' ? (currentUser?.avatar || (currentUser as any)?.avatar_url || '') : task.created_by_avatar,
+        contact_id: task.contact_id || (task.related_type === 'contact' ? task.related_id : null)
       };
       setFormData(normalizedTask);
       setIsPinned(normalizedTask.tags?.includes('pinned') || false);
@@ -324,15 +342,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       tagArray.push(newTag);
       finalTags = tagArray.join(',');
 
-      let relType = formData.related_type || task.related_type || null;
-      let relId = formData.related_id || task.related_id || null;
+      let relType = null;
+      let relId = null;
 
-      const hasContact = formData.contact_id || task.contact_id || (relType === 'contact' && relId);
-
-      if (hasContact) {
-        relType = 'contact';
-        relId = formData.contact_id || task.contact_id || (relType === 'contact' ? relId : null);
-      } else if (updatedMeta.project_id) {
+      if (updatedMeta.project_id) {
         relType = 'project';
         relId = updatedMeta.project_id;
       } else if (updatedMeta.campaign_id) {
@@ -341,7 +354,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       } else if (updatedMeta.team_id) {
         relType = 'team';
         relId = updatedMeta.team_id;
+      } else if (formData.contact_id || task.contact_id || formData.related_id) {
+        relType = 'contact';
+        relId = formData.contact_id || task.contact_id || formData.related_id;
       }
+
+      const finalContactId = formData.contact_id || task.contact_id || (formData.related_type === 'contact' ? formData.related_id : null) || (task.related_type === 'contact' ? task.related_id : null);
 
       const payload: any = {
         body: bodyPayload,
@@ -353,7 +371,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         subject: formData.subject,
         user_id: formData.user_id,
         related_type: relType,
-        related_id: relId
+        related_id: relId,
+        contact_id: finalContactId ? Number(finalContactId) : null
       };
 
       const res = await api.put(`/activities/${task.id}`, payload);
@@ -432,15 +451,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       tagArray.push(newTag);
       finalTags = tagArray.join(',');
 
-      let relType = formData.related_type || task.related_type || null;
-      let relId = formData.related_id || task.related_id || null;
+      let relType = null;
+      let relId = null;
 
-      const hasContact = formData.contact_id || task.contact_id || (relType === 'contact' && relId);
-
-      if (hasContact) {
-        relType = 'contact';
-        relId = formData.contact_id || task.contact_id || (relType === 'contact' ? relId : null);
-      } else if (updatedErpMeta.project_id) {
+      if (updatedErpMeta.project_id) {
         relType = 'project';
         relId = updatedErpMeta.project_id;
       } else if (updatedErpMeta.campaign_id) {
@@ -449,7 +463,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       } else if (updatedErpMeta.team_id) {
         relType = 'team';
         relId = updatedErpMeta.team_id;
+      } else if (formData.contact_id || task.contact_id || formData.related_id) {
+        relType = 'contact';
+        relId = formData.contact_id || task.contact_id || formData.related_id;
       }
+
+      const finalContactId = formData.contact_id || task.contact_id || (formData.related_type === 'contact' ? formData.related_id : null) || (task.related_type === 'contact' ? task.related_id : null);
 
       const payload: any = {
         subject: formData.subject || formData.title || '',
@@ -461,12 +480,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         status: formData.status || 'planned',
         due_date: formData.due_date || new Date().toISOString().slice(0, 10),
         user_id: formData.user_id ? Number(formData.user_id) : null,
+        created_by: formData.created_by ? Number(formData.created_by) : null,
         require_approval: formData.require_approval || 0,
         approver_id: formData.require_approval === 1 ? Number(formData.approver_id) : null,
         approval_status: formData.approval_status || 'none',
         participant_ids: formData.participant_ids ? String(formData.participant_ids) : null,
         related_id: relId,
-        related_type: relType
+        related_type: relType,
+        contact_id: finalContactId ? Number(finalContactId) : null
       };
 
       let res;
@@ -825,25 +846,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     return true;
   });
 
-  const approverOptions = users.filter(u => {
-    const uRole = (u.role || '').toLowerCase();
-    if (['admin', 'superadmin', 'super_admin', 'director'].includes(uRole)) {
-      return true;
-    }
-    if (isSale) {
-      return uRole === 'manager' && u.team_id && Number(u.team_id) === Number((currentUser as any)?.team_id);
-    }
-    return uRole === 'manager';
-  });
+  const approverOptions = users;
 
   const filteredUsersForParticipants = users.filter(u => {
-    const uRole = (u.role || '').toLowerCase();
-    const isAllowed = 
-      ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(uRole) ||
-      (currentUser && u.team_id && Number(u.team_id) === Number((currentUser as any).team_id));
-    
-    if (!isAllowed) return false;
-
     return (u.full_name || '').toLowerCase().includes(participantsSearch.toLowerCase()) ||
            (u.role || '').toLowerCase().includes(participantsSearch.toLowerCase());
   });
@@ -1461,7 +1466,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             <div className="card" style={cardStyle}>
               
               {/* Primary Contact (if any) */}
-              {((formData.related_type === 'contact' || formData.contact_id) && (formData.related_id || formData.contact_id)) ? (
+              {((formData.related_type === 'contact' || formData.contact_id) && (formData.related_type === 'contact' ? formData.related_id : formData.contact_id)) ? (
                 <div style={{ marginBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
@@ -1471,7 +1476,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setFormData({ ...formData, related_id: '', contact_id: null, contact_name: '' });
+                          setFormData({ 
+                            ...formData, 
+                            contact_id: null, 
+                            contact_name: '',
+                            ...(formData.related_type === 'contact' ? { related_id: '', related_type: null } : {})
+                          });
                         }}
                         style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', fontSize: '0.75rem', padding: '2px' }}
                       >
@@ -1483,7 +1493,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     className="hover-lift"
                     onClick={() => {
                       if (onOpenContact) {
-                        onOpenContact(Number(formData.related_id || formData.contact_id));
+                        onOpenContact(Number(formData.related_type === 'contact' ? formData.related_id : formData.contact_id));
                       }
                     }}
                     style={{
@@ -1515,7 +1525,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   </div>
                   <CustomSelect
                     searchable
-                    showAvatars
                     options={[
                       { value: '', label: t('Chọn khách hàng chính...') },
                       ...allowedContacts.map(c => ({
@@ -1524,14 +1533,17 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         avatar: c.avatar_url || c.avatar
                       }))
                     ]}
-                    value={formData.related_id ? String(formData.related_id) : ''}
+                    value={formData.contact_id ? String(formData.contact_id) : (formData.related_type === 'contact' && formData.related_id ? String(formData.related_id) : '')}
                     onChange={val => {
                       const selected = allowedContacts.find(c => String(c.id) === String(val));
                       setFormData({
                         ...formData,
-                        related_id: val ? Number(val) : null,
-                        related_type: val ? 'contact' : null,
-                        contact_name: selected ? getContactFullName(selected) : ''
+                        contact_id: val ? Number(val) : null,
+                        contact_name: selected ? getContactFullName(selected) : '',
+                        ...((formData.related_type === 'contact' || !formData.related_type) ? {
+                          related_id: val ? Number(val) : null,
+                          related_type: val ? 'contact' : null
+                        } : {})
                       });
                     }}
                     placeholder={t('Chọn khách hàng chính...')}

@@ -50,6 +50,7 @@ interface SalesAccount {
   id: number;
   full_name: string;
   email: string;
+  team_id?: number | string;
 }
 
 function numberToVietnameseWords(num: number): string {
@@ -1691,6 +1692,13 @@ export default function CooperationSlipsPage() {
                             .filter(s => {
                               if (idx === 0) return true;
                               return String(s.id) !== String(user?.id);
+                            })
+                            .filter(s => {
+                              if (idx === 0) return true;
+                              const creatorId = sharesInput[0]?.user_id;
+                              const creatorObj = salesAccounts.find(u => String(u.id) === String(creatorId));
+                              if (!creatorObj || !creatorObj.team_id) return true;
+                              return String(s.team_id) !== String(creatorObj.team_id);
                             })
                             .filter(s => {
                               if (String(s.id) === String(item.user_id)) return true;

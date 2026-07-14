@@ -2397,12 +2397,12 @@ export default function ProjectsPage() {
             icon={<Building2 size={48} />}
             title="Chưa có dự án nào"
             description="Bắt đầu đăng ký các dự án bất động sản để phân phối và quản lý tài liệu."
-            actionText="Thêm ngay"
-            onAction={() => {
+            actionText={isAdmin ? "Thêm ngay" : undefined}
+            onAction={isAdmin ? () => {
               setEditingProject({ status: 'active' });
               setAutoCode(true);
               setIsEditModalOpen(true);
-            }}
+            } : undefined}
           />
         ) : (
           <>

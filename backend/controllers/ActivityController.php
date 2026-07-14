@@ -1,7 +1,12 @@
 <?php
 class ActivityController {
     private PDO $db;
-    public function __construct(PDO $db) { $this->db = $db; }
+    public function __construct(PDO $db) { 
+        $this->db = $db; 
+        try {
+            $this->db->exec("ALTER TABLE activities ADD COLUMN contact_id INT NULL AFTER related_id");
+        } catch (Exception $e) {}
+    }
 
     private function hasAccess(array $auth, array $activity): bool {
         if (in_array($auth['role'], ['super_admin', 'admin', 'superadmin', 'director'], true)) {
@@ -333,7 +338,7 @@ class ActivityController {
             SELECT a.*, u.full_name as user_name, u.avatar_url,
                    creator.full_name as created_by_name, creator.avatar_url as created_by_avatar,
                    COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
-                   COALESCE(ct.id, deal_ct.id) as contact_id,
+                   COALESCE(a.contact_id, ct.id, deal_ct.id) as contact_id,
                    COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
                    d.title as deal_name,
                    c.name as company_name,
@@ -345,7 +350,7 @@ class ActivityController {
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
             LEFT JOIN users creator ON a.created_by=creator.id
-            LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
+            LEFT JOIN contacts ct ON ((a.related_type='contact' AND a.related_id=ct.id) OR a.contact_id=ct.id) AND ct.deleted_at IS NULL
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
             LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL
             LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
@@ -389,9 +394,6 @@ class ActivityController {
         }
 
         $targetUserId = $b['user_id'] ?? $auth['user_id'];
-        if ($auth['role'] === 'sales' && (int)$targetUserId !== (int)$auth['user_id']) {
-            $targetUserId = $auth['user_id']; // Force self for sales role
-        }
         
         $due_date = empty($b['due_date']) ? null : $b['due_date'];
         $status = $b['status'] ?? 'planned';
@@ -399,14 +401,16 @@ class ActivityController {
         if ($status === 'done') {
             $done_at = empty($b['done_at']) ? date('Y-m-d H:i:s') : $b['done_at'];
         }
+        $contactId = empty($b['contact_id']) ? null : (int)$b['contact_id'];
 
         $this->db->prepare("
-            INSERT INTO activities (tenant_id,user_id,created_by,type,subject,body,status,priority,due_date,done_at,related_type,related_id,tags,participant_ids,progress,require_approval,approver_id,approval_status,link)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO activities (tenant_id,user_id,created_by,type,subject,body,status,priority,due_date,done_at,related_type,related_id,contact_id,tags,participant_ids,progress,require_approval,approver_id,approval_status,link)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $targetUserId, $auth['user_id'], $b['type'],
             $b['subject'], $b['body']??null, $status, $b['priority']??'medium',
             $due_date, $done_at, $b['related_type']??null, $b['related_id']??null,
+            $contactId,
             $b['tags']??null, $b['participant_ids']??null,
             (int)($b['progress']??0), (int)($b['require_approval']??0),
             empty($b['approver_id']) ? null : (int)$b['approver_id'],
@@ -416,9 +420,20 @@ class ActivityController {
         $actId = (int)$this->db->lastInsertId();
 
         // Update contact's last_contact whenever an activity is created
-        if (!empty($b['related_id'])) {
-            if (($b['related_type'] ?? '') === 'contact') {
-                $cid = (int)$b['related_id'];
+        $cid = !empty($contactId) ? $contactId : ((($b['related_type'] ?? '') === 'contact') ? (int)($b['related_id'] ?? 0) : null);
+        if ($cid) {
+            $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+            $stmtStatus->execute([$cid]);
+            $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+            $securityExpires = $this->getSecurityExpiration($currStatus);
+
+            $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                 ->execute([$securityExpires, $cid, $auth['tenant_id']]);
+        } else if (($b['related_type'] ?? '') === 'deal') {
+            $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+            $sDeal->execute([(int)$b['related_id'], $auth['tenant_id']]);
+            $cid = $sDeal->fetchColumn();
+            if ($cid) {
                 $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
                 $stmtStatus->execute([$cid]);
                 $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
@@ -426,21 +441,8 @@ class ActivityController {
 
                 $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
                      ->execute([$securityExpires, $cid, $auth['tenant_id']]);
-            } else if (($b['related_type'] ?? '') === 'deal') {
-                $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
-                $sDeal->execute([(int)$b['related_id'], $auth['tenant_id']]);
-                $cid = $sDeal->fetchColumn();
-                if ($cid) {
-                    $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
-                    $stmtStatus->execute([$cid]);
-                    $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-                    $securityExpires = $this->getSecurityExpiration($currStatus);
-
-                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
-                         ->execute([$securityExpires, $cid, $auth['tenant_id']]);
                 }
             }
-        }
 
         // Maintain quyen_truy_cap audit log for Cooperation Slips
         if (!empty($b['related_type']) && $b['related_type'] === 'contact' && !empty($b['related_id'])) {
@@ -504,17 +506,23 @@ class ActivityController {
             SELECT a.*, u.full_name as user_name,
                    creator.full_name as created_by_name, creator.avatar_url as created_by_avatar,
                    COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
-                   COALESCE(ct.id, deal_ct.id) as contact_id,
+                   COALESCE(a.contact_id, ct.id, deal_ct.id) as contact_id,
                    COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
                    d.title as deal_name,
-                   c.name as company_name
+                   c.name as company_name,
+                   p.name as project_name,
+                   camp.name as campaign_name,
+                   t.name as team_name
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
             LEFT JOIN users creator ON a.created_by=creator.id
-            LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
+            LEFT JOIN contacts ct ON ((a.related_type='contact' AND a.related_id=ct.id) OR a.contact_id=ct.id) AND ct.deleted_at IS NULL
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
             LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL
             LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
+            LEFT JOIN projects p ON a.related_type='project' AND a.related_id=p.id
+            LEFT JOIN marketing_campaigns camp ON a.related_type='campaign' AND a.related_id=camp.id
+            LEFT JOIN teams t ON a.related_type='team' AND a.related_id=t.id
             WHERE a.id=? AND a.tenant_id=? AND a.deleted_at IS NULL
         ");
         $stmt->execute([$id, $auth['tenant_id']]);
@@ -572,8 +580,9 @@ class ActivityController {
             $apprRole = strtolower($apprRow['role'] ?? '');
             $isAllowedRole = in_array($apprRole, ['admin', 'superadmin', 'super_admin', 'director'], true);
             $isOwnManager = ($apprRole === 'manager' && $apprRow['team_id'] && (int)$apprRow['team_id'] === (int)$saleTeamId);
+            $isSaleRole = in_array($apprRole, ['sales', 'sale'], true);
 
-            if (!$isAllowedRole && !$isOwnManager) {
+            if (!$isAllowedRole && !$isOwnManager && !$isSaleRole) {
                 respond(403, null, 'Người phê duyệt phải là Admin hoặc Quản lý của bạn', false);
             }
         }
@@ -650,14 +659,14 @@ class ActivityController {
                 $checkRel = $this->db->prepare("SELECT id FROM $table WHERE id=?");
                 $checkRel->execute([(int)$b['related_id']]);
                 if (!$checkRel->fetch()) {
-                    $b['related_type'] = null; $b['related_id'] = null;
+                    $b['related_type'] = null; $b['related_id'] = null; // Reset if unauthorized
                 }
             } else {
-                $b['related_type'] = null; $b['related_id'] = null;
+                $b['related_type'] = null; $b['related_id'] = null; // Reset if type not allowed
             }
         }
 
-        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','tags','participant_ids','progress','require_approval','approver_id','approval_status','link'];
+        $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id','contact_id','tags','participant_ids','progress','require_approval','approver_id','approval_status','link'];
         $sets=[];$params=[];
         foreach($fields as $f){
             if(array_key_exists($f,$b)){
@@ -695,33 +704,29 @@ class ActivityController {
         $stmt->execute($params);
 
         // Update contact's last_contact whenever an activity is updated
-        $checkRel = $this->db->prepare("SELECT related_type, related_id FROM activities WHERE id=?");
+        $checkRel = $this->db->prepare("SELECT related_type, related_id, contact_id FROM activities WHERE id=?");
         $checkRel->execute([$id]);
         $rel = $checkRel->fetch();
-        if ($rel && !empty($rel['related_id'])) {
-            if ($rel['related_type'] === 'contact') {
+        $cid = null;
+        if ($rel) {
+            if (!empty($rel['contact_id'])) {
+                $cid = (int)$rel['contact_id'];
+            } else if (!empty($rel['related_id']) && $rel['related_type'] === 'contact') {
                 $cid = (int)$rel['related_id'];
-                $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
-                $stmtStatus->execute([$cid]);
-                $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-                $securityExpires = $this->getSecurityExpiration($currStatus);
-
-                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
-                     ->execute([$securityExpires, $cid, $auth['tenant_id']]);
-            } else if ($rel['related_type'] === 'deal') {
+            } else if (!empty($rel['related_id']) && $rel['related_type'] === 'deal') {
                 $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
                 $sDeal->execute([(int)$rel['related_id'], $auth['tenant_id']]);
                 $cid = $sDeal->fetchColumn();
-                if ($cid) {
-                    $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
-                    $stmtStatus->execute([$cid]);
-                    $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
-                    $securityExpires = $this->getSecurityExpiration($currStatus);
-
-                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
-                         ->execute([$securityExpires, $cid, $auth['tenant_id']]);
-                }
             }
+        }
+        if ($cid) {
+            $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+            $stmtStatus->execute([$cid]);
+            $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+            $securityExpires = $this->getSecurityExpiration($currStatus);
+
+            $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                 ->execute([$securityExpires, $cid, $auth['tenant_id']]);
         }
 
         // Send notifications for updates

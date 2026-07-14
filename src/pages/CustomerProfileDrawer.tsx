@@ -962,6 +962,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   // Cooperation Slip States and Functions (Module 4)
   const [coopSlip, setCoopSlip] = useState<any>(null);
   const [coopLoading, setCoopLoading] = useState(false);
+  const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string[]>([]);
+  const [coopDefaultFiles, setCoopDefaultFiles] = useState<string[]>([]);
   const [salesUsers, setSalesUsers] = useState<any[]>([]);
   const [coopShares, setCoopShares] = useState<{ user_id: string; percentage: string }[]>([]);
   const [coopError, setCoopError] = useState('');
@@ -1043,7 +1045,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setCoopLoading(true);
     setCoopError('');
     try {
-      const usersEndpoint = currentUser?.role === 'sale' ? 'get_consultants' : 'users';
+      const usersEndpoint = (currentUser?.role as string === 'sale' || currentUser?.role as string === 'sales' || currentUser?.role === 'manager') ? 'get_consultants?all=1' : 'users';
       const [resSlips, resUsers] = await Promise.all([
         fetchAPI('cooperation-slips'),
         fetchAPI(usersEndpoint)
@@ -1084,6 +1086,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [contact?.id]);
 
   const handleCreateCoopSlip = async () => {
+    // Validate customer status
+    const currentStatus = contact?.pipeline_status || 'chua_xac_dinh';
+    if (coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(currentStatus)) {
+      const allowedLabels = coopEligibleStatuses.map(slug => {
+        const foundStage = pipelineStages.find(s => s.id === slug);
+        return foundStage ? foundStage.name : slug;
+      }).join(', ');
+      addToast(`Không thể khởi tạo phiếu hợp tác. Khách hàng phải ở trạng thái: ${allowedLabels}`, 'error');
+      return;
+    }
+
     setCoopLoading(true);
     try {
       const res = await fetchAPI('cooperation-slips', {
@@ -1201,6 +1214,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const handleSignCoopSlip = async (signatureImg: string) => {
     if (!coopSlip) return;
+
+    // Check for mandatory files based on admin configuration
+    const files = coopSlip.attachment_url ? coopSlip.attachment_url.split(',') : [];
+    if (coopDefaultFiles && coopDefaultFiles.length > 0) {
+      for (const mandatoryFile of coopDefaultFiles) {
+        const cleanKeyword = mandatoryFile.split('.')[0].toLowerCase().trim();
+        if (!cleanKeyword) continue;
+        
+        const hasFile = files.some((f: string) => {
+          const filename = f.split('/').pop() || '';
+          const lower = filename.toLowerCase();
+          if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+            return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+          }
+          return lower.includes(cleanKeyword);
+        });
+        
+        if (!hasFile) {
+          addToast(`Vui lòng upload tài liệu ${mandatoryFile} trước khi ký xác nhận!`, 'error');
+          return;
+        }
+      }
+    } else {
+      // Fallback safeguard to check UNC if no config is set
+      const hasUNC = files.some((f: string) => {
+        const filename = f.split('/').pop() || '';
+        const lower = filename.toLowerCase();
+        return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+      });
+
+      if (!hasUNC) {
+        addToast('Vui lòng upload tài liệu UNC (Ủy nhiệm chi) trước khi ký xác nhận!', 'error');
+        return;
+      }
+    }
+
     setCoopLoading(true);
     try {
       const res = await fetchAPI(`cooperation-slips/${coopSlip.id}/sign`, {
@@ -1804,6 +1853,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 setDecayDays(val);
               }
             }
+            if (res.data.coop_eligible_statuses) {
+              try {
+                setCoopEligibleStatuses(JSON.parse(res.data.coop_eligible_statuses));
+              } catch (e) {
+                setCoopEligibleStatuses(res.data.coop_eligible_statuses.split(',').map((s: string) => s.trim()).filter(Boolean));
+              }
+            }
+            if (res.data.coop_default_files) {
+              try {
+                setCoopDefaultFiles(JSON.parse(res.data.coop_default_files));
+              } catch (e) {
+                setCoopDefaultFiles(res.data.coop_default_files.split(',').map((s: string) => s.trim()).filter(Boolean));
+              }
+            }
             if (res.data.pipeline_status_hierarchy && res.data.pipeline_status_labels) {
               try {
                 const hierarchy = JSON.parse(res.data.pipeline_status_hierarchy);
@@ -1940,8 +2003,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       type: a.type,
       user: a.user_name || 'Hệ thống',
       time: a.created_at,
-      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : '#10b981',
-      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : <Mail size={16} />,
+      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : '#10b981',
+      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : <Mail size={16} />,
       note: a.body || a.note || '',
       comment_count: a.comment_count,
       expense_image_url: a.expense_image_url,
@@ -2675,7 +2738,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     addToast('Chặn thao tác: Chỉ chủ sở hữu (Owner) mới có quyền chuyển trạng thái khách hàng!', 'error');
                     return;
                   }
-                  
+
+                  const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(st.id));
+                  const isBackward = targetIdx !== -1 && targetIdx < safeIndex;
+
+                  const currentStageObj = pipelineStages[safeIndex];
+                  const targetStageObj = pipelineStages[targetIdx];
+                  const isFromDeposit = currentStageObj?.name?.toLowerCase()?.includes('cọc') || currentStageObj?.name?.toLowerCase()?.includes('deposit');
+                  const isToSuccess = targetStageObj?.name?.toLowerCase()?.includes('hợp đồng') || targetStageObj?.name?.toLowerCase()?.includes('won') || targetStageObj?.name?.toLowerCase()?.includes('thành công') || targetStageObj?.is_won;
+                  const isCancellation = isFromDeposit && !isToSuccess;
+
+                  if (isBackward && !isCancellation) {
+                    addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+                    return;
+                  }
+
                   // Check interaction guardrail: if transitioning to 'churned' or 'dong_deal' (Đã rời bỏ/Đóng), must have at least 1 activity
                   if ((st.id === 'churned' || st.id === 'dong_deal') && drawerActivities.length === 0) {
                     addToast('Chặn đóng deal: Khách hàng chưa từng có tương tác nào! Vui lòng tạo ghi chú cuộc gọi, email hoặc hoạt động trước.', 'error');
@@ -2683,7 +2760,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   }
 
                   // Check TTL1 constraint: moving to status index >= 2 (e.g. 'dong_y_gap' / 'Đồng Ý Gặp' or later)
-                  const targetIdx = pipelineStages.findIndex(s => String(s.id) === String(st.id));
                   if (targetIdx >= 2) {
                     const count = Object.values(ttl1Data).filter(Boolean).length;
                     if (count < 4) {
@@ -4417,7 +4493,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             Khách hàng này chưa có cấu hình phiếu phân chia hoa hồng. Bắt đầu thiết lập để phân chia tỷ lệ doanh thu.
                           </p>
                           {!isViewer && (
-                            <button className="btn primary" onClick={handleCreateCoopSlip}>
+                            <button
+                              className="btn primary"
+                              onClick={handleCreateCoopSlip}
+                              disabled={coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(contact?.pipeline_status || 'chua_xac_dinh')}
+                              style={coopEligibleStatuses.length > 0 && !coopEligibleStatuses.includes(contact?.pipeline_status || 'chua_xac_dinh') ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            >
                               <Plus size={16} /> Thiết lập hợp tác hoa hồng
                             </button>
                           )}
@@ -4668,6 +4749,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                             ) : (
                               <div>
+                                {coopDefaultFiles.length > 0 && (
+                                  <div style={{ marginBottom: '1rem', padding: '10px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', border: '1px dashed rgba(59, 130, 246, 0.3)' }}>
+                                    <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-primary)', margin: '0 0 6px 0' }}>Tài liệu yêu cầu bắt buộc:</p>
+                                    <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.775rem', color: 'var(--color-text-light)' }}>
+                                      {coopDefaultFiles.map((file, fIdx) => (
+                                        <li key={fIdx}>{file} (Phải có tài liệu chứa keyword <strong>UNC</strong>)</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
                                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
                                   Chưa có tài liệu/hợp đồng đính kèm cho phiếu này.
                                 </p>
@@ -4718,6 +4809,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                               if (idx === 0) return true;
                                               return String(u.id) !== String(currentUser?.consultant_id) && String(u.id) !== String(currentUser?.id);
                                             })
+
                                             .filter(u => {
                                               if (String(u.id) === String(share.user_id)) return true;
                                               return !coopShares.some((other, otherIdx) => otherIdx !== idx && String(other.user_id) === String(u.id));

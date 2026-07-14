@@ -469,6 +469,15 @@ export const DealsPage: React.FC = () => {
     const isToSuccess = toStageObj?.name?.toLowerCase()?.includes('hợp đồng') || toStageObj?.name?.toLowerCase()?.includes('won') || toStageObj?.name?.toLowerCase()?.includes('thành công') || toStageObj?.is_won;
     const isCancellation = isFromDeposit && !isToSuccess;
 
+    const fromIdx = stages.findIndex(s => s.id === fromStage);
+    const toIdx = stages.findIndex(s => s.id === toStage);
+    const isBackward = fromIdx !== -1 && toIdx !== -1 && toIdx < fromIdx;
+
+    if (isBackward && !isCancellation) {
+      addToast("Không thể di chuyển ngược giai đoạn trên Pipeline.", "error");
+      return;
+    }
+
     setTransitionModal({
       isOpen: true,
       itemId,

@@ -60,6 +60,14 @@ class CampaignController {
         $where = "WHERE tenant_id = ?";
         $params = [$tenantId];
 
+        $bypassRoster = (int)($_GET['bypass_roster'] ?? 0);
+        if (in_array($auth['role'], ['sale', 'sales'], true) && !$bypassRoster) {
+            $where .= " AND (FIND_IN_SET(?, user_ids) OR FIND_IN_SET(?, manager_ids) OR created_by = ?)";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        }
+
         $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 0;
         $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 0;
 

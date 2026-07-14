@@ -52,7 +52,7 @@ interface InventoryLog {
 
 export default function InventoryPage() {
   const { user } = useAuth();
-  const isSale = user?.role === 'sale';
+  const isSale = user?.role === 'sale' || user?.role === 'viewer';
   const [batches, setBatches] = useState<Batch[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');

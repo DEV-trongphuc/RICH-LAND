@@ -139,6 +139,8 @@ const SettingsInner = () => {
   const [backpressureLimit, setBackpressureLimit] = useState<number>(5);
   const [checkinApprovalSlaMinutes, setCheckinApprovalSlaMinutes] = useState<number>(15);
   const [broadcastExclusionRules, setBroadcastExclusionRules] = useState<string>("not_lead,opt_out,active_khtn");
+  const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string>("booking,da_gap,dat_coc");
+  const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
 
   const [securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh] = useState<string>("+3 hours");
   const [securityTimerQuanTam, setSecurityTimerQuanTam] = useState<string>("+1 day");
@@ -464,6 +466,8 @@ const SettingsInner = () => {
         if (json.data.backpressure_limit !== undefined) setBackpressureLimit(Number(json.data.backpressure_limit));
         if (json.data.checkin_approval_sla_minutes !== undefined) setCheckinApprovalSlaMinutes(Number(json.data.checkin_approval_sla_minutes));
         if (json.data.broadcast_exclusion_rules !== undefined) setBroadcastExclusionRules(json.data.broadcast_exclusion_rules);
+        if (json.data.coop_eligible_statuses !== undefined) setCoopEligibleStatuses(json.data.coop_eligible_statuses);
+        if (json.data.coop_default_files !== undefined) setCoopDefaultFiles(json.data.coop_default_files);
         if (json.data.security_timer_chua_xac_dinh !== undefined) setSecurityTimerChuaXacDinh(json.data.security_timer_chua_xac_dinh);
         if (json.data.security_timer_quan_tam !== undefined) setSecurityTimerQuanTam(json.data.security_timer_quan_tam);
         if (json.data.security_timer_thien_chi !== undefined) setSecurityTimerThienChi(json.data.security_timer_thien_chi);
@@ -700,6 +704,8 @@ const SettingsInner = () => {
       backpressure_limit: backpressureLimit,
       checkin_approval_sla_minutes: checkinApprovalSlaMinutes,
       broadcast_exclusion_rules: broadcastExclusionRules,
+      coop_eligible_statuses: coopEligibleStatuses,
+      coop_default_files: coopDefaultFiles,
       security_timer_chua_xac_dinh: securityTimerChuaXacDinh,
       security_timer_quan_tam: securityTimerQuanTam,
       security_timer_thien_chi: securityTimerThienChi,
@@ -3175,6 +3181,41 @@ function doPost(e) {
                         />
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
                           {t('Hạn bảo mật mặc định (ví dụ: +3 months).')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Nhóm 5: Cấu hình Hợp tác & Hoa hồng */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <Users size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Phân chia Hợp tác & Hoa hồng')}</h4>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Trạng thái KHTN được phép tạo phiếu')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={coopEligibleStatuses}
+                          onChange={e => setCoopEligibleStatuses(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Các slugs trạng thái cách nhau bằng dấu phẩy (ví dụ: booking,da_gap,dat_coc).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Danh mục tài liệu đính kèm yêu cầu')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={coopDefaultFiles}
+                          onChange={e => setCoopDefaultFiles(e.target.value)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Các tên tài liệu cách nhau bằng dấu phẩy (ví dụ: UNC.png,CMND.png).')}
                         </span>
                       </div>
                     </div>

@@ -10,6 +10,7 @@ import { CustomModal } from './components/ui/CustomModal';
 import { getDefaultDateFilter } from './utils/api';
 import { GlobalConfirmModal } from './components/ui/GlobalConfirmModal';
 import { QRCodeCallModal } from './components/ui/QRCodeCallModal';
+import { ProfileModal } from './components/ProfileModal';
 
 
 // Lazy load all pages for Code Splitting
@@ -76,18 +77,9 @@ const AppTabs = () => {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  // Track which paths have been visited to lazy-load their components (code-split)
-  const [visitedPaths, setVisitedPaths] = useState<string[]>([currentPath]);
-
-  useEffect(() => {
-    if (!visitedPaths.includes(currentPath)) {
-      setVisitedPaths(prev => [...prev, currentPath]);
-    }
-  }, [currentPath, visitedPaths]);
-
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi'];
-  const userPaths = ['/', '/workspace', '/data', '/calendar', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/databank', '/fair-share', '/support-tickets', '/attendance'];
+  const userPaths = ['/', '/workspace', '/data', '/calendar', '/databank', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/support-tickets', '/attendance'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -139,249 +131,82 @@ const AppTabs = () => {
     }
   }
 
+  const renderPageComponent = () => {
+    switch (currentPath) {
+      case '/':
+        return ((user?.role as any) === 'sale' || (user?.role as any) === 'sales') 
+          ? <SalePortal embedMode={true} activeTabProp="dashboard" key="dashboard" /> 
+          : <Dashboard key="dashboard" />;
+      case '/workspace':
+        return <SalePortal embedMode={true} activeTabProp="workspace" key="workspace" />;
+      case '/data':
+        return user?.role === 'sale' ? <Navigate to="/contacts" replace /> : <DataList key="data" />;
+      case '/calendar':
+        return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="calendar" key="calendar" /> : <DataList key="calendar" />;
+      case '/databank':
+        return <SalePortal embedMode={true} activeTabProp="databank" key="databank" />;
+      case '/contacts':
+        return <ContactsPage key="contacts" />;
+      case '/companies':
+        return <CompaniesPage key="companies" />;
+      case '/deals':
+        return <DealsPage key="deals" />;
+      case '/quotes':
+        return <QuotesPage key="quotes" />;
+      case '/activities':
+        return <ActivitiesPage key="activities" />;
+      case '/products':
+        return <ProductsPage key="products" />;
+      case '/invoices':
+        return <InvoicesPage key="invoices" />;
+      case '/expenses':
+        return <ExpensesPage key="expenses" />;
+      case '/reports-crm':
+        return <ReportsPage key="reports-crm" />;
+      case '/suppliers':
+        return <SuppliersPage key="suppliers" />;
+      case '/files':
+        return <FilesPage key="files" />;
+      case '/inventory':
+        return <InventoryPage key="inventory" />;
+      case '/tickets':
+        return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="tickets" key="tickets" /> : <Tickets key="tickets" />;
+      case '/support-tickets':
+        return <TicketsPage key="support-tickets" />;
+      case '/consultants':
+        return <Consultants key="consultants" />;
+      case '/rounds':
+        return <Rounds key="rounds" />;
+      case '/rules':
+        return <RuleSettings key="rules" />;
+      case '/integrations':
+        return <Integrations key="integrations" />;
+      case '/settings':
+        return <Settings key="settings" />;
+      case '/gatekeeper':
+        return <Gatekeeper key="gatekeeper" />;
+      case '/fair-share':
+        return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="fair-share" key="fair-share" /> : <FairShareAudit key="fair-share" />;
+      case '/capi':
+        return <CapiPage key="capi" />;
+      case '/attendance':
+        return <AttendancePage key="attendance" />;
+      case '/projects':
+        return <ProjectsPage key="projects" />;
+      case '/cooperation-slips':
+        return <CooperationSlipsPage key="cooperation-slips" />;
+      case '/deposits':
+        return <DepositsPage key="deposits" />;
+      default:
+        return <Navigate to="/" replace />;
+    }
+  };
+
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {/* User Pages */}
-      <div style={{ display: currentPath === '/' ? 'block' : 'none' }} className={currentPath === '/' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/') && (
-          <Suspense fallback={<PageLoader />}>
-            {((user?.role as any) === 'sale' || (user?.role as any) === 'sales') ? <SalePortal embedMode={true} activeTabProp="dashboard" /> : <Dashboard />}
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/workspace' ? 'block' : 'none' }} className={currentPath === '/workspace' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/workspace') && (
-          <Suspense fallback={<PageLoader />}>
-            <SalePortal embedMode={true} activeTabProp="workspace" />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/data' ? 'block' : 'none' }} className={currentPath === '/data' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/data') && (
-          <Suspense fallback={<PageLoader />}>
-            {user?.role === 'sale' ? <Navigate to="/contacts" replace /> : <DataList />}
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/calendar' ? 'block' : 'none' }} className={currentPath === '/calendar' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/calendar') && (
-          <Suspense fallback={<PageLoader />}>
-            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="calendar" /> : <DataList />}
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/databank' ? 'block' : 'none' }} className={currentPath === '/databank' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/databank') && (
-          <Suspense fallback={<PageLoader />}>
-            <SalePortal embedMode={true} activeTabProp="databank" />
-          </Suspense>
-        )}
-      </div>
-
-      {/* CRM Pages */}
-      <div style={{ display: currentPath === '/contacts' ? 'block' : 'none' }} className={currentPath === '/contacts' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/contacts') && (
-          <Suspense fallback={<PageLoader />}>
-            <ContactsPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/companies' ? 'block' : 'none' }} className={currentPath === '/companies' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/companies') && (
-          <Suspense fallback={<PageLoader />}>
-            <CompaniesPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/deals' ? 'block' : 'none' }} className={currentPath === '/deals' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/deals') && (
-          <Suspense fallback={<PageLoader />}>
-            <DealsPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/quotes' ? 'block' : 'none' }} className={currentPath === '/quotes' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/quotes') && (
-          <Suspense fallback={<PageLoader />}>
-            <QuotesPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/activities' ? 'block' : 'none' }} className={currentPath === '/activities' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/activities') && (
-          <Suspense fallback={<PageLoader />}>
-            <ActivitiesPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/products' ? 'block' : 'none' }} className={currentPath === '/products' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/products') && (
-          <Suspense fallback={<PageLoader />}>
-            <ProductsPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/invoices' ? 'block' : 'none' }} className={currentPath === '/invoices' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/invoices') && (
-          <Suspense fallback={<PageLoader />}>
-            <InvoicesPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/expenses' ? 'block' : 'none' }} className={currentPath === '/expenses' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/expenses') && (
-          <Suspense fallback={<PageLoader />}>
-            <ExpensesPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/reports-crm' ? 'block' : 'none' }} className={currentPath === '/reports-crm' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/reports-crm') && (
-          <Suspense fallback={<PageLoader />}>
-            <ReportsPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/suppliers' ? 'block' : 'none' }} className={currentPath === '/suppliers' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/suppliers') && (
-          <Suspense fallback={<PageLoader />}>
-            <SuppliersPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/files' ? 'block' : 'none' }} className={currentPath === '/files' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/files') && (
-          <Suspense fallback={<PageLoader />}>
-            <FilesPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/inventory' ? 'block' : 'none' }} className={currentPath === '/inventory' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/inventory') && (
-          <Suspense fallback={<PageLoader />}>
-            <InventoryPage />
-          </Suspense>
-        )}
-      </div>
-
-      <div style={{ display: currentPath === '/tickets' ? 'block' : 'none' }} className={currentPath === '/tickets' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/tickets') && (
-          <Suspense fallback={<PageLoader />}>
-            {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="tickets" /> : <Tickets />}
-          </Suspense>
-        )}
-      </div>
-
-      <div style={{ display: currentPath === '/support-tickets' ? 'block' : 'none' }} className={currentPath === '/support-tickets' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/support-tickets') && (
-          <Suspense fallback={<PageLoader />}>
-            <TicketsPage />
-          </Suspense>
-        )}
-      </div>
-
-      {/* Admin Pages */}
-      {['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '') && (
-        <>
-          <div style={{ display: currentPath === '/consultants' ? 'block' : 'none' }} className={currentPath === '/consultants' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/consultants') && (
-              <Suspense fallback={<PageLoader />}>
-                <Consultants />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/rounds' ? 'block' : 'none' }} className={currentPath === '/rounds' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/rounds') && (
-              <Suspense fallback={<PageLoader />}>
-                <Rounds />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/rules' ? 'block' : 'none' }} className={currentPath === '/rules' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/rules') && (
-              <Suspense fallback={<PageLoader />}>
-                <RuleSettings />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/integrations' ? 'block' : 'none' }} className={currentPath === '/integrations' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/integrations') && (
-              <Suspense fallback={<PageLoader />}>
-                <Integrations />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/settings' ? 'block' : 'none' }} className={currentPath === '/settings' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/settings') && (
-              <Suspense fallback={<PageLoader />}>
-                <Settings />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/accounts' ? 'block' : 'none' }} className={currentPath === '/accounts' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/accounts') && (
-              <Suspense fallback={<PageLoader />}>
-                {user?.role === 'sale' ? (
-                  <SalePortal embedMode={true} activeTabProp="schedule" />
-                ) : (
-                  <Accounts />
-                )}
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/gatekeeper' ? 'block' : 'none' }} className={currentPath === '/gatekeeper' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/gatekeeper') && (
-              <Suspense fallback={<PageLoader />}>
-                <Gatekeeper />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/fair-share' ? 'block' : 'none' }} className={currentPath === '/fair-share' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/fair-share') && (
-              <Suspense fallback={<PageLoader />}>
-                {user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="fair-share" /> : <FairShareAudit />}
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/capi' ? 'block' : 'none' }} className={currentPath === '/capi' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/capi') && (
-              <Suspense fallback={<PageLoader />}>
-                <CapiPage />
-              </Suspense>
-            )}
-          </div>
-          <div style={{ display: currentPath === '/attendance' ? 'block' : 'none' }} className={currentPath === '/attendance' ? 'page-enter-active' : ''}>
-            {visitedPaths.includes('/attendance') && (
-              <Suspense fallback={<PageLoader />}>
-                <AttendancePage />
-              </Suspense>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* User Dynamic Pages */}
-      <div style={{ display: currentPath === '/projects' ? 'block' : 'none' }} className={currentPath === '/projects' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/projects') && (
-          <Suspense fallback={<PageLoader />}>
-            <ProjectsPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/cooperation-slips' ? 'block' : 'none' }} className={currentPath === '/cooperation-slips' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/cooperation-slips') && (
-          <Suspense fallback={<PageLoader />}>
-            <CooperationSlipsPage />
-          </Suspense>
-        )}
-      </div>
-      <div style={{ display: currentPath === '/deposits' ? 'block' : 'none' }} className={currentPath === '/deposits' ? 'page-enter-active' : ''}>
-        {visitedPaths.includes('/deposits') && (
-          <Suspense fallback={<PageLoader />}>
-            <DepositsPage />
-          </Suspense>
-        )}
-      </div>
+      <Suspense fallback={<PageLoader />}>
+        {renderPageComponent()}
+      </Suspense>
     </div>
   );
 };
@@ -656,6 +481,7 @@ export default function App() {
           </Router>
           <GlobalConfirmModal />
           <QRCodeCallModal />
+          <ProfileModal />
         </AuthProvider>
 
       </LanguageProvider>

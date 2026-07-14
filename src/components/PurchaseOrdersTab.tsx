@@ -12,6 +12,7 @@ import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
   showModal: boolean;
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) => {
+  const { user } = useAuth();
+  const isSale = user?.role === 'sale' || user?.role === 'viewer';
   console.log('PurchaseOrdersTab RENDERED. showModal =', showModal);
   
   const { addToast, showConfirm } = useUIStore();
@@ -164,8 +167,8 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
             icon={<ShoppingCart size={48} />}
             title="Chưa có đơn nhập hàng nào"
             description="Bắt đầu tạo đơn nhập hàng để quản lý kho và công nợ nhà cung cấp."
-            actionText="Tạo đơn đầu tiên"
-            onAction={() => setShowModal(true)}
+            actionText={isSale ? undefined : "Tạo đơn đầu tiên"}
+            onAction={isSale ? undefined : () => setShowModal(true)}
           />
         ) : (
           <div className="card overflow-hidden">
