@@ -2514,7 +2514,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
           setReassignConsId('');
         }}
         title={t("Chi tiết Khách hàng")}
-        width="850px"
+        width="1050px"
       >
         {selectedLead && (
           <div className="modal-body-padding">
