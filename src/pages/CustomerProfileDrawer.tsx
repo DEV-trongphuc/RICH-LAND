@@ -6037,9 +6037,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 gap: '6px',
                                 padding: '8px 16px',
                                 borderRadius: '8px',
-                                background: 'rgba(16, 185, 129, 0.1)',
-                                color: '#10b981',
-                                border: '1px solid rgba(16, 185, 129, 0.2)',
+                                background: 'rgba(100, 116, 139, 0.08)',
+                                color: 'var(--color-text-light)',
+                                border: '1px solid var(--color-border-light)',
                                 fontSize: '0.825rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
@@ -6057,9 +6057,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 gap: '6px',
                                 padding: '8px 16px',
                                 borderRadius: '8px',
-                                background: 'rgba(37, 99, 235, 0.1)',
-                                color: '#2563eb',
-                                border: '1px solid rgba(37, 99, 235, 0.2)',
+                                background: 'rgba(100, 116, 139, 0.08)',
+                                color: 'var(--color-text-light)',
+                                border: '1px solid var(--color-border-light)',
                                 fontSize: '0.825rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
@@ -6214,9 +6214,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }} onClick={e => e.stopPropagation()}>
                                     <button
                                       style={{
-                                        background: 'rgba(37, 99, 235, 0.08)',
-                                        color: '#2563eb',
-                                        border: '1px solid rgba(37, 99, 235, 0.15)',
+                                        background: 'rgba(100, 116, 139, 0.08)',
+                                        color: 'var(--color-text-light)',
+                                        border: '1px solid var(--color-border-light)',
                                         padding: '4px 10px',
                                         borderRadius: '8px',
                                         fontSize: '0.72rem',
@@ -6267,14 +6267,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         background: 'rgba(239, 68, 68, 0.08)',
                                         color: '#ef4444',
                                         border: '1px solid rgba(239, 68, 68, 0.15)',
-                                        padding: '4px 10px',
+                                        padding: '4px 8px',
                                         borderRadius: '8px',
-                                        fontSize: '0.72rem',
-                                        fontWeight: 700,
                                         cursor: 'pointer',
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '4px',
+                                        justifyContent: 'center',
                                         height: '26px'
                                       }}
                                       className="hover-lift"
@@ -6309,7 +6307,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         });
                                       }}
                                     >
-                                      <Trash2 size={12} /> Xóa
+                                      <Trash2 size={12} />
                                     </button>
                                   </div>
                                 )}
@@ -6344,9 +6342,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 gap: '6px',
                                 padding: '6px 14px',
                                 borderRadius: '8px',
-                                background: 'rgba(37, 99, 235, 0.1)',
-                                color: '#2563eb',
-                                border: '1px solid rgba(37, 99, 235, 0.2)',
+                                background: 'rgba(100, 116, 139, 0.08)',
+                                color: 'var(--color-text-light)',
+                                border: '1px solid var(--color-border-light)',
                                 fontSize: '0.8rem',
                                 fontWeight: 700,
                                 cursor: 'pointer',
@@ -6439,9 +6437,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
                                     <button
                                       style={{
-                                        background: 'rgba(16, 185, 129, 0.08)',
-                                        color: '#10b981',
-                                        border: '1px solid rgba(16, 185, 129, 0.15)',
+                                        background: 'rgba(100, 116, 139, 0.08)',
+                                        color: 'var(--color-text-light)',
+                                        border: '1px solid var(--color-border-light)',
                                         padding: '6px 12px',
                                         borderRadius: '8px',
                                         fontSize: '0.78rem',
@@ -6461,9 +6459,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     </button>
                                     <button
                                       style={{
-                                        background: 'rgba(37, 99, 235, 0.08)',
-                                        color: '#2563eb',
-                                        border: '1px solid rgba(37, 99, 235, 0.15)',
+                                        background: 'rgba(100, 116, 139, 0.08)',
+                                        color: 'var(--color-text-light)',
+                                        border: '1px solid var(--color-border-light)',
                                         padding: '6px 12px',
                                         borderRadius: '8px',
                                         fontSize: '0.78rem',
@@ -6506,14 +6504,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         background: 'rgba(239, 68, 68, 0.08)',
                                         color: '#ef4444',
                                         border: '1px solid rgba(239, 68, 68, 0.15)',
-                                        padding: '6px 12px',
+                                        padding: '6px 10px',
                                         borderRadius: '8px',
-                                        fontSize: '0.78rem',
-                                        fontWeight: 700,
                                         cursor: 'pointer',
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '4px',
+                                        justifyContent: 'center',
                                         height: '30px',
                                         transition: 'all 0.2s'
                                       }}
@@ -6537,7 +6533,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         });
                                       }}
                                     >
-                                      <Trash2 size={13} /> Xóa
+                                      <Trash2 size={13} />
                                     </button>
                                   </div>
                                 )}
