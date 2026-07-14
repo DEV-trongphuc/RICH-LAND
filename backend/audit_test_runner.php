@@ -766,13 +766,16 @@ try {
     $resUpdateOther = $callApi("contacts/$otherContactId", 'PUT', ['first_name' => 'Hack Attempt'], $salesToken);
     $updateOtherBlocked = (isset($resUpdateOther['success']) && $resUpdateOther['success'] === false);
 
-    // 3. Manager reassigns Nguyễn Văn Nam's contact (contactId) to Assistant (owner_id = assistUserId)
-    $resReassign = $callApi("contacts/$contactId", 'PUT', ['owner_id' => $assistUserId], $mgrToken);
+    // 3. Manager reassigns Nguyễn Văn Nam's contact (personalContactId) to Assistant (owner_id = assistUserId)
+    $resReassign = $callApi("contacts/$personalContactId", 'PUT', ['owner_id' => $assistUserId], $mgrToken);
     $reassignOk = isset($resReassign['success']) && $resReassign['success'] === true;
 
     // 4. Nguyễn Văn Nam (Sales) tries to fetch his old contact (now owned by Assistant) -> Must be blocked (404)
-    $resGetOld = $callApi("contacts/$contactId", 'GET', [], $salesToken);
+    $resGetOld = $callApi("contacts/$personalContactId", 'GET', [], $salesToken);
     $getOldBlocked = (isset($resGetOld['success']) && $resGetOld['success'] === false);
+
+    // Restore ownership to Sales user for subsequent E2E tests
+    $db->prepare("UPDATE contacts SET owner_id = ? WHERE id = ?")->execute([$saleUserId, $personalContactId]);
 
     assertTest("TEST 28: Cross-Owner Access & Reassignment Logic", $getOtherBlocked && $updateOtherBlocked && $reassignOk && $getOldBlocked, "Get Other Blocked: " . ($getOtherBlocked ? 'Yes' : 'No') . ", Update Other Blocked: " . ($updateOtherBlocked ? 'Yes' : 'No') . ", Reassign: " . ($reassignOk ? 'Yes' : 'No') . ", Get Old Blocked: " . ($getOldBlocked ? 'Yes' : 'No') . ", Reassign Resp: " . json_encode($resReassign));
 
