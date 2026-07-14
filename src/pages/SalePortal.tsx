@@ -129,7 +129,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const { user, token, login, logout } = useAuth();
   const currentUser = user;
   const { language, setLanguage, t } = useLanguage();
-  const { showConfirm } = useUIStore();
+  const { showConfirm, closeConfirm } = useUIStore();
   const [showWorkspaceHelpModal, setShowWorkspaceHelpModal] = useState(false);
   const [showTicketHelpModal, setShowTicketHelpModal] = useState(false);
   const [showDatabankHelpModal, setShowDatabankHelpModal] = useState(false);
@@ -304,6 +304,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [currentPage, setCurrentPage] = useState(1);
   const [databankPage, setDatabankPage] = useState(1);
+  const [selectedPublicLeads, setSelectedPublicLeads] = useState<number[]>([]);
   const [calendarSubTab, setCalendarSubTab] = useState<'calendar' | 'attendance'>('calendar');
   const [wsTaskFilter, setWsTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -1874,6 +1875,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const fetchPublicLeads = async () => {
     setPublicLoading(true);
     setDatabankPage(1);
+    setSelectedPublicLeads([]);
     try {
       const res = await fetchAPI('get_public_leads');
       if (res.success) {
@@ -1887,6 +1889,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     } finally {
       setPublicLoading(false);
     }
+  };
+
+  const handleDeletePublicLeads = (personIds: number[]) => {
+    if (personIds.length === 0) return;
+    showConfirm({
+      title: t('Xóa dữ liệu Databank'),
+      message: t('Bạn có chắc chắn muốn xóa') + ' ' + personIds.length + ' ' + t('khách hàng đã chọn khỏi Kho chung (Databank)?'),
+      confirmText: t('Xóa ngay'),
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetchAPI('delete_public_leads', {
+            method: 'POST',
+            body: JSON.stringify({ person_ids: personIds })
+          });
+          if (res && res.success) {
+            toast.success(res.message || t('Đã xóa dữ liệu thành công'));
+            setSelectedPublicLeads([]);
+            fetchPublicLeads();
+          } else {
+            toast.error(res ? res.message : t('Xóa dữ liệu thất bại'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi: ') + e.message);
+        } finally {
+          closeConfirm();
+        }
+      }
+    });
   };
 
   const handleClaimLead = (personId: number, personName?: string) => {
@@ -6246,6 +6277,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     const DATABANK_ITEMS_PER_PAGE = 10;
     const databankTotalPages = Math.ceil(publicLeads.length / DATABANK_ITEMS_PER_PAGE);
     const paginatedPublicLeads = publicLeads.slice((databankPage - 1) * DATABANK_ITEMS_PER_PAGE, databankPage * DATABANK_ITEMS_PER_PAGE);
+    const isAdmin = ['admin', 'superadmin', 'super_admin'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -6293,6 +6325,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {t('Danh sách các khách hàng tiềm năng đã công khai. Bấm "Nhận Data" để trực tiếp nhận chăm sóc.')}
             </p>
           </div>
+          {isAdmin && selectedPublicLeads.length > 0 && (
+            <button
+              onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
+              className="btn danger sm"
+              style={{
+                borderRadius: '20px',
+                padding: '8px 16px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#dc2626',
+                color: 'white',
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
+                cursor: 'pointer'
+              }}
+            >
+              <Trash2 size={14} />
+              {t('Xóa đã chọn')} ({selectedPublicLeads.length})
+            </button>
+          )}
         </div>
 
         {publicQuota && (
@@ -6419,11 +6474,33 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-muted)' }}>
+                    {isAdmin && (
+                      <th style={{ padding: '1rem', width: '40px' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={paginatedPublicLeads.length > 0 && paginatedPublicLeads.every(lead => selectedPublicLeads.includes(lead.id))}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              const newSelections = [...selectedPublicLeads];
+                              paginatedPublicLeads.forEach(lead => {
+                                if (!newSelections.includes(lead.id)) {
+                                  newSelections.push(lead.id);
+                                }
+                              });
+                              setSelectedPublicLeads(newSelections);
+                            } else {
+                              const pageIds = paginatedPublicLeads.map(l => l.id);
+                              setSelectedPublicLeads(selectedPublicLeads.filter(id => !pageIds.includes(id)));
+                            }
+                          }}
+                        />
+                      </th>
+                    )}
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Khách hàng')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Liên hệ')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Trạng thái')}</th>
                     <th style={{ padding: '1rem', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>{t('Thời gian ra kho')}</th>
-                    <th style={{ padding: '1rem', width: 140 }}></th>
+                    <th style={{ padding: '1rem', width: isAdmin ? 190 : 140 }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -6449,6 +6526,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           cursor: canClaim ? 'pointer' : 'default'
                         }}
                       >
+                        {isAdmin && (
+                          <td style={{ padding: '1rem' }} onClick={e => e.stopPropagation()}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedPublicLeads.includes(lead.id)}
+                              onChange={() => {
+                                if (selectedPublicLeads.includes(lead.id)) {
+                                  setSelectedPublicLeads(selectedPublicLeads.filter(id => id !== lead.id));
+                                } else {
+                                  setSelectedPublicLeads([...selectedPublicLeads, lead.id]);
+                                }
+                              }}
+                            />
+                          </td>
+                        )}
                         <td style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <Avatar name={lead.full_name || t('Khách hàng')} size={32} />
@@ -6467,7 +6559,32 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         <td style={{ padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>
                           {lead.released_to_kho_at ? new Date(lead.released_to_kho_at).toLocaleString('vi-VN') : '-'}
                         </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        <td style={{ padding: '1rem', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                          {isAdmin && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePublicLeads([lead.id]);
+                              }}
+                              className="btn sm outline danger-hover"
+                              style={{
+                                height: 32,
+                                width: 32,
+                                padding: 0,
+                                borderRadius: '50%',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '1px solid var(--color-border)',
+                                background: 'transparent',
+                                color: 'var(--color-text-muted)',
+                                cursor: 'pointer'
+                              }}
+                              title={t('Xóa khỏi Databank')}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

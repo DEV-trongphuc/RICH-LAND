@@ -14801,6 +14801,36 @@ switch ($action) {
         echo json_encode(['success' => true, 'data' => $publicLeads, 'quota' => $quota]);
         break;
 
+    case 'delete_public_leads':
+        if (!$decodedUser) {
+            respond(401, null, 'Unauthorized: Chưa đăng nhập', false);
+        }
+        $isStaffAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
+        if (!$isStaffAdmin) {
+            respond(403, null, 'Forbidden: Chỉ Admin mới có quyền xóa dữ liệu Databank', false);
+        }
+        $input = json_decode(file_get_contents('php://input'), true);
+        $personIds = $input['person_ids'] ?? [];
+        if (!is_array($personIds)) {
+            $personIds = [$personIds];
+        }
+        $personIds = array_map('intval', $personIds);
+        $personIds = array_filter($personIds, function($id) { return $id > 0; });
+
+        if (empty($personIds)) {
+            echo json_encode(['success' => false, 'message' => 'Danh sách ID không hợp lệ']);
+            break;
+        }
+
+        $inClause = implode(',', $personIds);
+        $sql = "UPDATE persons SET is_public = 0, released_to_kho_at = NULL WHERE id IN ($inClause)";
+        if ($conn->query($sql)) {
+            echo json_encode(['success' => true, 'message' => 'Đã xóa dữ liệu khỏi Kho Databank thành công']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Lỗi cập nhật dữ liệu: ' . $conn->error]);
+        }
+        break;
+
     case 'release_to_databank':
         $isSale = isset($decodedUser['role']) && ($decodedUser['role'] === 'sale');
         if (!$decodedUser || (!in_array($decodedUser['role'], ['admin', 'superadmin', 'manager', 'assistant']) && !$isSale)) {
