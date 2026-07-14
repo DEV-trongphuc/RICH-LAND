@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Link2, Save, Check, X, AlertCircle, RefreshCw, Code, CheckCircle } from 'lucide-react';
+import { Link2, Save, Check, X, AlertCircle, RefreshCw, Code, CheckCircle, Info, ShieldAlert, ArrowRight } from 'lucide-react';
+import { CustomModal } from '../components/ui/CustomModal';
 
 interface CapiLog {
   id: number;
@@ -17,6 +18,7 @@ interface CapiLog {
 
 export default function CapiPage() {
   const { user } = useAuth();
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [logs, setLogs] = useState<CapiLog[]>([]);
   const [pixelId, setPixelId] = useState('');
   const [accessToken, setAccessToken] = useState('');
@@ -110,6 +112,36 @@ export default function CapiPage() {
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Link2 />
             Tích Hợp Meta Conversion API (CAPI)
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '3px 8px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                height: '24px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+              }}
+              title="Xem hướng dẫn quy tắc Conversion API"
+            >
+              <Info size={12} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>Giải thích cơ chế</span>
+            </button>
           </h1>
           <p className="page-subtitle">
             Cấu hình Pixel ID và Access Token, giám sát nhật ký các sự kiện đẩy ngược về Facebook Ads
@@ -251,6 +283,83 @@ export default function CapiPage() {
           </div>
         </div>
       )}
+      {/* Explanation of CAPI rules */}
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title="Hướng dẫn Cơ chế Facebook Conversion API (CAPI)"
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'rgba(189, 29, 45, 0.04)', 
+            border: '1px solid rgba(189, 29, 45, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              Hệ thống Conversion API (CAPI) kết nối trực tiếp máy chủ CRM với Meta Events Manager, giúp ghi nhận dữ liệu chính xác tuyệt đối mà không bị ảnh hưởng bởi trình chặn quảng cáo (AdBlock) hay cơ chế hạn chế cookies của iOS.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Event types */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <CheckCircle size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  1. Các loại sự kiện gửi về Facebook (Events)
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  • <strong>Lead (Nhận số)</strong>: Bắn đi ngay khi lead được chia thành công cho Sale.<br />
+                  • <strong>Schedule (Đặt lịch hẹn)</strong>: Bắn đi khi có hoạt động hẹn gặp khách hàng phát sinh.<br />
+                  • <strong>Purchase (Mua hàng)</strong>: Bắn đi khi đợt thanh toán cọc đầu tiên của deal được duyệt.
+                </p>
+              </div>
+            </div>
+
+            {/* Forward only rule */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(239, 68, 68, 0.02)', 
+              borderLeft: '4px solid #ef4444', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <ShieldAlert size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  2. Nguyên tắc Bắn một chiều (Forward-only Signals)
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  Tuyệt đối <strong>không bắn lùi tín hiệu</strong> (không gửi sự kiện hoàn trả, giảm cấp hoặc hủy) về Meta khi deal/cọc bị bể hoặc tụt trạng thái. Tín hiệu chỉ đi một chiều (Forward-only) để bảo đảm độ chính xác cho AI học máy của Facebook Ads tối ưu chiến dịch.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>Đồng ý</button>
+        </div>
+      </CustomModal>
     </div>
   );
 }

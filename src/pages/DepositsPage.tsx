@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
 import { CustomModal } from '../components/ui/CustomModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban, ChevronLeft, ChevronRight, Info } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 
 interface Deposit {
@@ -58,6 +59,11 @@ const formatMoney = (val: string | number) => {
 export default function DepositsPage() {
   const { user } = useAuth();
   const { showConfirm } = useUIStore();
+  const { t } = useLanguage();
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
   const [deposits, setDeposits] = useState<Deposit[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -324,8 +330,40 @@ export default function DepositsPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Quản Lý Đặt Cọc &amp; Tiến Độ</h1>
-          <p className="page-subtitle">Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC</p>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {t("Quản Lý Đặt Cọc & Tiến Độ")}
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '3px 8px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                height: '24px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+              }}
+              title={t("Xem hướng dẫn quy tắc đặt cọc & đổi căn")}
+            >
+              <Info size={12} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+            </button>
+          </h1>
+          <p className="page-subtitle">{t("Theo dõi phiếu cọc, tiến độ thanh toán căn hộ và duyệt UNC")}</p>
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
@@ -873,6 +911,113 @@ export default function DepositsPage() {
           </div>
         </div>
       )}
+      {/* Explanation of Deposit & Unit Switch Modal */}
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={t("Quy trình Đặt cọc & Chính sách Bể cọc / Đổi căn")}
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Hệ thống quản lý đặt cọc căn hộ và kiểm soát doanh thu môi giới. Nhằm bảo vệ quyền lợi của Tư vấn viên (TVV) và tính toàn vẹn của dữ liệu, vui lòng tuân thủ các quy tắc sau:")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Quy tắc 1 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <CreditCard size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Đợt thanh toán & Phê duyệt UNC")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Mỗi phiếu cọc có thể chia thành nhiều đợt thanh toán (milestones). TVV có nhiệm vụ tải lên hình ảnh UNC (Ủy nhiệm chi). Khi được Kế toán/Admin phê duyệt trạng thái \"Đã đóng\", doanh thu thực tế mới được ghi nhận vào hệ thống.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Quy tắc 2 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(239, 68, 68, 0.02)', 
+              borderLeft: '4px solid #ef4444', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Ban size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Quy tắc Bể cọc (Deposit Cancellation)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("• Chưa phát sinh doanh thu: Nếu khách hàng hủy đặt cọc trước khi đóng bất kỳ đợt thanh toán nào, trạng thái của KHTN/Person sẽ bị hạ về mức trước đó (Booking/Đã Gặp). Đồng hồ bảo mật của lead kích hoạt trở lại và lead có thể bị tự động giải phóng ra Databank chung nếu hết hạn.")}
+                  <br />
+                  {t("• Đã phát sinh doanh thu (đã đóng đợt 1): Trạng thái KHTN được giữ nguyên là Đặt Cọc để bảo vệ quyền sở hữu trọn đời của TVV chăm sóc.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Quy tắc 3 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Calendar size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Cơ chế Đổi căn / Đổi dự án (Unit Switching)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Khi khách hàng muốn chuyển sang căn hộ hoặc dự án giao dịch khác, bắt buộc thực hiện theo đúng vết kiểm toán (audit trail):")}
+                  <br />
+                  {t("• Đóng deal/phiếu cọc cũ lại (đánh dấu thất bại hoặc đã đổi).")}
+                  <br />
+                  {t("• Tạo một deal/phiếu cọc mới hoàn toàn.")}
+                  <br />
+                  {t("• Gắn liên kết ghi rõ \"Đổi từ căn [Mã Căn Cũ]\" ở deal mới để lưu trọn vẹn lịch sử phí môi giới.")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
+
     </div>
   );
 }

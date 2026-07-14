@@ -1832,23 +1832,98 @@ const FairShareAuditInner = ({ forceActive = false, isActive: propActive, search
       <CustomModal
         isOpen={showInfoModal}
         onClose={() => setShowInfoModal(false)}
-        title={t("Thuật ngữ đối soát")}
-        width="500px"
+        title={t("Hướng dẫn Cơ chế Đối soát Công bằng (Fair-Share Audit)")}
+        width="760px"
       >
         {showInfoModal && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
-            <div>
-              <h4 style={{ fontWeight: 800, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.9rem' }}>
-                <BarChart2 size={16} color="#3b82f6" /> {t("Chuẩn hóa tỷ lệ phân bổ (Normalized Share)")}
-              </h4>
-              <p style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', marginTop: 6, lineHeight: 1.5 }}>
-                {t("Khi một vòng phân bổ thiết lập tỷ lệ chia cho Sale A là x2 và Sale B là x1, thì việc Sale A nhận được số lead gấp đôi Sale B là hoàn toàn công bằng.")}
-                {t("Thuật toán đối soát công bằng sẽ tự động chia số lead của từng Sale cho Ratio của họ trước khi chạy tính toán Gini để đảm bảo độ chính xác tuyệt đối.")}
+          <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 12, 
+              padding: '0.875rem 1rem', 
+              background: 'var(--color-primary-light)', 
+              border: '1px solid rgba(163, 20, 34, 0.15)', 
+              borderRadius: 12 
+            }}>
+              <Scale size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+              <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+                {t("Hệ thống Đối soát Công bằng giúp Admin giám sát và đo lường trực quan sự phân phối lead có khớp với tỉ lệ cấu hình ban đầu hay không. Các chỉ số được định nghĩa chi tiết:")}
               </p>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button className="btn primary" onClick={() => setShowInfoModal(false)}>{t("Đóng")}</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {/* Normalized Share */}
+              <div style={{ 
+                display: 'flex', 
+                gap: 12, 
+                padding: '1rem', 
+                background: 'rgba(59, 130, 246, 0.02)', 
+                borderLeft: '4px solid #3b82f6', 
+                borderTop: '1px solid var(--color-border-light)',
+                borderRight: '1px solid var(--color-border-light)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderRadius: '0 8px 8px 0'
+              }}>
+                <BarChart2 size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                    {t("1. Chuẩn hóa tỷ lệ phân bổ (Normalized Share)")}
+                  </h5>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    {t("Khi một vòng phân bổ thiết lập tỷ lệ chia cho Sale A là x2 và Sale B là x1, thì việc Sale A nhận được số lead gấp đôi Sale B là hoàn toàn công bằng. Thuật toán đối soát công bằng sẽ tự động chia số lead của từng Sale cho Ratio của họ trước khi chạy tính toán độ lệch để đảm bảo tính khách quan tuyệt đối.")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Gini Coefficient */}
+              <div style={{ 
+                display: 'flex', 
+                gap: 12, 
+                padding: '1rem', 
+                background: 'rgba(16, 185, 129, 0.02)', 
+                borderLeft: '4px solid #10b981', 
+                borderTop: '1px solid var(--color-border-light)',
+                borderRight: '1px solid var(--color-border-light)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderRadius: '0 8px 8px 0'
+              }}>
+                <TrendingUp size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                    {t("2. Chỉ số bất bình đẳng Gini (Gini Coefficient)")}
+                  </h5>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    {t("Chỉ số đo lường sự phân bố tài nguyên dao động từ 0 (công bằng tuyệt đối - mọi sale nhận lead đúng tỉ lệ) tới 1 (bất bình đẳng tuyệt đối - chỉ 1 sale nhận hết lead). Chỉ số Gini < 0.2 là trạng thái lý tưởng của phân bổ.")}
+                  </p>
+                </div>
+              </div>
+
+              {/* Compensation queue */}
+              <div style={{ 
+                display: 'flex', 
+                gap: 12, 
+                padding: '1rem', 
+                background: 'rgba(245, 158, 11, 0.02)', 
+                borderLeft: '4px solid #f59e0b', 
+                borderTop: '1px solid var(--color-border-light)',
+                borderRight: '1px solid var(--color-border-light)',
+                borderBottom: '1px solid var(--color-border-light)',
+                borderRadius: '0 8px 8px 0'
+              }}>
+                <Sparkles size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                    {t("3. Lượt đền bù ưu tiên (Compensation Queue)")}
+                  </h5>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                    {t("Các lượt bù data (do nhận phải số lỗi) được cộng dồn vào hàng đợi và phân phối trước các lượt thông thường. Đối soát sẽ tách biệt thống kê lead thường và lead bù để tránh nhiễu chỉ số công bằng thực tế.")}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+              <button className="btn primary" onClick={() => setShowInfoModal(false)}>{t("Đồng ý")}</button>
             </div>
           </div>
         )}
