@@ -354,7 +354,7 @@ export const InvoicesPage: React.FC = () => {
                   const sc = STATUS_CONFIG[inv.status] || { label: inv.status, class: 'info', icon: null };
                   const isOverdue = inv.status === 'overdue';
                   return (
-                    <motion.tr key={inv.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ background: isOverdue ? 'rgba(239,68,68,0.02)' : undefined }}>
+                    <motion.tr key={inv.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ background: isOverdue ? 'rgba(239,68,68,0.02)' : undefined, cursor: 'pointer' }} className="table-row-hover" onClick={() => setPreviewItem(inv)}>
                       <td data-label="Chọn" className="col-check" onClick={e => e.stopPropagation()}>
                         <CustomCheckbox checked={selected.has(inv.id)} onChange={() => toggleSelect(inv.id)} />
                       </td>
@@ -396,7 +396,7 @@ export const InvoicesPage: React.FC = () => {
                         </div>
                       </td>
                       <td data-label="Trạng thái"><span className={`badge ${sc.class}`}>{sc.icon} {sc.label}</span></td>
-                      <td data-label="Thao tác">
+                      <td data-label="Thao tác" onClick={e => e.stopPropagation()}>
                         <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn-icon sm" title="Xem nhanh" onClick={() => setPreviewItem(inv)}><Eye size={14} /></button>
                           {canEditInvoice && inv.status !== 'paid' && (
