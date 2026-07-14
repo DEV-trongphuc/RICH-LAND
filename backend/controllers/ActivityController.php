@@ -341,7 +341,7 @@ class ActivityController {
         $stmt=$this->db->prepare("
             SELECT a.*, u.full_name as user_name, u.avatar_url,
                    creator.full_name as created_by_name, creator.avatar_url as created_by_avatar,
-                   COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
+                   COALESCE(NULLIF(TRIM(CONCAT(COALESCE(ct.first_name,''),' ',COALESCE(ct.last_name,''))), ''), NULLIF(TRIM(CONCAT(COALESCE(deal_ct.first_name,''),' ',COALESCE(deal_ct.last_name,''))), '')) as contact_name,
                    COALESCE(a.contact_id, ct.id, deal_ct.id) as contact_id,
                    COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
                    d.title as deal_name,
@@ -509,7 +509,7 @@ class ActivityController {
         $stmt=$this->db->prepare("
             SELECT a.*, u.full_name as user_name,
                    creator.full_name as created_by_name, creator.avatar_url as created_by_avatar,
-                   COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
+                   COALESCE(NULLIF(TRIM(CONCAT(COALESCE(ct.first_name,''),' ',COALESCE(ct.last_name,''))), ''), NULLIF(TRIM(CONCAT(COALESCE(deal_ct.first_name,''),' ',COALESCE(deal_ct.last_name,''))), '')) as contact_name,
                    COALESCE(a.contact_id, ct.id, deal_ct.id) as contact_id,
                    COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
                    d.title as deal_name,

@@ -913,12 +913,21 @@ class ContactController {
 
         $personId = $contact['person_id'];
 
-        // Prevent releasing active/deposit clients to Databank
+        // Prevent releasing active/deposit clients or coop-eligible clients to Databank
         $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
         $stmtStatus->execute([$id]);
         $currStatus = $stmtStatus->fetchColumn();
-        if (in_array($currStatus, ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'], true)) {
-            respond(400, null, 'Không thể giải phóng khách hàng đang ở trạng thái Đặt cọc / Hoàn thành!', false);
+
+        $coopSettingStmt = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'coop_eligible_statuses' LIMIT 1");
+        $coopSettingVal = $coopSettingStmt ? $coopSettingStmt->fetchColumn() : '';
+        $coopStatuses = ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'];
+        if (!empty($coopSettingVal)) {
+            $parsedCoop = array_map('trim', explode(',', $coopSettingVal));
+            $coopStatuses = array_unique(array_merge($coopStatuses, $parsedCoop));
+        }
+
+        if (in_array($currStatus, $coopStatuses, true)) {
+            respond(400, null, 'Không thể giải phóng khách hàng đang ở trạng thái quy định (' . implode(', ', $coopStatuses) . ')!', false);
         }
 
         // Prevent releasing clients with active cooperation slips to Databank
@@ -958,7 +967,8 @@ class ContactController {
                     stage_id = ?, 
                     status = 'lead',
                     security_expires_at = NULL,
-                    parallel_assigned = 0 
+                    parallel_assigned = 0,
+                    deleted_at = NOW()
                 WHERE id = ? AND tenant_id = ?
             ");
             $stmtRelease->execute([$defaultStageId, $id, $tid]);

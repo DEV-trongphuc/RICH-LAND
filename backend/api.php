@@ -10520,7 +10520,7 @@ switch ($action) {
             break;
         }
 
-        $upd = $conn->prepare("UPDATE accounts SET name = ?, avatar = ?, dob = ?, gender = ?, citizen_id = ?, address = ?, bank_name = ?, bank_account = ?, phone = ? WHERE id = ?");
+        $upd = $conn->prepare("UPDATE users SET full_name = ?, avatar_url = ?, dob = ?, gender = ?, citizen_id = ?, address = ?, bank_name = ?, bank_account = ?, phone = ? WHERE id = ?");
         $upd->bind_param("sssssssssi", $name, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $phone, $userId);
         if ($upd->execute()) {
             logAdminAction($conn, $userId, 'UPDATE_PROFILE', ['name' => $name, 'avatar' => $avatar, 'dob' => $dob, 'gender' => $gender, 'citizen_id' => $citizen_id, 'address' => $address, 'bank_name' => $bank_name, 'bank_account' => $bank_account, 'phone' => $phone]);
@@ -10640,7 +10640,7 @@ switch ($action) {
         $new_pass = $input['new_password'] ?? '';
         $userId = $decodedUser['id'];
 
-        $stmt = $conn->prepare("SELECT password_hash FROM accounts WHERE id = ?");
+        $stmt = $conn->prepare("SELECT password_hash FROM users WHERE id = ?");
         $stmt->bind_param("i", $userId);
         $stmt->execute();
         $res = $stmt->get_result();
@@ -10648,7 +10648,7 @@ switch ($action) {
         if ($row = $res->fetch_assoc()) {
             if (password_verify($old_pass, $row['password_hash'])) {
                 $hash = password_hash($new_pass, PASSWORD_DEFAULT);
-                $upd = $conn->prepare("UPDATE accounts SET password_hash = ? WHERE id = ?");
+                $upd = $conn->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
                 $upd->bind_param("si", $hash, $userId);
                 $upd->execute();
                 logAdminAction($conn, $userId, 'CHANGE_PASSWORD', []);
@@ -14696,6 +14696,13 @@ switch ($action) {
             $stmtLead->close();
             $leadId = $lRow ? $lRow['id'] : 0;
 
+            if ($leadId > 0) {
+                $stmtLeadClaim = $conn->prepare("UPDATE leads SET assigned_to = ?, last_assigned_at = NOW() WHERE id = ?");
+                $stmtLeadClaim->bind_param("ii", $saleConsultantId, $leadId);
+                $stmtLeadClaim->execute();
+                $stmtLeadClaim->close();
+            }
+
             logDistribution($conn, $leadId, $saleConsultantId, null, 'databank_claim', 'Sale tự nhận từ Kho chung (Databank)', false);
 
             $conn->commit();
@@ -14916,8 +14923,16 @@ switch ($action) {
               $statusRow = $stmtStatus->get_result()->fetch_assoc();
               $stmtStatus->close();
               $currStatus = $statusRow ? $statusRow['pipeline_status'] : '';
-              if (in_array($currStatus, ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'], true)) {
-                  throw new Exception("Không thể giải phóng khách hàng đang ở trạng thái Đặt cọc / Hoàn thành!");
+              $coopSettingStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'coop_eligible_statuses' LIMIT 1");
+              $coopSettingVal = $coopSettingStmt ? $coopSettingStmt->fetch_assoc()['setting_value'] : '';
+              $coopStatuses = ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'];
+              if (!empty($coopSettingVal)) {
+                  $parsedCoop = array_map('trim', explode(',', $coopSettingVal));
+                  $coopStatuses = array_unique(array_merge($coopStatuses, $parsedCoop));
+              }
+
+              if (in_array($currStatus, $coopStatuses, true)) {
+                  throw new Exception("Không thể giải phóng khách hàng đang ở trạng thái quy định (" . implode(', ', $coopStatuses) . ")!");
               }
 
               // Check for active cooperation slips

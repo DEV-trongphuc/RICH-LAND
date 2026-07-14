@@ -1065,11 +1065,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         }
       }
       if (resUsers.success) {
-        const sales = (resUsers.data || []).filter((u: any) => u.role === 'sales' || u.role === 'sale' || currentUser?.role === 'sale');
-        const mapped = sales.map((u: any) => ({
+        const mapped = (resUsers.data || []).map((u: any) => ({
           ...u,
           full_name: u.full_name || u.name,
-          role: u.role || 'sales'
+          role: u.role || 'sale'
         }));
         setSalesUsers(mapped);
       }
@@ -1839,7 +1838,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
       api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
-      api.get('/projects?bypass_roster=1').then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
+      const bypassProj = (currentUser?.role === 'sale' || currentUser?.role === 'manager') ? '' : '?bypass_roster=1';
+      api.get(`/projects${bypassProj}`).then(r => setAllowedProjects(r.data.data || r.data || [])).catch(() => {});
       api.get('/marketing-campaigns').then(r => setAllowedCampaigns(r.data.data?.items || r.data.data || [])).catch(() => {});
       api.get('/teams').then(r => setAllowedTeams(r.data.data || r.data || [])).catch(() => {});
 

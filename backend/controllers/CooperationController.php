@@ -562,7 +562,7 @@ class CooperationController {
         }
 
         // Find owner of contact and check access
-        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id FROM contacts WHERE id = ?");
+        $stmtC = $this->db->prepare("SELECT owner_id, tenant_id, pipeline_status FROM contacts WHERE id = ?");
         $stmtC->execute([$contactId]);
         $contactRow = $stmtC->fetch();
         if (!$contactRow) {
@@ -570,6 +570,22 @@ class CooperationController {
         }
         if ((int)$contactRow['tenant_id'] !== (int)$auth['tenant_id']) {
             respond(403, null, 'Bạn không có quyền truy cập khách hàng này', false);
+        }
+
+        // Validate cooperation eligible status
+        $currentStatus = $contactRow['pipeline_status'] ?: 'chua_xac_dinh';
+        $coopSettingStmt = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'coop_eligible_statuses' LIMIT 1");
+        $coopSettingVal = $coopSettingStmt ? $coopSettingStmt->fetchColumn() : '';
+        $coopEligibleStatuses = [];
+        if (!empty($coopSettingVal)) {
+            $coopEligibleStatuses = array_map('trim', explode(',', $coopSettingVal));
+        }
+        if (empty($coopEligibleStatuses)) {
+            $coopEligibleStatuses = ['booking', 'da_gap', 'dat_coc']; // Default fallback
+        }
+
+        if (!in_array($currentStatus, $coopEligibleStatuses, true)) {
+            respond(400, null, 'Không thể tạo phiếu hợp tác. Khách hàng phải ở trạng thái quy định (' . implode(', ', $coopEligibleStatuses) . ')', false);
         }
         $ownerId = (int)$contactRow['owner_id'];
         

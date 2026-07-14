@@ -189,12 +189,13 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     try {
       const isSaleOrManager = currentUser?.role === 'sale' || currentUser?.role === 'sales' || currentUser?.role === 'manager';
       const usersEndpoint = isSaleOrManager ? '/get_consultants?all=1' : '/users';
+      const bypassProj = isSaleOrManager ? '' : '?bypass_roster=1';
       const [rC, rCo, rT, rU, rP] = await Promise.all([
         api.get('/contacts?limit=1000'),
         api.get('/companies'),
         api.get('/tags'),
         api.get(usersEndpoint).catch(() => ({ data: { data: [] } })),
-        api.get('/projects?bypass_roster=1').catch(() => ({ data: { data: [] } }))
+        api.get(`/projects${bypassProj}`).catch(() => ({ data: { data: [] } }))
       ]);
       setContacts(rC.data.data?.items || []);
       setCompanies(rCo.data.data?.items || []);
