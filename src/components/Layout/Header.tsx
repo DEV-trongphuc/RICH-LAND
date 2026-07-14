@@ -1735,26 +1735,34 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                         display: 'flex',
                         alignItems: 'start',
                         gap: '0.75rem',
-                        padding: '12px 16px',
-                        borderRadius: '10px',
-                        background: notif.is_read ? 'var(--color-bg)' : 'rgba(189, 29, 45, 0.03)',
-                        border: `1px solid ${notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.08)'}`,
+                        padding: notif.is_read ? '12px 16px' : '12px 16px 12px 12px',
+                        borderRadius: '8px',
+                        background: notif.is_read ? 'rgba(100, 116, 139, 0.02)' : 'rgba(189, 29, 45, 0.05)',
+                        border: `1px solid ${notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.15)'}`,
+                        borderLeft: notif.is_read ? undefined : '4px solid var(--color-primary)',
                         cursor: notif.link ? 'pointer' : 'default',
                         transition: 'all 0.2s',
                         position: 'relative',
-                        boxShadow: notif.is_read ? 'none' : '0 2px 8px rgba(189, 29, 45, 0.04)'
+                        boxShadow: notif.is_read ? 'none' : '0 3px 10px rgba(189, 29, 45, 0.06)',
+                        opacity: notif.is_read ? 0.65 : 1
                       }}
                       onMouseEnter={e => {
                         e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                        if (notif.is_read) {
+                          e.currentTarget.style.opacity = '0.9';
+                        }
                         if (notif.link) {
                           e.currentTarget.style.transform = 'translateY(-1px)';
                           e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
                         }
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.08)';
+                        e.currentTarget.style.borderColor = notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.15)';
+                        if (notif.is_read) {
+                          e.currentTarget.style.opacity = '0.65';
+                        }
                         e.currentTarget.style.transform = 'none';
-                        e.currentTarget.style.boxShadow = notif.is_read ? 'none' : '0 2px 8px rgba(189, 29, 45, 0.04)';
+                        e.currentTarget.style.boxShadow = notif.is_read ? 'none' : '0 3px 10px rgba(189, 29, 45, 0.06)';
                       }}
                     >
                       {/* Icon */}
