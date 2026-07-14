@@ -140,7 +140,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
           onClick={e => e.stopPropagation()}
         >
           <div className="modal-header">
-            <h3>Thêm hoạt động mới</h3>
+            <h3>{activity?.id ? 'Cập nhật hoạt động' : 'Thêm hoạt động mới'}</h3>
             <button className="btn-icon-bare" onClick={onClose}><X size={20}/></button>
           </div>
           
@@ -161,19 +161,20 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                     setFormData({ ...formData, type: t.id, status: t.id === 'call' ? 'done' : 'planned' });
                   }}
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem',
-                    padding: '1.25rem 0', borderRadius: 'var(--radius-xl)', cursor: 'pointer',
-                    background: formData.type === t.id ? `${t.color}15` : 'var(--color-surface)',
-                    border: `2px solid ${formData.type === t.id ? t.color : 'var(--color-border)'}`,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.625rem',
+                    padding: '12px 0', borderRadius: '12px', cursor: 'pointer',
+                    background: formData.type === t.id ? `${t.color}15` : 'var(--color-bg-alt)',
+                    border: formData.type === t.id ? `1.5px solid ${t.color}` : '1px solid var(--color-border)',
                     color: formData.type === t.id ? t.color : 'var(--color-text-muted)',
                     fontWeight: formData.type === t.id ? 700 : 500, transition: 'all 0.2s',
-                    boxShadow: formData.type === t.id ? `0 8px 16px ${t.color}15` : 'none'
+                    boxShadow: formData.type === t.id ? `0 4px 12px ${t.color}12` : 'none',
+                    outline: 'none'
                   }}
                 >
-                  <div style={{ transform: formData.type === t.id ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s' }}>
+                  <div style={{ transform: formData.type === t.id ? 'scale(1.12)' : 'scale(1)', transition: 'transform 0.2s' }}>
                     {t.icon}
                   </div>
-                  <span style={{ fontSize: '0.875rem' }}>{t.label}</span>
+                  <span style={{ fontSize: '0.8125rem' }}>{t.label}</span>
                 </button>
               ))}
             </div>
@@ -323,9 +324,57 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   </div>
                   <div className="form-group">
                     <label className="form-label">Trạng thái</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button type="button" className={`btn sm ${formData.status === 'planned' ? 'primary' : 'outline'}`} style={{ flex: 1 }} onClick={() => setFormData({...formData, status: 'planned'})}>Kế hoạch</button>
-                      <button type="button" className={`btn sm ${formData.status === 'done' ? 'success' : 'outline'}`} style={{ flex: 1, borderColor: formData.status === 'done' ? 'var(--color-success)' : '' }} onClick={() => setFormData({...formData, status: 'done'})}>Đã xong</button>
+                    <div style={{ 
+                      display: 'flex', 
+                      background: 'rgba(100, 116, 139, 0.08)', 
+                      borderRadius: '30px', 
+                      padding: '3px', 
+                      border: '1px solid var(--color-border-light)',
+                      height: 42,
+                      alignItems: 'center'
+                    }}>
+                      <button 
+                        type="button" 
+                        style={{ 
+                          flex: 1, 
+                          height: '100%',
+                          border: 'none', 
+                          borderRadius: '30px', 
+                          padding: '4px 12px', 
+                          fontSize: '0.8125rem', 
+                          fontWeight: formData.status === 'planned' ? 700 : 500, 
+                          cursor: 'pointer', 
+                          transition: 'all 0.2s',
+                          background: formData.status === 'planned' ? 'var(--color-surface)' : 'transparent',
+                          color: formData.status === 'planned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          boxShadow: formData.status === 'planned' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                          outline: 'none'
+                        }} 
+                        onClick={() => setFormData({...formData, status: 'planned'})}
+                      >
+                        Kế hoạch
+                      </button>
+                      <button 
+                        type="button" 
+                        style={{ 
+                          flex: 1, 
+                          height: '100%',
+                          border: 'none', 
+                          borderRadius: '30px', 
+                          padding: '4px 12px', 
+                          fontSize: '0.8125rem', 
+                          fontWeight: formData.status === 'done' ? 700 : 500, 
+                          cursor: 'pointer', 
+                          transition: 'all 0.2s',
+                          background: formData.status === 'done' ? 'var(--color-success)' : 'transparent',
+                          color: formData.status === 'done' ? 'white' : 'var(--color-text-muted)',
+                          boxShadow: formData.status === 'done' ? '0 2px 6px rgba(16, 185, 129, 0.2)' : 'none',
+                          outline: 'none'
+                        }} 
+                        onClick={() => setFormData({...formData, status: 'done'})}
+                      >
+                        Đã xong
+                      </button>
                     </div>
                   </div>
                 </div>

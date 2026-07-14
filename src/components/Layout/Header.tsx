@@ -1737,13 +1737,13 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                         gap: '0.75rem',
                         padding: notif.is_read ? '12px 16px' : '12px 16px 12px 12px',
                         borderRadius: '8px',
-                        background: notif.is_read ? 'rgba(100, 116, 139, 0.02)' : 'rgba(189, 29, 45, 0.05)',
-                        border: `1px solid ${notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.15)'}`,
+                        background: notif.is_read ? 'rgba(100, 116, 139, 0.02)' : 'rgba(189, 29, 45, 0.09)',
+                        border: `1px solid ${notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.25)'}`,
                         borderLeft: notif.is_read ? undefined : '4px solid var(--color-primary)',
                         cursor: notif.link ? 'pointer' : 'default',
                         transition: 'all 0.2s',
                         position: 'relative',
-                        boxShadow: notif.is_read ? 'none' : '0 3px 10px rgba(189, 29, 45, 0.06)',
+                        boxShadow: notif.is_read ? 'none' : '0 3px 10px rgba(189, 29, 45, 0.08)',
                         opacity: notif.is_read ? 0.65 : 1
                       }}
                       onMouseEnter={e => {
@@ -1811,7 +1811,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                           }}>
                             {notif.title}
                           </h4>
-                          <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '0.6875rem', color: notif.is_read ? 'var(--color-text-muted)' : 'var(--color-text-light)', fontWeight: notif.is_read ? 500 : 600, whiteSpace: 'nowrap' }}>
                             {(() => {
                               if (!notif.created_at) return '';
                               const d = new Date(notif.created_at.replace(' ', 'T'));
@@ -1832,7 +1832,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                         <p style={{
                           margin: 0,
                           fontSize: '0.8125rem',
-                          color: 'var(--color-text-muted)',
+                          color: notif.is_read ? 'var(--color-text-muted)' : 'var(--color-text-light)',
                           lineHeight: '1.4',
                           wordBreak: 'break-word'
                         }}>

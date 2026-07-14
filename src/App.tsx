@@ -124,6 +124,10 @@ const AppTabs = () => {
     if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
+  } else if (currentPath === '/activities') {
+    if (['sale', 'sales'].includes(user?.role || '')) {
+      return <Navigate to="/workspace" replace />;
+    }
   } else if (isAdminPath) {
     if (!['admin', 'superadmin', 'super_admin', 'director'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;

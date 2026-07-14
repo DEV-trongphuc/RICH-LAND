@@ -652,19 +652,20 @@ export const ActivitiesPage: React.FC = () => {
                   key={t} type="button"
                   onClick={() => setForm({ ...form, type: t })}
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.75rem 0', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
-                    background: form.type === t ? `${T_COLOR[t]}12` : 'var(--color-surface)',
-                    border: `2px solid ${form.type === t ? T_COLOR[t] : 'var(--color-border)'}`,
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.625rem',
+                    padding: '12px 0', borderRadius: '12px', cursor: 'pointer',
+                    background: form.type === t ? `${T_COLOR[t]}15` : 'var(--color-bg-alt)',
+                    border: form.type === t ? `1.5px solid ${T_COLOR[t]}` : '1px solid var(--color-border)',
                     color: form.type === t ? T_COLOR[t] : 'var(--color-text-muted)',
                     fontWeight: form.type === t ? 700 : 500, transition: 'all 0.2s',
-                    boxShadow: form.type === t ? `0 4px 8px ${T_COLOR[t]}10` : 'none'
+                    boxShadow: form.type === t ? `0 4px 12px ${T_COLOR[t]}12` : 'none',
+                    outline: 'none'
                   }}
                 >
-                  <div style={{ transform: form.type === t ? 'scale(1.15)' : 'scale(1)', transition: 'transform 0.2s' }}>
+                  <div style={{ transform: form.type === t ? 'scale(1.12)' : 'scale(1)', transition: 'transform 0.2s' }}>
                     {T_ICON[t]}
                   </div>
-                  <span style={{ fontSize: '0.75rem' }}>{T_LABEL[t]}</span>
+                  <span style={{ fontSize: '0.8125rem' }}>{T_LABEL[t]}</span>
                 </button>
               ))}
             </div>
@@ -677,9 +678,57 @@ export const ActivitiesPage: React.FC = () => {
             </div>
             <div className="form-group">
               <label className="form-label">Trạng thái</label>
-              <div style={{ display: 'flex', gap: '6px', height: 42 }}>
-                <button type="button" className={`btn sm ${form.status === 'planned' ? 'primary' : 'outline'}`} style={{ flex: 1, padding: 0 }} onClick={() => setForm({...form, status: 'planned'})}>Kế hoạch</button>
-                <button type="button" className={`btn sm ${form.status === 'done' ? 'success' : 'outline'}`} style={{ flex: 1, padding: 0, borderColor: form.status === 'done' ? 'var(--color-success)' : '' }} onClick={() => setForm({...form, status: 'done'})}>Đã xong</button>
+              <div style={{ 
+                display: 'flex', 
+                background: 'rgba(100, 116, 139, 0.08)', 
+                borderRadius: '30px', 
+                padding: '3px', 
+                border: '1px solid var(--color-border-light)',
+                height: 42,
+                alignItems: 'center'
+              }}>
+                <button 
+                  type="button" 
+                  style={{ 
+                    flex: 1, 
+                    height: '100%',
+                    border: 'none', 
+                    borderRadius: '30px', 
+                    padding: '4px 12px', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: form.status === 'planned' ? 700 : 500, 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s',
+                    background: form.status === 'planned' ? 'var(--color-surface)' : 'transparent',
+                    color: form.status === 'planned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    boxShadow: form.status === 'planned' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                    outline: 'none'
+                  }} 
+                  onClick={() => setForm({...form, status: 'planned'})}
+                >
+                  Kế hoạch
+                </button>
+                <button 
+                  type="button" 
+                  style={{ 
+                    flex: 1, 
+                    height: '100%',
+                    border: 'none', 
+                    borderRadius: '30px', 
+                    padding: '4px 12px', 
+                    fontSize: '0.8125rem', 
+                    fontWeight: form.status === 'done' ? 700 : 500, 
+                    cursor: 'pointer', 
+                    transition: 'all 0.2s',
+                    background: form.status === 'done' ? 'var(--color-success)' : 'transparent',
+                    color: form.status === 'done' ? 'white' : 'var(--color-text-muted)',
+                    boxShadow: form.status === 'done' ? '0 2px 6px rgba(16, 185, 129, 0.2)' : 'none',
+                    outline: 'none'
+                  }} 
+                  onClick={() => setForm({...form, status: 'done'})}
+                >
+                  Đã xong
+                </button>
               </div>
             </div>
           </div>
