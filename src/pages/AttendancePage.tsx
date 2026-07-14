@@ -17,6 +17,15 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const { t } = useLanguage();
   const { user } = useAuth();
   const isSales = user?.role === 'sale';
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [sysSettings, setSysSettings] = useState<any>(null);
+  useEffect(() => {
+    fetchAPI('get_settings').then(res => {
+      if (res && res.success) {
+        setSysSettings(res.data);
+      }
+    });
+  }, []);
   const [isMobile, setIsMobile] = useState(false);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -616,8 +625,38 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
       {!embedMode && (
         <div className="page-header flex-col-mobile" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <div>
-            <h1 className="page-title">
+            <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {t('Quản lý Chấm công')}
+              <button
+                onClick={() => setShowInfoModal(true)}
+                style={{
+                  background: 'rgba(0, 0, 0, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  transition: 'all 0.2s',
+                  height: '24px'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                  e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                  e.currentTarget.style.background = 'var(--color-primary-light)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = 'var(--color-text-muted)';
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+                }}
+                title={t("Xem hướng dẫn cơ chế chấm công & khóa phân phối lead")}
+              >
+                <Info size={12} style={{ marginTop: 1 }} />
+                <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+              </button>
             </h1>
             <p className="page-subtitle" style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
               {t('Kiểm duyệt ảnh selfie chấm công hàng ngày và phê duyệt đi trễ của tư vấn viên.')}
@@ -1394,6 +1433,108 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
         message={t('Bạn có chắc chắn muốn xóa vĩnh viễn bản ghi chấm công này không? Hành động này không thể hoàn tác.')}
         confirmText={t('Xóa vĩnh viễn')}
       />
+
+      {/* Attendance & Lead Allocation Guide Modal */}
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={t("Hướng dẫn cơ chế Chấm công & Phân chia Lead")}
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Chấm công không chỉ ghi nhận ngày công mà còn trực tiếp điều khiển thuật toán chia số (Round-Robin). Hệ thống hoạt động theo nguyên tắc sau:")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Rule 1 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <CheckCircle size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Chấm công Selfie & Xác thực GPS")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Mỗi ca làm việc, TVV thực hiện Check-in / Check-out kèm hình ảnh khuôn mặt thực tế và định vị GPS. Điều này giúp ngăn ngừa gian lận chấm công hộ và đảm bảo nhân sự có mặt tại khu vực bán hàng quy định.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Rule 2 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(239, 68, 68, 0.02)', 
+              borderLeft: '4px solid #ef4444', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <ShieldAlert size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Khóa phân phối Lead tự động (Routing Lock)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("• Chưa Check-in hoặc đã Check-out: Hệ thống sẽ tự động BỎ QUA TVV khỏi danh sách chia số của các Vòng phân bổ. TVV chỉ được chia số khi đang trong trạng thái Check-in hoạt động.")}
+                  <br />
+                  {t("• Chế độ Vacation/Vắng mặt: Admin có thể chủ động ngắt chia lead cho từng cá nhân nếu nghỉ dài ngày.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Rule 3 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Clock size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Duyệt đi trễ & Thời gian xử lý SLA")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Khi TVV check-in trễ giờ quy định, hệ thống sẽ yêu cầu viết lý do. Người quản lý (Manager/Admin) có nghĩa vụ kiểm duyệt ảnh selfie và lý do đi trễ để phê duyệt trong thời gian SLA tối đa là ")}
+                  <strong>{sysSettings?.checkin_approval_sla_minutes || 60} {t("phút")}</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
     </div>
   );
 };

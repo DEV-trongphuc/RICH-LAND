@@ -133,6 +133,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [showWorkspaceHelpModal, setShowWorkspaceHelpModal] = useState(false);
   const [showTicketHelpModal, setShowTicketHelpModal] = useState(false);
   const [showDatabankHelpModal, setShowDatabankHelpModal] = useState(false);
+  const [sysSettings, setSysSettings] = useState<any>(null);
+  useEffect(() => {
+    fetchAPI('get_settings').then(res => {
+      if (res && res.success) {
+        setSysSettings(res.data);
+      }
+    });
+  }, []);
 
 
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -10356,7 +10364,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {t("1. Hạn mức nhận số (Claim Limits)")}
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  {t("Để đảm bảo công bằng, mỗi Sale có một hạn mức nhận số từ Databank theo Giờ, Ngày và Tuần. Nếu đạt ngưỡng tối đa, bạn cần chờ chu kỳ thời gian tiếp theo để có thể nhận thêm.")}
+                  {t("Để đảm bảo công bằng, mỗi Sale có một hạn mức nhận số từ Databank: tối đa ")}
+                  <strong>{sysSettings?.databank_limit_per_hour || 5} {t("số/giờ")}</strong>
+                  {t(" và ")}
+                  <strong>{sysSettings?.databank_limit_per_day || 10} {t("số/ngày")}</strong>.
+                  {t(" Nếu đạt ngưỡng tối đa, bạn cần chờ chu kỳ thời gian tiếp theo để có thể nhận thêm.")}
                 </p>
               </div>
             </div>
@@ -10378,7 +10390,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {t("2. Đồng hồ bảo mật chăm sóc (Security Timer)")}
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  {t("Khi bạn nhận một lead từ Databank, đồng hồ bảo mật bắt đầu đếm ngược. Bạn CẦN thực hiện ít nhất 1 tương tác (gọi điện, tạo note chất lượng, đặt lịch hẹn) trước khi hết hạn. Nếu không tương tác, lead sẽ bị hệ thống TỰ ĐỘNG THU HỒI về lại Databank.")}
+                  {t("Khi bạn nhận một lead từ Databank, đồng hồ bảo mật bắt đầu đếm ngược (Thời hạn bảo mật trạng thái Booking là ")}
+                  <strong>{sysSettings?.security_timer_booking || 120} {t("giờ")}</strong>
+                  {t(", Đã Gặp là ")}
+                  <strong>{sysSettings?.security_timer_da_gap || 72} {t("giờ")}</strong>
+                  {t("). Bạn CẦN thực hiện ít nhất 1 tương tác (gọi điện, tạo note chất lượng, đặt lịch hẹn) trước khi hết hạn. Nếu không tương tác, lead sẽ bị hệ thống TỰ ĐỘNG THU HỒI về lại Databank.")}
                 </p>
               </div>
             </div>

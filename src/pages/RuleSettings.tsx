@@ -286,6 +286,14 @@ const RuleSettingsInner = () => {
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [sysSettings, setSysSettings] = useState<any>(null);
+  useEffect(() => {
+    fetchAPI('get_settings').then(res => {
+      if (res && res.success) {
+        setSysSettings(res.data);
+      }
+    });
+  }, []);
 
   const navigate = useNavigate();
   // Modal states
@@ -1852,7 +1860,9 @@ const RuleSettingsInner = () => {
                   {t("3. Chế độ Im lặng (Silent Mode) & Ghi đè (Inject Data)")}
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  {t("• Chế độ Im lặng: Hệ thống chỉ đồng bộ dữ liệu để kiểm tra trùng lặp (không phân phối chia số cho Sale) dành cho các Sheet lưu trữ.")}
+                  {t("• Chế độ Im lặng: Hệ thống chỉ đồng bộ dữ liệu để kiểm tra trùng lặp (không phân phối chia số cho Sale, thời hạn kiểm tra trùng lặp là ")}
+                  <strong>{sysSettings?.duplicate_check_months || 6} {t("tháng")}</strong>
+                  {t(").")}
                   <br />
                   {t("• Ghi đè (Inject): Cho phép quy tắc tự động bổ sung hoặc thay đổi các trường dữ liệu của lead (vd: thêm Tag chiến dịch, đổi loại dự án) ngay khi so khớp thành công.")}
                 </p>

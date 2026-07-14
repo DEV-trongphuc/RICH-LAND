@@ -344,6 +344,14 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const currentPage = Number(searchParams.get('page') || '1');
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [sysSettings, setSysSettings] = useState<any>(null);
+  useEffect(() => {
+    fetchAPI('get_settings').then(res => {
+      if (res && res.success) {
+        setSysSettings(res.data);
+      }
+    });
+  }, []);
 
   const [searchInput, setSearchInput] = useState(searchTerm);
 
@@ -5684,7 +5692,11 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                   {t("Đồng hồ Bảo mật (Inactivity Expiration)")}
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  {t("Thời hạn chăm sóc bắt buộc cho từng TVV. Nếu hết thời gian mà TVV không tương tác ghi nhận hoạt động (gọi điện, gặp mặt, tạo note), data sẽ bị tự động thu hồi trả về Databank chung.")}
+                  {t("Thời hạn chăm sóc bắt buộc cho từng TVV. Nếu hết thời gian mà TVV không tương tác ghi nhận hoạt động (gọi điện, gặp mặt, tạo note), data sẽ bị tự động thu hồi trả về Databank chung (Thời gian bảo mật Booking: ")}
+                  <strong>{sysSettings?.security_timer_booking || 120} {t("giờ")}</strong>
+                  {t(", Đã Gặp: ")}
+                  <strong>{sysSettings?.security_timer_da_gap || 72} {t("giờ")}</strong>
+                  {t(").")}
                 </span>
               </div>
 
