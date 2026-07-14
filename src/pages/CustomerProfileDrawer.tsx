@@ -7455,22 +7455,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                   <div className="form-group">
                     <label className="form-label">Giá bán (VND) *</label>
-                    <input
-                      type="number"
-                      placeholder="0"
+                    <CurrencyInput
                       value={depositPrice}
-                      onChange={e => setDepositPrice(e.target.value)}
-                      className="form-input"
+                      onChange={val => setDepositPrice(String(val))}
+                      placeholder="0"
+                      showTextHelper={false}
                     />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Hoa hồng (VND)</label>
-                    <input
-                      type="number"
-                      placeholder="0"
+                    <CurrencyInput
                       value={depositExpectedCommission}
-                      onChange={e => setDepositExpectedCommission(e.target.value)}
-                      className="form-input"
+                      onChange={val => setDepositExpectedCommission(String(val))}
+                      placeholder="0"
+                      showTextHelper={false}
                     />
                   </div>
                 </div>
@@ -7509,19 +7507,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         className="form-input"
                         style={{ flex: 1 }}
                       />
-                      <input
-                        type="number"
-                        required
-                        placeholder="Số tiền (VND)"
-                        value={m.amount}
-                        onChange={e =>
-                          setDepositMilestones(prev =>
-                            prev.map((item, i) => (i === idx ? { ...item, amount: e.target.value } : item))
-                          )
-                        }
-                        className="form-input"
-                        style={{ width: '140px' }}
-                      />
+                      <div style={{ width: '140px', flexShrink: 0 }}>
+                        <CurrencyInput
+                          value={m.amount}
+                          required
+                          onChange={val =>
+                            setDepositMilestones(prev =>
+                              prev.map((item, i) => (i === idx ? { ...item, amount: String(val) } : item))
+                            )
+                          }
+                          placeholder="Số tiền (VND)"
+                          showTextHelper={false}
+                        />
+                      </div>
                       {depositMilestones.length > 1 && (
                         <button
                           type="button"
