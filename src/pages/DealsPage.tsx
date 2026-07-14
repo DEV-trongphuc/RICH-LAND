@@ -1257,7 +1257,7 @@ export const DealsPage: React.FC = () => {
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                 onClick={e => e.stopPropagation()}
-                style={{ background: 'var(--color-surface)', width: '90%', maxWidth: transitionModal.isCancellation ? '480px' : '400px', borderRadius: 'var(--radius-xl)', padding: '1.75rem', boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)' }}
+                style={{ background: 'var(--color-surface)', width: '90%', maxWidth: transitionModal.isCancellation ? '480px' : '400px', borderRadius: '8px', padding: '1.75rem', boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)' }}
               >
                 {transitionModal.isCancellation ? (
                   <>

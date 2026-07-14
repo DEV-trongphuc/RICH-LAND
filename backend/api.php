@@ -2342,6 +2342,7 @@ switch ($action) {
                 WHERE l.assigned_to = ?
                   AND l.status != 'reminder'
                   AND l.is_accepted = 1
+                  AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
                   AND (c.last_contact IS NULL OR c.last_contact = '')
             ");
             if ($stmtKhtn) {
@@ -11624,7 +11625,11 @@ switch ($action) {
             SELECT l.assigned_to, COUNT(*) as cnt 
             FROM leads l
             LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = l.assigned_to AND c.deleted_at IS NULL
-            WHERE l.status != 'reminder' AND l.is_accepted = 1 AND c.id IS NOT NULL AND (c.last_contact IS NULL OR c.last_contact = '')
+            WHERE l.status != 'reminder' 
+              AND l.is_accepted = 1 
+              AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
+              AND c.id IS NOT NULL 
+              AND (c.last_contact IS NULL OR c.last_contact = '')
             GROUP BY l.assigned_to
         ");
         if ($uncontactedRes) {

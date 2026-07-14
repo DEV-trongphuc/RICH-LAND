@@ -7289,7 +7289,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              style={{ position: 'relative', background: 'var(--color-surface)', width: '90%', maxWidth: '400px', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+              style={{ position: 'relative', background: 'var(--color-surface)', width: '90%', maxWidth: '400px', borderRadius: '8px', padding: '1.5rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
             >
               <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Cập nhật trạng thái Pipeline</h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
@@ -7310,7 +7310,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
                 <button className="btn outline" onClick={() => setPipelineModal({ ...pipelineModal, isOpen: false })}>Hủy</button>
                 <button
                   className="btn primary"
