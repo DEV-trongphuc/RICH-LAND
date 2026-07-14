@@ -466,104 +466,114 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                           <div 
                             key={idx} 
                             style={{ 
-                              background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', padding: '16px', 
-                              display: 'flex', flexDirection: 'column', gap: '12px', transition: 'all 0.2s', 
+                              background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', padding: '20px', 
+                              display: 'flex', flexDirection: 'column', gap: '14px', transition: 'all 0.2s', 
                               boxShadow: 'var(--shadow-sm)' 
                             }} 
                             onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'} 
                             onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border-light)'}
                           >
                             
-                            {/* Row 1: Name & Total */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start' }}>
+                            {/* Row 1: Name & Delete */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'center' }}>
                               <div style={{ flex: 1 }}>
                                 <input 
-                                  style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}
+                                  style={{ width: '100%', border: 'none', borderBottom: '1.5px solid transparent', outline: 'none', background: 'transparent', fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', paddingBottom: '2px', transition: 'border-color 0.2s' }}
                                   placeholder="Nhập tên sản phẩm / dịch vụ..."
                                   value={item.name}
                                   onChange={e => updateItem(idx, { name: e.target.value })}
+                                  onFocus={e => e.target.style.borderBottomColor = 'var(--color-primary)'}
+                                  onBlur={e => e.target.style.borderBottomColor = 'transparent'}
                                 />
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
-                                <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'var(--color-primary)' }}>
-                                  {FMT(item.subtotal)}
-                                </div>
-                                <button 
-                                  type="button" 
-                                  className="btn-icon sm" 
-                                  style={{ color: 'var(--color-danger)', border: 'none', background: 'var(--color-danger-light)', width: '32px', height: '32px' }} 
-                                  onClick={() => removeItem(idx)}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
+                              <button 
+                                type="button" 
+                                className="btn-icon sm" 
+                                style={{ color: 'var(--color-danger)', border: 'none', background: 'var(--color-danger-light)', width: '32px', height: '32px', flexShrink: 0 }} 
+                                onClick={() => removeItem(idx)}
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                             
-                            {/* Row 2: Description & Number Inputs */}
-                            <div className="quote-item-row2">
-                              <div style={{ flex: 1, width: '100%' }}>
-                                <textarea 
-                                  style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: '0.8125rem', color: 'var(--color-text-muted)', resize: 'none', minHeight: '24px', height: 'auto', lineHeight: 1.5 }}
-                                  placeholder="Mô tả chi tiết (không bắt buộc)..."
-                                  value={item.description || ''}
-                                  onChange={e => updateItem(idx, { description: e.target.value })}
-                                  rows={1}
+                            {/* Row 2: Description (styled textbox) */}
+                            <div style={{ width: '100%' }}>
+                              <textarea 
+                                style={{ width: '100%', border: '1px solid var(--color-border-light)', borderRadius: '8px', padding: '8px 12px', outline: 'none', fontSize: '0.8125rem', color: 'var(--color-text-muted)', resize: 'vertical', minHeight: '52px', background: 'var(--color-bg)', lineHeight: 1.5, transition: 'all 0.2s' }}
+                                placeholder="Mô tả chi tiết sản phẩm / dịch vụ (không bắt buộc)..."
+                                value={item.description || ''}
+                                onChange={e => updateItem(idx, { description: e.target.value })}
+                                onFocus={e => { e.target.style.borderColor = 'var(--color-primary)'; e.target.style.background = 'var(--color-surface)'; }}
+                                onBlur={e => { e.target.style.borderColor = 'var(--color-border-light)'; e.target.style.background = 'var(--color-bg)'; }}
+                                rows={2}
+                              />
+                            </div>
+                            
+                            {/* Row 3: Beautiful, aligned pricing grid */}
+                            <div style={{ 
+                              display: 'grid', 
+                              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+                              gap: '1.25rem', 
+                              alignItems: 'flex-start',
+                              background: 'var(--color-bg)',
+                              padding: '12px 16px',
+                              borderRadius: '12px',
+                              border: '1px solid var(--color-border-light)'
+                            }}>
+                              {/* Quantity */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Số lượng</label>
+                                <input 
+                                  type="number" 
+                                  style={{ width: '100%', height: '36px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', transition: 'border 0.2s' }}
+                                  value={item.quantity}
+                                  min={1}
+                                  onChange={e => updateItem(idx, { quantity: Math.max(1, Math.floor(Number(e.target.value))) })}
+                                  onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
+                                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                                 />
                               </div>
-                              
-                              <div className="quote-item-controls">
-                                {/* Quantity */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SL</span>
-                                  <input 
-                                    type="number" 
-                                    style={{ width: '48px', height: '28px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', transition: 'border 0.2s' }}
-                                    value={item.quantity}
-                                    min={1}
-                                    step={1}
-                                    onChange={e => updateItem(idx, { quantity: Math.max(1, Math.floor(Number(e.target.value))) })}
-                                    onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
-                                    onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
-                                  />
-                                </div>
-                                
-                                <div style={{ width: 1, height: 16, background: 'var(--color-border)' }} />
-                                
-                                {/* Unit Price */}
-                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đơn giá</span>
-                                  <input 
-                                    type="number" 
-                                    style={{ width: '110px', height: '28px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'right', fontSize: '0.875rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text)', padding: '0 8px', transition: 'border 0.2s' }}
-                                    value={item.unit_price}
-                                    onChange={e => updateItem(idx, { unit_price: Number(e.target.value) })}
-                                    onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
-                                    onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
-                                  />
-                                  {item.unit_price > 0 && (
-                                    <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: '0', fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-                                      {numberToText(item.unit_price)}
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <div style={{ width: 1, height: 16, background: 'var(--color-border)' }} />
-                                
-                                {/* Discount */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giảm</span>
-                                  <div style={{ position: 'relative', width: '60px' }}>
-                                    <input 
-                                      type="number" 
-                                      style={{ width: '100%', height: '28px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-danger)', paddingRight: '14px', transition: 'border 0.2s' }}
-                                      value={item.discount}
-                                      max={100}
-                                      onChange={e => updateItem(idx, { discount: Math.min(100, Number(e.target.value)) })}
-                                      onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
-                                      onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
-                                    />
-                                    <Percent size={10} style={{ position: 'absolute', right: '6px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-danger)', pointerEvents: 'none' }} />
+
+                              {/* Unit Price */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đơn giá (đ)</label>
+                                <input 
+                                  type="number" 
+                                  style={{ width: '100%', height: '36px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'right', fontSize: '0.875rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text)', padding: '0 10px', transition: 'border 0.2s' }}
+                                  value={item.unit_price}
+                                  onChange={e => updateItem(idx, { unit_price: Number(e.target.value) })}
+                                  onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
+                                  onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+                                />
+                                {item.unit_price > 0 && (
+                                  <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', marginTop: '4px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                                    {numberToText(item.unit_price)}
                                   </div>
+                                )}
+                              </div>
+
+                              {/* Discount */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Giảm (%)</label>
+                                <div style={{ position: 'relative' }}>
+                                  <input 
+                                    type="number" 
+                                    style={{ width: '100%', height: '36px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-danger)', paddingRight: '20px', transition: 'border 0.2s' }}
+                                    value={item.discount}
+                                    max={100}
+                                    onChange={e => updateItem(idx, { discount: Math.min(100, Number(e.target.value)) })}
+                                    onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
+                                    onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
+                                  />
+                                  <Percent size={12} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-danger)', pointerEvents: 'none' }} />
+                                </div>
+                              </div>
+
+                              {/* Subtotal */}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', textAlign: 'right' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Thành tiền</label>
+                                <div style={{ height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', fontSize: '1.05rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.01em' }}>
+                                  {FMT(item.subtotal)}
                                 </div>
                               </div>
                             </div>
@@ -598,7 +608,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
               </div>
 
               {/* Right Column: Financials - Sticky */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', height: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '10px', height: 'fit-content' }}>
                 <div className="card overflow-hidden" style={{ border: '1px solid var(--color-border-light)', borderRadius: '20px' }}>
                   {/* Panel header */}
                   <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface)' }}>
@@ -695,95 +705,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                   </div>
                 </div>
 
-                {/* Deal Context — Functional Pipeline Linker */}
-                <div style={{ background: 'linear-gradient(135deg, #1e0a3c, #3b0764)', borderRadius: '20px', padding: '1.25rem', color: 'white', position: 'relative' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ background: 'rgba(255,255,255,0.1)', width: 32, height: 32, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <TrendingUp size={16} style={{ color: '#a78bfa' }} />
-                      </div>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Gắn kết Pipeline</span>
-                    </div>
-                    {selectedDeal && (
-                      <button type="button" onClick={() => { setSelectedDeal(null); setForm({ ...form, deal_id: null }); }}
-                        style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '6px', padding: '3px 6px', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}>
-                        <X size={13} />
-                      </button>
-                    )}
-                  </div>
 
-                  {selectedDeal ? (
-                    <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '12px', padding: '10px 14px', border: '1px solid rgba(255,255,255,0.12)' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'white', marginBottom: '4px' }}>{selectedDeal.title}</div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {selectedDeal.stage_name && (
-                          <span style={{ fontSize: '0.65rem', background: 'rgba(167,139,250,0.2)', color: '#a78bfa', padding: '2px 8px', borderRadius: '20px', fontWeight: 700 }}>
-                            {selectedDeal.stage_name}
-                          </span>
-                        )}
-                        {selectedDeal.value > 0 && (
-                          <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>
-                            {FMT(Number(selectedDeal.value))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '0.75rem' }}>
-                        Liên kết với Deal để theo dõi tỉ lệ chốt thành công.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setShowDealPicker(v => !v)}
-                        style={{ width: '100%', padding: '8px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.7)', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', transition: 'background 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                      >
-                        <ArrowRight size={14} /> Chọn Cơ hội liên quan...
-                      </button>
-                    </>
-                  )}
-
-                  {/* Deal picker dropdown */}
-                  {showDealPicker && !selectedDeal && (
-                    <div style={{ marginTop: '0.75rem', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                      <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.07)', borderRadius: '8px', padding: '0 10px', height: '34px' }}>
-                          <Search size={13} style={{ color: 'rgba(255,255,255,0.4)', flexShrink: 0 }} />
-                          <input
-                            placeholder="Tìm deal..."
-                            style={{ border: 'none', outline: 'none', background: 'transparent', color: 'white', fontSize: '0.8125rem', width: '100%' }}
-                            value={searchDeal}
-                            onChange={e => setSearchDeal(e.target.value)}
-                            autoFocus
-                          />
-                        </div>
-                      </div>
-                      <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-                        {deals.length === 0 ? (
-                          <div style={{ padding: '16px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
-                            Chưa có Deal nào
-                          </div>
-                        ) : filteredDeals.map(d => (
-                          <div
-                            key={d.id}
-                            onClick={() => { setSelectedDeal(d); setForm({ ...form, deal_id: d.id }); setShowDealPicker(false); setSearchDeal(''); }}
-                            style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)', transition: 'background 0.12s' }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                          >
-                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'white', marginBottom: '2px' }}>{d.title}</div>
-                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                              {d.stage_name && <span style={{ fontSize: '0.65rem', color: '#a78bfa', fontWeight: 600 }}>{d.stage_name}</span>}
-                              {d.value > 0 && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)' }}>{FMT(Number(d.value))}</span>}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
             </fieldset>
