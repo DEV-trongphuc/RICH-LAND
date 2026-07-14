@@ -4024,12 +4024,56 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               placeholder="VD: 1.500.000.000"
                             />
                           </div>
-                          <div className="form-group">
-                            <label className="form-label">Xác suất chốt (%)</label>
-                            <input className="form-input" type="number" min="0" max="100" placeholder="50" value={formData.win_probability || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, win_probability: val }));
-                            }} />
+                          <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <label className="form-label" style={{ marginBottom: 0 }}>Xác suất chốt</label>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  placeholder="50"
+                                  value={formData.win_probability || 0}
+                                  onChange={e => {
+                                    let val = Number(e.target.value);
+                                    if (val < 0) val = 0;
+                                    if (val > 100) val = 100;
+                                    setFormData((prev: any) => ({ ...prev, win_probability: val }));
+                                  }}
+                                  style={{
+                                    width: '64px',
+                                    height: '28px',
+                                    textAlign: 'center',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 800,
+                                    padding: '2px 4px',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: '6px',
+                                    background: 'var(--color-surface)',
+                                    color: (formData.win_probability ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)'
+                                  }}
+                                />
+                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>%</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="100"
+                              value={formData.win_probability ?? 0}
+                              onChange={e => setFormData((prev: any) => ({ ...prev, win_probability: Number(e.target.value) }))}
+                              className="progress-slider"
+                              style={{
+                                background: (formData.win_probability ?? 0) === 100
+                                  ? 'var(--color-success)'
+                                  : 'linear-gradient(to right, #BD1D2D 0%, #F97316 ' + (formData.win_probability ?? 0) + '%, var(--color-border-light) ' + (formData.win_probability ?? 0) + '%, var(--color-border-light) 100%)'
+                              }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                              <span>0%</span>
+                              <span>50%</span>
+                              <span>100%</span>
+                            </div>
                           </div>
                           <div className="form-group">
                             <label className="form-label">Người đang chăm sóc (Sale)</label>

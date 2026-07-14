@@ -3263,7 +3263,33 @@ export default function ProjectsPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <label className="form-label" style={{ marginBottom: 0 }}>Tiến độ thi công</label>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: (editingProject?.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)' }}>{editingProject?.progress_percent ?? 0}%</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={editingProject?.progress_percent ?? 0}
+                          onChange={e => {
+                            let val = Number(e.target.value);
+                            if (val < 0) val = 0;
+                            if (val > 100) val = 100;
+                            setEditingProject(prev => ({ ...prev, progress_percent: val }));
+                          }}
+                          style={{
+                            width: '64px',
+                            height: '28px',
+                            textAlign: 'center',
+                            fontSize: '0.85rem',
+                            fontWeight: 800,
+                            padding: '2px 4px',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '6px',
+                            background: 'var(--color-surface)',
+                            color: (editingProject?.progress_percent ?? 0) === 100 ? 'var(--color-success)' : 'var(--color-primary)'
+                          }}
+                        />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>%</span>
+                      </div>
                     </div>
                     <input
                       type="range"
@@ -3299,7 +3325,22 @@ export default function ProjectsPage() {
                         { value: 'Đã bàn giao', label: 'Đã bàn giao' }
                       ]}
                       value={editingProject?.construction_status || 'Chưa khởi công'}
-                      onChange={val => setEditingProject(prev => ({ ...prev, construction_status: String(val) }))}
+                      onChange={val => {
+                        const status = String(val);
+                        let progress = editingProject?.progress_percent ?? 0;
+                        if (status === 'Chưa khởi công') progress = 0;
+                        else if (status === 'Đang thi công móng') progress = 15;
+                        else if (status === 'Đang thi công') progress = 30;
+                        else if (status === 'Đang xây thân') progress = 50;
+                        else if (status === 'Đã cất nóc') progress = 75;
+                        else if (status === 'Đang hoàn thiện') progress = 90;
+                        else if (status === 'Đã bàn giao') progress = 100;
+                        setEditingProject(prev => ({
+                          ...prev,
+                          construction_status: status,
+                          progress_percent: progress
+                        }));
+                      }}
                     />
                   </div>
 
@@ -3566,6 +3607,12 @@ export default function ProjectsPage() {
             (m.email || '').toLowerCase().includes(rosterSearch.toLowerCase())
           );
 
+          const sorted = [...filtered].sort((a, b) => {
+            const aAssigned = a.is_assigned === 1 ? 1 : 0;
+            const bAssigned = b.is_assigned === 1 ? 1 : 0;
+            return bAssigned - aAssigned;
+          });
+
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {/* Roster Search Box */}
@@ -3589,12 +3636,12 @@ export default function ProjectsPage() {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', paddingRight: '4px' }}>
-                {filtered.length === 0 ? (
+                {sorted.length === 0 ? (
                   <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0', fontSize: '0.875rem' }}>
                     Không tìm thấy nhân sự phù hợp
                   </div>
                 ) : (
-                  filtered.map(member => {
+                  sorted.map(member => {
                     return (
                       <div
                         key={member.id}
