@@ -41,28 +41,129 @@ class ActivityController {
                     ))');
                     $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
                 } else if ($activity['related_type'] === 'deal') {
-                    $checkOwner = $this->db->prepare('SELECT id FROM deals WHERE id=? AND tenant_id=? AND (owner_id=? OR contact_id IN (
-                        SELECT contact_id FROM cooperation_slips 
-                        WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
-                    ))');
-                    $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
-                } else {
-                    $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
+                    $checkOwner = $this->db->prepare('
+                        SELECT d.id FROM deals d
+                        LEFT JOIN contacts ct ON d.contact_id = ct.id AND ct.deleted_at IS NULL
+                        WHERE d.id=? AND d.tenant_id=? AND (
+                            d.owner_id=? 
+                            OR ct.owner_id=? 
+                            OR d.contact_id IN (
+                                SELECT contact_id FROM cooperation_slips 
+                                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE "{}" END), JSON_QUOTE(CAST(? AS CHAR)))
+                            )
+                        )
+                    ');
+                    $checkOwner->execute([
+                        (int)$activity['related_id'], $auth['tenant_id'], 
+                        $auth['user_id'], $auth['user_id'], $auth['user_id']
+                    ]);
+                } else if ($activity['related_type'] === 'project') {
+                    $checkOwner = $this->db->prepare('
+                        SELECT project_id FROM project_roster WHERE project_id=? AND user_id=?
+                        UNION
+                        SELECT id FROM projects WHERE id=? AND tenant_id=? AND created_by=?
+                    ');
+                    $checkOwner->execute([
+                        (int)$activity['related_id'], $auth['user_id'],
+                        (int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']
+                    ]);
+                } else if (in_array($activity['related_type'], ['company', 'companies'], true)) {
+                    $checkOwner = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=? AND owner_id=?");
                     $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                } else {
+                    try {
+                        $checkOwner = $this->db->prepare("SELECT id FROM `$table` WHERE id=? AND tenant_id=? AND owner_id=?");
+                        $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                    } catch (Throwable $e) {
+                        $checkOwner = null;
+                    }
                 }
-                if ($checkOwner->fetch()) {
+                if ($checkOwner && $checkOwner->fetch()) {
                     return true;
                 }
             } elseif ($auth['role'] === 'manager') {
-                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
-                    SELECT id FROM users WHERE team_id IN (
-                        SELECT id FROM teams WHERE leader_id = ?
-                    )
-                ))");
-                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
-                if ($checkOwner->fetch()) {
+                if ($activity['related_type'] === 'deal') {
+                    $checkOwner = $this->db->prepare("
+                        SELECT d.id FROM deals d
+                        LEFT JOIN contacts ct ON d.contact_id = ct.id AND ct.deleted_at IS NULL
+                        WHERE d.id=? AND d.tenant_id=? AND (
+                            d.owner_id=? 
+                            OR ct.owner_id=?
+                            OR d.owner_id IN (
+                                SELECT id FROM users WHERE team_id IN (
+                                    SELECT id FROM teams WHERE leader_id = ?
+                                )
+                            )
+                            OR ct.owner_id IN (
+                                SELECT id FROM users WHERE team_id IN (
+                                    SELECT id FROM teams WHERE leader_id = ?
+                                )
+                            )
+                        )
+                    ");
+                    $checkOwner->execute([
+                        (int)$activity['related_id'], $auth['tenant_id'], 
+                        $auth['user_id'], $auth['user_id'],
+                        $auth['user_id'], $auth['user_id']
+                    ]);
+                } else {
+                    try {
+                        $checkOwner = $this->db->prepare("SELECT id FROM `$table` WHERE id=? AND tenant_id=? AND (owner_id=? OR owner_id IN (
+                            SELECT id FROM users WHERE team_id IN (
+                                SELECT id FROM teams WHERE leader_id = ?
+                            )
+                        ))");
+                        $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
+                    } catch (Throwable $e) {
+                        $checkOwner = null;
+                    }
+                }
+                if ($checkOwner && $checkOwner->fetch()) {
                     return true;
                 }
+            }
+        }
+
+        // 5. Check metadata contacts inside erp_task.related_contact_ids
+        if (!empty($activity['body']) && strpos($activity['body'], '{"erp_task":') === 0) {
+            try {
+                $parsed = json_decode($activity['body'], true);
+                if (isset($parsed['erp_task']['related_contact_ids'])) {
+                    $contactIds = array_filter(array_map('intval', (array)$parsed['erp_task']['related_contact_ids']));
+                    if (!empty($contactIds)) {
+                        $inPlaceholders = implode(',', array_fill(0, count($contactIds), '?'));
+                        if (in_array($auth['role'], ['sales', 'sale'], true)) {
+                            $checkOwner = $this->db->prepare("
+                                SELECT id FROM contacts 
+                                WHERE id IN ($inPlaceholders) AND tenant_id=? AND (owner_id=? OR id IN (
+                                    SELECT contact_id FROM cooperation_slips 
+                                    WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE '\"{}\"' END), JSON_QUOTE(CAST(? AS CHAR)))
+                                ))
+                            ");
+                            $params = array_merge($contactIds, [$auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
+                            $checkOwner->execute($params);
+                            if ($checkOwner->fetch()) {
+                                return true;
+                            }
+                        } elseif ($auth['role'] === 'manager') {
+                            $checkOwner = $this->db->prepare("
+                                SELECT id FROM contacts 
+                                WHERE id IN ($inPlaceholders) AND tenant_id=? AND (owner_id=? OR owner_id IN (
+                                    SELECT id FROM users WHERE team_id IN (
+                                        SELECT id FROM teams WHERE leader_id = ?
+                                    )
+                                ))
+                            ");
+                            $params = array_merge($contactIds, [$auth['tenant_id'], $auth['user_id'], $auth['user_id']]);
+                            $checkOwner->execute($params);
+                            if ($checkOwner->fetch()) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable $e) {
+                // silent catch
             }
         }
         

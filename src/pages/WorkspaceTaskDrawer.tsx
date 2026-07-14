@@ -164,10 +164,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   useEffect(() => {
     if (task) {
+      const isSaleRole = currentUser?.role === 'sale';
+      const defaultUserId = task.user_id || (isSaleRole ? currentUser.id : null);
       const normalizedTask = {
         ...task,
         subject: task.subject || task.title || '',
-        body: task.body || task.description || ''
+        body: task.body || task.description || '',
+        user_id: defaultUserId ? Number(defaultUserId) : null
       };
       setFormData(normalizedTask);
       setIsPinned(normalizedTask.tags?.includes('pinned') || false);
@@ -323,7 +326,13 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
       let relType = formData.related_type || task.related_type || null;
       let relId = formData.related_id || task.related_id || null;
-      if (updatedMeta.project_id) {
+
+      const hasContact = formData.contact_id || task.contact_id || (relType === 'contact' && relId);
+
+      if (hasContact) {
+        relType = 'contact';
+        relId = formData.contact_id || task.contact_id || (relType === 'contact' ? relId : null);
+      } else if (updatedMeta.project_id) {
         relType = 'project';
         relId = updatedMeta.project_id;
       } else if (updatedMeta.campaign_id) {
@@ -332,9 +341,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       } else if (updatedMeta.team_id) {
         relType = 'team';
         relId = updatedMeta.team_id;
-      } else if (formData.contact_id || task.contact_id) {
-        relType = 'contact';
-        relId = formData.contact_id || task.contact_id;
       }
 
       const payload: any = {
@@ -426,6 +432,25 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       tagArray.push(newTag);
       finalTags = tagArray.join(',');
 
+      let relType = formData.related_type || task.related_type || null;
+      let relId = formData.related_id || task.related_id || null;
+
+      const hasContact = formData.contact_id || task.contact_id || (relType === 'contact' && relId);
+
+      if (hasContact) {
+        relType = 'contact';
+        relId = formData.contact_id || task.contact_id || (relType === 'contact' ? relId : null);
+      } else if (updatedErpMeta.project_id) {
+        relType = 'project';
+        relId = updatedErpMeta.project_id;
+      } else if (updatedErpMeta.campaign_id) {
+        relType = 'campaign';
+        relId = updatedErpMeta.campaign_id;
+      } else if (updatedErpMeta.team_id) {
+        relType = 'team';
+        relId = updatedErpMeta.team_id;
+      }
+
       const payload: any = {
         subject: formData.subject || formData.title || '',
         description: finalDesc,
@@ -440,8 +465,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         approver_id: formData.require_approval === 1 ? Number(formData.approver_id) : null,
         approval_status: formData.approval_status || 'none',
         participant_ids: formData.participant_ids ? String(formData.participant_ids) : null,
-        related_id: formData.related_id || null,
-        related_type: formData.related_type || null
+        related_id: relId,
+        related_type: relType
       };
 
       let res;
