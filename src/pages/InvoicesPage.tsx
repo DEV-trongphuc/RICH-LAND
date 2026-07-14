@@ -500,11 +500,26 @@ export const InvoicesPage: React.FC = () => {
                   transform: none !important;
                   overflow: visible !important;
                 }
+                .invoice-paper-content {
+                  padding: 0 !important;
+                  background: white !important;
+                }
+                .invoice-info-box {
+                  border: none !important;
+                  background: transparent !important;
+                  padding: 0 !important;
+                  border-radius: 0 !important;
+                }
                 .no-print {
                   display: none !important;
                 }
                 .print-no-avatar {
                   display: none !important;
+                }
+                table, thead, tbody, tfoot, tr, th, td {
+                  border: none !important;
+                  border-top: none !important;
+                  border-bottom: none !important;
                 }
               }
             `}</style>
@@ -516,7 +531,7 @@ export const InvoicesPage: React.FC = () => {
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
               onClick={e => e.stopPropagation()}
             >
-              <div style={{ padding: '2rem', background: 'var(--color-surface)' }}>
+              <div className="invoice-paper-content" style={{ padding: '2rem', background: 'var(--color-surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
                   <div>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)' }}>INVOICE</h2>
@@ -528,7 +543,7 @@ export const InvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="responsive-grid-1-1" style={{ gap: '1.5rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)' }}>
+                <div className="responsive-grid-1-1 invoice-info-box" style={{ gap: '1.5rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <p className="text-xs text-light uppercase tracking-wider font-bold" style={{ margin: 0 }}>Khách hàng nhận</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
