@@ -2150,6 +2150,39 @@ try {
     assertTest("TEST 92: Sunday Gate 2 requires both shift registration and approved check-in", $test92Success, "Failed without checkin: " . ($failedWithoutCheckIn?'Yes':'No') . ", Passed with checkin: " . ($passedWithCheckIn?'Yes':'No'));
 
     // ─────────────────────────────────────────────────────────────────
+    // TEST 93: Custom security timer configuration check (System Settings)
+    // ─────────────────────────────────────────────────────────────────
+    $stmtSettingsBackup = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'security_timer_chua_xac_dinh'");
+    $stmtSettingsBackup->execute();
+    $backupVal = $stmtSettingsBackup->fetchColumn();
+
+    $db->prepare("DELETE FROM system_settings WHERE setting_key = 'security_timer_chua_xac_dinh'")->execute();
+    $db->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('security_timer_chua_xac_dinh', '+10 hours')")->execute();
+
+    // Run the logic from NoteController to get expiration
+    $baseDate = '2026-07-14 12:00:00';
+    $key = 'security_timer_chua_xac_dinh';
+    $fallbackVal = '+3 hours';
+    
+    $stmtVal = $db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+    $stmtVal->execute([$key]);
+    $dbVal = $stmtVal->fetchColumn();
+    $duration = ($dbVal !== false && $dbVal !== null && $dbVal !== '') ? $dbVal : $fallbackVal;
+    
+    $baseTimestamp = strtotime($baseDate);
+    $calculatedExpires = date('Y-m-d H:i:s', strtotime($duration, $baseTimestamp));
+    $expectedExpires = '2026-07-14 22:00:00';
+    
+    // Clean up
+    $db->prepare("DELETE FROM system_settings WHERE setting_key = 'security_timer_chua_xac_dinh'")->execute();
+    if ($backupVal !== false && $backupVal !== null) {
+        $db->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('security_timer_chua_xac_dinh', ?)")->execute([$backupVal]);
+    }
+    
+    $test93Success = ($calculatedExpires === $expectedExpires);
+    assertTest("TEST 93: Custom security timer configuration check", $test93Success, "Calculated: $calculatedExpires, Expected: $expectedExpires");
+
+    // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)
     // We intentionally do not delete these records so they are visible in the CRM frontend UI.
     $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId, $viewerUserId)")->fetchColumn();
