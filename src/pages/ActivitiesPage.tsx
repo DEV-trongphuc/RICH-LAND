@@ -45,6 +45,20 @@ const fmtDate = (d: string | null) => {
   return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
 
+const getDisplayBody = (bodyStr: string) => {
+  if (!bodyStr) return '';
+  const trimmed = bodyStr.trim();
+  if (trimmed.startsWith('{"erp_task":')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsed.erp_task?.description || '';
+    } catch (e) {
+      return bodyStr;
+    }
+  }
+  return bodyStr;
+};
+
 export const ActivitiesPage: React.FC = () => {
   const { user } = useAuth();
   const { addToast, showConfirm } = useUIStore();
@@ -59,6 +73,7 @@ export const ActivitiesPage: React.FC = () => {
   const [teamsList, setTeamsList] = useState<any[]>([]);
   const [consultantsList, setConsultantsList] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [editingErpTask, setEditingErpTask] = useState<any>(null);
   const debouncedSearch = useDebounce(search.trim(), 300);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
@@ -217,18 +232,55 @@ export const ActivitiesPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [showModal, saving]);
 
-  const openCreate = () => { setEditItem(null); setForm(EMPTY); setShowModal(true); };
-  const openEdit = (a: any) => { setEditItem(a); setForm({ ...a, due_date: a.due_date ? a.due_date.slice(0, 16) : '' }); setShowModal(true); };
+  const openCreate = () => { 
+    setEditItem(null); 
+    setEditingErpTask(null);
+    setForm(EMPTY); 
+    setShowModal(true); 
+  };
+
+  const openEdit = (a: any) => {
+    setEditItem(a);
+    let displayBody = a.body || '';
+    let erpTaskObj = null;
+    
+    if (displayBody.trim().startsWith('{"erp_task":')) {
+      try {
+        const parsed = JSON.parse(displayBody);
+        erpTaskObj = parsed.erp_task;
+        displayBody = erpTaskObj?.description || '';
+      } catch (e) {}
+    }
+    
+    setEditingErpTask(erpTaskObj);
+    setForm({ 
+      ...a, 
+      due_date: a.due_date ? a.due_date.slice(0, 16) : '',
+      body: displayBody 
+    });
+    setShowModal(true);
+  };
 
   const handleSave = async () => {
     if (!form.subject.trim()) { addToast('Nhập tiêu đề hoạt động', 'error'); return; }
     setSaving(true);
     try {
+      let finalBody = form.body;
+      if (editingErpTask) {
+        finalBody = JSON.stringify({
+          erp_task: {
+            ...editingErpTask,
+            description: form.body
+          }
+        });
+      }
+      const payload = { ...form, body: finalBody };
+
       if (editItem) {
-        await api.put(`/activities/${editItem.id}`, form);
+        await api.put(`/activities/${editItem.id}`, payload);
         addToast('Đã cập nhật hoạt động', 'success');
       } else {
-        await api.post('/activities', form);
+        await api.post('/activities', payload);
         addToast('Đã thêm hoạt động', 'success');
       }
       setShowModal(false);
@@ -521,9 +573,9 @@ export const ActivitiesPage: React.FC = () => {
                                     </button>
                                   )}
                                 </div>
-                                {act.body && (
+                                {getDisplayBody(act.body) && (
                                   <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '600px' }}>
-                                    {act.body}
+                                    {getDisplayBody(act.body)}
                                   </p>
                                 )}
                               </div>
