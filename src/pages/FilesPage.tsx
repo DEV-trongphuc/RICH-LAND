@@ -59,7 +59,9 @@ export const FilesPage: React.FC = () => {
   const fetchCategories = async () => {
     if (DEV_MODE) return;
     try {
-      const res = await api.get('/file-categories');
+      const res = await api.get('/file-categories', {
+        params: { visibility: activeTab }
+      });
       const cats = (res.data.data || []).map((c: any) => ({
         ...c,
         icon: c.icon_type === 'hard-drive' ? <HardDrive size={18} /> :
@@ -92,6 +94,9 @@ export const FilesPage: React.FC = () => {
 
   useEffect(() => {
     fetchCategories();
+  }, [activeTab]);
+
+  useEffect(() => {
     fetchProjects();
     const params = new URLSearchParams(window.location.search);
     const pId = params.get('project_id');
@@ -105,6 +110,9 @@ export const FilesPage: React.FC = () => {
       setLoading(true);
       const state = getFilteredMockState();
       let list = [...state.files];
+
+      // Filter by activeTab visibility
+      list = list.filter(f => (f.visibility || 'shared') === activeTab);
 
       if (searchTerm) {
         const s = searchTerm.toLowerCase();
@@ -133,7 +141,8 @@ export const FilesPage: React.FC = () => {
           limit: 15, 
           category: category === 'all' ? '' : category,
           search: searchTerm,
-          project_id: selectedProjectId === 'all' ? '' : selectedProjectId
+          project_id: selectedProjectId === 'all' ? '' : selectedProjectId,
+          visibility: activeTab
         } 
       });
       const data = res.data.data;
@@ -149,7 +158,7 @@ export const FilesPage: React.FC = () => {
   // fetchFiles with auto-reset page on filter change
   useEffect(() => {
     fetchFiles();
-  }, [page, category, searchTerm, selectedProjectId]);
+  }, [page, category, searchTerm, selectedProjectId, activeTab]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -231,7 +240,7 @@ export const FilesPage: React.FC = () => {
   };
 
   const handleSaveCategory = async () => {
-    if (isSaleOrViewer) {
+    if (isSaleOrViewer && activeTab !== 'personal') {
       addToast('Bạn không có quyền thực hiện hành động này', 'error');
       return;
     }
@@ -256,7 +265,7 @@ export const FilesPage: React.FC = () => {
         }
         addToast('Đã cập nhật thư mục', 'success');
       } else {
-        if (!DEV_MODE) await api.post('/file-categories', { label: fullLabel, icon_type: 'folder' });
+        if (!DEV_MODE) await api.post('/file-categories', { label: fullLabel, icon_type: 'folder', visibility: activeTab });
         addToast('Đã tạo thư mục mới', 'success');
       }
       fetchCategories();
@@ -400,15 +409,15 @@ export const FilesPage: React.FC = () => {
           {/* Personal Vault Theme banner */}
           {activeTab === 'personal' && (
             <div style={{
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%)',
-              border: '1px solid rgba(99, 102, 241, 0.25)',
+              background: 'linear-gradient(135deg, #1e1b4b 0%, #311042 100%)',
+              border: '1px solid rgba(99, 102, 241, 0.45)',
               borderRadius: '16px',
-              padding: '1.25rem',
+              padding: '1.5rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '16px',
+              gap: '20px',
               position: 'relative',
-              boxShadow: 'var(--shadow-sm)',
+              boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.25), 0 8px 10px -6px rgba(99, 102, 241, 0.2)',
               overflow: 'hidden'
             }}>
               <div style={{
@@ -417,31 +426,31 @@ export const FilesPage: React.FC = () => {
                 right: 0,
                 width: '120px',
                 height: '100%',
-                opacity: 0.15,
-                background: 'radial-gradient(circle, var(--color-primary) 10%, transparent 11%)',
+                opacity: 0.1,
+                background: 'radial-gradient(circle, #fff 10%, transparent 11%)',
                 backgroundSize: '12px 12px'
               }} />
               
               <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, var(--color-indigo) 0%, #a855f7 100%)',
+                width: '48px',
+                height: '48px',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#fff',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                boxShadow: '0 0 20px rgba(99, 102, 241, 0.5)',
                 flexShrink: 0
               }}>
-                <Shield size={20} className="animate-pulse" />
+                <Shield size={22} className="animate-pulse" />
               </div>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontWeight: 900, fontSize: '0.875rem', color: 'var(--color-indigo)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ flex: 1, zIndex: 1 }}>
+                <h4 style={{ fontWeight: 900, fontSize: '0.9rem', color: '#ffffff', margin: 0, display: 'flex', alignItems: 'center', gap: '10px', letterSpacing: '0.02em' }}>
                   HỆ THỐNG LƯU TRỮ BẢO MẬT CÁ NHÂN (PERSONAL VAULT)
-                  <span style={{ fontSize: '9px', background: 'var(--color-indigo)', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>SECURE</span>
+                  <span style={{ fontSize: '9px', background: '#6366f1', color: '#fff', padding: '3px 8px', borderRadius: '4px', fontWeight: 900, letterSpacing: '0.05em' }}>SECURE</span>
                 </h4>
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', fontWeight: 700 }}>
+                <p style={{ fontSize: '0.75rem', color: 'rgba(224, 231, 255, 0.85)', margin: '4px 0 0 0', fontWeight: 700, lineHeight: '1.4' }}>
                   Không gian mã hóa bảo mật. Chỉ tài khoản cá nhân của bạn mới có quyền truy cập, xem hoặc chỉnh sửa dữ liệu tại đây.
                 </p>
               </div>
@@ -628,8 +637,8 @@ export const FilesPage: React.FC = () => {
                                   setCategory(sub.id);
                                 }}
                               >
-                                <div style={{ color: activeTab === 'personal' ? 'var(--color-indigo)' : '#3b82f6', flexShrink: 0 }}>
-                                  <Folder size={30} fill={activeTab === 'personal' ? 'var(--color-indigo)' : '#3b82f6'} fillOpacity={0.12} />
+                                <div style={{ color: '#d97706', flexShrink: 0 }}>
+                                  <Folder size={30} fill="#eab308" fillOpacity={0.2} />
                                 </div>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <h5 style={{ fontWeight: 750, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={displayLabel}>

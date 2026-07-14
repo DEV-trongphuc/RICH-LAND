@@ -23,22 +23,28 @@ class CloudFileController {
 
         $role = $auth['role'] ?? '';
         $isSale = $role === 'sales' || $role === 'sale';
+        $visibility = $_GET['visibility'] ?? 'shared';
 
-        if ($isSale) {
-            $where = [
-                "cf.tenant_id = ?",
-                "(
+        $where = ["cf.tenant_id = ?"];
+        $params = [$tid];
+
+        if ($visibility === 'personal') {
+            $where[] = "cf.visibility = 'personal'";
+            $where[] = "cf.uploaded_by = ?";
+            $params[] = $uid;
+        } else {
+            $where[] = "(cf.visibility = 'shared' OR cf.visibility IS NULL OR cf.visibility = '')";
+            if ($isSale) {
+                $where[] = "(
                     cf.uploaded_by = ? 
                     OR (
-                        cf.visibility = 'shared' 
-                        AND (cf.category NOT LIKE 'consultant_%' OR cf.category = ?)
+                        cf.category NOT LIKE 'consultant_%' 
+                        OR cf.category = ?
                     )
-                )"
-            ];
-            $params = [$tid, $uid, 'consultant_' . $uid];
-        } else {
-            $where = ["cf.tenant_id = ?"];
-            $params = [$tid];
+                )";
+                $params[] = $uid;
+                $params[] = 'consultant_' . $uid;
+            }
         }
 
         if ($cat) {
