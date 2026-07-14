@@ -79,6 +79,7 @@ export const FilesPage: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [totalSizeBytes, setTotalSizeBytes] = useState(0);
 
   // Restored modal state fields
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -127,6 +128,9 @@ export const FilesPage: React.FC = () => {
         list = list.filter(f => String(f.project_id) === String(selectedProjectId));
       }
 
+      const totalSize = state.files.reduce((acc: number, f: any) => acc + (Number(f.file_size || f.size) || 0), 0);
+      setTotalSizeBytes(totalSize);
+
       setFiles(list);
       setTotal(list.length);
       setLoading(false);
@@ -148,6 +152,7 @@ export const FilesPage: React.FC = () => {
       const data = res.data.data;
       setFiles(data.items || []);
       setTotal(data.total || 0);
+      setTotalSizeBytes(data.total_size_bytes || 0);
     } catch (err: any) {
       addToast('Lỗi khi tải danh sách tệp tin', 'error');
     } finally {
@@ -503,12 +508,12 @@ export const FilesPage: React.FC = () => {
                 <div style={{ width: '80px', height: '6px', background: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden', position: 'relative' }}>
                   <div style={{ 
                     height: '100%', 
-                    width: `${Math.min((files.reduce((acc, f) => acc + (Number(f.file_size) || 0), 0) / (10 * 1024 * 1024 * 1024)) * 100, 100)}%`, 
+                    width: `${Math.min((totalSizeBytes / (10 * 1024 * 1024 * 1024)) * 100, 100)}%`, 
                     background: activeTab === 'personal' ? 'var(--color-indigo)' : 'var(--color-primary)' 
                   }} />
                 </div>
                 <span style={{ fontSize: '10.5px', color: 'var(--color-text)', fontWeight: 800 }}>
-                  {formatSize(files.reduce((acc, f) => acc + (Number(f.file_size) || 0), 0))} / 10 GB
+                  {formatSize(totalSizeBytes)} / 10 GB
                 </span>
               </div>
 

@@ -80,11 +80,16 @@ class CloudFileController {
         ");
         $stmt->execute($params);
         
+        $sumStmt = $this->db->prepare("SELECT SUM(file_size) FROM cloud_files WHERE tenant_id = ?");
+        $sumStmt->execute([$tid]);
+        $totalSizeBytes = (int)$sumStmt->fetchColumn();
+
         respond(200, [
             'items' => $stmt->fetchAll(),
             'total' => $total,
             'page' => $page,
-            'limit' => $limit
+            'limit' => $limit,
+            'total_size_bytes' => $totalSizeBytes
         ]);
     }
 
