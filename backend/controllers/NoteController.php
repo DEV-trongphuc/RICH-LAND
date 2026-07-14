@@ -146,9 +146,14 @@ class NoteController {
 
         // Maintain quyen_truy_cap audit log for Cooperation Slips
         if ($type === 'contact') {
-            // Update last_contact on contact to mark as contacted, and update temperature/suggested_temperature
-            $updateSql = "UPDATE contacts SET last_contact = CURRENT_DATE";
-            $updateParams = [];
+            // Get current pipeline status to resolve setting-based security timer duration dynamically
+            $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+            $stmtStatus->execute([$entityId]);
+            $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+            $securityExpires = $this->getSecurityExpiration($currStatus);
+
+            $updateSql = "UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ?";
+            $updateParams = [$securityExpires];
             if (!empty($b['sale_temperature'])) {
                 $updateSql .= ", temperature = ?";
                 $updateParams[] = $b['sale_temperature'];
@@ -263,17 +268,30 @@ class NoteController {
 
         $this->db->prepare("UPDATE notes SET body=?, is_pinned=?, edit_history=?, updated_at=NOW() WHERE id=? AND tenant_id=?")
             ->execute([$b['body'], $b['is_pinned'] ?? 0, json_encode($history), $id, $auth['tenant_id']]);
+
+        if ($oldNote && $oldNote['entity_type'] === 'contact') {
+            $cid = (int)$oldNote['entity_id'];
+            $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+            $stmtStatus->execute([$cid]);
+            $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+            $securityExpires = $this->getSecurityExpiration($currStatus);
+
+            $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                 ->execute([$securityExpires, $cid, $auth['tenant_id']]);
+        }
+
         respond(200, null, 'Đã cập nhật ghi chú');
     }
 
     public function destroy(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa ghi chú', false);
         // 1. Verify existence and permission
-        $check = $this->db->prepare("SELECT id FROM notes WHERE id=? AND tenant_id=?" . (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) ? " AND user_id=?" : ""));
+        $check = $this->db->prepare("SELECT entity_type, entity_id FROM notes WHERE id=? AND tenant_id=?" . (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true) ? " AND user_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
         if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) $cp[] = $auth['user_id'];
         $check->execute($cp);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
+        $noteRow = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$noteRow) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
 
         $this->db->beginTransaction();
         try {
@@ -283,6 +301,28 @@ class NoteController {
             // 3. Delete associated notifications
             $this->db->prepare("DELETE FROM notifications WHERE tenant_id=? AND link LIKE ?")
                  ->execute([$auth['tenant_id'], "%/notes/$id%"]);
+
+            // Recalculate contact's last_contact
+            if ($noteRow && $noteRow['entity_type'] === 'contact') {
+                $cid = (int)$noteRow['entity_id'];
+                $stmtMax = $this->db->prepare("
+                    SELECT MAX(max_date) FROM (
+                        SELECT DATE(created_at) as max_date FROM notes WHERE entity_type = 'contact' AND entity_id = ?
+                        UNION
+                        SELECT DATE(created_at) as max_date FROM activities WHERE related_type = 'contact' AND related_id = ? AND deleted_at IS NULL
+                    ) t
+                ");
+                $stmtMax->execute([$cid, $cid]);
+                $maxDate = $stmtMax->fetchColumn();
+
+                $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                $stmtStatus->execute([$cid]);
+                $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                $securityExpires = $maxDate ? $this->getSecurityExpiration($currStatus, $maxDate) : null;
+
+                $stmtUpdate = $this->db->prepare("UPDATE contacts SET last_contact = ?, security_expires_at = ? WHERE id = ? AND tenant_id = ?");
+                $stmtUpdate->execute([$maxDate ?: null, $securityExpires, $cid, $auth['tenant_id']]);
+            }
 
             $this->db->commit();
             respond(200, null, 'Đã xóa ghi chú và các thông báo liên quan');
@@ -298,5 +338,27 @@ class NoteController {
         $note = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$note) respond(404, null, 'Ghi chú không tồn tại', false);
         respond(200, $note, 'Lấy chi tiết ghi chú thành công');
+    }
+
+    private function getSecurityExpiration(string $status, ?string $baseDate = null): ?string {
+        $key = 'security_timer_' . $status;
+        $fallback = [
+            'chua_xac_dinh' => '+3 hours',
+            'quan_tam' => '+1 day',
+            'thien_chi' => '+3 days',
+            'dong_y_gap' => '+4 days',
+            'da_gap' => '+5 days',
+            'booking' => '+3 months',
+        ];
+        if (!isset($fallback[$status])) {
+            return null;
+        }
+        $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        $duration = ($val !== false && $val !== null && $val !== '') ? $val : $fallback[$status];
+        
+        $baseTimestamp = $baseDate ? strtotime($baseDate) : time();
+        return date('Y-m-d H:i:s', strtotime($duration, $baseTimestamp));
     }
 }

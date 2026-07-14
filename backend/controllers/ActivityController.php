@@ -315,15 +315,26 @@ class ActivityController {
         // Update contact's last_contact whenever an activity is created
         if (!empty($b['related_id'])) {
             if (($b['related_type'] ?? '') === 'contact') {
-                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
-                     ->execute([(int)$b['related_id'], $auth['tenant_id']]);
+                $cid = (int)$b['related_id'];
+                $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                $stmtStatus->execute([$cid]);
+                $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                $securityExpires = $this->getSecurityExpiration($currStatus);
+
+                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                     ->execute([$securityExpires, $cid, $auth['tenant_id']]);
             } else if (($b['related_type'] ?? '') === 'deal') {
                 $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
                 $sDeal->execute([(int)$b['related_id'], $auth['tenant_id']]);
                 $cid = $sDeal->fetchColumn();
                 if ($cid) {
-                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
-                         ->execute([(int)$cid, $auth['tenant_id']]);
+                    $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                    $stmtStatus->execute([$cid]);
+                    $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                    $securityExpires = $this->getSecurityExpiration($currStatus);
+
+                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                         ->execute([$securityExpires, $cid, $auth['tenant_id']]);
                 }
             }
         }
@@ -584,15 +595,26 @@ class ActivityController {
         $rel = $checkRel->fetch();
         if ($rel && !empty($rel['related_id'])) {
             if ($rel['related_type'] === 'contact') {
-                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
-                     ->execute([(int)$rel['related_id'], $auth['tenant_id']]);
+                $cid = (int)$rel['related_id'];
+                $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                $stmtStatus->execute([$cid]);
+                $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                $securityExpires = $this->getSecurityExpiration($currStatus);
+
+                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                     ->execute([$securityExpires, $cid, $auth['tenant_id']]);
             } else if ($rel['related_type'] === 'deal') {
                 $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
                 $sDeal->execute([(int)$rel['related_id'], $auth['tenant_id']]);
                 $cid = $sDeal->fetchColumn();
                 if ($cid) {
-                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
-                         ->execute([(int)$cid, $auth['tenant_id']]);
+                    $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                    $stmtStatus->execute([$cid]);
+                    $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                    $securityExpires = $this->getSecurityExpiration($currStatus);
+
+                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                         ->execute([$securityExpires, $cid, $auth['tenant_id']]);
                 }
             }
         }
@@ -809,6 +831,29 @@ class ActivityController {
             }
         }
 
+        // Update contact's last_contact whenever an activity comment is added
+        if ($activity) {
+            $relatedType = $activity['related_type'] ?? '';
+            $relatedId = (int)($activity['related_id'] ?? 0);
+            $cid = 0;
+            if ($relatedType === 'contact') {
+                $cid = $relatedId;
+            } else if ($relatedType === 'deal') {
+                $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+                $sDeal->execute([$relatedId, $auth['tenant_id']]);
+                $cid = (int)$sDeal->fetchColumn();
+            }
+            if ($cid > 0) {
+                $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                $stmtStatus->execute([$cid]);
+                $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                $securityExpires = $this->getSecurityExpiration($currStatus);
+
+                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ? AND tenant_id = ?")
+                     ->execute([$securityExpires, $cid, $auth['tenant_id']]);
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'ADD_COMMENT', 'activity', $id);
 
         respond(200, ['id' => $commentId], 'Đã thêm bình luận');
@@ -816,6 +861,12 @@ class ActivityController {
 
     public function destroy(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa hoạt động', false);
+
+        // Fetch related entity before deleting
+        $stmtAct = $this->db->prepare("SELECT related_type, related_id FROM activities WHERE id = ? AND tenant_id = ?");
+        $stmtAct->execute([$id, $auth['tenant_id']]);
+        $actRow = $stmtAct->fetch(PDO::FETCH_ASSOC);
+
         $sql = "UPDATE activities SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
@@ -837,6 +888,42 @@ class ActivityController {
         $stmt=$this->db->prepare($sql);
         $stmt->execute($p);
         if(!$stmt->rowCount()) respond(404,null,'Không tìm thấy hoặc không có quyền',false);
+
+        // Recalculate contact's last_contact
+        if ($actRow) {
+            $relatedType = $actRow['related_type'] ?? '';
+            $relatedId = (int)($actRow['related_id'] ?? 0);
+            
+            $cid = 0;
+            if ($relatedType === 'contact') {
+                $cid = $relatedId;
+            } else if ($relatedType === 'deal') {
+                $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+                $sDeal->execute([$relatedId, $auth['tenant_id']]);
+                $cid = (int)$sDeal->fetchColumn();
+            }
+
+            if ($cid > 0) {
+                $stmtMax = $this->db->prepare("
+                    SELECT MAX(max_date) FROM (
+                        SELECT DATE(created_at) as max_date FROM notes WHERE entity_type = 'contact' AND entity_id = ?
+                        UNION
+                        SELECT DATE(created_at) as max_date FROM activities WHERE related_type = 'contact' AND related_id = ? AND deleted_at IS NULL
+                    ) t
+                ");
+                $stmtMax->execute([$cid, $cid]);
+                $maxDate = $stmtMax->fetchColumn();
+
+                $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                $stmtStatus->execute([$cid]);
+                $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                $securityExpires = $maxDate ? $this->getSecurityExpiration($currStatus, $maxDate) : null;
+
+                $stmtUpdate = $this->db->prepare("UPDATE contacts SET last_contact = ?, security_expires_at = ? WHERE id = ? AND tenant_id = ?");
+                $stmtUpdate->execute([$maxDate ?: null, $securityExpires, $cid, $auth['tenant_id']]);
+            }
+        }
+
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'activity', $id);
         respond(200,null,'Đã xóa hoạt động');
     }
@@ -967,5 +1054,27 @@ class ActivityController {
         } catch (Throwable $e) {
             error_log("Notification System Error: " . $e->getMessage());
         }
+    }
+
+    private function getSecurityExpiration(string $status, ?string $baseDate = null): ?string {
+        $key = 'security_timer_' . $status;
+        $fallback = [
+            'chua_xac_dinh' => '+3 hours',
+            'quan_tam' => '+1 day',
+            'thien_chi' => '+3 days',
+            'dong_y_gap' => '+4 days',
+            'da_gap' => '+5 days',
+            'booking' => '+3 months',
+        ];
+        if (!isset($fallback[$status])) {
+            return null;
+        }
+        $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        $duration = ($val !== false && $val !== null && $val !== '') ? $val : $fallback[$status];
+        
+        $baseTimestamp = $baseDate ? strtotime($baseDate) : time();
+        return date('Y-m-d H:i:s', strtotime($duration, $baseTimestamp));
     }
 }
