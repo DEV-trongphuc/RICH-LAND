@@ -2129,7 +2129,7 @@ fetch("${webhookUrl(selected.webhook_token)}", {
         onClose={() => setShowPauseWarning(false)}
         onConfirm={() => selected && doToggleActive(selected)}
         title={t("⏸ Tạm dừng kết nối?")}
-        message={t('Khi tạm dừng kết nối "{name}":\n\n• Webhook sẽ ngừng nhận dữ liệu mới từ Google Sheets.\n• Cronjob đồng bộ tự động sẽ dừng hoàn toàn.\n• Dữ liệu hiện có sẽ được giữ nguyên.\n\nBạn có thể bật lại bất cứ lúc nào.').replace('{name}', selected?.sheet_name || '')}
+        message={t('Khi tạm dừng kết nối "{name}":\n\n• Cổng nhận dữ liệu sẽ ngừng tiếp nhận khách hàng mới từ Google Sheets.\n• Tiến trình đồng bộ tự động sẽ dừng hoàn toàn.\n• Dữ liệu hiện có sẽ được giữ nguyên.\n\nBạn có thể bật lại bất cứ lúc nào.').replace('{name}', selected?.sheet_name || '')}
         confirmText={t("Tạm dừng")}
         cancelText={t('Hủy bỏ')}
       />

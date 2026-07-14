@@ -1837,7 +1837,7 @@ const RuleSettingsInner = () => {
                   {t("2. Kết nối đa nguồn (Integration Sources)")}
                 </h5>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                  {t("Hệ thống hỗ trợ tự động quét dữ liệu từ Google Sheets (định kỳ mỗi 2-5 phút qua cron, sử dụng mã băm Row Hash tránh trùng lặp), hoặc đẩy ngay lập tức qua Landing Page API, hoặc nhập tay thủ công.")}
+                  {t("Hệ thống hỗ trợ tự động quét và lấy thông tin khách hàng mới từ trang Google Sheets của Marketing (mỗi 1 phút tự chạy qua tiến trình lập lịch duy nhất), tự động loại bỏ các dòng bị trùng bằng bộ lọc thông minh để tránh chia 2 lần cho cùng một khách hàng, hoặc đẩy ngay lập tức qua cổng kết nối API, hoặc nhập bằng tay.")}
                 </p>
               </div>
             </div>
