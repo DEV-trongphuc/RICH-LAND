@@ -149,6 +149,7 @@ class FinanceController
             SELECT i.*, c.name as company_name,
                    CASE WHEN ct.deleted_at IS NULL THEN CONCAT(ct.first_name,' ',ct.last_name) 
                         ELSE CONCAT(ct.first_name,' ',ct.last_name, ' (Đã xóa)') END as contact_name,
+                   ct.phone as contact_phone,
                    u.full_name as creator_name
             FROM invoices i
             LEFT JOIN companies c  ON i.company_id  = c.id
@@ -228,7 +229,7 @@ class FinanceController
     public function showInvoice(array $auth, int $id): void
     {
         $sql = "
-            SELECT i.*, CONCAT(ct.first_name,' ',ct.last_name) as contact_name, c.name as company_name
+            SELECT i.*, CONCAT(ct.first_name,' ',ct.last_name) as contact_name, ct.phone as contact_phone, c.name as company_name
             FROM invoices i
             LEFT JOIN contacts ct ON i.contact_id = ct.id
             LEFT JOIN companies c ON i.company_id = c.id

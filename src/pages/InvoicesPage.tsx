@@ -48,7 +48,16 @@ export const InvoicesPage: React.FC = () => {
   const fetchInvoices = useCallback(async () => {
     if (DEV_MODE) {
       const state = getFilteredMockState();
-      let list = [...state.invoices];
+      let list = state.invoices.map(i => {
+        const contact = state.contacts.find(c => c.id === i.contact_id);
+        const company = state.companies.find(c => c.id === i.company_id);
+        return {
+          ...i,
+          contact_name: contact ? `${contact.first_name} ${contact.last_name}` : 'Khách lẻ',
+          contact_phone: contact ? contact.phone : '',
+          company_name: company ? company.name : ''
+        };
+      });
       
       if (search) {
         const s = search.toLowerCase();
@@ -459,8 +468,48 @@ export const InvoicesPage: React.FC = () => {
             onClick={() => setPreviewItem(null)} 
             style={{ zIndex: 1000 }}
           >
+            <style>{`
+              @media print {
+                body {
+                  background: white !important;
+                  color: black !important;
+                }
+                #root {
+                  display: none !important;
+                }
+                .overlay-backdrop {
+                  position: static !important;
+                  background: transparent !important;
+                  display: block !important;
+                  padding: 0 !important;
+                  height: auto !important;
+                  width: auto !important;
+                  opacity: 1 !important;
+                  overflow: visible !important;
+                }
+                .invoice-print-container {
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  border-radius: 0 !important;
+                  background: white !important;
+                  position: static !important;
+                  transform: none !important;
+                  overflow: visible !important;
+                }
+                .no-print {
+                  display: none !important;
+                }
+                .print-no-avatar {
+                  display: none !important;
+                }
+              }
+            `}</style>
             <motion.div
-              className="modal-sheet"
+              className="modal-sheet invoice-print-container"
               style={{ width: '90%', maxWidth: 700, zIndex: 1010, padding: 0, borderRadius: 'var(--radius-2xl)', margin: 'auto', overflow: 'hidden' }}
               initial={{ opacity: 0, scale: 0.96, y: 20 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
@@ -483,24 +532,32 @@ export const InvoicesPage: React.FC = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <p className="text-xs text-light uppercase tracking-wider font-bold" style={{ margin: 0 }}>Khách hàng nhận</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
-                      <div style={{
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '50%',
-                        background: 'linear-gradient(135deg, var(--color-primary), #ef4444)',
-                        color: 'white',
-                        fontWeight: 800,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1rem',
-                        boxShadow: '0 4px 10px rgba(189, 29, 45, 0.15)',
-                        flexShrink: 0
-                      }}>
+                      <div 
+                        className="print-no-avatar"
+                        style={{
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, var(--color-primary), #ef4444)',
+                          color: 'white',
+                          fontWeight: 800,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1rem',
+                          boxShadow: '0 4px 10px rgba(189, 29, 45, 0.15)',
+                          flexShrink: 0
+                        }}
+                      >
                         {previewItem.contact_name ? previewItem.contact_name.trim().split(' ').pop().charAt(0).toUpperCase() : 'K'}
                       </div>
                       <div>
                         <p style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0, color: 'var(--color-text)' }}>{previewItem.contact_name || 'Khách lẻ'}</p>
+                        {previewItem.contact_phone && (
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: '3px 0 0 0', fontWeight: 600 }}>
+                            SĐT: {previewItem.contact_phone}
+                          </p>
+                        )}
                         {previewItem.company_name && (
                           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', fontWeight: 500 }}>
                             {previewItem.company_name}
@@ -555,7 +612,7 @@ export const InvoicesPage: React.FC = () => {
                   </tfoot>
                 </table>
 
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
+                <div className="no-print" style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
                   <button className="btn ghost" onClick={() => setPreviewItem(null)}>Đóng</button>
                   <button className="btn primary" onClick={() => window.print()}><Printer size={16} /> In Hóa Đơn</button>
                 </div>
