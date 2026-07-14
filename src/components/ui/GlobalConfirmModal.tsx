@@ -5,20 +5,24 @@ import { useUIStore } from '../../store/uiStore';
 
 export const GlobalConfirmModal: React.FC = () => {
   const { confirmModal, closeConfirm } = useUIStore();
-  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', extraText, isDanger, impactInfo, requireWordMatch, onConfirm, onCancel, onExtra } = confirmModal;
+  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', extraText, isDanger, impactInfo, requireWordMatch, requirePromptInput, promptPlaceholder, onConfirm, onCancel, onExtra } = confirmModal;
   const [matchInput, setMatchInput] = React.useState('');
+  const [promptInput, setPromptInput] = React.useState('');
 
   React.useEffect(() => {
-    if (isOpen) setMatchInput('');
+    if (isOpen) {
+      setMatchInput('');
+      setPromptInput('');
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const isLocked = !!(requireWordMatch && matchInput !== requireWordMatch);
+  const isLocked = !!(requireWordMatch && matchInput !== requireWordMatch) || !!(requirePromptInput && !promptInput.trim());
 
   const handleConfirm = () => {
     if (isLocked) return;
-    onConfirm();
+    onConfirm(requirePromptInput ? promptInput : undefined);
     closeConfirm();
   };
 
@@ -156,6 +160,34 @@ export const GlobalConfirmModal: React.FC = () => {
                       padding: '8px 12px',
                       borderRadius: '8px',
                       width: '100%'
+                    }}
+                  />
+                </div>
+              )}
+
+              {requirePromptInput && (
+                <div style={{ marginTop: '1rem' }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder={promptPlaceholder || 'Nhập giá trị...'}
+                    value={promptInput}
+                    onChange={(e) => setPromptInput(e.target.value)}
+                    autoFocus
+                    style={{ 
+                      fontSize: '0.875rem',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      width: '100%',
+                      background: 'var(--color-bg)',
+                      color: 'var(--color-text)',
+                      border: '1px solid var(--color-border)',
+                      outline: 'none'
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && promptInput.trim()) {
+                        handleConfirm();
+                      }
                     }}
                   />
                 </div>

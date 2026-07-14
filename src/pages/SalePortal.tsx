@@ -2554,6 +2554,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setChecklist(parsed.checklist);
               setSelectedTaskForDetails(parsedTask);
               
+              // Set active subtab to correspond with the task type so it shows in the list
+              const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
+              const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+              if (tagsList.includes('personal_task')) {
+                setWsSubTab('personal');
+              } else if (!isClient) {
+                setWsSubTab('team');
+              } else {
+                setWsSubTab('customer');
+              }
+
               // Clear the task_id from URL so it doesn't pop open again when page refreshes/loads
               const nextParams = new URLSearchParams(loc.search);
               nextParams.delete('task_id');
