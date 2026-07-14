@@ -30,6 +30,7 @@ export const FilesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'shared' | 'personal'>('shared');
+  const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [category, setCategory] = useState('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -237,19 +238,33 @@ export const FilesPage: React.FC = () => {
     if (!catFormData.label || isSavingCategory) return;
     try {
       setIsSavingCategory(true);
+      
+      // Calculate full path label based on currentPath (excluding the last element if editing)
+      const parentPath = editingCat ? currentPath.slice(0, -1) : currentPath;
+      const fullLabel = parentPath.length > 0 ? `${parentPath.join('/')}/${catFormData.label.trim()}` : catFormData.label.trim();
+
       if (editingCat) {
-        if (!DEV_MODE) await api.put(`/file-categories/${editingCat.id}`, { label: catFormData.label });
-        addToast('Đã cập nhật danh mục', 'success');
+        const oldLabel = editingCat.label;
+        if (!DEV_MODE) {
+          await api.put(`/file-categories/${editingCat.id}`, { label: fullLabel });
+          // If this is a parent folder, update all its child subfolders recursively
+          const subCatsToRename = categories.filter(c => c.label.startsWith(oldLabel + '/'));
+          for (const sub of subCatsToRename) {
+            const relativePart = sub.label.slice(oldLabel.length);
+            await api.put(`/file-categories/${sub.id}`, { label: fullLabel + relativePart });
+          }
+        }
+        addToast('Đã cập nhật thư mục', 'success');
       } else {
-        if (!DEV_MODE) await api.post('/file-categories', { label: catFormData.label, icon_type: 'folder' });
-        addToast('Đã thêm danh mục mới', 'success');
+        if (!DEV_MODE) await api.post('/file-categories', { label: fullLabel, icon_type: 'folder' });
+        addToast('Đã tạo thư mục mới', 'success');
       }
       fetchCategories();
       setShowCatModal(false);
       setEditingCat(null);
       setCatFormData({ label: '' });
     } catch (e: any) {
-      addToast('Lỗi lưu danh mục', 'error');
+      addToast('Lỗi lưu thư mục', 'error');
     } finally {
       setIsSavingCategory(false);
     }
@@ -288,7 +303,29 @@ export const FilesPage: React.FC = () => {
     );
   };
 
-  const filtered = files;
+  const currentPathStr = currentPath.join('/');
+  const currentCategoryObj = categories.find(c => c.label === currentPathStr);
+  const currentCategoryId = currentCategoryObj ? currentCategoryObj.id : 'all';
+
+  const displayFolders = searchTerm ? [] : categories.filter(c => {
+    if (c.id === 'all') return false;
+    const label = c.label;
+    if (currentPath.length === 0) {
+      return !label.includes('/');
+    } else {
+      return label.startsWith(currentPathStr + '/') && label.slice(currentPathStr.length + 1).split('/').length === 1;
+    }
+  });
+
+  const displayFiles = searchTerm 
+    ? files 
+    : files.filter(f => {
+        if (currentPath.length === 0) {
+          return !f.category || f.category === 'general' || f.category === 'all' || !categories.some(c => c.id === f.category);
+        } else {
+          return f.category === currentCategoryId;
+        }
+      });
 
   const getMimeIcon = (mime: string) => {
     if (!mime) return <File size={24} />;
@@ -332,14 +369,14 @@ export const FilesPage: React.FC = () => {
            <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', gap: '4px' }}>
              <button 
                 style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'shared' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'shared' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'shared' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => setActiveTab('shared')}
+                onClick={() => { setActiveTab('shared'); setCurrentPath([]); setCategory('all'); }}
                 className={activeTab === 'shared' ? '' : 'hover-lift'}
              >
                Dùng chung
              </button>
              <button 
                 style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'personal' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'personal' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'personal' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => setActiveTab('personal')}
+                onClick={() => { setActiveTab('personal'); setCurrentPath([]); setCategory('all'); }}
                 className={activeTab === 'personal' ? '' : 'hover-lift'}
              >
                Cá nhân
@@ -356,53 +393,128 @@ export const FilesPage: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '2rem', flex: 1, overflow: 'hidden' }}>
-        {/* Sidebar Nav */}
-        <div className="hide-on-mobile" style={{ width: '250px', display: 'flex', flexDirection: 'column', gap: '2rem', flexShrink: 0 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 8px' }}>
-                <p style={{ fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DANH MỤC</p>
-                {!isSaleOrViewer && (
-                  <button 
-                    onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
-                    style={{ color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  >
-                    <Plus size={14} />
-                  </button>
-                )}
-             </div>
-             {categories.map(cat => (
-               <button
-                 key={cat.id}
-                 onClick={() => { setPage(1); setCategory(cat.id); }}
-                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 'var(--radius-lg)', transition: 'all 0.2s', cursor: 'pointer', background: category === cat.id ? 'var(--color-surface)' : 'transparent', border: category === cat.id ? '1px solid var(--color-border)' : '1px solid transparent', boxShadow: category === cat.id ? 'var(--shadow-sm)' : 'none', color: category === cat.id ? 'var(--color-primary)' : 'var(--color-text-light)' }}
-               >
-                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
-                   <span style={{ color: category === cat.id ? 'var(--color-primary)' : 'inherit' }}>{cat.icon}</span>
-                   <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>{cat.label}</span>
-                 </div>
-                 {category === cat.id && <ChevronRight size={14} style={{ opacity: 0.5 }} />}
-               </button>
-             ))}
-          </div>
-
-          <div style={{ marginTop: 'auto', padding: '20px', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', position: 'relative', overflow: 'hidden' }}>
-             <h5 style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '8px' }}>Dung lượng sử dụng</h5>
-             <div style={{ width: '100%', height: '8px', background: 'var(--color-border)', borderRadius: '999px', marginBottom: '12px', overflow: 'hidden' }}>
-               <motion.div 
-                  initial={{ width: 0 }} 
-                  animate={{ width: `${Math.min((files.reduce((acc, f) => acc + (Number(f.file_size) || 0), 0) / (10 * 1024 * 1024 * 1024)) * 100, 100)}%` }} 
-                  style={{ height: '100%', background: 'var(--color-primary)' }} 
-               />
-             </div>
-             <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700 }}>
-               {formatSize(files.reduce((acc, f) => acc + (Number(f.file_size) || 0), 0))} / 10 GB Đã dùng
-             </p>
-          </div>
-        </div>
-
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Main Content Area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
+          
+          {/* Personal Vault Theme banner */}
+          {activeTab === 'personal' && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.04) 100%)',
+              border: '1px solid rgba(99, 102, 241, 0.25)',
+              borderRadius: '16px',
+              padding: '1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              position: 'relative',
+              boxShadow: 'var(--shadow-sm)',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: '120px',
+                height: '100%',
+                opacity: 0.15,
+                background: 'radial-gradient(circle, var(--color-primary) 10%, transparent 11%)',
+                backgroundSize: '12px 12px'
+              }} />
+              
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, var(--color-indigo) 0%, #a855f7 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                flexShrink: 0
+              }}>
+                <Shield size={20} className="animate-pulse" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ fontWeight: 900, fontSize: '0.875rem', color: 'var(--color-indigo)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  HỆ THỐNG LƯU TRỮ BẢO MẬT CÁ NHÂN (PERSONAL VAULT)
+                  <span style={{ fontSize: '9px', background: 'var(--color-indigo)', color: '#fff', padding: '2px 6px', borderRadius: '4px', fontWeight: 900 }}>SECURE</span>
+                </h4>
+                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', fontWeight: 700 }}>
+                  Không gian mã hóa bảo mật. Chỉ tài khoản cá nhân của bạn mới có quyền truy cập, xem hoặc chỉnh sửa dữ liệu tại đây.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Sleek Explorer Header & Breadcrumbs Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'var(--color-surface)',
+            border: '1px solid rgba(226, 232, 240, 0.8)',
+            borderRadius: '12px',
+            padding: '10px 16px',
+            gap: '1.5rem',
+            flexWrap: 'wrap',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', flex: 1, paddingBottom: '2px' }}>
+              <button 
+                onClick={() => { setCurrentPath([]); setCategory('all'); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: currentPath.length === 0 ? 'var(--color-primary)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
+              >
+                <HardDrive size={16} /> Gốc
+              </button>
+              {currentPath.map((folder, idx) => (
+                <React.Fragment key={idx}>
+                  <ChevronRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                  <button
+                    onClick={() => {
+                      const newPath = currentPath.slice(0, idx + 1);
+                      setCurrentPath(newPath);
+                      const partialLabel = newPath.join('/');
+                      const catObj = categories.find(c => c.label === partialLabel);
+                      setCategory(catObj ? catObj.id : 'all');
+                    }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: idx === currentPath.length - 1 ? 'var(--color-primary)' : 'var(--color-text-muted)', padding: 0 }}
+                  >
+                    {folder}
+                  </button>
+                </React.Fragment>
+              ))}
+            </div>
+            
+            {/* Storage Progress indicator & Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--color-text-muted)' }}>Dung lượng:</span>
+                <div style={{ width: '80px', height: '6px', background: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ 
+                    height: '100%', 
+                    width: `${Math.min((files.reduce((acc, f) => acc + (Number(f.file_size) || 0), 0) / (10 * 1024 * 1024 * 1024)) * 100, 100)}%`, 
+                    background: activeTab === 'personal' ? 'var(--color-indigo)' : 'var(--color-primary)' 
+                  }} />
+                </div>
+                <span style={{ fontSize: '10.5px', color: 'var(--color-text)', fontWeight: 800 }}>
+                  {formatSize(files.reduce((acc, f) => acc + (Number(f.file_size) || 0), 0))} / 10 GB
+                </span>
+              </div>
+
+              {!isViewer && (
+                <button 
+                  className="btn outline"
+                  onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
+                  style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', height: '32px', border: '1px solid rgba(226, 232, 240, 0.8)' }}
+                >
+                  <Plus size={14} /> Thư mục mới
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Mobile Folder/Category Dropdown */}
           <div className="mobile-only" style={{ width: '100%', marginBottom: '0.5rem' }}>
             <CustomSelect
@@ -467,7 +579,7 @@ export const FilesPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
                 {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton" style={{ height: '192px', borderRadius: 'var(--radius-2xl)' }} />)}
               </div>
-            ) : total === 0 ? (
+            ) : (displayFolders.length === 0 && displayFiles.length === 0) ? (
               <div style={{ flex: 1, display: 'flex', minHeight: '400px', width: '100%' }}>
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', width: '100%' }}>
                   <EmptyCard 
@@ -482,136 +594,254 @@ export const FilesPage: React.FC = () => {
             ) : (
               <>
                 {viewMode === 'grid' ? (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem', paddingBottom: '2rem' }}>
-                    {filtered.map(f => (
-                      <motion.div 
-                        key={f.id} 
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', position: 'relative' }}
-                        className="hover-shadow"
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                          <div style={{ width: '56px', height: '56px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)' }}>
-                            {getMimeIcon(f.mime_type)}
-                          </div>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={16} /></button>}
-                            <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={16} /></button>
-                            {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>}
-                          </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', paddingBottom: '2rem' }}>
+                    {/* Folders Section */}
+                    {displayFolders.length > 0 && (
+                      <div>
+                        <h5 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Thư mục ({displayFolders.length})</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                          {displayFolders.map(sub => {
+                            const displayLabel = currentPath.length === 0 ? sub.label : sub.label.slice(currentPathStr.length + 1);
+                            const fileCount = files.filter(f => f.category === sub.id).length;
+                            return (
+                              <motion.div
+                                key={sub.id}
+                                layout
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                style={{
+                                  background: 'var(--color-surface)',
+                                  padding: '0.85rem 1.15rem',
+                                  borderRadius: '12px',
+                                  border: '1px solid rgba(226, 232, 240, 0.8)',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  position: 'relative'
+                                }}
+                                className="hover-shadow"
+                                onClick={() => {
+                                  const nextPath = [...currentPath, displayLabel];
+                                  setCurrentPath(nextPath);
+                                  setCategory(sub.id);
+                                }}
+                              >
+                                <div style={{ color: activeTab === 'personal' ? 'var(--color-indigo)' : '#3b82f6', flexShrink: 0 }}>
+                                  <Folder size={30} fill={activeTab === 'personal' ? 'var(--color-indigo)' : '#3b82f6'} fillOpacity={0.12} />
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <h5 style={{ fontWeight: 750, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={displayLabel}>
+                                    {displayLabel}
+                                  </h5>
+                                  <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', margin: '2px 0 0 0', fontWeight: 700 }}>
+                                    {fileCount} tài liệu
+                                  </p>
+                                </div>
+                                {!isViewer && (
+                                  <div style={{ display: 'flex', gap: '2px' }} onClick={e => e.stopPropagation()}>
+                                    <button className="btn-icon-bare" title="Sửa" onClick={() => { setEditingCat(sub); setCatFormData({ label: displayLabel }); setShowCatModal(true); }}><Edit size={14} /></button>
+                                    <button className="btn-icon-bare" title="Xóa" onClick={() => deleteCategory(sub.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={14} /></button>
+                                  </div>
+                                )}
+                              </motion.div>
+                            );
+                          })}
                         </div>
-                        
-                        <h4 style={{ fontWeight: 900, fontSize: '0.875rem', color: 'var(--color-text)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>{f.name}</h4>
-                        <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: f.project_name ? '0.5rem' : '1.25rem' }}>
-                          {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
-                        </p>
-                        {f.project_name && (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 700, marginBottom: '1.25rem' }}>
-                            <Building2 size={10} /> {f.project_name}
-                          </div>
-                        )}
+                      </div>
+                    )}
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
-                          <Avatar name={f.uploader_name} size="sm" />
-                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                            <span style={{ fontSize: '10px', fontWeight: 900, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.uploader_name}</span>
-                            <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Clock3 size={10} /> {new Date(f.created_at).toLocaleDateString('vi-VN')}
-                            </span>
-                          </div>
+                    {/* Files Section */}
+                    {displayFiles.length > 0 && (
+                      <div>
+                        <h5 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '1rem', letterSpacing: '0.05em' }}>Tệp tin ({displayFiles.length})</h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.25rem' }}>
+                          {displayFiles.map(f => (
+                            <motion.div 
+                              key={f.id} 
+                              layout
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              style={{ background: 'var(--color-surface)', padding: '1.15rem', borderRadius: '16px', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', position: 'relative' }}
+                              className="hover-shadow"
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                                <div style={{ width: '48px', height: '48px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {getMimeIcon(f.mime_type)}
+                                </div>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={15} /></button>}
+                                  <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={15} /></button>
+                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={15} /></button>}
+                                </div>
+                              </div>
+                              
+                              <h4 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>{f.name}</h4>
+                              <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: f.project_name ? '0.5rem' : '1.15rem' }}>
+                                {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
+                              </p>
+                              {f.project_name && (
+                                <div style={{ gap: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 800, marginBottom: '1.15rem', display: 'inline-flex', alignItems: 'center' }}>
+                                  <Building2 size={10} /> {f.project_name}
+                                </div>
+                              )}
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', background: 'var(--color-bg)', borderRadius: '10px' }}>
+                                <Avatar name={f.uploader_name} size="sm" />
+                                <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                                  <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.uploader_name}</span>
+                                  <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Clock3 size={9} /> {new Date(f.created_at).toLocaleDateString('vi-VN')}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                                <a 
+                                  href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="btn primary" 
+                                  style={{ flex: 1, padding: '7px', fontSize: '0.75rem', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                >
+                                  <Eye size={13} /> Xem tài liệu
+                                </a>
+                                <a 
+                                  href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                  download={f.name}
+                                  className="btn outline" 
+                                  style={{ padding: '7px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="Tải xuống"
+                                >
+                                  <Download size={15} />
+                                </a>
+                              </div>
+                            </motion.div>
+                          ))}
                         </div>
-
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                            <a 
-                              href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn primary" 
-                              style={{ flex: 1, padding: '8px', fontSize: '0.75rem', borderRadius: 'var(--radius-lg)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                            >
-                              <Eye size={14} /> Xem tài liệu
-                            </a>
-                            <a 
-                              href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                              download={f.name}
-                              className="btn outline" 
-                              style={{ padding: '8px 12px', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                              title="Tải xuống"
-                            >
-                              <Download size={16} />
-                            </a>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: '2rem' }}>
-                      <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                        <thead>
-                            <tr>
-                              <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Tên tài liệu</th>
-                              <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Dung lượng</th>
-                              <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Người tải lên</th>
-                              <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Ngày tải</th>
-                              <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)', textAlign: 'right' }}>Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(f => (
-                              <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: '2rem' }}>
+                    <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                      <thead>
+                          <tr>
+                            <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Tên tài liệu</th>
+                            <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Loại</th>
+                            <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Dung lượng</th>
+                            <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Người tải lên</th>
+                            <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Ngày tải</th>
+                            <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)', textAlign: 'right' }}>Hành động</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {/* List view folders first */}
+                          {displayFolders.map(sub => {
+                            const displayLabel = currentPath.length === 0 ? sub.label : sub.label.slice(currentPathStr.length + 1);
+                            return (
+                              <tr 
+                                key={sub.id} 
+                                className="hover-row" 
+                                style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                                onClick={() => {
+                                  const nextPath = [...currentPath, displayLabel];
+                                  setCurrentPath(nextPath);
+                                  setCategory(sub.id);
+                                }}
+                              >
                                 <td data-label="Tên tài liệu" style={{ padding: '1.25rem 2rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                      <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {getFileIcon(f.name).icon}
-                                      </div>
-                                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
-                                        {f.project_name && (
-                                          <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                                            <Building2 size={10} /> {f.project_name}
-                                          </span>
-                                        )}
-                                      </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ color: '#f59e0b' }}>
+                                      <Folder size={20} fill="#f59e0b" fillOpacity={0.25} />
                                     </div>
-                                </td>
-                                <td data-label="Dung lượng" style={{ padding: '1.25rem 1.5rem' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{formatSize(f.file_size || f.size)}</span>
-                                </td>
-                                <td data-label="Người tải lên" style={{ padding: '1.25rem 1.5rem' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <Avatar name={f.uploader_name} size="sm" />
-                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{f.uploader_name}</span>
+                                    <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{displayLabel}</span>
                                   </div>
                                 </td>
+                                <td data-label="Loại" style={{ padding: '1.25rem 1.5rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 750, color: 'var(--color-text-muted)' }}>Thư mục</span>
+                                </td>
+                                <td data-label="Dung lượng" style={{ padding: '1.25rem 1.5rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>-</span>
+                                </td>
+                                <td data-label="Người tải lên" style={{ padding: '1.25rem 1.5rem' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>-</span>
+                                </td>
                                 <td data-label="Ngày tải" style={{ padding: '1.25rem 1.5rem' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{new Date(f.created_at).toLocaleDateString('vi-VN')}</span>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>-</span>
                                 </td>
-                                <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                      {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
-                                      <a 
-                                        href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="btn-icon-bare" 
-                                        title="Xem tài liệu"
-                                      >
-                                        <Eye size={18} />
-                                      </a>
-                                      <a 
-                                        href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                                        download={f.name}
-                                        className="btn-icon-bare" 
-                                        title="Tải xuống"
-                                      >
-                                        <Download size={18} />
-                                      </a>
-                                      {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>}
-                                      <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
+                                <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                    {!isViewer && (
+                                      <>
+                                        <button className="btn-icon-bare" onClick={() => { setEditingCat(sub); setCatFormData({ label: displayLabel }); setShowCatModal(true); }}><Edit size={16} /></button>
+                                        <button className="btn-icon-bare" onClick={() => deleteCategory(sub.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+
+                          {/* List view files next */}
+                          {displayFiles.map(f => (
+                            <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                              <td data-label="Tên tài liệu" style={{ padding: '1.25rem 2rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      {getFileIcon(f.name).icon}
                                     </div>
-                                </td>
+                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                      <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
+                                      {f.project_name && (
+                                        <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                          <Building2 size={10} /> {f.project_name}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                              </td>
+                              <td data-label="Loại" style={{ padding: '1.25rem 1.5rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 750, color: 'var(--color-text-muted)' }}>{f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}</span>
+                              </td>
+                              <td data-label="Dung lượng" style={{ padding: '1.25rem 1.5rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{formatSize(f.file_size || f.size)}</span>
+                              </td>
+                              <td data-label="Người tải lên" style={{ padding: '1.25rem 1.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <Avatar name={f.uploader_name} size="sm" />
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{f.uploader_name}</span>
+                                </div>
+                              </td>
+                              <td data-label="Ngày tải" style={{ padding: '1.25rem 1.5rem' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{new Date(f.created_at).toLocaleDateString('vi-VN')}</span>
+                              </td>
+                              <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                    {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
+                                    <a 
+                                      href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="btn-icon-bare" 
+                                      title="Xem tài liệu"
+                                    >
+                                      <Eye size={18} />
+                                    </a>
+                                    <a 
+                                      href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                      download={f.name}
+                                      className="btn-icon-bare" 
+                                      title="Tải xuống"
+                                    >
+                                      <Download size={18} />
+                                    </a>
+                                    {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>}
+                                    <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
+                                  </div>
+                              </td>
                             </tr>
                           ))}
                       </tbody>
