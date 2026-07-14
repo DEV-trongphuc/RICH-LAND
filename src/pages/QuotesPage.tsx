@@ -124,7 +124,7 @@ export const QuotesPage: React.FC = () => {
 
   const STATUS_CONFIG: Record<string, { label: string; class: string; icon: React.ReactNode; color: string }> = {
     draft: { label: 'Nháp', class: 'info', icon: <Pencil size={12} />, color: '#94a3b8' },
-    sent: { label: 'Đã gửi', class: 'warning', icon: <Send size={12} />, color: '#f59e0b' },
+    sent: { label: 'Chờ phản hồi', class: 'warning', icon: <Send size={12} />, color: '#f59e0b' },
     accepted: { label: 'Đã duyệt', class: 'success', icon: <FileCheck size={12} />, color: '#10b981' },
     invoiced: { label: 'Đã xuất HĐ', class: 'secondary', icon: <Download size={12} />, color: '#BD1D2D' },
     rejected: { label: 'Từ chối', class: 'danger', icon: <XCircle size={12} />, color: '#ef4444' },
@@ -209,7 +209,7 @@ export const QuotesPage: React.FC = () => {
         {[
           { label: 'Tổng giá trị đề xuất', value: FMT(totalVal), icon: TrendingUp, color: '#BD1D2D', sub: `${total} bản báo giá` },
           { label: 'Giá trị đã chốt', value: FMT(acceptedVal), icon: FileCheck, color: '#10b981', sub: 'Đã ký hợp đồng' },
-          { label: 'Đang chờ phản hồi', value: String(sentCount), icon: Clock, color: '#f59e0b', sub: 'Báo giá đã gửi' },
+          { label: 'Đang chờ phản hồi', value: String(sentCount), icon: Clock, color: '#f59e0b', sub: 'Báo giá chờ phản hồi' },
           { label: 'Tỉ lệ chốt (Win Rate)', value: `${convRate.toFixed(1)}%`, icon: DollarSign, color: '#BD1D2D', sub: 'Hiệu suất bán hàng' },
         ].map((k, i) => (
           <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>

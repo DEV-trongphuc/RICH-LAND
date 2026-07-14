@@ -397,9 +397,6 @@ export const InvoicesPage: React.FC = () => {
                             <button className="btn-icon sm" title="Đánh dấu đã thanh toán" onClick={() => handleMarkPaid(inv)} style={{ color: 'var(--color-success)' }}><CheckCircle2 size={14} /></button>
                           )}
                           {canEditInvoice && (
-                            <button className="btn-icon sm" title="Gửi nhắc nhở" onClick={() => handleSendReminder(inv)} style={{ color: 'var(--color-primary)' }}><Send size={14} /></button>
-                          )}
-                          {canEditInvoice && (
                             <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
                               showConfirm({
                                 title: `Xóa hóa đơn ${inv.invoice_number}?`,
@@ -519,8 +516,7 @@ export const InvoicesPage: React.FC = () => {
 
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
                   <button className="btn ghost" onClick={() => setPreviewItem(null)}>Đóng</button>
-                  <button className="btn outline" onClick={() => window.print()}><Printer size={16} /> In Hóa Đơn</button>
-                  <button className="btn primary" onClick={() => addToast(`Đã gửi hóa đơn tới ${previewItem.contact_name}`, 'success')}><Send size={16} /> Gửi Khách Hàng</button>
+                  <button className="btn primary" onClick={() => window.print()}><Printer size={16} /> In Hóa Đơn</button>
                 </div>
               </div>
             </motion.div>

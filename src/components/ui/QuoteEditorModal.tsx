@@ -576,7 +576,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', flex: 1 }}>
                   <div className="form-group" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <label className="form-label">Ghi chú gửi khách</label>
+                    <label className="form-label">Ghi chú nội bộ</label>
                     <textarea 
                       className="form-textarea"
                       style={{ flex: 1, minHeight: '120px', resize: 'none' }}
@@ -674,7 +674,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                         {[
                           { id: 'draft', label: 'Lưu Nháp' },
-                          { id: 'sent',  label: 'Gửi Khách' },
+                          { id: 'sent',  label: 'Chờ phản hồi' },
                         ].map(s => (
                           <button
                             key={s.id}
