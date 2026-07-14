@@ -546,7 +546,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                   onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                                 />
                                 {item.unit_price > 0 && (
-                                  <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', marginTop: '4px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2 }}>
+                                  <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', marginTop: '4px', whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'right' }}>
                                     {numberToText(item.unit_price)}
                                   </div>
                                 )}
@@ -667,7 +667,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                     </div>
 
                     {/* Total */}
-                    <div style={{ background: 'var(--color-primary-light)', borderRadius: '12px', padding: '0.875rem 1rem' }}>
+                    <div style={{ background: 'var(--color-primary-light)', borderRadius: '12px', padding: '0.875rem 1rem', textAlign: 'right' }}>
                       <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Tổng cộng báo giá</div>
                       <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>{FMT(total)}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Đã bao gồm thuế & chiết khấu</div>
