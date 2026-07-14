@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
+import { useUIStore } from '../../store/uiStore';
 import { toast } from 'react-hot-toast';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { SIDEBAR_GROUPS } from './Sidebar';
@@ -35,6 +36,7 @@ const maskPhone = (phone: string) => {
 export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivityFeedClick: () => void; onMenuClick?: () => void; version?: string }) => {
   const isDemo = localStorage.getItem('RICH LAND_DEMO_MODE') === 'true';
   const { user, logout } = useAuth();
+  const { showConfirm } = useUIStore();
   const { language, setLanguage, t } = useLanguage();
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -283,22 +285,37 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   }, [user]);
 
   const handleToggleHeaderVacation = async () => {
-    try {
-      const json = await fetchAPI('toggle_consultant_vacation', {
-        method: 'POST',
-        body: JSON.stringify({ id: user?.consultant_id })
-      });
-      if (json.success) {
-        const nextMode = Boolean(Number(json.vacation_mode));
-        setHeaderVacationMode(nextMode);
-        toast.success(t('Đã thay đổi trạng thái Tạm ngưng'));
-        window.dispatchEvent(new CustomEvent('vacation-status-changed', { detail: nextMode }));
-      } else {
-        toast.error(json.message || t('Lỗi thay đổi trạng thái'));
+    const isCurrentlyReceiving = !headerVacationMode;
+    const title = isCurrentlyReceiving ? 'Tạm ngưng nhận data?' : 'Bật nhận data?';
+    const message = isCurrentlyReceiving 
+      ? 'Hậu quả khi TẠM NGƯNG nhận data:\n\n• Bạn sẽ bị LOẠI khỏi vòng xoay phân bổ khách hàng (Round-Robin) ngay lập tức.\n• Hệ thống sẽ KHÔNG chia thêm bất kỳ data mới nào từ Landing Page, Ads, v.v. cho bạn.\n• Cơ hội và khách hàng tiềm năng lẽ ra thuộc về bạn sẽ chuyển cho các tư vấn viên khác đang hoạt động.\n• Điều này có thể ảnh hưởng trực tiếp đến doanh thu và chỉ tiêu KPI cá nhân của bạn.'
+      : 'Yêu cầu và nghĩa vụ khi BẬT NHẬN DATA:\n\n• Bạn sẽ quay trở lại danh sách phân bổ khách hàng của vòng xoay Round-Robin.\n• Hệ thống sẽ tự động phân bổ data khách hàng mới cho bạn khi đến lượt.\n• Bạn CẦN đảm bảo trực máy và thực hiện cuộc gọi tương tác/gặp mặt khách hàng trong vòng thời gian quy định.\n• Nếu không tương tác kịp thời, tài khoản của bạn sẽ bị cộng dồn chỉ số "chưa tương tác" và có thể bị khóa nhận số tự động.';
+
+    showConfirm({
+      title,
+      message,
+      confirmText: isCurrentlyReceiving ? 'Tạm ngưng nhận' : 'Bật nhận data',
+      cancelText: 'Hủy bỏ',
+      isDanger: isCurrentlyReceiving,
+      onConfirm: async () => {
+        try {
+          const json = await fetchAPI('toggle_consultant_vacation', {
+            method: 'POST',
+            body: JSON.stringify({ id: user?.consultant_id })
+          });
+          if (json.success) {
+            const nextMode = Boolean(Number(json.vacation_mode));
+            setHeaderVacationMode(nextMode);
+            toast.success(t('Đã thay đổi trạng thái Tạm ngưng'));
+            window.dispatchEvent(new CustomEvent('vacation-status-changed', { detail: nextMode }));
+          } else {
+            toast.error(json.message || t('Lỗi thay đổi trạng thái'));
+          }
+        } catch (e: any) {
+          toast.error(t('Lỗi thay đổi trạng thái: ') + e.message);
+        }
       }
-    } catch (e: any) {
-      toast.error(t('Lỗi thay đổi trạng thái: ') + e.message);
-    }
+    });
   };
 
   useEffect(() => {
