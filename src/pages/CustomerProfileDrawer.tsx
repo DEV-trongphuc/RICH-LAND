@@ -1711,10 +1711,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const cleanPhone = (contact.phone || '').replace(/[^0-9]/g, '');
       const cleanMobile = (contact.mobile || '').replace(/[^0-9]/g, '');
       const cleanZalo = (contact.zalo_link || '').replace(/[^0-9]/g, '');
-      if (cleanZalo && cleanMobile && cleanZalo === cleanMobile) {
-        setZaloSource('secondary');
-      } else {
+      
+      if (!contact.id) {
+        // Creating a new contact: default Zalo source to 'primary'
         setZaloSource('primary');
+      } else if (cleanZalo) {
+        if (cleanMobile && cleanZalo === cleanMobile) {
+          setZaloSource('secondary');
+        } else {
+          setZaloSource('primary');
+        }
+      } else {
+        // Existing contact with no Zalo link: set to 'none'
+        setZaloSource('none');
       }
 
       setFormData(contact);
@@ -3567,6 +3576,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   if (isViewer || !formData.phone?.trim()) return;
                                   if (zaloSource === 'primary') {
                                     setZaloSource('none');
+                                    setFormData((prev: any) => ({ ...prev, zalo_link: '' }));
                                   } else {
                                     setZaloSource('primary');
                                     const cleanPhone = (formData.phone || '').replace(/[^0-9]/g, '');
@@ -3612,15 +3622,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               const val = e.target.value;
                               setFormData((prev: any) => {
                                 const next = { ...prev, phone: val };
-                                if (zaloSource === 'primary' && val.trim()) {
+                                if (zaloSource === 'primary') {
                                   const cleanPhone = val.replace(/[^0-9]/g, '');
                                   next.zalo_link = cleanPhone ? `https://zalo.me/${cleanPhone}` : '';
                                 }
                                 return next;
                               });
-                              if (!val.trim() && zaloSource === 'primary') {
-                                setZaloSource('none');
-                              }
                             }} />
                           </div>
                           <div className="form-group">
@@ -3631,6 +3638,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   if (isViewer || !formData.mobile?.trim()) return;
                                   if (zaloSource === 'secondary') {
                                     setZaloSource('none');
+                                    setFormData((prev: any) => ({ ...prev, zalo_link: '' }));
                                   } else {
                                     setZaloSource('secondary');
                                     const cleanPhone = (formData.mobile || '').replace(/[^0-9]/g, '');
@@ -3676,15 +3684,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               const val = e.target.value;
                               setFormData((prev: any) => {
                                 const next = { ...prev, mobile: val };
-                                if (zaloSource === 'secondary' && val.trim()) {
+                                if (zaloSource === 'secondary') {
                                   const cleanPhone = val.replace(/[^0-9]/g, '');
                                   next.zalo_link = cleanPhone ? `https://zalo.me/${cleanPhone}` : '';
                                 }
                                 return next;
                               });
-                              if (!val.trim() && zaloSource === 'secondary') {
-                                setZaloSource('none');
-                              }
                             }} />
                           </div>
                           <div className="form-group">
