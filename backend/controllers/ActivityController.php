@@ -331,6 +331,7 @@ class ActivityController {
 
         $stmt=$this->db->prepare("
             SELECT a.*, u.full_name as user_name, u.avatar_url,
+                   creator.full_name as created_by_name, creator.avatar_url as created_by_avatar,
                    COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
                    COALESCE(ct.id, deal_ct.id) as contact_id,
                    COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
@@ -343,6 +344,7 @@ class ActivityController {
                    (SELECT e.image_url FROM expenses e WHERE e.tenant_id = a.tenant_id AND e.title = REPLACE(a.subject, 'Ghi nhận Chi phí: ', '') AND e.image_url IS NOT NULL AND e.image_url != '' ORDER BY e.id DESC LIMIT 1) as expense_image_url
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
+            LEFT JOIN users creator ON a.created_by=creator.id
             LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
             LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL
@@ -500,6 +502,7 @@ class ActivityController {
     public function show(array $auth,int $id): void {
         $stmt=$this->db->prepare("
             SELECT a.*, u.full_name as user_name,
+                   creator.full_name as created_by_name, creator.avatar_url as created_by_avatar,
                    COALESCE(CONCAT(ct.first_name,' ',ct.last_name), CONCAT(deal_ct.first_name,' ',deal_ct.last_name)) as contact_name,
                    COALESCE(ct.id, deal_ct.id) as contact_id,
                    COALESCE(ct.avatar_url, deal_ct.avatar_url) as contact_avatar,
@@ -507,6 +510,7 @@ class ActivityController {
                    c.name as company_name
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
+            LEFT JOIN users creator ON a.created_by=creator.id
             LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
             LEFT JOIN contacts deal_ct ON a.related_type='deal' AND d.contact_id=deal_ct.id AND deal_ct.deleted_at IS NULL

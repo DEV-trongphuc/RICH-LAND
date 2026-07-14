@@ -209,7 +209,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       const cleanObj = (obj: any) => {
         const clean: any = {};
         Object.keys(obj || {}).forEach(key => {
-          if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+          if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'created_by_avatar', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
             return;
           }
           const val = obj[key];
@@ -363,7 +363,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         const cleanObj = (obj: any) => {
           const clean: any = {};
           Object.keys(obj || {}).forEach(key => {
-            if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+            if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'created_by_avatar', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
               return;
             }
             const val = obj[key];
@@ -557,7 +557,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           const cleanObj = (obj: any) => {
             const clean: any = {};
             Object.keys(obj || {}).forEach(key => {
-              if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+              if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'created_by_avatar', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
                 return;
               }
               const val = obj[key];
@@ -852,7 +852,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     const cleanObj = (obj: any) => {
       const clean: any = {};
       Object.keys(obj || {}).forEach(key => {
-        if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
+        if (['created_at', 'updated_at', 'deleted_at', 'created_by_name', 'created_by_avatar', 'contact_name', 'contact_avatar', 'user_name'].includes(key)) {
           return;
         }
         const val = obj[key];
@@ -947,9 +947,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 }}>#{formData.id}</span>
               </h3>
               {!isMobileOrTablet && (
-                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                  {t('Người tạo:')} <span style={{ fontWeight: 700 }}>{formData.created_by_name || t('Hệ thống / Admin')}</span>
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Người tạo:')}</span>
+                  <Avatar src={formData.created_by_avatar || undefined} name={formData.created_by_name || t('Hệ thống / Admin')} size={20} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{formData.created_by_name || t('Hệ thống / Admin')}</span>
+                </div>
               )}
             </div>
           </div>

@@ -884,7 +884,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [noteDocsSent, setNoteDocsSent] = useState<string>('');
   const [noteObstacle, setNoteObstacle] = useState<string>('');
   const [noteSaleTemp, setNoteSaleTemp] = useState<'cold' | 'cool' | 'neutral' | 'warm' | 'hot' | ''>('');
-  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; attachment_url?: string | null; edit_history?: any; channel?: string; note_type?: string; duration_minutes?: number; stuck_tag?: string; suggested_temperature?: string; sale_temperature?: string; documents_sent?: string }[]>([]);
+  const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string; user_id?: number; user_avatar?: string | null; attachment_url?: string | null; edit_history?: any; channel?: string; note_type?: string; duration_minutes?: number; stuck_tag?: string; suggested_temperature?: string; sale_temperature?: string; documents_sent?: string }[]>([]);
   
   const calculatedSuggestedTemp = useMemo(() => {
     if (noteChannel === 'meet') {
@@ -1527,6 +1527,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           time: n.created_at,
           user: n.user_name || 'Hệ thống',
           user_id: n.user_id,
+          user_avatar: n.author_avatar || n.user_avatar || null,
           attachment_url: n.attachment_url,
           edit_history: n.edit_history,
           channel: n.channel,
@@ -4365,9 +4366,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     </div>
                                     <div style={{ borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.75rem', marginTop: '0.75rem' }}>
                                       <EditHistoryIndicator history={n.edit_history} />
-                                      <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>
-                                        Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
-                                      </p>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                                        <Avatar src={n.user_avatar || undefined} name={n.user} size={20} />
+                                        <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                                          Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
                                 );
