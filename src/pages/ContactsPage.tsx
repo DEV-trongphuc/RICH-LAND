@@ -31,6 +31,16 @@ const PAGE_SIZE = 10;
 const STATUS_LABEL: Record<string,string> = { lead:'Lead mới', qualified:'Đủ điều kiện', customer:'Khách hàng', churned:'Đã rời' };
 const STATUS_CLASS: Record<string,string> = { lead:'info', qualified:'warning', customer:'success', churned:'danger' };
 
+const getInteractionTime = (lastContact: string | null, updatedAt: string, createdAt: string) => {
+  if (!lastContact) return updatedAt || createdAt;
+  const contactDate = lastContact.slice(0, 10);
+  const updateDate = (updatedAt || '').slice(0, 10);
+  if (contactDate === updateDate) {
+    return updatedAt;
+  }
+  return lastContact;
+};
+
 const calcScore = (c: any) => {
   if (!c) return 0;
   let s = 0;
@@ -1384,7 +1394,7 @@ export const ContactsPage: React.FC = () => {
                         {columns.find(col => col.id === 'interaction')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                              {formatTimeAgo(c.last_contact || c.updated_at || c.created_at)}
+                              {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
                             </span>
                           </td>
                         )}
@@ -1550,7 +1560,7 @@ export const ContactsPage: React.FC = () => {
                           <div>
                             <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', letterSpacing: '0.02em' }}>Tương tác cuối</p>
                             <p style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {formatTimeAgo(c.last_contact || c.updated_at || c.created_at)}
+                              {formatTimeAgo(getInteractionTime(c.last_contact, c.updated_at, c.created_at))}
                             </p>
                           </div>
                         </div>

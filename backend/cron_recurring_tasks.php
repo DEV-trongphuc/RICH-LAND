@@ -68,6 +68,19 @@ if (!function_exists('runRecurringTasksCron')) {
                     // If requested 31st but month has 30 days, generate on 30th
                     $shouldGenerate = true;
                 }
+            } elseif ($pattern === 'custom_days') {
+                $daysInterval = (int)($recurrence['days_interval'] ?? 1);
+                if ($daysInterval < 1) {
+                    $daysInterval = 1;
+                }
+                if (empty($lastGenerated)) {
+                    $shouldGenerate = true;
+                } else {
+                    $daysSince = (int)round((strtotime($today) - strtotime($lastGenerated)) / 86400);
+                    if ($daysSince >= $daysInterval) {
+                        $shouldGenerate = true;
+                    }
+                }
             }
 
             if ($shouldGenerate) {
@@ -86,6 +99,7 @@ if (!function_exists('runRecurringTasksCron')) {
                     $childBodyData['erp_task']['recurrence']['pattern'] = 'none';
                     $childBodyData['erp_task']['recurrence']['weekly_days'] = [];
                     $childBodyData['erp_task']['recurrence']['monthly_day'] = 1;
+                    $childBodyData['erp_task']['recurrence']['days_interval'] = 1;
                     $childBodyData['erp_task']['recurrence']['last_generated'] = '';
                 }
                 

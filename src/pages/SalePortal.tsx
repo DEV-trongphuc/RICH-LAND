@@ -419,7 +419,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   };
   const filteredWsTasks = useMemo(() => {
     let list = wsTasks;
-    const currentUserId = Number(currentUser?.id);
+    const targetUserId = wsUserId ? Number(wsUserId) : Number(currentUser?.id);
 
     // Filter by main subtabs
     if (wsSubTab === 'customer') {
@@ -446,13 +446,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     // Apply quick filters (assignee, approver, collaborator)
     if (wsTaskFilter === 'assigned_to_me') {
-      list = list.filter(task => Number(task.user_id) === currentUserId);
+      list = list.filter(task => Number(task.user_id) === targetUserId);
     } else if (wsTaskFilter === 'approve_by_me') {
-      list = list.filter(task => task.require_approval === 1 && Number(task.approver_id) === currentUserId);
+      list = list.filter(task => Number(task.require_approval) === 1 && Number(task.approver_id) === targetUserId);
     } else if (wsTaskFilter === 'collaborator') {
       list = list.filter(task => {
         const pIds = task.participant_ids ? task.participant_ids.split(',').map(Number).filter(Boolean) : [];
-        return pIds.includes(currentUserId);
+        return pIds.includes(targetUserId);
       });
     }
 
@@ -491,7 +491,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         campaignName.includes(searchVal)
       );
     });
-  }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser]);
+  }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser, wsUserId]);
 
   const paginatedWsTasks = useMemo(() => {
     const startIndex = (wsTasksPage - 1) * wsTasksPageSize;
@@ -925,6 +925,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           const mDay = erp.recurrence.monthly_day || 1;
           nextDueDate.setMonth(nextDueDate.getMonth() + 1);
           nextDueDate.setDate(mDay);
+        } else if (erp.recurrence.pattern === 'custom_days') {
+          const daysInterval = Number(erp.recurrence.days_interval || 3);
+          nextDueDate.setDate(nextDueDate.getDate() + daysInterval);
         }
 
         const nextDueDateStr = nextDueDate.toISOString().slice(0, 10);
@@ -1138,8 +1141,13 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
       if (start) url += `&start_date=${start}`;
       if (end) url += `&end_date=${end}`;
-      if (wsTeamId && wsTeamId !== 'all_teams_bypass') url += `&team_id=${wsTeamId}`;
-      if (wsUserId) url += `&user_id=${wsUserId}`;
+      if (wsSubTab === 'personal') {
+        const targetUid = wsUserId || currentUser?.id;
+        if (targetUid) url += `&user_id=${targetUid}`;
+      } else {
+        if (wsTeamId && wsTeamId !== 'all_teams_bypass') url += `&team_id=${wsTeamId}`;
+        if (wsUserId) url += `&user_id=${wsUserId}`;
+      }
 
       const res = await api.get(url);
       if (res.data && res.data.data) {
@@ -1215,7 +1223,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     if (activeTab === 'workspace') {
       fetchWorkspaceTasks();
     }
-  }, [activeTab, wsPriority, wsStatus, wsDatePreset, wsStartDate, wsEndDate, wsTeamId, wsUserId, wsActivityType, wsRelatedType]);
+  }, [activeTab, wsPriority, wsStatus, wsDatePreset, wsStartDate, wsEndDate, wsTeamId, wsUserId, wsActivityType, wsRelatedType, wsSubTab]);
 
   useEffect(() => {
     if (activeTab === 'workspace') {
@@ -3940,30 +3948,48 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           <>
             {/* Back button when inside a team view */}
             {isAdminOrManager && wsTeamId && wsSubTab !== 'personal' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1.25rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '1.5rem', background: 'var(--color-surface)', padding: '1rem 1.25rem', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)' }}>
                 <button
                   onClick={() => setWsTeamId('')}
                   style={{
-                    height: 32,
-                    borderRadius: '8px',
-                    border: '1px solid var(--color-primary)',
-                    background: 'transparent',
-                    color: 'var(--color-primary)',
+                    height: 38,
+                    borderRadius: '10px',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-surface)',
+                    color: 'var(--color-text-light)',
                     fontWeight: 700,
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '0 12px',
+                    gap: '8px',
+                    padding: '0 16px',
                     cursor: 'pointer',
-                    fontSize: '0.8rem'
+                    fontSize: '0.8rem',
+                    boxShadow: 'var(--shadow-xs)',
+                    transition: 'all 0.2s',
+                    flexShrink: 0
                   }}
                   className="hover-lift"
                 >
-                  <ArrowLeft size={14} /> {t('Quay lại danh sách nhóm')}
+                  <ArrowLeft size={15} /> {t('Quay lại')}
                 </button>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                  {t('Đang xem nhóm:')} <strong style={{ color: 'var(--color-primary)' }}>{wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (teamsList.find(t => String(t.id) === wsTeamId)?.name || wsTeamId)}</strong>
-                </span>
+
+                <div style={{ width: '1px', height: '24px', background: 'var(--color-border)', flexShrink: 0 }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(189, 29, 45, 0.08)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(189, 29, 45, 0.12)', flexShrink: 0 }}>
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Đang xem nhóm')}</span>
+                      <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--color-primary)' }} />
+                      <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-primary)' }}>{t('Nội bộ')}</span>
+                    </div>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--color-text)', margin: '2px 0 0 0' }}>
+                      {wsTeamId === 'all_teams_bypass' ? t('Tất cả các Nhóm') : (teamsList.find(t => String(t.id) === wsTeamId)?.name || wsTeamId)}
+                    </h4>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -4053,7 +4079,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       contact_name: task.contact_name,
                       contact_avatar: task.contact_avatar,
                       related_type: task.related_type,
-                      related_id: task.related_id
+                      related_id: task.related_id,
+                      body: task.body
                     };
                     setChecklist(parsed.checklist);
                     setSelectedTaskForDetails(parsedTask);
@@ -4370,7 +4397,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 contact_name: task.contact_name,
                                 contact_avatar: task.contact_avatar,
                                 related_type: task.related_type,
-                                related_id: task.related_id
+                                related_id: task.related_id,
+                                body: task.body
                               };
                               setChecklist(parsed.checklist);
                               setSelectedTaskForDetails(parsedTask);
@@ -4783,7 +4811,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           contact_name: task.contact_name,
                           contact_avatar: task.contact_avatar,
                           related_type: task.related_type,
-                          related_id: task.related_id
+                          related_id: task.related_id,
+                          body: task.body
                         };
                         setChecklist(parsed.checklist);
                         setSelectedTaskForDetails(parsedTask);
@@ -8751,44 +8780,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         {/* Scrollable View Area */}
         <main className={embedMode ? "" : "no-scrollbar responsive-main portal-main-content"} style={embedMode ? { width: '100%' } : { flex: 1, padding: '2rem 3rem', width: '100%', overflowY: 'auto' }}>
           <div style={{ width: '100%' }}>
-            {/* Admin Switch Sale View warning/dropdown */}
-            {(user?.role === 'admin' || user?.role === 'superadmin') && data.consultants && !saleIdFilter && (
-              <div className="portal-filters-row" style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem',
-                background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px',
-                padding: '1rem 1.5rem'
-              }}>
-                <div>
-                  <h2 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <ShieldAlert size={16} color="var(--color-warning)" />
-                    {t('GÓC QUẢN TRỊ VIÊN')}
-                  </h2>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
-                    {t('Đang xem dữ liệu với vai trò của nhân viên được chọn dưới đây.')}
-                  </p>
-                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('ĐÓNG VAI SALE:')}</span>
-                  <CustomSelect
-                    options={[
-                      { value: '', label: t('Chọn tư vấn viên...') },
-                      ...(data.consultants || []).map((c: any) => ({ value: c.id, label: c.name, avatar: c.avatar }))
-                    ]}
-                    value={saleIdFilter}
-                    onChange={(val) => {
-                      setSaleIdFilter(String(val));
-                      setCurrentPage(1);
-                    }}
-                    width={220}
-                    showAvatars={true}
-                    searchable={true}
-                    align="right"
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Render views based on activeTab */}
             <div key={activeTab} className="subtab-enter-active">

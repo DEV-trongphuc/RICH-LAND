@@ -1273,393 +1273,394 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
             {activeTab === 'config' ? (
               <form onSubmit={handleSave} className="subtab-enter-active" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                <fieldset disabled={isReadOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                  <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : undefined, gridTemplateColumns: isMobile ? undefined : '1fr 1fr', gap: '2rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                <fieldset disabled={isReadOnly} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                    <div className="responsive-grid-1-1 modal-form-body" style={{ padding: '1.25rem', display: isMobile ? 'flex' : 'grid', flexDirection: isMobile ? 'column' : undefined, gridTemplateColumns: isMobile ? undefined : '1fr 1fr', gap: '2rem', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                      {/* LEFT COLUMN */}
+                      <div className="custom-scrollbar modal-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }}>
+                        <div className="form-group">
+                          <label className="form-label">{t("Tên Vòng")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                          <input
+                            className="form-input"
+                            placeholder={t("VD: Vòng 1 — Form Đăng Ký")}
+                            value={formData.round_name}
+                            onChange={e => setFormData({ ...formData, round_name: e.target.value })}
+                            required
+                            autoFocus
+                          />
+                        </div>
 
-                  {/* LEFT COLUMN */}
-                  <div className="custom-scrollbar modal-form-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto', paddingRight: '4px' }}>
-                    <div className="form-group">
-                      <label className="form-label">{t("Tên Vòng")} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input
-                        className="form-input"
-                        placeholder={t("VD: Vòng 1 — Form Đăng Ký")}
-                        value={formData.round_name}
-                        onChange={e => setFormData({ ...formData, round_name: e.target.value })}
-                        required
-                        autoFocus
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Users size={14} /> {t("Chọn Admin nhận CC khi chia Data")}
-                      </label>
-                      {(() => {
-                        const admins = accounts.filter(a => (a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1) && a.email);
-                        if (admins.length === 0) {
-                          return (
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '4px 0 12px' }}>
-                              {t("Không có tài khoản Admin nào có email")}
-                            </p>
-                          );
-                        }
-                        return (
-                          <div className="custom-scrollbar" style={{
-                            maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem',
-                            border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.5rem', background: 'var(--color-bg)'
-                          }}>
-                            {admins.map(admin => {
-                              const isSelected = selectedAdmins.includes(admin.email);
+                        <div className="form-group">
+                          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Users size={14} /> {t("Chọn Admin nhận CC khi chia Data")}
+                          </label>
+                          {(() => {
+                            const admins = accounts.filter(a => (a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1) && a.email);
+                            if (admins.length === 0) {
                               return (
-                                <div
-                                  key={admin.id}
-                                  onClick={() => {
-                                    setSelectedAdmins(prev => 
-                                      prev.includes(admin.email) 
-                                        ? prev.filter(e => e !== admin.email) 
-                                        : [...prev, admin.email]
-                                    );
-                                  }}
-                                  style={{
-                                    display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.5rem',
-                                    borderRadius: '6px', cursor: 'pointer', background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                                    border: '1px solid ' + (isSelected ? 'var(--color-primary-light)' : 'var(--color-border-light)'),
-                                    transition: 'all 0.15s ease'
-                                  }}
-                                  onMouseEnter={e => {
-                                    if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)';
-                                  }}
-                                  onMouseLeave={e => {
-                                    if (!isSelected) e.currentTarget.style.background = 'var(--color-surface)';
-                                  }}
-                                >
-                                  <Avatar src={admin.avatar} name={admin.name} size={24} />
-                                  <div style={{ flex: 1 }}>
-                                    <p style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>
-                                      {admin.name}
-                                    </p>
-                                    <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                                      {admin.email}
-                                    </p>
+                                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic', margin: '4px 0 12px' }}>
+                                  {t("Không có tài khoản Admin nào có email")}
+                                </p>
+                              );
+                            }
+                            return (
+                              <div className="custom-scrollbar" style={{
+                                maxHeight: '160px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.375rem',
+                                border: '1px solid var(--color-border)', borderRadius: '10px', padding: '0.5rem', background: 'var(--color-bg)'
+                              }}>
+                                {admins.map(admin => {
+                                  const isSelected = selectedAdmins.includes(admin.email);
+                                  return (
+                                    <div
+                                      key={admin.id}
+                                      onClick={() => {
+                                        setSelectedAdmins(prev => 
+                                          prev.includes(admin.email) 
+                                            ? prev.filter(e => e !== admin.email) 
+                                            : [...prev, admin.email]
+                                        );
+                                      }}
+                                      style={{
+                                        display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.5rem',
+                                        borderRadius: '6px', cursor: 'pointer', background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                                        border: '1px solid ' + (isSelected ? 'var(--color-primary-light)' : 'var(--color-border-light)'),
+                                        transition: 'all 0.15s ease'
+                                      }}
+                                      onMouseEnter={e => {
+                                        if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)';
+                                      }}
+                                      onMouseLeave={e => {
+                                        if (!isSelected) e.currentTarget.style.background = 'var(--color-surface)';
+                                      }}
+                                    >
+                                      <Avatar src={admin.avatar} name={admin.name} size={24} />
+                                      <div style={{ flex: 1 }}>
+                                        <p style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>
+                                          {admin.name}
+                                        </p>
+                                        <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                                          {admin.email}
+                                        </p>
+                                      </div>
+                                      <div style={{
+                                        width: 16, height: 16, borderRadius: '4px', border: '1px solid ' + (isSelected ? 'var(--color-primary)' : 'var(--color-border)'),
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? 'var(--color-primary)' : 'transparent',
+                                        transition: 'all 0.15s ease'
+                                      }}>
+                                        {isSelected && <Check size={10} color="white" strokeWidth={3} />}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        <div className="form-group" style={{ marginTop: '-0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                              {t("Nhận thêm CC email ngoài hệ thống")}
+                            </label>
+                            <ToggleSwitch
+                              checked={enableExternalCc}
+                              onChange={(checked) => setEnableExternalCc(checked)}
+                            />
+                          </div>
+                        </div>
+
+                        {enableExternalCc && (
+                          <div className="form-group" style={{ 
+                            marginTop: '-0.25rem',
+                            animation: 'fadeIn 0.2s ease-out'
+                          }}>
+                            <label className="form-label">{t("Nhập CC email ngoài hệ thống")}</label>
+                            <input
+                              className="form-input"
+                              placeholder={t("VD: giamdoc@richland.vn, quanly@richland.vn")}
+                              value={externalCcEmails}
+                              onChange={e => setExternalCcEmails(e.target.value)}
+                            />
+                            <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                              {t("Phân tách các email bằng dấu phẩy (,).")}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="form-group">
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                              <Shield size={14} /> {t("Trạng thái Vòng")}
+                            </label>
+                            <ToggleSwitch
+                              checked={formData.is_active === 1}
+                              onChange={(checked) => setFormData({ ...formData, is_active: checked ? 1 : 0 })}
+                            />
+                          </div>
+                        </div>
+
+                        {formData.selected_users.length > 0 && (
+                          <div className="form-group">
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} /> {t("Chọn Sale bắt đầu / kế tiếp (Tuỳ chọn)")}</label>
+                            <div ref={startSaleDropdownRef} style={{ position: 'relative' }}>
+                              <div
+                                className="form-input"
+                                onClick={() => setShowStartSaleDropdown(!showStartSaleDropdown)}
+                                style={{ padding: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)' }}
+                              >
+                                {formData.starting_consultant_id ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {(() => {
+                                      const c = consultants.find(x => Number(x.id) === formData.starting_consultant_id);
+                                      if (!c) return t('-- Mặc định (Theo thứ tự thêm vào) --');
+                                      return (
+                                        <>
+                                          <Avatar src={c.avatar} name={c.name} size={20} />
+                                          <span style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--color-text)' }}>{c.name}</span>
+                                        </>
+                                      )
+                                    })()}
                                   </div>
-                                  <div style={{
-                                    width: 16, height: 16, borderRadius: '4px', border: '1px solid ' + (isSelected ? 'var(--color-primary)' : 'var(--color-border)'),
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', background: isSelected ? 'var(--color-primary)' : 'transparent',
-                                    transition: 'all 0.15s ease'
-                                  }}>
-                                    {isSelected && <Check size={10} color="white" strokeWidth={3} />}
+                                ) : (
+                                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('-- Mặc định (Theo thứ tự thêm vào) --')}</span>
+                                )}
+                                <span style={{ transform: showStartSaleDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--color-text-muted)', display: 'inline-block', fontSize: '0.75rem' }}>▼</span>
+                              </div>
+
+                              {showStartSaleDropdown && (
+                                <div style={{
+                                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
+                                  background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 150, overflowY: 'auto'
+                                }}>
+                                  <div
+                                    onClick={() => { setFormData({ ...formData, starting_consultant_id: null }); setShowStartSaleDropdown(false); }}
+                                    style={{ padding: '0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)', fontSize: '0.875rem', background: formData.starting_consultant_id === null ? 'var(--color-bg)' : 'transparent' }}
+                                    onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                                    onMouseLeave={e => e.currentTarget.style.background = formData.starting_consultant_id === null ? 'var(--color-bg)' : 'transparent'}
+                                  >
+                                    {t('-- Mặc định (Theo thứ tự thêm vào) --')}
+                                  </div>
+                                  {formData.selected_users.map(id => {
+                                    const c = consultants.find(x => Number(x.id) === Number(id));
+                                    if (!c) return null;
+                                    const isSelected = formData.starting_consultant_id === id;
+                                    return (
+                                      <div
+                                        key={id}
+                                        onClick={() => { setFormData({ ...formData, starting_consultant_id: id }); setShowStartSaleDropdown(false); }}
+                                        style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: isSelected ? 'var(--color-primary-light)' : 'transparent', transition: 'background 0.1s' }}
+                                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                        onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                                      >
+                                        <Avatar src={c.avatar} name={c.name} size={24} />
+                                        <div style={{ flex: 1, fontSize: '0.875rem', fontWeight: isSelected ? 600 : 400, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                                          {c.name}
+                                        </div>
+                                        {isSelected && <Check size={14} color="var(--color-primary)" />}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                              {t("Người được chọn sẽ là người nhận Data tiếp theo của vòng này.")}
+                            </p>
+                          </div>
+                        )}
+
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                              <Zap size={14} color="var(--color-primary)" /> {t("Đặt làm Vòng phân bổ mặc định (Fallback)")}
+                            </label>
+                            <div
+                              className={`custom-toggle ${formData.is_fallback ? 'active' : ''}`}
+                              onClick={() => setFormData({ ...formData, is_fallback: !formData.is_fallback })}
+                            />
+                          </div>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                            {t("Nếu dữ liệu mới không khớp bất kỳ quy luật chia nào, hệ thống sẽ tự động phân phối vào vòng này. Chỉ có duy nhất 1 vòng được đặt làm mặc định.")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* RIGHT COLUMN */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: 0, flex: 1 }}>
+                        {/* Custom Multi-Select with Avatars */}
+                        <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
+                          <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> {t("Chọn Tư vấn viên vào vòng này")}</label>
+
+                          {/* Search Input Box */}
+                          <div style={{ position: 'relative' }}>
+                            <input
+                              className="form-input"
+                              style={{ paddingLeft: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
+                              placeholder={t("Tìm kiếm và chọn Tư vấn viên...")}
+                              value={searchUser}
+                              onChange={e => setSearchUser(e.target.value)}
+                              onFocus={() => setShowDropdown(true)}
+                            />
+                          </div>
+
+                          {/* Dropdown Options */}
+                          {showDropdown && (
+                            <div style={{
+                              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
+                              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
+                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
+                            }}>
+                              {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).map(user => {
+                                const isSelected = formData.selected_users.includes(Number(user.id));
+
+                                return (
+                                  <div
+                                    key={user.id}
+                                    onClick={() => {
+                                      if (user.status !== 'active') {
+                                        toast.error(t('Sale không hoạt động'));
+                                        return;
+                                      }
+                                      toggleUserSelection(user.id);
+                                    }}
+                                    style={{
+                                      padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                      cursor: user.status === 'active' ? 'pointer' : 'not-allowed',
+                                      background: isSelected ? 'var(--color-primary-light)' : 'transparent',
+                                      transition: 'background 0.1s',
+                                      opacity: user.status === 'active' ? 1 : 0.55,
+                                      filter: user.status === 'active' ? 'none' : 'grayscale(1)'
+                                    }}
+                                    onMouseEnter={e => { if (user.status === 'active' && !isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
+                                    onMouseLeave={e => { if (user.status === 'active' && !isSelected) e.currentTarget.style.background = 'transparent'; }}
+                                  >
+                                    <Avatar src={user.avatar} name={user.name} size={28} />
+                                     <div style={{ flex: 1 }}>
+                                      <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>{user.name}</p>
+                                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                                        {user.email && (
+                                          <img
+                                            src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
+                                            alt="Gmail"
+                                            style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
+                                          />
+                                        )}
+                                        <span>{user.email} • {user.status === 'active' ? t('Đang nhận data') : t('Không nhận data')}</span>
+                                      </p>
+                                    </div>
+                                    {isSelected && <Check size={16} color="var(--color-primary)" />}
+                                  </div>
+                                );
+                              })}
+                              {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).length === 0 && (
+                                <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
+                                  {t("Không tìm thấy tư vấn viên nào")}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Selected Consultants List Block */}
+                        {formData.selected_users.length > 0 && (
+                          <div className="custom-scrollbar modal-form-selected-list" style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>{t("Tư vấn viên đã chọn ({count}):").replace('{count}', String(formData.selected_users.length))}</div>
+                            {formData.selected_users.map(userId => {
+                              const user = consultants.find(c => Number(c.id) === userId);
+                              if (!user) return null;
+                              return (
+                                <div key={user.id} style={{
+                                  display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem',
+                                  background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10,
+                                  transition: 'all 0.2s'
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <Avatar src={user.avatar} name={user.name} size={28} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.12)' }} />
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}>
+                                        {user.name}
+                                        {editingRound?.compensations?.[user.id] > 0 && (
+                                          <span className="badge danger" style={{ marginLeft: 8, fontSize: '0.65rem', padding: '2px 6px' }}>
+                                            {t("Nợ bù: {count}").replace('{count}', String(editingRound.compensations[user.id]))}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        {user.email && (
+                                          <>
+                                            <img
+                                              src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
+                                              alt="Gmail"
+                                              style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
+                                            />
+                                            <span>{user.email}</span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => removeUser(user.id, e)}
+                                      style={{
+                                        color: 'var(--color-text-muted)', padding: 4, borderRadius: 6,
+                                        border: 'none', background: 'transparent', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'all 0.2s'
+                                      }}
+                                      onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-danger)'; e.currentTarget.style.background = 'var(--color-danger-light)'; }}
+                                      onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+
+                                  {/* Special Rule: Ratio + Data Per Turn */}
+                                  <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                                    {/* Column 1: Data per turn */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Nhận:")}</span>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="20"
+                                        value={formData.data_per_turns[user.id] || 1}
+                                        onChange={e => setFormData({ ...formData, data_per_turns: { ...formData.data_per_turns, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
+                                        style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: theme === 'dark' ? '#34d399' : '#059669', fontWeight: 700, background: theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5' }}
+                                      />
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("data / lượt")}</span>
+                                    </div>
+                                    {/* Column 2: Ratios */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("Sau:")}</span>
+                                      <input
+                                        type="number"
+                                        min="1"
+                                        max="99"
+                                        value={formData.ratios[user.id] || 1}
+                                        onChange={e => setFormData({ ...formData, ratios: { ...formData.ratios, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
+                                        style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: 'var(--color-primary)', fontWeight: 700, background: 'var(--color-bg)' }}
+                                      />
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("vòng chia")}</span>
+                                    </div>
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="form-group" style={{ marginTop: '-0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                          {t("Nhận thêm CC email ngoài hệ thống")}
-                        </label>
-                        <ToggleSwitch
-                          checked={enableExternalCc}
-                          onChange={(checked) => setEnableExternalCc(checked)}
-                        />
+                        )}
                       </div>
                     </div>
 
-                    {enableExternalCc && (
-                      <div className="form-group" style={{ 
-                        marginTop: '-0.25rem',
-                        animation: 'fadeIn 0.2s ease-out'
-                      }}>
-                        <label className="form-label">{t("Nhập CC email ngoài hệ thống")}</label>
-                        <input
-                          className="form-input"
-                          placeholder={t("VD: giamdoc@richland.vn, quanly@richland.vn")}
-                          value={externalCcEmails}
-                          onChange={e => setExternalCcEmails(e.target.value)}
-                        />
-                        <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                          {t("Phân tách các email bằng dấu phẩy (,).")}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="form-group">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                          <Shield size={14} /> {t("Trạng thái Vòng")}
-                        </label>
-                        <ToggleSwitch
-                          checked={formData.is_active === 1}
-                          onChange={(checked) => setFormData({ ...formData, is_active: checked ? 1 : 0 })}
-                        />
-                      </div>
-                    </div>
-
-                    {formData.selected_users.length > 0 && (
-                      <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Zap size={14} /> {t("Chọn Sale bắt đầu / kế tiếp (Tuỳ chọn)")}</label>
-                        <div ref={startSaleDropdownRef} style={{ position: 'relative' }}>
-                          <div
-                            className="form-input"
-                            onClick={() => setShowStartSaleDropdown(!showStartSaleDropdown)}
-                            style={{ padding: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)' }}
-                          >
-                            {formData.starting_consultant_id ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {(() => {
-                                  const c = consultants.find(x => Number(x.id) === formData.starting_consultant_id);
-                                  if (!c) return t('-- Mặc định (Theo thứ tự thêm vào) --');
-                                  return (
-                                    <>
-                                      <Avatar src={c.avatar} name={c.name} size={20} />
-                                      <span style={{ fontWeight: 500, fontSize: '0.875rem', color: 'var(--color-text)' }}>{c.name}</span>
-                                    </>
-                                  )
-                                })()}
-                              </div>
-                            ) : (
-                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>{t('-- Mặc định (Theo thứ tự thêm vào) --')}</span>
-                            )}
-                            <span style={{ transform: showStartSaleDropdown ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--color-text-muted)', display: 'inline-block', fontSize: '0.75rem' }}>▼</span>
-                          </div>
-
-                          {showStartSaleDropdown && (
-                            <div style={{
-                              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
-                              background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 150, overflowY: 'auto'
-                            }}>
-                              <div
-                                onClick={() => { setFormData({ ...formData, starting_consultant_id: null }); setShowStartSaleDropdown(false); }}
-                                style={{ padding: '0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)', fontSize: '0.875rem', background: formData.starting_consultant_id === null ? 'var(--color-bg)' : 'transparent' }}
-                                onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                                onMouseLeave={e => e.currentTarget.style.background = formData.starting_consultant_id === null ? 'var(--color-bg)' : 'transparent'}
-                              >
-                                {t('-- Mặc định (Theo thứ tự thêm vào) --')}
-                              </div>
-                              {formData.selected_users.map(id => {
-                                const c = consultants.find(x => Number(x.id) === Number(id));
-                                if (!c) return null;
-                                const isSelected = formData.starting_consultant_id === id;
-                                return (
-                                  <div
-                                    key={id}
-                                    onClick={() => { setFormData({ ...formData, starting_consultant_id: id }); setShowStartSaleDropdown(false); }}
-                                    style={{ padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: isSelected ? 'var(--color-primary-light)' : 'transparent', transition: 'background 0.1s' }}
-                                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
-                                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
-                                  >
-                                    <Avatar src={c.avatar} name={c.name} size={24} />
-                                    <div style={{ flex: 1, fontSize: '0.875rem', fontWeight: isSelected ? 600 : 400, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
-                                      {c.name}
-                                    </div>
-                                    {isSelected && <Check size={14} color="var(--color-primary)" />}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                          {t("Người được chọn sẽ là người nhận Data tiếp theo của vòng này.")}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="form-group" style={{ marginTop: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                          <Zap size={14} color="var(--color-primary)" /> {t("Đặt làm Vòng phân bổ mặc định (Fallback)")}
-                        </label>
-                        <div
-                          className={`custom-toggle ${formData.is_fallback ? 'active' : ''}`}
-                          onClick={() => setFormData({ ...formData, is_fallback: !formData.is_fallback })}
-                        />
-                      </div>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-                        {t("Nếu dữ liệu mới không khớp bất kỳ quy luật chia nào, hệ thống sẽ tự động phân phối vào vòng này. Chỉ có duy nhất 1 vòng được đặt làm mặc định.")}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* RIGHT COLUMN */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minHeight: 0, flex: 1 }}>
-                    {/* Custom Multi-Select with Avatars */}
-                    <div className="form-group" ref={dropdownRef} style={{ position: 'relative' }}>
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> {t("Chọn Tư vấn viên vào vòng này")}</label>
-
-                      {/* Search Input Box */}
-                      <div style={{ position: 'relative' }}>
-                        <input
-                          className="form-input"
-                          style={{ paddingLeft: '12px', background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}
-                          placeholder={t("Tìm kiếm và chọn Tư vấn viên...")}
-                          value={searchUser}
-                          onChange={e => setSearchUser(e.target.value)}
-                          onFocus={() => setShowDropdown(true)}
-                        />
-                      </div>
-
-                      {/* Dropdown Options */}
-                      {showDropdown && (
-                        <div style={{
-                          position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, zIndex: 50,
-                          background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)',
-                          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)', maxHeight: 220, overflowY: 'auto'
-                        }}>
-                          {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).map(user => {
-                            const isSelected = formData.selected_users.includes(Number(user.id));
-
-                            return (
-                              <div
-                                key={user.id}
-                                onClick={() => {
-                                  if (user.status !== 'active') {
-                                    toast.error(t('Sale không hoạt động'));
-                                    return;
-                                  }
-                                  toggleUserSelection(user.id);
-                                }}
-                                style={{
-                                  padding: '0.5rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-                                  cursor: user.status === 'active' ? 'pointer' : 'not-allowed',
-                                  background: isSelected ? 'var(--color-primary-light)' : 'transparent',
-                                  transition: 'background 0.1s',
-                                  opacity: user.status === 'active' ? 1 : 0.55,
-                                  filter: user.status === 'active' ? 'none' : 'grayscale(1)'
-                                }}
-                                onMouseEnter={e => { if (user.status === 'active' && !isSelected) e.currentTarget.style.background = 'var(--color-bg)'; }}
-                                onMouseLeave={e => { if (user.status === 'active' && !isSelected) e.currentTarget.style.background = 'transparent'; }}
-                              >
-                                <Avatar src={user.avatar} name={user.name} size={28} />
-                                 <div style={{ flex: 1 }}>
-                                  <p style={{ fontSize: '0.875rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--color-primary)' : 'var(--color-text)', margin: 0 }}>{user.name}</p>
-                                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4, margin: 0 }}>
-                                    {user.email && (
-                                      <img
-                                        src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
-                                        alt="Gmail"
-                                        style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
-                                      />
-                                    )}
-                                    <span>{user.email} • {user.status === 'active' ? t('Đang nhận data') : t('Không nhận data')}</span>
-                                  </p>
-                                </div>
-                                {isSelected && <Check size={16} color="var(--color-primary)" />}
-                              </div>
-                            );
-                          })}
-                          {consultants.filter(c => c.name.toLowerCase().includes(searchUser.toLowerCase())).length === 0 && (
-                            <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                              {t("Không tìm thấy tư vấn viên nào")}
-                            </div>
-                          )}
-                        </div>
+                    <div style={{ padding: '1.25rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto', flexShrink: 0 }}>
+                      <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>{isReadOnly ? t("Đóng") : t("Hủy bỏ")}</button>
+                      {!isReadOnly && (
+                        <button type="submit" className="btn primary" disabled={isSaving}>
+                          {isSaving ? t('Đang lưu...') : (editingRound ? t('Cập nhật') : t('Thêm mới'))}
+                        </button>
                       )}
                     </div>
-
-                    {/* Selected Consultants List Block */}
-                    {formData.selected_users.length > 0 && (
-                      <div className="custom-scrollbar modal-form-selected-list" style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1, overflowY: 'auto', paddingRight: 4, minHeight: 0 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 2 }}>{t("Tư vấn viên đã chọn ({count}):").replace('{count}', String(formData.selected_users.length))}</div>
-                        {formData.selected_users.map(userId => {
-                          const user = consultants.find(c => Number(c.id) === userId);
-                          if (!user) return null;
-                          return (
-                            <div key={user.id} style={{
-                              display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0.75rem',
-                              background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 10,
-                              transition: 'all 0.2s'
-                            }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <Avatar src={user.avatar} name={user.name} size={28} style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.12)' }} />
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center' }}>
-                                    {user.name}
-                                    {editingRound?.compensations?.[user.id] > 0 && (
-                                      <span className="badge danger" style={{ marginLeft: 8, fontSize: '0.65rem', padding: '2px 6px' }}>
-                                        {t("Nợ bù: {count}").replace('{count}', String(editingRound.compensations[user.id]))}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                    {user.email && (
-                                      <>
-                                        <img
-                                          src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png"
-                                          alt="Gmail"
-                                          style={{ width: 13, height: 10, objectFit: 'contain', flexShrink: 0 }}
-                                        />
-                                        <span>{user.email}</span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={(e) => removeUser(user.id, e)}
-                                  style={{
-                                    color: 'var(--color-text-muted)', padding: 4, borderRadius: 6,
-                                    border: 'none', background: 'transparent', cursor: 'pointer',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    transition: 'all 0.2s'
-                                  }}
-                                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--color-danger)'; e.currentTarget.style.background = 'var(--color-danger-light)'; }}
-                                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-muted)'; e.currentTarget.style.background = 'transparent'; }}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-
-                              {/* Special Rule: Ratio + Data Per Turn */}
-                              <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                {/* Row 1: Data per turn */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500, minWidth: '40px' }}>{t("Nhận:")}</span>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="20"
-                                    value={formData.data_per_turns[user.id] || 1}
-                                    onChange={e => setFormData({ ...formData, data_per_turns: { ...formData.data_per_turns, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
-                                    style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: theme === 'dark' ? '#34d399' : '#059669', fontWeight: 700, background: theme === 'dark' ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5' }}
-                                  />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("data liên tiếp mỗi lượt")}</span>
-                                </div>
-                                {/* Row 2: Ratios */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500, minWidth: '40px' }}>{t("Sau:")}</span>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="99"
-                                    value={formData.ratios[user.id] || 1}
-                                    onChange={e => setFormData({ ...formData, ratios: { ...formData.ratios, [user.id]: Math.max(1, parseInt(e.target.value) || 1) } })}
-                                    style={{ width: 44, border: '1px solid var(--color-border)', borderRadius: 4, padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', outline: 'none', color: 'var(--color-primary)', fontWeight: 700, background: 'var(--color-bg)' }}
-                                  />
-                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{t("vòng phân bổ")}</span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
-                </div>
-
-                <div style={{ padding: '1.25rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)', marginTop: 'auto' }}>
-                  <button type="button" className="btn outline" onClick={() => { setModalOpen(false); setShowDropdown(false); }}>{isReadOnly ? t("Đóng") : t("Hủy bỏ")}</button>
-                  {!isReadOnly && (
-                    <button type="submit" className="btn primary" disabled={isSaving}>
-                      {isSaving ? t('Đang lưu...') : (editingRound ? t('Cập nhật') : t('Thêm mới'))}
-                    </button>
-                  )}
-                </div>
                 </fieldset>
               </form>
             ) : activeTab === 'reports' ? (

@@ -4153,7 +4153,7 @@ html, body {
 }
 
 /* Customizing react-hot-toast style to make it look premium, dark-mode adaptive and native */
-div[role="status"] {
+.custom-toast {
   border-radius: 12px !important;
   font-family: inherit !important;
   font-size: 0.8125rem !important;
@@ -4163,4 +4163,10 @@ div[role="status"] {
   border: 1px solid var(--color-border-light) !important;
   background-color: var(--color-surface) !important;
   color: var(--color-text) !important;
+}
+
+div[role="status"] {
+  font-family: inherit !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500 !important;
 }

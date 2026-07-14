@@ -56,6 +56,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       pattern: 'none',
       weekly_days: [],
       monthly_day: 1,
+      days_interval: 3,
       last_generated: ''
     },
     checklist: [],
@@ -176,7 +177,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         description: normalizedTask.body || '',
         internal_type: 'task',
         scope: 'team',
-        recurrence: { pattern: 'none', weekly_days: [], monthly_day: 1, last_generated: '' },
+        recurrence: { pattern: 'none', weekly_days: [], monthly_day: 1, days_interval: 3, last_generated: '' },
         checklist: [],
         links: [],
         project_id: normalizedTask.related_type === 'project' ? normalizedTask.related_id : null,
@@ -221,8 +222,81 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     }
   }, [task]);
 
+  const validateRecurrence = (meta: any): { isValid: boolean; error?: string } => {
+    const rec = meta?.recurrence;
+    if (!rec || rec.pattern === 'none') {
+      return { isValid: true };
+    }
+    
+    if (rec.pattern === 'weekly') {
+      if (!rec.weekly_days || rec.weekly_days.length === 0) {
+        return { 
+          isValid: false, 
+          error: t('Vui lòng chọn ít nhất một ngày trong tuần để lặp lại!') 
+        };
+      }
+    }
+    
+    if (rec.pattern === 'monthly') {
+      const day = Number(rec.monthly_day);
+      if (isNaN(day) || day < 1 || day > 31) {
+        return { 
+          isValid: false, 
+          error: t('Vui lòng chọn một ngày hợp lệ trong tháng (từ 1 đến 31)!') 
+        };
+      }
+    }
+    
+    if (rec.pattern === 'custom_days') {
+      const interval = Number(rec.days_interval);
+      if (isNaN(interval) || interval < 1) {
+        return { 
+          isValid: false, 
+          error: t('Vui lòng chọn khoảng thời gian lặp lại hợp lệ (từ 1 ngày trở lên)!') 
+        };
+      }
+    }
+    
+    return { isValid: true };
+  };
+
+  const renderCommentContent = (text: string) => {
+    if (!text) return '';
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = text.split(urlRegex);
+    return parts.map((part, idx) => {
+      if (urlRegex.test(part)) {
+        return (
+          <a
+            key={idx}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: 'var(--color-primary)',
+              textDecoration: 'underline',
+              wordBreak: 'break-all'
+            }}
+          >
+            {part}
+          </a>
+        );
+      }
+      return part;
+    });
+  };
+
   const handleSaveMeta = async (updatedMeta: any) => {
     if (!task) return;
+
+    // Recurrence validation
+    const validation = validateRecurrence(updatedMeta);
+    if (!validation.isValid) {
+      setErpMeta(updatedMeta);
+      toast.error(validation.error);
+      return;
+    }
+
     if (task.id === 'new') {
       setErpMeta(updatedMeta);
       return;
@@ -963,60 +1037,89 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 <div style={{
                   background: 'var(--color-bg)',
                   border: '1px solid var(--color-border-light)',
-                  padding: '12px',
-                  borderRadius: '10px',
+                  padding: '16px',
+                  borderRadius: '12px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
-                  animation: 'slideDown 0.2s ease-out'
+                  gap: '12px',
+                  animation: 'slideDown 0.2s ease-out',
+                  boxShadow: 'var(--shadow-sm)'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.25fr 1fr 1fr', gap: '8px', alignItems: 'center' }}>
+                  {/* Row 1: Title */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Tên công việc con')}</span>
                     <input
                       type="text"
                       className="form-input"
-                      style={{ fontSize: '0.75rem', padding: '6px 10px', height: '38px' }}
-                      placeholder={t('Tiêu đề việc con...')}
+                      style={{ fontSize: '0.8rem', padding: '8px 12px', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', width: '100%' }}
+                      placeholder={t('Ví dụ: Gửi hợp đồng cho khách...')}
                       value={newSubTitle}
                       onChange={(e) => setNewSubTitle(e.target.value)}
                     />
-                    
-                    <CustomSelect
-                      options={users.map(u => ({
-                        value: String(u.id),
-                        label: u.full_name,
-                        avatar: u.avatar || u.avatar_url
-                      }))}
-                      value={newSubAssignee}
-                      onChange={val => setNewSubAssignee(String(val))}
-                      placeholder={t('Người làm...')}
-                      searchable
-                      showAvatars
-                      size="sm"
-                    />
-
-                    <CustomSelect
-                      options={[
-                        { value: 'high', label: t('Cao') },
-                        { value: 'medium', label: t('Trung bình') },
-                        { value: 'low', label: t('Thấp') }
-                      ]}
-                      value={newSubPriority}
-                      onChange={val => setNewSubPriority(String(val))}
-                      placeholder={t('Độ ưu tiên')}
-                      size="sm"
-                    />
-
-                    <input
-                      type="date"
-                      className="form-input"
-                      style={{ fontSize: '0.75rem', padding: '6px', height: '38px' }}
-                      value={newSubDeadline}
-                      onChange={(e) => setNewSubDeadline(e.target.value)}
-                    />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                    <button className="btn outline sm" onClick={() => setShowAddChecklist(false)} style={{ padding: '3px 8px', fontSize: '0.72rem' }}>{t('Hủy')}</button>
-                    <button className="btn primary sm" onClick={handleAddChecklistItem} style={{ padding: '3px 8px', fontSize: '0.72rem' }}>{t('Thêm')}</button>
+
+                  {/* Row 2: Grid for Assignee, Priority, Deadline */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Người thực hiện')}</span>
+                      <CustomSelect
+                        options={users.map(u => ({
+                          value: String(u.id),
+                          label: u.full_name,
+                          avatar: u.avatar || u.avatar_url
+                        }))}
+                        value={newSubAssignee}
+                        onChange={val => setNewSubAssignee(String(val))}
+                        placeholder={t('Chọn người làm...')}
+                        searchable
+                        showAvatars
+                        size="sm"
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Độ ưu tiên')}</span>
+                      <CustomSelect
+                        options={[
+                          { value: 'high', label: t('Cao') },
+                          { value: 'medium', label: t('Trung bình') },
+                          { value: 'low', label: t('Thấp') }
+                        ]}
+                        value={newSubPriority}
+                        onChange={val => setNewSubPriority(String(val))}
+                        placeholder={t('Độ ưu tiên')}
+                        size="sm"
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Hạn hoàn thành')}</span>
+                      <input
+                        type="date"
+                        className="form-input"
+                        style={{ fontSize: '0.8rem', padding: '6px 10px', height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
+                        value={newSubDeadline}
+                        onChange={(e) => setNewSubDeadline(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Action Buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
+                    <button 
+                      className="btn outline sm" 
+                      onClick={() => setShowAddChecklist(false)} 
+                      style={{ padding: '6px 14px', fontSize: '0.75rem', borderRadius: '6px', cursor: 'pointer', height: '32px', display: 'flex', alignItems: 'center' }}
+                    >
+                      {t('Hủy')}
+                    </button>
+                    <button 
+                      className="btn primary sm" 
+                      onClick={handleAddChecklistItem} 
+                      style={{ padding: '6px 14px', fontSize: '0.75rem', borderRadius: '6px', cursor: 'pointer', height: '32px', display: 'flex', alignItems: 'center', background: 'var(--color-primary)', color: 'white', border: 'none' }}
+                    >
+                      {t('Thêm')}
+                    </button>
                   </div>
                 </div>
               )}
@@ -1297,7 +1400,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || 'Đồng nghiệp'}</span>
                               <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
                             </div>
-                            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{comment.content}</p>
+                            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{renderCommentContent(comment.content)}</p>
                             {commentParsedAtts.length > 0 && (
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                                 {commentParsedAtts.map((url: any, aIdx: number) => {
@@ -1636,7 +1739,44 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             <div className="card" style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Tiến độ công việc')}</span>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-primary)' }}>{formData.progress || 0}%</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={formData.progress ?? 0}
+                    onChange={(e) => {
+                      let val = Number(e.target.value);
+                      if (isNaN(val)) val = 0;
+                      val = Math.min(100, Math.max(0, val));
+                      setFormData((prev: any) => {
+                        const next: any = { ...prev, progress: val };
+                        if (val === 100 && prev.require_approval === 1 && prev.approver_id) {
+                          next.approval_status = 'pending';
+                        } else if (val < 100) {
+                          next.approval_status = null;
+                        }
+                        return next;
+                      });
+                    }}
+                    onBlur={() => {
+                      handleUpdateField('progress', formData.progress);
+                    }}
+                    style={{
+                      width: '45px',
+                      height: '24px',
+                      fontSize: '0.8rem',
+                      fontWeight: 800,
+                      textAlign: 'center',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '4px',
+                      background: 'var(--color-surface)',
+                      padding: 0
+                    }}
+                  />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)' }}>%</span>
+                </div>
               </div>
               <input
                 type="range"
@@ -1654,6 +1794,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     }
                     return next;
                   });
+                }}
+                onMouseUp={() => {
+                  handleUpdateField('progress', formData.progress);
+                }}
+                onTouchEnd={() => {
+                  handleUpdateField('progress', formData.progress);
                 }}
                 className="progress-slider"
                 style={{
@@ -1839,109 +1985,163 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
             {/* Lặp lại định kỳ */}
             <div className="card" style={cardStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={cardLabelStyle}>🔄 {t('Lặp lại định kỳ')}</span>
-                {erpMeta.recurrence?.pattern && erpMeta.recurrence.pattern !== 'none' && (
-                  <span className="badge success" style={{ fontSize: '0.625rem', borderRadius: '4px', padding: '2px 6px' }}>
-                    {t('Đang bật')}
-                  </span>
-                )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={cardLabelStyle}>🔄 {t('Lặp lại định kỳ')}</span>
+                  {erpMeta.recurrence?.pattern && erpMeta.recurrence.pattern !== 'none' && (
+                    <span className="badge success" style={{ fontSize: '0.625rem', borderRadius: '4px', padding: '2px 6px', textTransform: 'none', letterSpacing: 'normal' }}>
+                      {erpMeta.recurrence?.pattern === 'daily' ? t('Hàng ngày') :
+                       erpMeta.recurrence?.pattern === 'weekly' ? t('Hàng tuần') :
+                       erpMeta.recurrence?.pattern === 'monthly' ? t('Hàng tháng') :
+                       erpMeta.recurrence?.pattern === 'custom_days' ? t('Theo chu kỳ') : ''}
+                    </span>
+                  )}
+                </div>
+                
+                <div style={{ width: '180px' }}>
+                  <CustomSelect
+                    options={[
+                      { value: 'none', label: t('Không lặp lại') },
+                      { value: 'daily', label: t('Hàng ngày') },
+                      { value: 'weekly', label: t('Hàng tuần') },
+                      { value: 'monthly', label: t('Hàng tháng') },
+                      { value: 'custom_days', label: t('Chu kỳ ngày') }
+                    ]}
+                    value={erpMeta.recurrence?.pattern || 'none'}
+                    onChange={val => {
+                      const nextPattern = val.toString();
+                      const nextRecurrence = {
+                        ...(erpMeta.recurrence || { weekly_days: [], monthly_day: 1, days_interval: 3, last_generated: '' }),
+                        pattern: nextPattern
+                      };
+                      const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
+                      setErpMeta(nextMeta);
+                      handleSaveMeta(nextMeta);
+                    }}
+                    width="100%"
+                  />
+                </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <CustomSelect
-                  options={[
-                    { value: 'none', label: t('Không lặp lại') },
-                    { value: 'daily', label: t('Hàng ngày') },
-                    { value: 'weekly', label: t('Hàng tuần') },
-                    { value: 'monthly', label: t('Hàng tháng') }
-                  ]}
-                  value={erpMeta.recurrence?.pattern || 'none'}
-                  onChange={val => {
-                    const nextPattern = val.toString();
-                    const nextRecurrence = {
-                      ...(erpMeta.recurrence || { weekly_days: [], monthly_day: 1, last_generated: '' }),
-                      pattern: nextPattern
-                    };
-                    const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
-                    setErpMeta(nextMeta);
-                    handleSaveMeta(nextMeta);
-                  }}
-                  width="100%"
-                />
 
-                {erpMeta.recurrence?.pattern === 'weekly' && (
-                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
-                    {[
-                      { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
-                      { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
-                      { key: 0, label: 'CN' }
-                    ].map(day => {
-                      const isSelected = (erpMeta.recurrence?.weekly_days || []).includes(day.key);
-                      return (
-                        <button
-                          key={day.key}
-                          type="button"
-                          onClick={() => {
-                            let newDays = [...(erpMeta.recurrence?.weekly_days || [])];
-                            if (newDays.includes(day.key)) {
-                              newDays = newDays.filter(d => d !== day.key);
-                            } else {
-                              newDays.push(day.key);
-                            }
+              {erpMeta.recurrence?.pattern && erpMeta.recurrence.pattern !== 'none' && erpMeta.recurrence.pattern !== 'daily' && (
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px', 
+                  padding: '10px 14px', 
+                  background: 'var(--color-bg)', 
+                  borderRadius: '8px', 
+                  marginTop: '4px',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap'
+                }}>
+                  {erpMeta.recurrence?.pattern === 'weekly' && (
+                    <>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Chọn ngày lặp lại:')}</span>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {[
+                          { key: 1, label: 'T2' }, { key: 2, label: 'T3' }, { key: 3, label: 'T4' },
+                          { key: 4, label: 'T5' }, { key: 5, label: 'T6' }, { key: 6, label: 'T7' },
+                          { key: 0, label: 'CN' }
+                        ].map(day => {
+                          const isSelected = (erpMeta.recurrence?.weekly_days || []).includes(day.key);
+                          return (
+                            <button
+                              key={day.key}
+                              type="button"
+                              onClick={() => {
+                                const isSelected = (erpMeta.recurrence?.weekly_days || []).includes(day.key);
+                                const newDays = isSelected ? [] : [day.key];
+                                const nextRecurrence = {
+                                  ...(erpMeta.recurrence || { monthly_day: 1, days_interval: 3, last_generated: '' }),
+                                  weekly_days: newDays
+                                };
+                                const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
+                                setErpMeta(nextMeta);
+                                handleSaveMeta(nextMeta);
+                              }}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '6px',
+                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
+                                color: isSelected ? 'white' : 'var(--color-text)',
+                                transition: 'all 0.15s',
+                                boxShadow: isSelected ? '0 2px 4px rgba(37,99,235,0.2)' : 'none'
+                              }}
+                            >
+                              {day.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {erpMeta.recurrence?.pattern === 'monthly' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Chọn ngày trong tháng để tự động lặp lại:')}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text)', fontWeight: 600 }}>{t('Ngày')}</span>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={1}
+                          max={31}
+                          value={erpMeta.recurrence?.monthly_day || 1}
+                          onChange={e => {
+                            const dayVal = Math.min(31, Math.max(1, Number(e.target.value)));
                             const nextRecurrence = {
-                              ...(erpMeta.recurrence || { monthly_day: 1, last_generated: '' }),
-                              weekly_days: newDays
+                              ...(erpMeta.recurrence || { weekly_days: [], days_interval: 3, last_generated: '' }),
+                              monthly_day: dayVal
                             };
                             const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
                             setErpMeta(nextMeta);
-                            handleSaveMeta(nextMeta);
                           }}
-                          style={{
-                            width: '28px',
-                            height: '28px',
-                            borderRadius: '6px',
-                            border: '1px solid var(--color-border)',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            background: isSelected ? 'var(--color-primary)' : 'var(--color-surface)',
-                            color: isSelected ? 'white' : 'var(--color-text)',
-                            transition: 'all 0.15s'
+                          onBlur={() => {
+                            handleSaveMeta(erpMeta);
                           }}
-                        >
-                          {day.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                          style={{ width: '55px', height: '32px', textAlign: 'center', padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                {erpMeta.recurrence?.pattern === 'monthly' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Vào ngày:')}</span>
-                    <input
-                      type="number"
-                      className="form-input"
-                      min={1}
-                      max={31}
-                      value={erpMeta.recurrence?.monthly_day || 1}
-                      onChange={e => {
-                        const dayVal = Math.min(31, Math.max(1, Number(e.target.value)));
-                        const nextRecurrence = {
-                          ...(erpMeta.recurrence || { weekly_days: [], last_generated: '' }),
-                          monthly_day: dayVal
-                        };
-                        const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
-                        setErpMeta(nextMeta);
-                      }}
-                      onBlur={() => {
-                        handleSaveMeta(erpMeta);
-                      }}
-                      style={{ width: '60px', height: '32px', textAlign: 'center', padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                    />
-                  </div>
-                )}
-              </div>
+                  {erpMeta.recurrence?.pattern === 'custom_days' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{t('Tự động tạo nhiệm vụ mới sau một khoảng thời gian:')}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text)', fontWeight: 600 }}>{t('Mỗi')}</span>
+                        <input
+                          type="number"
+                          className="form-input"
+                          min={1}
+                          max={365}
+                          value={erpMeta.recurrence?.days_interval || 3}
+                          onChange={e => {
+                            const daysVal = Math.max(1, Number(e.target.value));
+                            const nextRecurrence = {
+                              ...(erpMeta.recurrence || { weekly_days: [], monthly_day: 1, last_generated: '' }),
+                              days_interval: daysVal
+                            };
+                            const nextMeta = { ...erpMeta, recurrence: nextRecurrence };
+                            setErpMeta(nextMeta);
+                          }}
+                          onBlur={() => {
+                            handleSaveMeta(erpMeta);
+                          }}
+                          style={{ width: '55px', height: '32px', textAlign: 'center', padding: 0, borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text)', fontWeight: 600 }}>{t('ngày')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Độ ưu tiên & Hạn hoàn thành */}

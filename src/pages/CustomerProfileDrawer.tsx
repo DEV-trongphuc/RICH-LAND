@@ -1692,6 +1692,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [activeTab, isOpen, contact?.id, fetchData]);
 
   useEffect(() => {
+    const handleQuoteUpdate = () => {
+      if (isOpen && contact?.id) {
+        fetchData('quotes');
+      }
+    };
+    window.addEventListener('quote-updated', handleQuoteUpdate);
+    return () => {
+      window.removeEventListener('quote-updated', handleQuoteUpdate);
+    };
+  }, [isOpen, contact?.id, fetchData]);
+
+  useEffect(() => {
     if (contact) {
       const isNewContact = contact.id !== prevContactId;
       
@@ -2072,6 +2084,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setCustomObstacle('');
       setNoteSaleTemp('');
       fetchData(); // Reload all to stay in sync
+      window.dispatchEvent(new CustomEvent('contact-updated'));
       addToast('Đã lưu ghi chú và cập nhật nhiệt độ!', 'success');
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi lưu ghi chú', 'error');
@@ -4274,6 +4287,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                                         await api.delete(`/notes/${n.id}`);
                                                         setNotes(prev => prev.filter(x => x.id !== n.id));
                                                         addToast('Đã xóa ghi chú', 'success');
+                                                        window.dispatchEvent(new CustomEvent('contact-updated'));
                                                       } catch (e: any) {
                                                         addToast('Lỗi khi xóa ghi chú', 'error');
                                                       }
@@ -5592,7 +5606,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           if (drawerTaskFilter === 'assigned_to_me') {
                             return Number(t.user_id) === currentUserId;
                           } else if (drawerTaskFilter === 'approve_by_me') {
-                            return t.require_approval === 1 && Number(t.approver_id) === currentUserId;
+                            return Number(t.require_approval) === 1 && Number(t.approver_id) === currentUserId;
                           } else if (drawerTaskFilter === 'collaborator') {
                             const pIds = t.participant_ids ? t.participant_ids.split(',').map(Number).filter(Boolean) : [];
                             return pIds.includes(currentUserId);
@@ -6863,6 +6877,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
             addToast('Đã ghi nhận cuộc gọi và thêm vào Timeline', 'success');
             fetchData();
+            window.dispatchEvent(new CustomEvent('contact-updated'));
           } catch (err: any) {
             addToast(err.response?.data?.message || 'Lỗi khi lưu nhật ký cuộc gọi', 'error');
           }
@@ -6873,7 +6888,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         onClose={() => { setShowActivityModal(false); setEditingActivity(null); }}
         entityType="contact"
         entityId={contact?.id}
-        onSuccess={fetchData}
+        onSuccess={() => {
+          fetchData();
+          window.dispatchEvent(new CustomEvent('contact-updated'));
+        }}
         userId={contact?.owner_id || currentUser?.id}
         activity={editingActivity}
       />
@@ -7198,6 +7216,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       setEditingNote(null);
                       setNewNote('');
                       fetchData();
+                      window.dispatchEvent(new CustomEvent('contact-updated'));
                     } catch (e: any) {
                       addToast('Lỗi khi cập nhật ghi chú', 'error');
                     } finally {
@@ -7292,6 +7311,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       });
                       setNotes(p => [{ id: Date.now(), text: `[Chuyển trạng thái] → ${targetLabel}: ${note}`, time: new Date().toISOString(), user: 'Admin' }, ...p]);
                       addToast(`Đã cập nhật Pipeline thành ${targetLabel}`, 'success');
+                      window.dispatchEvent(new CustomEvent('contact-updated'));
                     } catch (e: any) {
                       // Rollback optimistic update
                       setFormData((prev: any) => ({ 

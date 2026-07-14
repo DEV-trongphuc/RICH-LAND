@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
-import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip } from 'lucide-react';
+import { FileText, Check, X, ShieldAlert, UserPlus, PenTool, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Trash2, Paperclip, ExternalLink } from 'lucide-react';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -132,6 +132,9 @@ export default function CooperationSlipsPage() {
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
   const [uploadedSignatureImg, setUploadedSignatureImg] = useState<string | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+
+  const [approvalSlip, setApprovalSlip] = useState<CooperationSlip | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
 
   // Custom Confirm/Prompt Modal state
   const [customConfirm, setCustomConfirm] = useState<{
@@ -615,25 +618,8 @@ export default function CooperationSlipsPage() {
     }
   };
 
-  const handleApproveSlip = async (slipId: number) => {
-    setCustomConfirm({
-      isOpen: true,
-      title: 'Xác nhận duyệt hoa hồng',
-      message: 'Bạn có chắc chắn muốn phê duyệt phiếu hợp tác này không?',
-      onConfirm: async () => {
-        try {
-          const res = await fetchAPI(`cooperation-slips/${slipId}/approve`, { method: 'POST' });
-          if (res.success) {
-            addToast('Phê duyệt phiếu hoa hồng thành công!', 'success');
-            loadData();
-          } else {
-            addToast(res.message || 'Lỗi phê duyệt', 'error');
-          }
-        } catch (e: any) {
-          addToast(e.message || 'Lỗi kết nối', 'error');
-        }
-      }
-    });
+  const handleApproveSlip = (slip: CooperationSlip) => {
+    setApprovalSlip(slip);
   };
 
   const handleRejectSlip = async (slipId: number) => {
@@ -1017,7 +1003,7 @@ export default function CooperationSlipsPage() {
                       {isManager && slip.status === 'pending_manager_approval' && (
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <button
-                            onClick={() => handleApproveSlip(slip.id)}
+                            onClick={() => handleApproveSlip(slip)}
                             className="btn sm primary"
                             style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', background: 'var(--color-success)', border: 'none', borderRadius: '6px', fontWeight: 600 }}
                           >
@@ -1415,6 +1401,188 @@ export default function CooperationSlipsPage() {
             >
               {isSigning ? 'Đang xử lý chữ ký số...' : 'Tôi đồng ý và Ký xác nhận'}
             </button>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Approval Details Modal */}
+      {approvalSlip && createPortal(
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(10px)', padding: '1.5rem' }}>
+          <div className="card animate-fade" style={{ maxWidth: '640px', width: '100%', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto', borderRadius: '24px', border: '1px solid rgba(255, 255, 255, 0.5)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)', background: 'var(--color-surface)', position: 'relative' }}>
+            
+            {/* Close Button Top Right */}
+            <button 
+              onClick={() => setApprovalSlip(null)} 
+              style={{ position: 'absolute', top: '20px', right: '20px', background: 'var(--color-bg-light)', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+              className="hover-lift"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--color-border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                <CheckCircle size={22} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+                  Xác nhận duyệt hoa hồng
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, display: 'block', marginTop: '2px' }}>
+                  PHIẾU HỢP TÁC ID: #{approvalSlip.id}
+                </span>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              
+              {/* Slip Summary Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px 20px', background: 'linear-gradient(135deg, rgba(189,29,45,0.01) 0%, rgba(189,29,45,0.03) 100%)', padding: '16px 20px', borderRadius: '16px', border: '1px solid rgba(189, 29, 45, 0.08)' }}>
+                <div>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>CĂN HỘ / MÃ CĂN</span>
+                  <span style={{ fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-primary)' }}>{approvalSlip.unit_code || '—'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>DỰ ÁN</span>
+                  <span style={{ fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-text)' }}>{approvalSlip.project_name || 'Dự án khác'}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>KHÁCH HÀNG</span>
+                  <span style={{ fontSize: '0.925rem', fontWeight: 800, color: 'var(--color-text)' }}>{approvalSlip.last_name} {approvalSlip.first_name}</span>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: '2px' }}>TRẠNG THÁI</span>
+                  <span className="badge warning" style={{ display: 'inline-block', fontSize: '0.725rem', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, textTransform: 'none', letterSpacing: 'normal' }}>
+                    Chờ sếp duyệt
+                  </span>
+                </div>
+              </div>
+
+              {/* Ratios & Commission */}
+              <div>
+                <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid var(--color-primary)', paddingLeft: '8px' }}>
+                  Tỷ lệ chia sẻ & Doanh thu hoa hồng
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {/* Financials Row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border)', borderRadius: '14px', padding: '14px 18px' }}>
+                    <div>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, marginBottom: '4px' }}>H.HỒNG DỰ KIẾN ({approvalSlip.total_percentage ?? 100}%)</span>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--color-text)' }}>
+                        {((Number(approvalSlip.expected_commission || approvalSlip.expected_revenue || 0) * (approvalSlip.total_percentage ?? 100)) / 100).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>VND</span>
+                      </span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid var(--color-border)', paddingLeft: '16px' }}>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', display: 'block', fontWeight: 700, marginBottom: '4px' }}>THỰC THU ({approvalSlip.total_percentage ?? 100}%)</span>
+                      <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--color-success)' }}>
+                        {((Number(approvalSlip.actual_revenue || 0) * (approvalSlip.total_percentage ?? 100)) / 100).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-success)' }}>VND</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Shareholders distribution */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {approvalSlip.shareholders?.map((sh) => (
+                      <div key={sh.user_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-surface)', padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-xs)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <Avatar src={(sh as any).avatar} name={sh.name} size={32} />
+                          <div>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', display: 'block' }}>{sh.name}</span>
+                            <span style={{ fontSize: '0.675rem', color: 'var(--color-text-muted)', display: 'block' }}>{sh.email}</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-primary)' }}>{sh.percentage}%</span>
+                            <span style={{ fontSize: '0.675rem', color: sh.signed ? 'var(--color-success)' : 'var(--color-warning)', display: 'block', fontWeight: 700, marginTop: '1px' }}>
+                              {sh.signed ? '✓ Đã ký số' : '✗ Chưa ký'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents & Files */}
+              <div>
+                <h4 style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text-light)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px', borderLeft: '3px solid var(--color-primary)', paddingLeft: '8px' }}>
+                  Tài liệu đính kèm ({approvalSlip.attachment_url ? approvalSlip.attachment_url.split(',').filter(Boolean).length : 0})
+                </h4>
+                {approvalSlip.attachment_url ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px' }}>
+                    {approvalSlip.attachment_url.split(',').filter(Boolean).map((url, index) => (
+                      <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--color-bg-light)', borderRadius: '12px', border: '1px solid var(--color-border)', transition: 'all 0.2s' }} className="hover-lift">
+                        <FileText size={20} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1 }}>
+                          <a 
+                            href={`https://open.domation.net/richland/${url}`} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                            className="hover-underline"
+                          >
+                            {url.split('/').pop() || `Tài liệu đính kèm ${index + 1}`}
+                          </a>
+                        </div>
+                        <ExternalLink size={12} color="var(--color-text-muted)" style={{ flexShrink: 0 }} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '20px', border: '1px dashed var(--color-border)', borderRadius: '12px', color: 'var(--color-text-muted)', fontSize: '0.75rem', background: 'var(--color-bg-light)' }}>
+                    Không có tệp đính kèm nào.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Actions - Large, Intuitive Buttons */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem' }}>
+              <button 
+                onClick={() => setApprovalSlip(null)} 
+                className="btn outline"
+                style={{ flex: 1, height: '48px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer' }}
+                disabled={isApproving}
+              >
+                <X size={18} />
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={async () => {
+                  try {
+                    setIsApproving(true);
+                    const res = await fetchAPI(`cooperation-slips/${approvalSlip.id}/approve`, { method: 'POST' });
+                    if (res.success) {
+                      addToast('Phê duyệt phiếu hoa hồng thành công!', 'success');
+                      setApprovalSlip(null);
+                      loadData();
+                    } else {
+                      addToast(res.message || 'Lỗi phê duyệt', 'error');
+                    }
+                  } catch (e: any) {
+                    addToast(e.message || 'Lỗi kết nối', 'error');
+                  } finally {
+                    setIsApproving(false);
+                  }
+                }} 
+                className="btn"
+                style={{ flex: 2, height: '48px', borderRadius: '12px', fontSize: '0.9rem', fontWeight: 700, background: 'var(--color-success)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(52, 199, 89, 0.2)' }}
+                disabled={isApproving}
+              >
+                {isApproving ? (
+                  'Đang xử lý...'
+                ) : (
+                  <>
+                    <Check size={20} />
+                    Xác nhận &amp; Phê duyệt
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>,
         document.body
