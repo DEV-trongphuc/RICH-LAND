@@ -5,7 +5,8 @@ import { fetchAPI } from '../utils/api';
 import api from '../api/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useUIStore } from '../store/uiStore';
-import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive } from 'lucide-react';
+import { Building2, Users, FileText, Plus, Trash2, Edit, X, Upload, Download, Check, AlertCircle, Layers, FileSpreadsheet, Link2, Globe, Search, Folder, ExternalLink, MessageSquare, Paperclip, RefreshCw, Calendar, CheckSquare, HardDrive, Info } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { compressToWebP } from '../utils/imageCompress';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -121,6 +122,11 @@ export default function ProjectsPage() {
 
   const { user } = useAuth();
   const { addToast, showConfirm } = useUIStore();
+  const { t } = useLanguage();
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
+  });
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2220,8 +2226,40 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Quản Lý Dự Án</h1>
-          <p className="page-subtitle">Đăng ký dự án, roster đội ngũ phân phối và quản lý tài liệu</p>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {activeSubTab === 'campaigns' ? t('Quản Lý Chiến Dịch') : t('Quản Lý Dự Án')}
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '3px 8px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                height: '24px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+              }}
+              title={t("Xem hướng dẫn thiết lập dự án, chiến dịch và roster")}
+            >
+              <Info size={12} style={{ marginTop: 1 }} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+            </button>
+          </h1>
+          <p className="page-subtitle">{activeSubTab === 'campaigns' ? t('Cấu hình chiến dịch tiếp thị và quản lý roster nhận lead') : t('Đăng ký dự án, roster đội ngũ phân phối và quản lý tài liệu')}</p>
         </div>
         {isAdmin && activeSubTab === 'projects' && (
           <button
@@ -4585,6 +4623,105 @@ export default function ProjectsPage() {
         </div>
       )
     )}
+      {/* Explanation of Projects & Campaigns Modal */}
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={t("Hướng dẫn Thiết lập Dự án & Chiến dịch & Roster")}
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Dự án và Chiến dịch marketing là nguồn phát sinh dữ liệu khách hàng (lead). Việc cấu hình đúng đắn quyết định đường đi của lead và đội ngũ tiếp nhận chăm sóc:")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Dự án */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Building2 size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Quản lý Dự án & Tài liệu (Projects & Drive)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  • <strong>Dự án (Project)</strong>: Sản phẩm căn hộ, đất nền hoặc dự án phân phối. Mã dự án (Code) là duy nhất dùng để so khớp UTM parameter khi lead đổ về.<br />
+                  • <strong>Tài liệu dự án</strong>: Lưu trữ tài liệu (Flyer, bảng giá, pháp lý) để TVV truy cập nhanh từ Workspace.
+                </p>
+              </div>
+            </div>
+
+            {/* Chiến dịch */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(16, 185, 129, 0.02)', 
+              borderLeft: '4px solid #10b981', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Layers size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Chiến dịch tiếp thị (Marketing Campaigns)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  • <strong>Chiến dịch (Campaign)</strong>: Đại diện cho các chiến dịch quảng cáo chạy cho dự án (vd: FB Ads, Google Search). Mỗi chiến dịch kết nối với các thẻ UTM tương ứng để phân loại nguồn gốc khách hàng và tính toán chi phí vận hành (CPL/CPA).
+                </p>
+              </div>
+            </div>
+
+            {/* Roster */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Users size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Đội ngũ tiếp nhận & Roster (Project/Campaign Roster)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  • <strong>Roster</strong>: Danh sách nhân viên kinh doanh được kích hoạt tham gia bán dự án/chiến dịch này. <strong>Hệ thống chỉ chia lead cho TVV có tên trong Roster của Dự án/Chiến dịch đó</strong>. Điều này giúp đảm bảo lead được giao đúng người có chuyên môn và chứng chỉ phù hợp.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
     </div>
   );
 }

@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, MessageCircle, Shield, UserX, Clock, X, Link2Off, User, Send, Check, RefreshCw, BarChart2, Calendar, Scale, Eye, CheckCircle, AlertTriangle, Building2, ChevronLeft, ChevronRight, Search, Phone, Info, TrendingUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
@@ -138,6 +139,7 @@ const ConsultantsInner = () => {
   const [statsConsultant, setStatsConsultant] = useState<any>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsData, setStatsData] = useState<any>(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [statsDateMode, setStatsDateMode] = useState<string>('this_month');
   const [statsStartDate, setStatsStartDate] = useState<string>('');
   const [statsEndDate, setStatsEndDate] = useState<string>('');
@@ -682,8 +684,38 @@ const ConsultantsInner = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {activeTab === 'teams' ? t('Quản lý Nhóm (Team)') : activeTab === 'branches' ? t('Chi nhánh Kinh doanh') : t('Quản lý Tư vấn viên')}
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '3px 8px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                height: '24px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+              }}
+              title={t("Xem hướng dẫn thiết lập nhân sự, team và dự án trọng điểm")}
+            >
+              <Info size={12} style={{ marginTop: 1 }} />
+              <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+            </button>
           </h1>
           <p className="page-subtitle">
             {activeTab === 'teams'
@@ -2806,6 +2838,108 @@ const ConsultantsInner = () => {
         message={t("Bạn có chắc chắn muốn xóa nhóm này không? Các thành viên trong nhóm sẽ được đưa về trạng thái tự do (không thuộc nhóm nào).")}
         confirmText={t("Xóa nhóm")}
       />
+
+      {/* Consultants & Teams Guide Modal */}
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={t("Hướng dẫn thiết lập Cơ cấu Nhân sự & Nhóm (Team)")}
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Cơ cấu nhân sự là nền tảng để vận hành thuật toán phân chia data và kiểm soát hiệu suất. Hệ thống hỗ trợ quản lý 3 cấp độ:")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Chi nhánh & Nhóm */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Building2 size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Chi nhánh & Nhóm (Branches & Teams)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  • <strong>Chi nhánh (Branch)</strong>: Phân chia văn phòng làm việc vật lý (vd: Chi nhánh miền Nam, miền Bắc).<br />
+                  • <strong>Nhóm (Team)</strong>: Các tổ chức bán hàng độc lập có Trưởng nhóm (Leader) phụ trách. Mỗi nhóm có thể cài đặt <strong>Dự án trọng điểm</strong> để phối hợp nhận lead tự động từ hệ thống khi có rule định tuyến khớp dự án đó.
+                </p>
+              </div>
+            </div>
+
+            {/* Trạng thái hoạt động */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(16, 185, 129, 0.02)', 
+              borderLeft: '4px solid #10b981', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Users size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Quản lý TVV & Chế độ Nghỉ phép (Vacation Mode)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  • <strong>Tài khoản TVV</strong>: Cấu hình ca làm việc, thời gian hoạt động và quyền hạn.<br />
+                  • <strong>Chế độ nghỉ phép (Vacation Mode)</strong>: Khi bật chế độ này cho một TVV, hệ thống sẽ <strong>tạm thời bỏ qua (bypass)</strong> TVV đó trong hàng đợi chia số của vòng phân bổ (Round-Robin). Lead sẽ tự động chuyển sang người tiếp theo để tránh trễ hạn phản hồi khách hàng.
+                </p>
+              </div>
+            </div>
+
+            {/* Chỉ tiêu KPI */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <TrendingUp size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Thiết lập KPI & Giới hạn thành viên (KPI Targets & Capacity)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  • <strong>KPI Target</strong>: Thiết lập mục tiêu doanh số của nhóm dùng cho các báo cáo so sánh hiệu suất nhóm.<br />
+                  • <strong>Max Members</strong>: Giới hạn số lượng nhân sự tối đa trong nhóm để kiểm soát quy mô và hiệu quả quản trị của Trưởng nhóm.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
     </div>
   );
 };
