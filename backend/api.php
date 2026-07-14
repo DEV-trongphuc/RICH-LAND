@@ -918,7 +918,7 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
             }
 
             return ['success' => true, 'message' => 'Trùng khách cũ trong vòng ' . $dupCheckMonths . ' tháng. Đã gán lại cho Sale cũ: ' . ($cRow ? $cRow['name'] : 'Không rõ')];
-        } else if (!$assignedRoundId && !$isFallbackAdmin) {
+        } else if (!$override_consultant_id && !$assignedRoundId && !$isFallbackAdmin) {
             // Cannot assign
             $leadId = insertLead($conn, [], null, $phone, $email, $name, $source, $type, $note);
             return ['success' => true, 'message' => 'Data đã được thêm nhưng không rơi vào vòng nào.'];
@@ -1207,6 +1207,14 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                     } else {
                         $leadId = insertLead($conn, [], $consultantId, $phone, $email, $name, $source, $type, $note);
                     }
+                    if ($override_consultant_id && $leadId > 0) {
+                        $updAccepted = $conn->prepare("UPDATE leads SET is_accepted = 1 WHERE id = ?");
+                        $updAccepted->bind_param("i", $leadId);
+                        $updAccepted->execute();
+                        $updAccepted->close();
+                        
+                        ensurePersonAndContact($conn, $leadId);
+                    }
                     if ($aiScreenerResult) {
                         $updAi = $conn->prepare("UPDATE leads SET ai_screener_status = ?, ai_evaluation = ? WHERE id = ?");
                         $updAi->bind_param("ssi", $aiScreenerResult['status'], $aiScreenerResult['reason'], $leadId);
@@ -1369,6 +1377,10 @@ function processManualLead($conn, $leadData, $override_round_id, $override_consu
                         }
                     }
 
+                    if ($override_consultant_id) {
+                        $msg = ($decodedUser['role'] === 'sale') ? 'Thêm khách hàng thành công.' : 'Đã thêm và bàn giao khách hàng thành công.';
+                        return ['success' => true, 'message' => $msg];
+                    }
                     return ['success' => true, 'message' => $isOutsideWorkHours ? 'Data đã gán cho Sale ngoài giờ làm việc (Hoãn thông báo).' : 'Data đã được giao thành công.'];
                 } else {
                     if ($crmCheckResult['leadExists']) {
