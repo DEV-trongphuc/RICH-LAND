@@ -8,43 +8,65 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
   // Launch local Google Chrome on interactive desktop
   const browser = await puppeteer.launch({
     executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    headless: false,
-    defaultViewport: null,
+    headless: true,
+    defaultViewport: { width: 1440, height: 900 },
     args: ['--start-maximized']
   });
 
   const page = await browser.newPage();
   
-  // Helper function to log in using standard email and password input fields
+  // Forward page console logs to terminal
+  page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+
+  // Log all login responses
+  page.on('response', async response => {
+    if (response.url().includes('/login')) {
+      try {
+        const text = await response.text();
+        console.log(`API RESPONSE for ${response.url()}:`, text);
+      } catch (e) {}
+    }
+  });
+
+  // Helper function to log in using developer quick login buttons
   async function loginAs(email, password) {
     console.log(`\n--- Logging in as: ${email} ---`);
-    await page.goto('http://localhost:5173/login', { waitUntil: 'domcontentloaded' });
-    await sleep(1500);
-    
-    // Clear localStorage and cookies to ensure clean login
+    await page.goto('http://localhost:5173/', { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => localStorage.clear());
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await sleep(1500);
+    await page.goto('http://localhost:5173/login', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('button', { visible: true, timeout: 6000 });
 
-    // Type email
-    await page.click('input[type="email"]');
-    await page.type('input[type="email"]', email);
-    await sleep(500);
+    // Map email to developer quick login button text
+    let roleText = '';
+    if (email.includes('superadmin')) roleText = 'Super Admin';
+    else if (email.includes('admin')) roleText = 'Admin';
+    else if (email.includes('manager')) roleText = 'Manager';
+    else if (email.includes('assistant')) roleText = 'Assistant';
+    else if (email.includes('viewer')) roleText = 'Viewer';
+    else if (email.includes('haidang')) roleText = 'Sale';
     
-    // Type password
-    await page.click('input[type="password"]');
-    await page.type('input[type="password"]', password);
-    await sleep(500);
-    
-    // Click submit button
-    const submitBtn = await page.$('button[type="submit"]');
-    if (submitBtn) {
-      await submitBtn.click();
-    } else {
-      await page.keyboard.press('Enter');
+    // Find the button with the role text
+    let clicked = false;
+    const btns = await page.$$('button');
+    for (const btn of btns) {
+      const txt = await page.evaluate(el => el.textContent, btn);
+      if (txt.includes(`Dev ${roleText}`)) {
+        await btn.click();
+        clicked = true;
+        break;
+      }
     }
-    
-    await sleep(4500); // Allow routing and app loading to complete
+    if (!clicked) {
+      throw new Error(`Dev login button for role ${roleText} not found`);
+    }
+
+    try {
+      await page.waitForFunction(() => !window.location.href.includes('/login'), { timeout: 6000 });
+    } catch (e) {
+      console.warn("URL change wait timed out or failed");
+      await page.screenshot({ path: `login_failed_${email}.png` });
+    }
+    await sleep(1500); // Allow routing and app loading to complete
     console.log(`Logged in successfully. Current URL: ${page.url()}`);
   }
 
@@ -71,7 +93,7 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
         return;
       }
     }
-    await sleep(3000);
+    await sleep(1200);
   }
 
   try {
@@ -88,45 +110,39 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
     // Open Thêm liên hệ modal and create E2E client
     console.log('Admin creating a test contact...');
     
-    // Find the "Thêm liên hệ" button by looking at buttons with class primary or text
+    // Find the "Thêm data nhanh" button in the sidebar (available globally)
     let added = false;
     const btns = await page.$$('button');
     for (const btn of btns) {
       const txt = await page.evaluate(el => el.textContent, btn);
-      if (txt.includes('Thêm liên hệ')) {
+      if (txt.includes('Thêm data nhanh') || txt.includes('Thêm data cá nhân')) {
         await btn.click();
         added = true;
         break;
       }
     }
-    if (!added) {
-      // fallback
-      const addBtn = await page.$('button.btn.primary');
-      if (addBtn) await addBtn.click();
-    }
     
     // Wait for the modal input to render
     console.log('Waiting for modal inputs to appear...');
-    await page.waitForSelector('input[placeholder="VD: Nguyễn"]', { timeout: 6000 });
+    await page.waitForSelector('input[placeholder="VD: Nguyễn Văn A"]', { timeout: 6000 });
     
     const randomPhone = '09' + Math.floor(10000000 + Math.random() * 90000000);
-    await page.type('input[placeholder="VD: Nguyễn"]', '[E2E-Admin]');
-    await page.type('input[placeholder="VD: Văn An"]', 'Thế Vinh');
-    await page.type('input[placeholder="09xx xxx xxx"]', randomPhone);
-    await page.type('input[placeholder="email@congty.com"]', `the_vinh_${randomPhone}@richland.com`);
+    await page.type('input[placeholder="VD: Nguyễn Văn A"]', '[E2E-Admin] Thế Vinh');
+    await page.type('input[placeholder="VD: 0912345678"]', randomPhone);
+    await page.type('input[placeholder="VD: email@gmail.com"]', `the_vinh_${randomPhone}@richland.com`);
     
     // Click submit
     let submitted = false;
     const submitBtns = await page.$$('button');
     for (const btn of submitBtns) {
       const text = await page.evaluate(el => el.textContent, btn);
-      if (text.includes('Tạo Liên hệ')) {
+      if (text.includes('Lưu & Giao Data')) {
         await btn.click();
         submitted = true;
         break;
       }
     }
-    await sleep(4000);
+    await sleep(2000);
     await page.screenshot({ path: '1_admin_contacts_after_create.png' });
 
     await clickSidebarItem('/rounds', 'Quy tắc phân bổ');
@@ -138,7 +154,7 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
     // ==========================================
     // ROLE 2: MANAGER
     // ==========================================
-    await loginAs('mgr_unique@richland.net', 'admin123');
+    await loginAs('manager@richland.net', 'manager123');
     await page.screenshot({ path: '2_manager_dashboard.png' });
     
     await clickSidebarItem('/reports-crm', 'Báo cáo');
@@ -153,7 +169,7 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
     // ==========================================
     // ROLE 3: ASSISTANT
     // ==========================================
-    await loginAs('assistant_e2e@richland.net', 'admin123');
+    await loginAs('assistant@richland.net', 'assistant123');
     await page.screenshot({ path: '3_assistant_dashboard.png' });
     
     await clickSidebarItem('/contacts', 'Khách hàng');
@@ -165,7 +181,7 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
     // ==========================================
     // ROLE 4: VIEWER
     // ==========================================
-    await loginAs('viewer_e2e@richland.net', 'admin123');
+    await loginAs('viewer@richland.net', 'viewer123');
     await page.screenshot({ path: '4_viewer_dashboard.png' });
     
     await clickSidebarItem('/contacts', 'Khách hàng');
@@ -191,10 +207,10 @@ const sleep = ms => new Promise(res => setTimeout(res, ms));
 
     console.log('\n========================================================');
     console.log('ALL 5 ROLES VISUALLY AND LOGICALLY AUDITED SUCCESSFULLY!');
-    console.log('Browser left open for manual inspection on Sale workspace.');
     console.log('========================================================\n');
-    
+    await browser.close();
   } catch (err) {
     console.error('Error during testing:', err.message);
+    if (browser) await browser.close();
   }
 })();
