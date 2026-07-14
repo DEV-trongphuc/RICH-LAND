@@ -1809,7 +1809,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   useEffect(() => {
     if (isOpen) {
-      if (currentUser && currentUser.role !== 'sale') {
+      if (currentUser && currentUser.role !== 'sale' && currentUser.role !== 'manager') {
         api.get('/users').then(r => {
           const d = r.data.data;
           const list = Array.isArray(d) ? d : (d?.items || []);
@@ -1821,7 +1821,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           setUsers(team);
         }).catch(() => {});
       } else {
-        fetchAPI('get_consultants').then(res => {
+        fetchAPI('get_consultants?all=1').then(res => {
           if (res && res.success && res.data) {
             const mapped = res.data.map((u: any) => ({
               ...u,

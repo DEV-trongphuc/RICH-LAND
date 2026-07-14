@@ -1257,10 +1257,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   useEffect(() => {
     if (token) {
-      api.get('/users').then(r => {
+      const isSaleOrManager = user?.role === 'sale' || user?.role === 'manager';
+      const usersEndpoint = isSaleOrManager ? '/get_consultants?all=1' : '/users';
+      api.get(usersEndpoint).then(r => {
         const d = r.data.data;
         const list = Array.isArray(d) ? d : (d?.items || []);
-        const team = list.filter((u: any) => {
+        const team = list.map((u: any) => ({
+          ...u,
+          id: u.id,
+          full_name: u.full_name || u.name || u.username || '',
+          avatar_url: u.avatar_url || u.avatar || '',
+          role: u.role || 'sale'
+        })).filter((u: any) => {
           if (!u || !u.role) return false;
           const roleLower = u.role.toLowerCase();
           return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);

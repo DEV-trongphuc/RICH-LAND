@@ -254,6 +254,7 @@ class ActivityController {
         if (in_array($auth['role'], ['sales', 'sale'], true) && !$relType && !$relId) {
             $where[] = '(
                 a.user_id = ? 
+                OR a.created_by = ?
                 OR a.approver_id = ?
                 OR FIND_IN_SET(?, a.participant_ids)
                 OR (a.related_type = \'contact\' AND EXISTS (
@@ -281,9 +282,11 @@ class ActivityController {
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager' && !$relType && !$relId) {
             $where[] = '(
                 a.user_id = ? 
+                OR a.created_by = ?
                 OR a.approver_id = ?
                 OR FIND_IN_SET(?, a.participant_ids)
                 OR a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?))
@@ -309,6 +312,7 @@ class ActivityController {
                 ))
                 OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
             )';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];

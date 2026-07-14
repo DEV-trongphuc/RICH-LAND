@@ -40,17 +40,26 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
     }
     // Fetch users for mentions
     console.log("MentionInput fetching users from API...");
-    api.get('/users').then(res => {
+    const isSaleOrManager = currentUser?.role === 'sale' || currentUser?.role === 'manager';
+    const usersEndpoint = isSaleOrManager ? '/get_consultants?all=1' : '/users';
+    api.get(usersEndpoint).then(res => {
       const d = res.data.data;
       const list = Array.isArray(d) ? d : (d?.items || []);
       console.log("MentionInput API response list:", list);
-      const filtered = list.filter(isTeamMember);
+      const mapped = list.map((u: any) => ({
+        ...u,
+        id: u.id,
+        full_name: u.full_name || u.name || u.username || '',
+        avatar_url: u.avatar_url || u.avatar || '',
+        role: u.role || 'sale'
+      }));
+      const filtered = mapped.filter(isTeamMember);
       setUsers(filtered);
     }).catch(err => {
       console.error("MentionInput failed to load users:", err);
       setUsers([]);
     });
-  }, [propUsers]);
+  }, [propUsers, currentUser?.role]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {

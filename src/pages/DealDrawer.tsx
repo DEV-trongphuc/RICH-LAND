@@ -187,18 +187,28 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   const fetchLists = async () => {
     setLoadingLists(true);
     try {
+      const isSaleOrManager = currentUser?.role === 'sale' || currentUser?.role === 'sales' || currentUser?.role === 'manager';
+      const usersEndpoint = isSaleOrManager ? '/get_consultants?all=1' : '/users';
       const [rC, rCo, rT, rU, rP] = await Promise.all([
         api.get('/contacts?limit=1000'),
         api.get('/companies'),
         api.get('/tags'),
-        api.get('/users').catch(() => ({ data: { data: [] } })),
+        api.get(usersEndpoint).catch(() => ({ data: { data: [] } })),
         api.get('/projects?bypass_roster=1').catch(() => ({ data: { data: [] } }))
       ]);
       setContacts(rC.data.data?.items || []);
       setCompanies(rCo.data.data?.items || []);
       setAllTags(rT.data.data || []);
       const ud = rU.data.data;
-      setUsers(Array.isArray(ud) ? ud : (ud?.items || []));
+      const list = Array.isArray(ud) ? ud : (ud?.items || []);
+      const mapped = list.map((u: any) => ({
+        ...u,
+        id: u.id,
+        full_name: u.full_name || u.name || u.username || '',
+        avatar_url: u.avatar_url || u.avatar || '',
+        role: u.role || 'sale'
+      }));
+      setUsers(mapped);
       setProjects(rP.data.data || []);
     } catch (e: any) {
       // Keep empty or mock
