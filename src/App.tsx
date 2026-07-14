@@ -126,6 +126,11 @@ const AppTabs = () => {
     }
   } else if (currentPath === '/activities') {
     if (['sale', 'sales'].includes(user?.role || '')) {
+      const searchParams = new URLSearchParams(location.search);
+      const taskId = searchParams.get('id');
+      if (taskId) {
+        return <Navigate to={`/workspace?task_id=${taskId}`} replace />;
+      }
       return <Navigate to="/workspace" replace />;
     }
   } else if (isAdminPath) {

@@ -2499,6 +2499,75 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   }, [loc.search]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(loc.search);
+    const taskId = params.get('task_id');
+    if (taskId && token) {
+      const loadTaskDetailFromUrl = async () => {
+        try {
+          const res = await api.get(`/activities/${taskId}`);
+          if (res.data && res.data.success) {
+            const task = res.data.data;
+            if (task) {
+              let link = '';
+              let description = '';
+              if (task.body) {
+                const matchLink = task.body.match(/Tài liệu\/Link đính kèm:\s*(https?:\/\/[^\s]+)/);
+                if (matchLink) {
+                  link = matchLink[1];
+                }
+                if (task.type === 'task') {
+                  try {
+                    const parsed = JSON.parse(task.body);
+                    description = parsed.erp_task?.description || '';
+                  } catch (e) {
+                    description = task.body;
+                  }
+                } else {
+                  description = task.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
+                }
+              }
+              const parsed = parseDescriptionAndChecklist(description);
+              const parsedTask = {
+                id: task.id,
+                title: task.subject,
+                done: task.status === 'done',
+                priority: task.priority,
+                due_date: task.due_date ? task.due_date.slice(0, 10) : '',
+                link,
+                description: parsed.pureDescription,
+                user_id: task.user_id,
+                user_name: task.user_name || 'Hệ thống',
+                tags: task.tags || '',
+                participant_ids: task.participant_ids || '',
+                progress: task.progress || 0,
+                require_approval: task.require_approval || 0,
+                approver_id: task.approver_id,
+                approval_status: task.approval_status,
+                contact_id: task.contact_id,
+                contact_name: task.contact_name,
+                contact_avatar: task.contact_avatar,
+                related_type: task.related_type,
+                related_id: task.related_id,
+                body: task.body
+              };
+              setChecklist(parsed.checklist);
+              setSelectedTaskForDetails(parsedTask);
+              
+              // Clear the task_id from URL so it doesn't pop open again when page refreshes/loads
+              const nextParams = new URLSearchParams(loc.search);
+              nextParams.delete('task_id');
+              navigate(`${loc.pathname}${nextParams.toString() ? '?' + nextParams.toString() : ''}`, { replace: true });
+            }
+          }
+        } catch (e) {
+          console.error("Lỗi khi nạp chi tiết công việc từ URL:", e);
+        }
+      };
+      loadTaskDetailFromUrl();
+    }
+  }, [loc.search, token]);
+
   const handleExitImpersonation = () => {
     setSaleIdFilter('');
     const params = new URLSearchParams(loc.search);

@@ -192,7 +192,11 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       }
       const activityMatch = targetLink.match(/^\/activities\/(\d+)$/);
       if (activityMatch) {
-        targetLink = `/activities?id=${activityMatch[1]}`;
+        if (['sale', 'sales'].includes(user?.role || '')) {
+          targetLink = `/workspace?task_id=${activityMatch[1]}`;
+        } else {
+          targetLink = `/activities?id=${activityMatch[1]}`;
+        }
       }
       const projectMatch = targetLink.match(/^\/projects\/(\d+)$/);
       if (projectMatch) {
