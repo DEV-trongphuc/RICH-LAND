@@ -39,10 +39,10 @@ class UserController {
             $teamRow = $tStmt->fetch();
             $teamId = $teamRow ? $teamRow['team_id'] : null;
             if ($teamId) {
-                $where[] = "team_id = ?";
+                $where[] = "(role IN ('admin', 'super_admin', 'superadmin', 'director', 'manager') OR team_id = ?)";
                 $params[] = $teamId;
             } else {
-                $where[] = "id = ?";
+                $where[] = "(role IN ('admin', 'super_admin', 'superadmin', 'director', 'manager') OR id = ?)";
                 $params[] = $auth['user_id'];
             }
         }

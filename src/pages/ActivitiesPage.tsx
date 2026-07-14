@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
 import { DEV_MODE } from '../config/env';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -82,6 +83,8 @@ export const ActivitiesPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [profileContact, setProfileContact] = useState<any>(null);
+  const [selectedTaskForDrawer, setSelectedTaskForDrawer] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
 
   const openContactDrawer = async (contactId: number) => {
     try {
@@ -121,6 +124,24 @@ export const ActivitiesPage: React.FC = () => {
       api.get('/get_consultants').then(r => setConsultantsList(r.data.data || r.data || [])).catch(() => {});
     }
   }, [user?.role]);
+
+  useEffect(() => {
+    if (DEV_MODE) {
+      const s = getFilteredMockState();
+      setUsers(s.users || []);
+    } else {
+      api.get('/users').then(r => {
+        const d = r.data.data;
+        const list = Array.isArray(d) ? d : (d?.items || []);
+        const team = list.filter((u: any) => {
+          if (!u || !u.role) return false;
+          const roleLower = u.role.toLowerCase();
+          return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
+        });
+        setUsers(team);
+      }).catch(() => {});
+    }
+  }, [user]);
 
   const teamOptions = useMemo(() => {
     return [
@@ -240,6 +261,10 @@ export const ActivitiesPage: React.FC = () => {
   };
 
   const openEdit = (a: any) => {
+    if (a.type === 'task') {
+      setSelectedTaskForDrawer(a);
+      return;
+    }
     setEditItem(a);
     let displayBody = a.body || '';
     let erpTaskObj = null;
@@ -534,7 +559,8 @@ export const ActivitiesPage: React.FC = () => {
                           {groupItems.map(act => (
                              <motion.div key={act.id} className="card hover-lift"
                                initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} layout
-                               style={{ padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${act.status === 'done' ? 'var(--color-success)' : T_COLOR[act.type]}`, borderRadius: 'var(--radius-lg)' }}>
+                               onClick={() => openEdit(act)}
+                               style={{ cursor: 'pointer', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${act.status === 'done' ? 'var(--color-success)' : T_COLOR[act.type]}`, borderRadius: 'var(--radius-lg)' }}>
                               
                               <div style={{ width: 36, height: 36, borderRadius: '10px', background: T_COLOR[act.type] + '12', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 {T_ICON[act.type]}
@@ -757,6 +783,17 @@ export const ActivitiesPage: React.FC = () => {
         onClose={() => setProfileContact(null)}
         contact={profileContact}
         onUpdate={() => {}}
+      />
+
+      <WorkspaceTaskDrawer
+        isOpen={!!selectedTaskForDrawer}
+        onClose={() => setSelectedTaskForDrawer(null)}
+        task={selectedTaskForDrawer}
+        onUpdate={() => {
+          fetchActivities();
+          setSelectedTaskForDrawer(null);
+        }}
+        users={users}
       />
 
     </div>
