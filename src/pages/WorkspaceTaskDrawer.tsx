@@ -1349,9 +1349,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                       onClick={handlePostComment}
                       disabled={isSubmittingComment}
                       className="btn primary sm"
-                      style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px' }}
+                      style={{ padding: '5px 16px', fontSize: '0.75rem', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '6px' }}
                     >
-                      {t('Gửi bình luận')}
+                      {isSubmittingComment ? <RefreshCw className="spin" size={12} /> : t('Gửi bình luận')}
                     </button>
                   </div>
                 </div>

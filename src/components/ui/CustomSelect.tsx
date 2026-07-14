@@ -67,15 +67,23 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const selectedOption = multiple ? null : options.find(opt => opt.value == value);
-  const filtered = searchable ? options.filter(o => {
-    const labelStr = o.label ? String(o.label) : '';
-    const sublabelStr = o.sublabel ? String(o.sublabel) : '';
-    const translatedLabel = t(labelStr) || '';
-    const translatedSublabel = t(sublabelStr) || '';
-    return translatedLabel.toLowerCase().includes((search || '').toLowerCase()) ||
-      (o.sublabel && translatedSublabel.toLowerCase().includes((search || '').toLowerCase()));
-  }) : options;
+  const selectedOption = React.useMemo(() => {
+    if (multiple) return null;
+    return options.find(opt => opt.value == value);
+  }, [options, value, multiple]);
+
+  const filtered = React.useMemo(() => {
+    if (!searchable) return options;
+    const searchLower = (search || '').toLowerCase();
+    return options.filter(o => {
+      const labelStr = o.label ? String(o.label) : '';
+      const sublabelStr = o.sublabel ? String(o.sublabel) : '';
+      const translatedLabel = t(labelStr) || '';
+      const translatedSublabel = t(sublabelStr) || '';
+      return translatedLabel.toLowerCase().includes(searchLower) ||
+        (o.sublabel && translatedSublabel.toLowerCase().includes(searchLower));
+    });
+  }, [options, search, searchable, t]);
 
   const isSelected = (val: string | number) => {
     if (multiple) {
