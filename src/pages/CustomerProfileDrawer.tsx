@@ -6946,7 +6946,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           <div className="overlay-backdrop" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setShowNoteModal(false); setEditingNote(null); }}>
             <motion.div 
               className="modal-sheet" 
-              style={{ width: '100%', maxWidth: 780, padding: 0 }}
+              style={{ width: '100%', maxWidth: 780, padding: 0, borderRadius: '12px', overflow: 'hidden' }}
               initial={{ opacity: 0, y: 20, scale: 0.95 }} 
               animate={{ opacity: 1, y: 0, scale: 1 }} 
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -6957,29 +6957,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <button className="btn-icon-bare" onClick={() => { setShowNoteModal(false); setEditingNote(null); }}><X size={20}/></button>
               </div>
               
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', maxHeight: '70vh', overflowY: 'auto' }}>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', maxHeight: '75vh', overflowY: 'auto' }}>
                 {!editingNote && (
-                  <>
-                    {/* Channel & Type Row */}
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                      <div style={{ flex: '1 0 200px' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Kênh tương tác (Nối)</label>
-                        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+                    {/* Left Column: Interaction & Temp */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      {/* Channel Selector */}
+                      <div>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
+                          Kênh tương tác (Nối)
+                        </label>
+                        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
                           {['text', 'call', 'meet'].map((ch: any) => (
                             <button
                               key={ch}
                               type="button"
                               onClick={() => setNoteChannel(ch)}
                               style={{
-                                flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                flex: 1, padding: '8px 12px', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: '6px', cursor: 'pointer',
                                 background: noteChannel === ch ? 'var(--color-surface)' : 'transparent',
                                 color: noteChannel === ch ? 'var(--color-primary)' : 'var(--color-text-muted)',
                                 boxShadow: noteChannel === ch ? 'var(--shadow-sm)' : 'none',
-                                transition: 'all 0.2s'
+                                transition: 'all 0.2s',
+                                outline: 'none'
                               }}
                             >
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', justifyContent: 'center', width: '100%' }}>
-                                {ch === 'text' ? <PenTool size={12} /> : ch === 'call' ? <Phone size={12} /> : <Users size={12} />}
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center', width: '100%' }}>
+                                {ch === 'text' ? <PenTool size={13} /> : ch === 'call' ? <Phone size={13} /> : <Users size={13} />}
                                 <span>{ch === 'text' ? 'Nối Đất' : ch === 'call' ? 'Nối Đồng' : 'Nối Áp Suất'}</span>
                               </span>
                             </button>
@@ -6987,48 +6991,102 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
 
-                      <div style={{ flex: '1 0 150px' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Loại tương tác</label>
-                        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '2px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
-                          {['normal', 'quality'].map((t: any) => (
-                            <button
-                              key={t}
-                              type="button"
-                              onClick={() => setNoteType(t)}
-                              style={{
-                                flex: 1, padding: '6px 10px', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer',
-                                background: noteType === t ? 'var(--color-surface)' : 'transparent',
-                                color: noteType === t ? (t === 'quality' ? 'var(--color-success)' : 'var(--color-text)') : 'var(--color-text-muted)',
-                                boxShadow: noteType === t ? 'var(--shadow-sm)' : 'none',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              {t === 'normal' ? 'Thường' : 'Chất lượng'}
-                            </button>
-                          ))}
+                      {/* Type Selector & Call Duration */}
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
+                            Loại tương tác
+                          </label>
+                          <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '3px', borderRadius: '8px', border: '1px solid var(--color-border-light)' }}>
+                            {['normal', 'quality'].map((t: any) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => setNoteType(t)}
+                                style={{
+                                  flex: 1, padding: '8px 10px', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                                  background: noteType === t ? 'var(--color-surface)' : 'transparent',
+                                  color: noteType === t ? (t === 'quality' ? 'var(--color-success)' : 'var(--color-text)') : 'var(--color-text-muted)',
+                                  boxShadow: noteType === t ? 'var(--shadow-sm)' : 'none',
+                                  transition: 'all 0.2s',
+                                  outline: 'none'
+                                }}
+                              >
+                                {t === 'normal' ? 'Thường' : 'Chất lượng'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {noteChannel === 'call' && (
+                          <div style={{ width: '140px' }}>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
+                              Thời lượng (giây)
+                            </label>
+                            <input
+                              type="number"
+                              className="form-input"
+                              placeholder="Ví dụ: 45"
+                              value={noteDuration}
+                              onChange={e => setNoteDuration(e.target.value)}
+                              style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', width: '100%', padding: '0 12px', outline: 'none' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Temperature Selector */}
+                      <div>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
+                          Nhiệt độ khách hàng (Sale chốt)
+                        </label>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {[
+                            { id: 'cold', label: '❄️ Lạnh', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
+                            { id: 'cool', label: '🍃 Nguội', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
+                            { id: 'neutral', label: '☀️ Ấm', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
+                            { id: 'warm', label: '🔥 Nóng', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
+                            { id: 'hot', label: '🌋 Sôi', color: 'rgba(185, 28, 28, 0.1)', border: 'rgba(185, 28, 28, 0.2)', text: '#b91c1c' }
+                          ].map(item => {
+                            const isSelected = noteSaleTemp === item.id || (noteSaleTemp === '' && calculatedSuggestedTemp === item.id);
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => setNoteSaleTemp(item.id as any)}
+                                style={{
+                                  padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                  background: isSelected ? item.color : 'var(--color-bg)',
+                                  color: isSelected ? item.text : 'var(--color-text-muted)',
+                                  border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
+                                  boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
+                                  outline: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                <span>{item.label}</span>
+                                {calculatedSuggestedTemp === item.id && (
+                                  <span style={{ fontSize: '0.6rem', background: 'rgba(100, 116, 139, 0.2)', padding: '1px 4px', borderRadius: '8px', color: 'var(--color-text)' }}>
+                                    Máy đoán
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
 
-                    {/* Optional Fields (Call Duration, Documents Sent) */}
-                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
-                      {noteChannel === 'call' && (
-                        <div style={{ flex: '1 0 150px' }}>
-                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Thời lượng cuộc gọi (giây)</label>
-                          <input
-                            type="number"
-                            className="form-input"
-                            placeholder="Ví dụ: 45"
-                            value={noteDuration}
-                            onChange={e => setNoteDuration(e.target.value)}
-                            style={{ height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', width: '100%', padding: '0 12px' }}
-                          />
-                        </div>
-                      )}
-
-                      <div style={{ flex: '1 0 100%', display: 'flex', flexDirection: 'column' }}>
-                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Tài liệu đã gửi (Chọn tài liệu)</label>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {/* Right Column: Docs & Obstacles */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      {/* Documents Sent */}
+                      <div>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
+                          Tài liệu đã gửi (Chọn tài liệu)
+                        </label>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {[
                             'Bảng giá',
                             'Sơ đồ mặt bằng',
@@ -7054,11 +7112,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   setNoteDocsSent(nextDocs.join(', '));
                                 }}
                                 style={{
-                                  padding: '6px 14px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
-                                  background: isSelected ? 'rgba(59, 130, 246, 0.1)' : 'var(--color-bg)',
+                                  padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                  background: isSelected ? 'rgba(59, 130, 246, 0.08)' : 'var(--color-bg)',
                                   color: isSelected ? '#3b82f6' : 'var(--color-text-muted)',
-                                  border: `1px solid ${isSelected ? '#3b82f6' : 'var(--color-border-light)'}`,
-                                  boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
+                                  border: `1px solid ${isSelected ? 'rgba(59, 130, 246, 0.3)' : 'var(--color-border-light)'}`,
+                                  boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
+                                  outline: 'none'
                                 }}
                               >
                                 📁 {doc}
@@ -7071,135 +7130,105 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <input
                               type="text"
                               className="form-input"
-                              placeholder="Nhập tên tài liệu khác khác (ngăn cách bằng dấu phẩy)..."
+                              placeholder="Nhập tên tài liệu khác (ngăn cách bằng dấu phẩy)..."
                               value={customDocs}
                               onChange={e => setCustomDocs(e.target.value)}
-                              style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
+                              style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%', outline: 'none' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Obstacles */}
+                      <div>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '8px' }}>
+                          Khách đang vướng ở đâu?
+                        </label>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {[
+                            { id: 'trust', label: '🧑 Chưa tin mình', color: 'rgba(239, 68, 68, 0.08)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
+                            { id: 'project', label: '🏙️ Chưa ưng dự án', color: 'rgba(245, 158, 11, 0.08)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
+                            { id: 'unit', label: '🏠 Chưa chọn căn', color: 'rgba(59, 130, 246, 0.08)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
+                            { id: 'smooth', label: '✓ Đang xuôi', color: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
+                            { id: 'other', label: '➕ Khác', color: 'rgba(139, 92, 246, 0.08)', border: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' }
+                          ].map(item => {
+                            const isSelected = noteObstacle === item.id;
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => setNoteObstacle(noteObstacle === item.id ? '' : item.id)}
+                                style={{
+                                  padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
+                                  background: isSelected ? item.color : 'var(--color-bg)',
+                                  color: isSelected ? item.text : 'var(--color-text-muted)',
+                                  border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
+                                  boxShadow: isSelected ? 'var(--shadow-sm)' : 'none',
+                                  outline: 'none'
+                                }}
+                              >
+                                {item.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {noteObstacle === 'other' && (
+                          <div style={{ marginTop: '8px' }}>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Nhập vướng mắc khác của khách..."
+                              value={customObstacle}
+                              onChange={e => setCustomObstacle(e.target.value)}
+                              style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%', outline: 'none' }}
                             />
                           </div>
                         )}
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    {/* Obstacle Tags Row */}
-                    <div>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '8px' }}>Khách đang vướng ở đâu?</label>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {[
-                          { id: 'trust', label: '🧑 Chưa tin mình', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
-                          { id: 'project', label: '🏙️ Chưa ưng dự án', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
-                          { id: 'unit', label: '🏠 Chưa chọn căn', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-                          { id: 'smooth', label: '✓ Đang xuôi', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
-                          { id: 'other', label: '➕ Khác', color: 'rgba(139, 92, 246, 0.1)', border: 'rgba(139, 92, 246, 0.2)', text: '#8b5cf6' }
-                        ].map(item => {
-                          const isSelected = noteObstacle === item.id;
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => setNoteObstacle(noteObstacle === item.id ? '' : item.id)}
-                              style={{
-                                padding: '6px 12px', fontSize: '0.75rem', fontWeight: 600, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
-                                background: isSelected ? item.color : 'var(--color-bg)',
-                                color: isSelected ? item.text : 'var(--color-text-muted)',
-                                border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
-                                boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
-                              }}
-                            >
-                              {item.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      {noteObstacle === 'other' && (
-                        <div style={{ marginTop: '8px' }}>
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder="Nhập vướng mắc khác của khách..."
-                            value={customObstacle}
-                            onChange={e => setCustomObstacle(e.target.value)}
-                            style={{ height: '36px', borderRadius: '8px', border: '1px solid var(--color-border)', fontSize: '0.8125rem', background: 'var(--color-surface)', color: 'var(--color-text)', padding: '0 12px', width: '100%' }}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Suggestion Alert */}
-                    {noteObstacle && (
-                      <div style={{
-                        background: '#fef08a1c',
-                        borderLeft: '4px solid #eab308',
-                        borderRadius: '8px',
-                        padding: '10px 12px',
-                        fontSize: '0.75rem',
-                        color: 'var(--color-text-muted)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px',
-                        boxShadow: 'var(--shadow-sm)'
-                      }}>
-                        <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Lightbulb size={12} style={{ color: '#eab308' }} />
-                          {'Toa gợi ý hành động (Sổ tay Richland):'}
-                        </span>
-                        <span style={{ lineHeight: 1.4 }}>
-                          {noteObstacle === 'trust' && 'Áp dụng nguyên liệu [Phòng Bếp] (Xây dựng uy tín cá nhân, chia sẻ kiến thức chuyên sâu và hỗ trợ tận tâm để khách hàng tin tưởng hơn).'}
-                          {noteObstacle === 'project' && 'Áp dụng nguyên liệu [Nước Sôi] + [Than so sánh] (Gửi bảng so sánh trực quan với đối thủ, nhấn mạnh lợi thế độc bản của dự án).'}
-                          {noteObstacle === 'unit' && 'Áp dụng nguyên liệu [Than chốt cá nhân hóa] + [Oxy] (Gửi phân tích dòng tiền căn tiềm năng nhất, tạo độ khan hiếm cho giỏ hàng độc quyền).'}
-                          {noteObstacle === 'smooth' && 'Khách hàng đang thuận lợi. Hãy duy trì tương tác đều đặn để chuẩn bị dẫn khách đi xem dự án thực tế hoặc đặt booking giữ chỗ.'}
-                        </span>
-                      </div>
-                    )}
-                    {/* Nhiệt độ khách hàng & Máy đoán đề xuất */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '0.5rem' }}>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block' }}>
-                        Nhiệt độ khách hàng (Sale chốt)
-                      </label>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                        {[
-                          { id: 'cold', label: '❄️ Lạnh', color: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' },
-                          { id: 'cool', label: '🍃 Nguội', color: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.2)', text: 'var(--color-success)' },
-                          { id: 'neutral', label: '☀️ Ấm', color: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.2)', text: 'var(--color-warning)' },
-                          { id: 'warm', label: '🔥 Nóng', color: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.2)', text: 'var(--color-danger)' },
-                          { id: 'hot', label: '🌋 Sôi', color: 'rgba(185, 28, 28, 0.1)', border: 'rgba(185, 28, 28, 0.2)', text: '#b91c1c' }
-                        ].map(item => {
-                          const isSelected = noteSaleTemp === item.id || (noteSaleTemp === '' && calculatedSuggestedTemp === item.id);
-                          return (
-                            <button
-                              key={item.id}
-                              type="button"
-                              onClick={() => setNoteSaleTemp(item.id as any)}
-                              style={{
-                                padding: '6px 14px', fontSize: '0.75rem', fontWeight: 700, borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s',
-                                background: isSelected ? item.color : 'var(--color-bg)',
-                                color: isSelected ? item.text : 'var(--color-text-muted)',
-                                border: `1px solid ${isSelected ? item.border : 'var(--color-border-light)'}`,
-                                boxShadow: isSelected ? 'var(--shadow-sm)' : 'none'
-                              }}
-                            >
-                              {item.label}
-                              {calculatedSuggestedTemp === item.id && (
-                                <span style={{ marginLeft: '6px', fontSize: '0.65rem', background: 'rgba(100, 116, 139, 0.2)', padding: '2px 6px', borderRadius: '10px', color: 'var(--color-text)' }}>
-                                  Máy đoán
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </>
+                {/* Suggestion Alert */}
+                {!editingNote && noteObstacle && (
+                  <div style={{
+                    background: document.documentElement.getAttribute('data-theme') === 'dark' ? 'rgba(234, 179, 8, 0.04)' : '#fefcbf8a',
+                    borderLeft: '4px solid #eab308',
+                    borderRadius: '8px',
+                    padding: '12px 16px',
+                    fontSize: '0.75rem',
+                    color: 'var(--color-text-muted)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    boxShadow: 'var(--shadow-sm)',
+                    borderTop: '1px solid var(--color-border-light)',
+                    borderRight: '1px solid var(--color-border-light)',
+                    borderBottom: '1px solid var(--color-border-light)'
+                  }}>
+                    <span style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Lightbulb size={13} style={{ color: '#eab308' }} />
+                      {'Toa gợi ý hành động (Sổ tay Richland):'}
+                    </span>
+                    <span style={{ lineHeight: 1.45 }}>
+                      {noteObstacle === 'trust' && 'Áp dụng nguyên liệu [Phòng Bếp] (Xây dựng uy tín cá nhân, chia sẻ kiến thức chuyên sâu và hỗ trợ tận tâm để khách hàng tin tưởng hơn).'}
+                      {noteObstacle === 'project' && 'Áp dụng nguyên liệu [Nước Sôi] + [Than so sánh] (Gửi bảng so sánh trực quan với đối thủ, nhấn mạnh lợi thế độc bản của dự án).'}
+                      {noteObstacle === 'unit' && 'Áp dụng nguyên liệu [Than chốt cá nhân hóa] + [Oxy] (Gửi phân tích dòng tiền căn tiềm năng nhất, tạo độ khan hiếm cho giỏ hàng độc quyền).'}
+                      {noteObstacle === 'smooth' && 'Khách hàng đang thuận lợi. Hãy duy trì tương tác đều đặn để chuẩn bị dẫn khách đi xem dự án thực tế hoặc đặt booking giữ chỗ.'}
+                    </span>
+                  </div>
                 )}
 
                 {/* Note Body Text Input */}
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', display: 'block', marginBottom: '6px' }}>Nội dung chi tiết tương tác</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Nội dung chi tiết tương tác
+                  </label>
                   <MentionInput
                     value={newNote || ''}
                     onChange={e => setNewNote(e.target.value)}
                     placeholder="Nhập ghi chú phản hồi khách hàng (Sử dụng @ để nhắc tên)..."
-                    style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 100, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)' }}
+                    style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: '8px', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 120, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)' }}
                   />
                 </div>
 
@@ -7238,7 +7267,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           onChange={handleNoteAttachmentUpload}
                           disabled={isSubmitting}
                         />
-                        <label htmlFor="note-file-upload-modal" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem' }}>
+                        <label htmlFor="note-file-upload-modal" className="btn outline sm" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8125rem', borderRadius: '20px' }}>
                           <Paperclip size={14} />
                           Đính kèm tài liệu
                         </label>
