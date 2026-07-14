@@ -20,6 +20,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useDebounce } from '../hooks/useDebounce';
+import { Avatar } from '../components/ui/Avatar';
 
 const PAGE_SIZE = 10;
 
@@ -402,8 +403,11 @@ export const QuotesPage: React.FC = () => {
                     </td>
                     <td>
                       <div className="font-bold text-sm">{q.title}</div>
-                      <div className="text-xs text-light flex items-center gap-1 mt-0.5">
-                        <ArrowUpRight size={12} /> {q.contact_name || 'Khách lẻ'} {q.company_name ? `(${q.company_name})` : ''}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                        <Avatar name={q.contact_name || 'Khách lẻ'} size="sm" style={{ width: 18, height: 18, fontSize: 8 }} />
+                        <span className="text-xs text-light" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          {q.contact_name || 'Khách lẻ'} {q.company_name ? `(${q.company_name})` : ''}
+                        </span>
                       </div>
                     </td>
                     <td>

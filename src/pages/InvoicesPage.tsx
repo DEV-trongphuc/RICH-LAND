@@ -18,6 +18,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useDebounce } from '../hooks/useDebounce';
+import { Avatar } from '../components/ui/Avatar';
 
 const PAGE_SIZE = 10;
 
@@ -373,12 +374,17 @@ export const InvoicesPage: React.FC = () => {
                         </div>
                       </td>
                       <td data-label="Khách hàng">
-                        <div style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.contact_name || 'Khách lẻ'}>{inv.contact_name || 'Khách lẻ'}</div>
-                        {inv.company_name && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.company_name}>
-                            {inv.company_name}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <Avatar name={inv.contact_name || 'Khách lẻ'} size="sm" />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.contact_name || 'Khách lẻ'}>{inv.contact_name || 'Khách lẻ'}</div>
+                            {inv.company_name && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.company_name}>
+                                {inv.company_name}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </td>
                       <td data-label="Số tiền"><span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{FMT(inv.total)}</span></td>
                       <td data-label="Thời hạn">

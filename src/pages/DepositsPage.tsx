@@ -8,6 +8,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, FileText, Ban, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { Avatar } from '../components/ui/Avatar';
 
 interface Deposit {
   id: number;
@@ -440,8 +441,11 @@ export default function DepositsPage() {
                       {/* Project & Client */}
                       <td style={{ padding: '1rem', verticalAlign: 'middle' }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.875rem' }}>{dep.project_name}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>
-                          Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                          <Avatar name={`${dep.last_name || ''} ${dep.first_name || ''}`} size="sm" style={{ width: 18, height: 18, fontSize: 8 }} />
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            Khách: <strong style={{ color: 'var(--color-text)' }}>{dep.last_name} {dep.first_name}</strong> ({dep.phone})
+                          </span>
                         </div>
                       </td>
 
