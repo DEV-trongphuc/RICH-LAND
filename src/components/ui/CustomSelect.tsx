@@ -68,10 +68,14 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   }, []);
 
   const selectedOption = multiple ? null : options.find(opt => opt.value == value);
-  const filtered = searchable ? options.filter(o =>
-    t(o.label).toLowerCase().includes(search.toLowerCase()) ||
-    (o.sublabel && t(o.sublabel).toLowerCase().includes(search.toLowerCase()))
-  ) : options;
+  const filtered = searchable ? options.filter(o => {
+    const labelStr = o.label ? String(o.label) : '';
+    const sublabelStr = o.sublabel ? String(o.sublabel) : '';
+    const translatedLabel = t(labelStr) || '';
+    const translatedSublabel = t(sublabelStr) || '';
+    return translatedLabel.toLowerCase().includes((search || '').toLowerCase()) ||
+      (o.sublabel && translatedSublabel.toLowerCase().includes((search || '').toLowerCase()));
+  }) : options;
 
   const isSelected = (val: string | number) => {
     if (multiple) {
