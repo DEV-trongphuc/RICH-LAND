@@ -130,6 +130,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const currentUser = user;
   const { language, setLanguage, t } = useLanguage();
   const { showConfirm } = useUIStore();
+  const [showWorkspaceHelpModal, setShowWorkspaceHelpModal] = useState(false);
+  const [showTicketHelpModal, setShowTicketHelpModal] = useState(false);
+  const [showDatabankHelpModal, setShowDatabankHelpModal] = useState(false);
 
 
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -3103,7 +3106,39 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              <h1 className="page-title" style={{ margin: 0 }}>{t("Bàn làm việc")}</h1>
+              <h1 className="page-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {t("Bàn làm việc")}
+                <button
+                  onClick={() => setShowWorkspaceHelpModal(true)}
+                  style={{
+                    background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                    border: '1px solid var(--color-border)',
+                    padding: '3px 8px',
+                    borderRadius: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted)',
+                    transition: 'all 0.2s',
+                    height: '24px'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.color = 'var(--color-primary)';
+                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                    e.currentTarget.style.background = 'var(--color-primary-light)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.color = 'var(--color-text-muted)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
+                    e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+                  }}
+                  title={t("Xem hướng dẫn sử dụng Bàn làm việc")}
+                >
+                  <Info size={12} />
+                  <span style={{ fontSize: '0.7rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+                </button>
+              </h1>
               
               {/* Completed Calls Count Pill */}
               <div 
@@ -6213,8 +6248,38 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           boxShadow: '0 4px 20px rgba(0,0,0,0.02)'
         }}>
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
               {t('KHO DATA CHUNG (DATABANK)')}
+              <button
+                onClick={() => setShowDatabankHelpModal(true)}
+                style={{
+                  background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  transition: 'all 0.2s',
+                  height: '22px'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                  e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                  e.currentTarget.style.background = 'var(--color-primary-light)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = 'var(--color-text-muted)';
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                  e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+                }}
+                title={t("Xem hướng dẫn quy chế Kho data chung và thời gian thu hồi")}
+              >
+                <Info size={11} />
+                <span style={{ fontSize: '0.68rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+              </button>
             </h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
               {t('Danh sách các khách hàng tiềm năng đã công khai. Bấm "Nhận Data" để trực tiếp nhận chăm sóc.')}
@@ -6491,7 +6556,39 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '1rem 1.5rem'
         }}>
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>{t('DANH SÁCH BÁO CÁO LỖI')}</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {t('DANH SÁCH BÁO CÁO LỖI')}
+              <button
+                onClick={() => setShowTicketHelpModal(true)}
+                style={{
+                  background: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                  border: '1px solid var(--color-border)',
+                  padding: '3px 8px',
+                  borderRadius: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  cursor: 'pointer',
+                  color: 'var(--color-text-muted)',
+                  transition: 'all 0.2s',
+                  height: '22px'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = 'var(--color-primary)';
+                  e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                  e.currentTarget.style.background = 'var(--color-primary-light)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = 'var(--color-text-muted)';
+                  e.currentTarget.style.borderColor = 'var(--color-border)';
+                  e.currentTarget.style.background = theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+                }}
+                title={t("Xem hướng dẫn quy trình báo báo lỗi và đền bù")}
+              >
+                <Info size={11} />
+                <span style={{ fontSize: '0.68rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+              </button>
+            </h3>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>{t('Theo dõi tình trạng phê duyệt đền bù data lỗi từ Admin.')}</p>
           </div>
 
@@ -10001,6 +10098,320 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           fetchWorkspaceTasks();
         }}
       />
+
+      {/* Interactive Explanation Modals */}
+      <CustomModal
+        isOpen={showWorkspaceHelpModal}
+        onClose={() => setShowWorkspaceHelpModal(false)}
+        title={t("Hướng dẫn sử dụng Bàn làm việc")}
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Bàn làm việc (Workspace) là trung tâm quản lý tất cả nhiệm vụ và hoạt động cần xử lý của bạn trong ngày. Hệ thống phân loại công việc thành 3 nhóm độc lập:")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Nhóm 1 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Users size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Công việc khách hàng (Client Tasks)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Các công việc gắn trực tiếp với hồ sơ khách hàng hoặc deal giao dịch (gọi điện, hẹn gặp, ký cọc...). Bất kỳ cập nhật nào tại đây sẽ đồng bộ trực tiếp vào Nhật ký hoạt động của khách hàng đó.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Nhóm 2 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(16, 185, 129, 0.02)', 
+              borderLeft: '4px solid #10b981', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Building2 size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Công việc nội bộ team (Internal Tasks)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Công việc chung của phòng ban hoặc công ty giao xuống, được phân loại cụ thể thành: Nhiệm vụ (Task nội bộ), Thông báo (Yêu cầu đọc), Chiến dịch (Bán hàng chung) và Chính sách (Quy định cần tuân thủ).")}
+                </p>
+              </div>
+            </div>
+
+            {/* Nhóm 3 */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(139, 92, 246, 0.04)' : 'rgba(139, 92, 246, 0.02)', 
+              borderLeft: '4px solid #8b5cf6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <User size={20} color="#8b5cf6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Công việc cá nhân (Personal Tasks)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Nhiệm vụ tự lập để quản lý quỹ thời gian cá nhân của bạn. Chỉ có bạn mới nhìn thấy các công việc này, giúp bạn chủ động ghi chú các đầu việc nhỏ lẻ ngoài lề.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Daily Calls Tracker */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Phone size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("Theo dõi cuộc gọi hàng ngày (Calls Completed)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Chỉ số \"Đã gọi\" trên tiêu đề đếm tổng số cuộc gọi mà bạn đã thực hiện và lưu nhật ký thành công trong ngày hôm nay. Bấm vào chỉ số này để xem nhanh danh sách chi tiết các cuộc gọi đó.")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowWorkspaceHelpModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
+
+      <CustomModal
+        isOpen={showTicketHelpModal}
+        onClose={() => setShowTicketHelpModal(false)}
+        title={t("Quy trình Báo cáo lỗi & Đền bù")}
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Quy trình Báo cáo lỗi giúp bảo vệ quyền lợi của Tư vấn viên khi nhận phải data không liên lạc được, sai số, hoặc thuê bao. Quy trình hoạt động như sau:")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(239, 68, 68, 0.04)' : 'rgba(239, 68, 68, 0.02)', 
+              borderLeft: '4px solid #ef4444', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <AlertCircle size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Gửi báo cáo lỗi (Create Ticket)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Khi phát hiện khách hàng có thông tin lỗi, hãy chọn khách hàng đó và bấm nút \"Báo cáo lỗi\" từ ngăn kéo thông tin. Điền lý do và đính kèm bằng chứng (ví dụ: ảnh chụp màn hình Zalo chặn, lịch sử cuộc gọi rỗng...).")}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Clock size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Admin xét duyệt (Review & Verification)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Admin sẽ kiểm tra bằng chứng bạn cung cấp. Trạng thái của ticket sẽ chuyển từ \"Chờ duyệt\" sang \"Đã duyệt bù\" hoặc \"Từ chối\" tùy thuộc vào tính xác thực của thông tin lỗi.")}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(16, 185, 129, 0.04)' : 'rgba(16, 185, 129, 0.02)', 
+              borderLeft: '4px solid #10b981', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <CheckCircle2 size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Cơ chế Đền bù (+1 Lead Credit)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Nếu được duyệt đền bù, hệ thống sẽ cộng dồn 1 lượt đền bù vào Round-Robin cho tài khoản của bạn. Trong đợt chia số tiếp theo, bạn sẽ được hệ thống ưu tiên phân phối lead trước để bù lại số lượng đã mất.")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowTicketHelpModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
+
+      <CustomModal
+        isOpen={showDatabankHelpModal}
+        onClose={() => setShowDatabankHelpModal(false)}
+        title={t("Quy chế Kho Data Chung & Đồng hồ Bảo mật")}
+        width="760px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Kho Data Chung (Databank) chứa các khách hàng tiềm năng đã bị thu hồi do quá hạn chăm sóc hoặc bể cọc. Sale có thể chủ động nhận chăm sóc theo các quy định dưới đây:")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(59, 130, 246, 0.04)' : 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Scale size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Hạn mức nhận số (Claim Limits)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Để đảm bảo công bằng, mỗi Sale có một hạn mức nhận số từ Databank theo Giờ, Ngày và Tuần. Nếu đạt ngưỡng tối đa, bạn cần chờ chu kỳ thời gian tiếp theo để có thể nhận thêm.")}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(245, 158, 11, 0.04)' : 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Clock size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Đồng hồ bảo mật chăm sóc (Security Timer)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Khi bạn nhận một lead từ Databank, đồng hồ bảo mật bắt đầu đếm ngược. Bạn CẦN thực hiện ít nhất 1 tương tác (gọi điện, tạo note chất lượng, đặt lịch hẹn) trước khi hết hạn. Nếu không tương tác, lead sẽ bị hệ thống TỰ ĐỘNG THU HỒI về lại Databank.")}
+                </p>
+              </div>
+            </div>
+
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: theme === 'dark' ? 'rgba(239, 68, 68, 0.04)' : 'rgba(239, 68, 68, 0.02)', 
+              borderLeft: '4px solid #ef4444', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <AlertTriangle size={20} color="#ef4444" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Quy tắc bể cọc (Deposit Cancellation Policies)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("• Bể cọc chưa phát sinh doanh thu: Trạng thái khách hàng sẽ bị hạ xuống mức Booking hoặc Đã Gặp, đồng hồ bảo mật kích hoạt chạy lại bình thường và có thể bị thu hồi tự động ra Databank.")}
+                  <br />
+                  {t("• Bể cọc đã phát sinh doanh thu (đóng đợt 1): Khách hàng được giữ nguyên trạng thái Đặt cọc để bảo vệ quyền sở hữu trọn đời của Sale chăm sóc (vì đã phát sinh dòng tiền thực tế).")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowDatabankHelpModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
 
       {/* Task Details Drawer */}
       <WorkspaceTaskDrawer

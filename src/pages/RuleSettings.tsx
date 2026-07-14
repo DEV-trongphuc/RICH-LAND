@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail } from 'lucide-react';
+import { Plus, Trash2, ShieldCheck, ArrowRight, Filter, Server, MapPin, GripVertical, Edit2, Link2, FileSpreadsheet, Zap, Keyboard, Globe, Play, XCircle, AlertCircle, RefreshCw, Mail, Info, Layers, Cpu } from 'lucide-react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors
 } from '@dnd-kit/core';
@@ -285,6 +285,7 @@ const RuleSettingsInner = () => {
   const [rules, setRules] = useState<any[]>([]);
   const [rounds, setRounds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const navigate = useNavigate();
   // Modal states
@@ -672,6 +673,36 @@ const RuleSettingsInner = () => {
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Filter size={24} color="var(--color-primary)" /> {t("Quy tắc Định tuyến (Routing Rules)")}
+            <button
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                background: 'rgba(0, 0, 0, 0.02)',
+                border: '1px solid var(--color-border)',
+                padding: '4px 10px',
+                borderRadius: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                color: 'var(--color-text-muted)',
+                transition: 'all 0.2s',
+                marginLeft: '8px'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = 'var(--color-primary)';
+                e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                e.currentTarget.style.background = 'var(--color-primary-light)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = 'var(--color-text-muted)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
+                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+              }}
+              title={t("Xem chi tiết quy định luật định tuyến và kết nối")}
+            >
+              <Info size={14} />
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{t("Giải thích cơ chế")}</span>
+            </button>
           </h1>
           <p className="page-subtitle">{t("Hệ thống Rule Engine tự động phân tích Data Inbound và điều phối cho Tư vấn viên.")}</p>
         </div>
@@ -1731,6 +1762,107 @@ const RuleSettingsInner = () => {
             )}
           </div>
         )}
+      </CustomModal>
+
+      {/* Mechanism Explanation Modal */}
+      <CustomModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        title={t("Cơ chế & Quy tắc Định tuyến (Routing Rules)")}
+        width="780px"
+      >
+        <div style={{ padding: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 12, 
+            padding: '0.875rem 1rem', 
+            background: 'var(--color-primary-light)', 
+            border: '1px solid rgba(163, 20, 34, 0.15)', 
+            borderRadius: 12 
+          }}>
+            <Info size={24} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', lineHeight: 1.5, margin: 0 }}>
+              {t("Quy tắc Định tuyến (Routing Rules) quyết định đường đi của lead từ các nguồn khác nhau đổ về hệ thống để đi vào vòng xoay phân bổ (Round-Robin) phù hợp.")}
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Lớp ưu tiên */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(59, 130, 246, 0.02)', 
+              borderLeft: '4px solid #3b82f6', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Layers size={20} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("1. Quét theo Thứ tự Ưu tiên (Priority Scan)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Các quy tắc được sắp xếp theo độ ưu tiên từ cao xuống thấp (kéo thả để đổi vị trí). Lead mới vào sẽ chạy qua từng Rule một; nếu khớp tất cả các điều kiện so khớp (Nguồn, Loại, Ghi chú), lead sẽ được chuyển ngay vào Vòng phân bổ chỉ định và dừng quét các Rule bên dưới.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Các nguồn kết nối */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(16, 185, 129, 0.02)', 
+              borderLeft: '4px solid #10b981', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Server size={20} color="#10b981" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("2. Kết nối đa nguồn (Integration Sources)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("Hệ thống hỗ trợ tự động quét dữ liệu từ Google Sheets (định kỳ mỗi 2-5 phút qua cron, sử dụng mã băm Row Hash tránh trùng lặp), hoặc đẩy ngay lập tức qua Landing Page API, hoặc nhập tay thủ công.")}
+                </p>
+              </div>
+            </div>
+
+            {/* Chế độ Silent & Inject */}
+            <div style={{ 
+              display: 'flex', 
+              gap: 12, 
+              padding: '1rem', 
+              background: 'rgba(245, 158, 11, 0.02)', 
+              borderLeft: '4px solid #f59e0b', 
+              borderTop: '1px solid var(--color-border-light)',
+              borderRight: '1px solid var(--color-border-light)',
+              borderBottom: '1px solid var(--color-border-light)',
+              borderRadius: '0 8px 8px 0'
+            }}>
+              <Cpu size={20} color="#f59e0b" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <h5 style={{ fontSize: '0.875rem', fontWeight: 800, margin: '0 0 4px 0', color: 'var(--color-text)' }}>
+                  {t("3. Chế độ Im lặng (Silent Mode) & Ghi đè (Inject Data)")}
+                </h5>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                  {t("• Chế độ Im lặng: Hệ thống chỉ đồng bộ dữ liệu để kiểm tra trùng lặp (không phân phối chia số cho Sale) dành cho các Sheet lưu trữ.")}
+                  <br />
+                  {t("• Ghi đè (Inject): Cho phép quy tắc tự động bổ sung hoặc thay đổi các trường dữ liệu của lead (vd: thêm Tag chiến dịch, đổi loại dự án) ngay khi so khớp thành công.")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+          <button className="btn primary" onClick={() => setShowInfoModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
       </CustomModal>
     </div>
   );

@@ -5640,6 +5640,88 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               </div>
             </div>
           </div>
+
+          {/* Group 4: Security & Deposit Cancellation */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ 
+              fontSize: '0.9rem', 
+              fontWeight: 700, 
+              color: 'var(--color-primary)', 
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              paddingBottom: '6px',
+              borderBottom: '1px solid var(--color-border-light)'
+            }}>
+              <ShieldAlert size={16} /> {t("4. Bảo mật & Bể cọc (Deposit Cancellation)")}
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }} className="responsive-grid-1">
+              {/* security clock */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  color: 'var(--color-warning)',
+                  border: '1px solid rgba(245, 158, 11, 0.2)',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <Clock size={12} />
+                  {t("Đồng hồ Bảo mật (Inactivity Expiration)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("Thời hạn chăm sóc bắt buộc cho từng TVV. Nếu hết thời gian mà TVV không tương tác ghi nhận hoạt động (gọi điện, gặp mặt, tạo note), data sẽ bị tự động thu hồi trả về Databank chung.")}
+                </span>
+              </div>
+
+              {/* deposit cancellation */}
+              <div style={{
+                background: theme === 'dark' ? 'rgba(255, 255, 255, 0.02)' : '#f8fafc',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '10px',
+                padding: '0.85rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                alignItems: 'flex-start'
+              }}>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: 'var(--color-danger)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  padding: '3px 8px',
+                  borderRadius: '12px',
+                  fontSize: '0.72rem',
+                  fontWeight: 700
+                }}>
+                  <AlertTriangle size={12} />
+                  {t("Cơ chế Bể cọc (Cancellation Rules)")}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  {t("• Chưa có doanh thu: Hạ trạng thái về Booking/Đã Gặp, kích hoạt lại đồng hồ bảo mật và có thể bị thu hồi.")}
+                  <br />
+                  {t("• Đã có doanh thu (đóng đợt 1): Giữ nguyên trạng thái Đặt cọc để bảo vệ quyền sở hữu của Sale.")}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </CustomModal>
 
