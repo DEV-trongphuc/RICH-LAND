@@ -390,12 +390,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       } else if (updatedMeta.team_id) {
         relType = 'team';
         relId = updatedMeta.team_id;
-      } else if (formData.contact_id || task.contact_id || formData.related_id) {
+      } else if (formData.contact_id || formData.related_id) {
         relType = 'contact';
-        relId = formData.contact_id || task.contact_id || formData.related_id;
+        relId = formData.contact_id || formData.related_id;
       }
 
-      const finalContactId = formData.contact_id || task.contact_id || (formData.related_type === 'contact' ? formData.related_id : null) || (task.related_type === 'contact' ? task.related_id : null);
+      const finalContactId = formData.contact_id || (formData.related_type === 'contact' ? formData.related_id : null);
 
       const payload: any = {
         body: bodyPayload,
@@ -407,7 +407,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         subject: formData.subject,
         user_id: formData.user_id,
         related_type: relType,
-        related_id: relId,
+        related_id: relId ? Number(relId) : null,
         contact_id: finalContactId ? Number(finalContactId) : null
       };
 
@@ -499,12 +499,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       } else if (updatedErpMeta.team_id) {
         relType = 'team';
         relId = updatedErpMeta.team_id;
-      } else if (formData.contact_id || task.contact_id || formData.related_id) {
+      } else if (formData.contact_id || formData.related_id) {
         relType = 'contact';
-        relId = formData.contact_id || task.contact_id || formData.related_id;
+        relId = formData.contact_id || formData.related_id;
       }
 
-      const finalContactId = formData.contact_id || task.contact_id || (formData.related_type === 'contact' ? formData.related_id : null) || (task.related_type === 'contact' ? task.related_id : null);
+      const finalContactId = formData.contact_id || (formData.related_type === 'contact' ? formData.related_id : null);
 
       const payload: any = {
         subject: formData.subject || formData.title || '',
@@ -521,7 +521,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         approver_id: formData.require_approval === 1 ? Number(formData.approver_id) : null,
         approval_status: formData.approval_status || 'none',
         participant_ids: formData.participant_ids ? String(formData.participant_ids) : null,
-        related_id: relId,
+        related_id: relId ? Number(relId) : null,
         related_type: relType,
         contact_id: finalContactId ? Number(finalContactId) : null
       };
