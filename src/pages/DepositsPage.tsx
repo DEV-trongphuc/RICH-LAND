@@ -730,6 +730,7 @@ export default function DepositsPage() {
                   value={selectedProjectId}
                   onChange={val => setSelectedProjectId(val.toString())}
                   placeholder="-- Chọn dự án --"
+                  searchable
                 />
               </div>
             </div>

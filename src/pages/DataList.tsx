@@ -1762,6 +1762,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
                 ]}
                 value={roundFilter}
                 onChange={val => updateParams('round', val.toString())}
+                searchable={true}
                 width={160}
               />
             </div>
