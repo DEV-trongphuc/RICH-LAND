@@ -455,7 +455,7 @@ export const InvoicesPage: React.FC = () => {
           >
             <motion.div
               className="modal-sheet"
-              style={{ width: '90%', maxWidth: 700, zIndex: 1010, padding: 0, borderRadius: 'var(--radius-2xl)', margin: 'auto' }}
+              style={{ width: '90%', maxWidth: 700, zIndex: 1010, padding: 0, borderRadius: 'var(--radius-2xl)', margin: 'auto', overflow: 'hidden' }}
               initial={{ opacity: 0, scale: 0.96, y: 20 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.96, y: 20 }}
@@ -473,16 +473,51 @@ export const InvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="responsive-grid-1-1" style={{ gap: '2rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
-                  <div>
-                    <p className="text-xs text-light mb-1 uppercase tracking-wider font-bold">Khách hàng</p>
-                    <p style={{ fontWeight: 700 }}>{previewItem.contact_name}</p>
-                    <p className="text-sm text-light">{previewItem.company_name}</p>
+                <div className="responsive-grid-1-1" style={{ gap: '1.5rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <p className="text-xs text-light uppercase tracking-wider font-bold" style={{ margin: 0 }}>Khách hàng nhận</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, var(--color-primary), #ef4444)',
+                        color: 'white',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1rem',
+                        boxShadow: '0 4px 10px rgba(189, 29, 45, 0.15)',
+                        flexShrink: 0
+                      }}>
+                        {previewItem.contact_name ? previewItem.contact_name.trim().split(' ').pop().charAt(0).toUpperCase() : 'K'}
+                      </div>
+                      <div>
+                        <p style={{ fontWeight: 800, fontSize: '0.95rem', margin: 0, color: 'var(--color-text)' }}>{previewItem.contact_name || 'Khách lẻ'}</p>
+                        {previewItem.company_name && (
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '2px 0 0 0', fontWeight: 500 }}>
+                            {previewItem.company_name}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-light mb-1 uppercase tracking-wider font-bold">Chi tiết</p>
-                    <p className="text-sm">Ngày lập: <strong>{fmtDate(previewItem.issue_date || previewItem.created_at)}</strong></p>
-                    <p className="text-sm">Hạn thanh toán: <strong>{fmtDate(previewItem.due_date)}</strong></p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <p className="text-xs text-light uppercase tracking-wider font-bold" style={{ marginBottom: '4px' }}>Thông tin thanh toán</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <p className="text-sm" style={{ margin: 0 }}>Ngày lập: <strong style={{ color: 'var(--color-text)' }}>{fmtDate(previewItem.issue_date || previewItem.created_at)}</strong></p>
+                      <p className="text-sm" style={{ margin: 0 }}>Hạn thanh toán: <strong style={{ color: 'var(--color-text)' }}>{fmtDate(previewItem.due_date)}</strong></p>
+                      <div style={{ marginTop: '6px' }}>
+                        {previewItem.status === 'paid' ? (
+                          <span className="badge success" style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800 }}>Đã thanh toán</span>
+                        ) : previewItem.status === 'overdue' ? (
+                          <span className="badge danger" style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800 }}>Quá hạn</span>
+                        ) : (
+                          <span className="badge warning" style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800 }}>Chờ thanh toán</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
