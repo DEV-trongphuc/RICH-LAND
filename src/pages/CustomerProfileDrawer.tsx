@@ -6073,23 +6073,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   const file = e.target.files[0];
                                   const originalName = file.name;
                                   const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-                                  const customName = window.prompt("Nhập tên tài liệu:", defaultName);
-                                  if (customName === null) {
-                                    addToast('Đã hủy tải lên tài liệu.', 'info');
-                                    e.target.value = '';
-                                    return;
-                                  }
-                                  const ext = originalName.substring(originalName.lastIndexOf('.'));
-                                  const finalName = (customName.trim() || defaultName) + ext;
+                                  let ext = originalName.substring(originalName.lastIndexOf('.'));
                                   
                                   let fileToUpload = file;
                                   if (file.type && file.type.startsWith('image/')) {
                                     try {
                                       fileToUpload = await compressToWebP(file);
+                                      ext = '.webp';
                                     } catch (compressErr) {
                                       console.error("Compression failed, using original file", compressErr);
                                     }
                                   }
+                                  const finalName = defaultName + ext;
                                   const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
                                   const fData = new FormData();
                                   fData.append('file', renamedFile);
@@ -6365,15 +6360,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   const file = e.target.files[0];
                                   const originalName = file.name;
                                   const defaultName = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
-                                  const customName = window.prompt("Nhập tên tài liệu:", defaultName);
-                                  if (customName === null) return;
-                                  const ext = originalName.substring(originalName.lastIndexOf('.'));
-                                  const finalName = (customName.trim() || defaultName) + ext;
+                                  let ext = originalName.substring(originalName.lastIndexOf('.'));
 
                                   let fileToUpload = file;
                                   if (file.type && file.type.startsWith('image/')) {
-                                    try { fileToUpload = await compressToWebP(file); } catch (e) {}
+                                    try {
+                                      fileToUpload = await compressToWebP(file);
+                                      ext = '.webp';
+                                    } catch (e) {}
                                   }
+                                  const finalName = defaultName + ext;
                                   const renamedFile = new File([fileToUpload], finalName, { type: fileToUpload.type });
                                   const fData = new FormData();
                                   fData.append('file', renamedFile);
