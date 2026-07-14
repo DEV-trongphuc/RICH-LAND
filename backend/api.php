@@ -2325,22 +2325,12 @@ switch ($action) {
         if ($saleId > 0) {
             $stmtKhtn = $conn->prepare("
                 SELECT COUNT(*) as cnt 
-                FROM contacts c
-                WHERE c.owner_id = ? 
-                  AND c.status != 'rejected'
-                  AND (
-                      c.pipeline_status = 'chua_xac_dinh'
-                      OR (
-                          c.pipeline_status = 'quan_tam'
-                          AND NOT EXISTS (
-                              SELECT 1 FROM notes n 
-                              WHERE n.entity_type = 'contact' 
-                                AND n.entity_id = c.id 
-                                AND n.user_id = c.owner_id
-                          )
-                      )
-                  )
-                  AND c.deleted_at IS NULL
+                FROM leads l
+                INNER JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = l.assigned_to AND c.deleted_at IS NULL
+                WHERE l.assigned_to = ?
+                  AND l.status != 'reminder'
+                  AND l.is_accepted = 1
+                  AND (c.last_contact IS NULL OR c.last_contact = '')
             ");
             if ($stmtKhtn) {
                 $stmtKhtn->bind_param("i", $saleId);
