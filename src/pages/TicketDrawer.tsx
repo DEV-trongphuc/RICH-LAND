@@ -278,17 +278,69 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Thông tin Ticket</h4>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Người phụ trách</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Avatar name={formData.assignee_name} size={24} />
-                      <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{formData.assignee_name || 'Admin'}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Thời hạn (SLA)</p>
-                    <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14}/> {formatSlaDate(formData.due_date)}</p>
-                  </div>
+                  {isAdminOrManager ? (
+                    <>
+                      <div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Người phụ trách</p>
+                        <CustomSelect
+                          options={(users || []).map(u => ({ value: String(u.id), label: u.full_name }))}
+                          value={String(formData.assignee_id || '')}
+                          onChange={val => {
+                            const uid = val ? Number(val) : null;
+                            const matchedUser = (users || []).find(u => Number(u.id) === uid);
+                            const updated = { ...formData, assignee_id: uid, assignee_name: matchedUser ? matchedUser.full_name : '' };
+                            setFormData(updated);
+                            onUpdate?.(updated);
+                            addToast('Đã chuyển giao ticket thành công', 'success');
+                          }}
+                          placeholder="-- Chọn người phụ trách --"
+                        />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Độ ưu tiên</p>
+                        <CustomSelect
+                          options={PRIORITIES.map(p => ({ value: p.id, label: p.label }))}
+                          value={formData.priority}
+                          onChange={val => {
+                            const updated = { ...formData, priority: val as string };
+                            setFormData(updated);
+                            onUpdate?.(updated);
+                            addToast('Đã cập nhật độ ưu tiên', 'success');
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '4px' }}>Thời hạn (SLA)</p>
+                        <input
+                          type="date"
+                          className="form-input"
+                          style={{ height: '38px', fontSize: '0.85rem', fontWeight: 600, borderRadius: '8px' }}
+                          value={formData.due_date ? formData.due_date.substring(0, 10) : ''}
+                          onChange={e => {
+                            const val = e.target.value;
+                            const updated = { ...formData, due_date: val ? `${val} 23:59:59` : null };
+                            setFormData(updated);
+                            onUpdate?.(updated);
+                            addToast('Đã cập nhật thời hạn xử lý', 'success');
+                          }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Người phụ trách</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Avatar name={formData.assignee_name} size={24} />
+                          <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{formData.assignee_name || 'Admin'}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Thời hạn (SLA)</p>
+                        <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14}/> {formatSlaDate(formData.due_date)}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Thông tin khách hàng</h4>
