@@ -135,6 +135,7 @@ export default function ProjectsPage() {
   const [fileCategories, setFileCategories] = useState<{ id: number; label: string }[]>([]);
   const [folderLinkType, setFolderLinkType] = useState<'link' | 'select'>('link');
   const [campaignFolderLinkType, setCampaignFolderLinkType] = useState<'link' | 'select'>('link');
+  const isLegacyLayoutEnabled = false;
 
   useEffect(() => {
     api.get('/file-categories')
@@ -169,6 +170,12 @@ export default function ProjectsPage() {
   const [totalCampaigns, setTotalCampaigns] = useState(0);
   const [rosterSearch, setRosterSearch] = useState('');
 
+  // Modals state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
+  const [autoCode, setAutoCode] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
@@ -201,11 +208,6 @@ export default function ProjectsPage() {
   const [campaignPage, setCampaignPage] = useState(1);
   const [campaignPageSize, setCampaignPageSize] = useState(12);
 
-  // Modals state
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
-  const [autoCode, setAutoCode] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const quickUploadInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -2730,7 +2732,7 @@ export default function ProjectsPage() {
         {projectModalMode === 'view' ? (
           <>
             {renderProjectViewDrawer()}
-            {false && (
+            {isLegacyLayoutEnabled && (
               <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
             
             {/* Left Column (3/5) */}
@@ -3988,7 +3990,7 @@ export default function ProjectsPage() {
         {campaignModalMode === 'view' ? (
           <>
             {renderCampaignViewDrawer()}
-            {false && (
+            {isLegacyLayoutEnabled && (
               <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'start' }}>
             
             {/* Left Column (3/5) */}

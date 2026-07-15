@@ -306,7 +306,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   const [portalVacationMode, setPortalVacationMode] = useState(false);
   const [pendingCoopsCount, setPendingCoopsCount] = useState(0);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
