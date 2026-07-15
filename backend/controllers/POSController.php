@@ -30,7 +30,8 @@ class POSController {
         }
         $shipping = (float)($data['shipping_fee'] ?? 0);
         if ($shipping < 0) respond(422, null, "Phí giao hàng không được âm", false);
-        $totalWithShipping = $calculatedTotal + $shipping;
+        $shippingCustomerPay = (int)($data['shipping_customer_pay'] ?? 0);
+        $totalWithShipping = $calculatedTotal + ($shippingCustomerPay ? $shipping : 0);
 
         if (abs($totalWithShipping - (float)$data['total_amount']) > 1) {
              respond(422, null, "Tổng tiền không khớp với dữ liệu giỏ hàng. Vui lòng kiểm tra lại.", false);
