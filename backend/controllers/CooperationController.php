@@ -283,11 +283,15 @@ class CooperationController {
         // Verify total sum is exactly 100%
         $sum = 0;
         foreach ($shares as $uid => $percent) {
-            $sum += (int)$percent;
+            $pVal = (int)$percent;
+            if ($pVal < 0) {
+                respond(422, null, 'Tỷ lệ chia sẻ hoa hồng không được âm', false);
+            }
+            $sum += $pVal;
         }
 
-        if ($sum > 100) {
-            respond(422, null, 'Tổng tỷ lệ chia sẻ hoa hồng không được vượt quá 100% (Hiện tại là ' . $sum . '%)', false);
+        if ($sum !== 100) {
+            respond(422, null, 'Tổng tỷ lệ chia sẻ hoa hồng phải bằng đúng 100% (Hiện tại là ' . $sum . '%)', false);
         }
 
         // Verify slip exists & status is pending_signatures

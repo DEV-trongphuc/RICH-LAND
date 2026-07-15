@@ -2,6 +2,10 @@
 // backend/audit_test_runner.php
 // Master E2E logic validation suite for RICH LAND CRM
 
+if (!defined('BYPASS_CRON_LOCK')) {
+    define('BYPASS_CRON_LOCK', true);
+}
+
 if (!defined('DIAG_TOKEN')) {
     http_response_code(403);
     die(json_encode(['success' => false, 'message' => 'Direct access forbidden']));
@@ -21,6 +25,51 @@ function assertTest(string $name, bool $assertion, ?string $detail = null) {
 try {
     $db = Database::getInstance();
     $tenantId = 1;
+
+    $callApi = function(string $resource, string $method, array $body = [], string $token = '') {
+        $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $subDir = (strpos($uri, '/richland/') !== false) ? '/richland' : '';
+        
+        $urls = [
+            "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($resource),
+            "http://localhost" . $subDir . "/api.php?action=" . urlencode($resource),
+            "https://open.domation.net/richland/api.php?action=" . urlencode($resource)
+        ];
+        
+        $lastErr = '';
+        foreach ($urls as $url) {
+            $ch = curl_init($url);
+            $headers = [
+                'Content-Type: application/json',
+                'Host: ' . $host,
+                'Authorization: Bearer ' . ($token ?: 'demo_token_12345')
+            ];
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            if ($method === 'POST') {
+                curl_setopt($ch, CURLOPT_POST, true);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+            } elseif ($method === 'PUT' || $method === 'PATCH' || $method === 'DELETE') {
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
+            }
+            $response = curl_exec($ch);
+            $err = curl_error($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($response !== false && $httpCode >= 200 && $httpCode < 500) {
+                $decoded = json_decode($response, true);
+                if ($decoded) return $decoded;
+            }
+            $lastErr = "URL: $url, Code: $httpCode, Err: $err, Resp: " . substr($response, 0, 150);
+        }
+        return ['success' => false, 'message' => "All URLs failed. Last error: $lastErr"];
+    };
 
     // ─────────────────────────────────────────────────────────────────
     // Phase 1: Database Table Integrity
@@ -76,6 +125,59 @@ try {
 
     $usersCreated = ($saleUserId > 0 && $assistUserId > 0 && $mgrUserId > 0 && $adminUserId > 0 && $saUserId > 0);
     assertTest("Phase 2: Roster & Multi-Role User Setup", $usersCreated, "Sale ID: $saleUserId, Assist ID: $assistUserId, Manager ID: $mgrUserId, Admin ID: $adminUserId, SA ID: $saUserId");
+
+    // Define and generate all JWT tokens for subsequent tests
+    require_once __DIR__ . '/config/JWT.php';
+    
+    $salesToken = JWT::encode([
+        'username' => 'nguyen_van_nam_' . $suffix,
+        'email' => $saleEmail,
+        'name' => 'Nguyễn Văn Nam',
+        'role' => 'sales',
+        'user_id' => $saleUserId,
+        'id' => $saleUserId,
+        'tenant_id' => $tenantId,
+    ]);
+
+    $assistToken = JWT::encode([
+        'username' => 'tran_thi_mai_' . $suffix,
+        'email' => $assistEmail,
+        'name' => 'Trần Thị Mai',
+        'role' => 'assistant',
+        'user_id' => $assistUserId,
+        'id' => $assistUserId,
+        'tenant_id' => $tenantId,
+    ]);
+
+    $mgrToken = JWT::encode([
+        'username' => 'le_hoang_hai_' . $suffix,
+        'email' => $mgrEmail,
+        'name' => 'Lê Hoàng Hải',
+        'role' => 'manager',
+        'user_id' => $mgrUserId,
+        'id' => $mgrUserId,
+        'tenant_id' => $tenantId,
+    ]);
+
+    $adminToken = JWT::encode([
+        'username' => 'pham_minh_quan_' . $suffix,
+        'email' => $adminEmail,
+        'name' => 'Phạm Minh Quân',
+        'role' => 'admin',
+        'user_id' => $adminUserId,
+        'id' => $adminUserId,
+        'tenant_id' => $tenantId,
+    ]);
+
+    $saToken = JWT::encode([
+        'username' => 'nguyen_bich_phuong_' . $suffix,
+        'email' => $saEmail,
+        'name' => 'Nguyễn Bích Phượng',
+        'role' => 'super_admin',
+        'user_id' => $saUserId,
+        'id' => $saUserId,
+        'tenant_id' => $tenantId,
+    ]);
 
     // ─────────────────────────────────────────────────────────────────
     // Phase 3: Sales Team Management
@@ -238,41 +340,36 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // Phase 11: Deposit Cancel before/after Revenue
     // ─────────────────────────────────────────────────────────────────
+    // Phase 11: Deposit Cancel before/after Revenue (using real REST API)
+    $db->prepare("UPDATE contacts SET status = 'customer', pipeline_status = 'dat_coc', temperature = 'hot' WHERE id = ?")->execute([$contactId]);
+
+    // Create deposit A (with pending milestone)
     $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'U-101', 1000000000.00, 30000000.00, 'pending_admin', ?)")
        ->execute([$contactId, $projectId, $saleUserId]);
     $depIdA = (int)$db->lastInsertId();
-
     $db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1', 50000000.00, 'pending')")
        ->execute([$depIdA]);
 
-    $hasRevA = $db->query("SELECT COUNT(*) FROM deposit_milestones WHERE deposit_id = $depIdA AND status = 'approved'")->fetchColumn() > 0;
-    if (!$hasRevA) {
-        $db->prepare("UPDATE contacts SET pipeline_status = 'booking', status = 'lead', security_expires_at = DATE_ADD(NOW(), INTERVAL 3 MONTH) WHERE id = ?")
-           ->execute([$contactId]);
-    }
-    $db->prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ?")->execute([$depIdA]);
+    // Cancel deposit A using the REST API
+    $resCancelA = $callApi("deposits/$depIdA/cancel", 'POST', ['reason' => 'Khách hủy mua A'], $adminToken);
     $contactA = $db->query("SELECT status, pipeline_status FROM contacts WHERE id = $contactId")->fetch(PDO::FETCH_ASSOC);
 
+    // Create deposit B (with paid milestone)
     $db->prepare("UPDATE contacts SET status = 'customer', pipeline_status = 'dat_coc' WHERE id = ?")->execute([$contactId]);
-
     $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'U-102', 1000000000.00, 30000000.00, 'approved', ?)")
        ->execute([$contactId, $projectId, $saleUserId]);
     $depIdB = (int)$db->lastInsertId();
-
     $db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1', 50000000.00, 'approved')")
        ->execute([$depIdB]);
 
-    $hasRevB = $db->query("SELECT COUNT(*) FROM deposit_milestones WHERE deposit_id = $depIdB AND status = 'approved'")->fetchColumn() > 0;
-    if (!$hasRevB) {
-        $db->prepare("UPDATE contacts SET pipeline_status = 'booking', status = 'lead' WHERE id = ?")->execute([$contactId]);
-    }
-    $db->prepare("UPDATE deposits SET status = 'cancelled' WHERE id = ?")->execute([$depIdB]);
+    // Cancel deposit B using the REST API
+    $resCancelB = $callApi("deposits/$depIdB/cancel", 'POST', ['reason' => 'Khách hủy mua B'], $adminToken);
     $contactB = $db->query("SELECT status, pipeline_status FROM contacts WHERE id = $contactId")->fetch(PDO::FETCH_ASSOC);
 
     assertTest("Phase 11: Deposit Cancel before/after Revenue", $contactA['status'] === 'lead' && $contactB['status'] === 'customer', "Cancel A: " . $contactA['status'] . ", Cancel B: " . $contactB['status']);
 
     // ─────────────────────────────────────────────────────────────────
-    // Phase 12: Unit Switching Audit Trail
+    // Phase 12: Unit Switching Audit Trail (using real REST API)
     // ─────────────────────────────────────────────────────────────────
     $stageId = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId ORDER BY order_index LIMIT 1")->fetchColumn();
     if (!$stageId) {
@@ -281,23 +378,27 @@ try {
         $stageId = (int)$db->lastInsertId();
     }
 
+    // Insert an active deal
     $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch căn A-102', ?, 1000000000.00)")
        ->execute([$tenantId, $contactId, $saleUserId, $saleUserId, $stageId]);
     $oldDealId = (int)$db->lastInsertId();
 
-    $db->prepare("UPDATE deals SET lost_reason = 'Unit Switch' WHERE id = ?")->execute([$oldDealId]);
+    // Call REST API to switch unit
+    $resSwitch = $callApi("deals/$oldDealId/switch", 'POST', [
+        'new_unit_code' => 'B-205',
+        'new_price' => 1200000000.00,
+        'new_project_id' => $projectId,
+        'reason' => 'Khách hàng muốn chuyển sang tầng cao hơn đón gió'
+    ], $salesToken);
 
-    $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch căn B-205', ?, 1200000000.00)")
-       ->execute([$tenantId, $contactId, $saleUserId, $saleUserId, $stageId]);
-    $newDealId = (int)$db->lastInsertId();
+    // Verify the new deal has been created
+    $newDeal = $db->query("SELECT id, title, switched_from_deal_id FROM deals WHERE switched_from_deal_id = $oldDealId AND deleted_at IS NULL LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $newDealId = (int)($newDeal['id'] ?? 0);
 
-    $auditNote = "Yêu cầu đổi căn hộ từ A-102 sang B-205 do khách hàng muốn chuyển sang tầng cao hơn đón gió. Đã đóng giao dịch cũ (Deal ID: $oldDealId) theo chính sách đổi căn.";
-    $db->prepare("INSERT INTO notes (tenant_id, user_id, entity_type, entity_id, body, type) VALUES (?, ?, 'deal', ?, ?, 'internal')")
-       ->execute([$tenantId, $saleUserId, $newDealId, $auditNote]);
-    $dealNoteId = (int)$db->lastInsertId();
-
-    $auditNotePersisted = $db->query("SELECT body FROM notes WHERE id = $dealNoteId")->fetchColumn();
-    assertTest("Phase 12: Unit Switching Audit Trail", $auditNotePersisted === $auditNote, "Audit msg: $auditNotePersisted");
+    // Fetch note written by the API to verify audit trail
+    $auditNotePersisted = $db->query("SELECT body FROM notes WHERE entity_type = 'deal' AND entity_id = $newDealId ORDER BY id DESC LIMIT 1")->fetchColumn();
+    
+    assertTest("Phase 12: Unit Switching Audit Trail", $newDealId > 0 && strpos($auditNotePersisted, 'Yêu cầu đổi căn hộ từ deal cũ') !== false, "New Deal: $newDealId, Audit msg: $auditNotePersisted");
 
     // ─────────────────────────────────────────────────────────────────
     // Phase 13: Meta CAPI Forward-only Guardrails
@@ -321,7 +422,7 @@ try {
         $db->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)")->execute([$b['setting_key'], $b['setting_value']]);
     }
 
-    assertTest("Phase 13: Meta CAPI Forward-only Guardrails", $logged1 === 1 && $logged2 === 0 && $capiResult2 === true, "Purchase: $logged1, Schedule: $logged2");
+    assertTest("Phase 13: Meta CAPI Forward-only Guardrails", $logged1 === 1 && $logged2 === 0 && $capiResult2 === true, "Purchase: $logged1, Schedule: $logged2, Res2: " . ($capiResult2 ? 'true' : 'false'));
 
     // ─────────────────────────────────────────────────────────────────
     // Phase 14: Quotes, Invoices & Expenses Setup
@@ -550,50 +651,8 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // TEST 21: REST API Frontend Mock Calls (Create, Update, Delete)
     // ─────────────────────────────────────────────────────────────────
-    $callApi = function(string $resource, string $method, array $body = [], string $token = '') {
-        $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
-        $uri = $_SERVER['REQUEST_URI'] ?? '';
-        $subDir = (strpos($uri, '/richland/') !== false) ? '/richland' : '';
-        
-        $urls = [
-            "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($resource),
-            "http://localhost" . $subDir . "/api.php?action=" . urlencode($resource),
-            "https://open.domation.net/richland/api.php?action=" . urlencode($resource)
-        ];
-        
-        $lastErr = '';
-        foreach ($urls as $url) {
-            $ch = curl_init($url);
-            $headers = [
-                'Content-Type: application/json',
-                'Host: ' . $host,
-                'Authorization: Bearer ' . ($token ?: 'demo_token_12345')
-            ];
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
-            if ($method === 'POST') {
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
-            } elseif ($method === 'PUT' || $method === 'PATCH' || $method === 'DELETE') {
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body));
-            }
-            $response = curl_exec($ch);
-            $err = curl_error($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            
-            if ($response !== false && $httpCode >= 200 && $httpCode < 500) {
-                $decoded = json_decode($response, true);
-                if ($decoded) return $decoded;
-            }
-            $lastErr = "URL: $url, Code: $httpCode, Err: $err, Resp: " . substr($response, 0, 150);
-        }
-        return ['success' => false, 'message' => "All URLs failed. Last error: $lastErr"];
-    };
+    // $callApi helper is defined at the top of the try block
+    ;
 
     // Generate signed token for Nguyễn Văn Nam (Sales)
     $tokenPayload = [
@@ -659,12 +718,16 @@ try {
     // Reset person is_public = 0
     $db->prepare("UPDATE persons SET is_public = 0 WHERE id = 1")->execute();
     
+    // Reset contact status to lead & chua_xac_dinh and clear cooperation slips to bypass release guards
+    $db->prepare("DELETE FROM cooperation_slips WHERE contact_id = ?")->execute([$contactId]);
+    $db->prepare("UPDATE contacts SET status = 'lead', pipeline_status = 'chua_xac_dinh' WHERE id = ?")->execute([$contactId]);
+
     // Call release_to_databank API as Admin
     $releaseRes = $callApi('release_to_databank', 'POST', ['lead_id' => $contactId]);
     $isPublicNow = (int)$db->query("SELECT is_public FROM persons WHERE id = (SELECT person_id FROM contacts WHERE id = $contactId)")->fetchColumn();
     
-    // Restore contact for reassignment tests in TEST 28
-    $db->prepare("UPDATE contacts SET deleted_at = NULL WHERE id = ?")->execute([$contactId]);
+    // Restore contact status and owner for subsequent E2E tests
+    $db->prepare("UPDATE contacts SET deleted_at = NULL, status = 'customer', pipeline_status = 'dat_coc', owner_id = ? WHERE id = ?")->execute([$saleUserId, $contactId]);
 
     assertTest("TEST 23: Releasing Data to Databank Flow", $isPublicNow === 1 && isset($releaseRes['success']) && $releaseRes['success'] === true, "Released Result: " . json_encode($releaseRes));
 
@@ -2181,6 +2244,531 @@ try {
     
     $test93Success = ($calculatedExpires === $expectedExpires);
     assertTest("TEST 93: Custom security timer configuration check", $test93Success, "Calculated: $calculatedExpires, Expected: $expectedExpires");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 94: Revert to `da_gap` on Cancel before Revenue (Rule 1)
+    // ─────────────────────────────────────────────────────────────────
+    // Prepare a clean contact with no booking history and hot temperature
+    $db->prepare("DELETE FROM audit_logs WHERE resource = 'contact' AND resource_id = ? AND action = 'MOVE_STAGE'")->execute([$contactId]);
+    $db->prepare("UPDATE contacts SET status = 'customer', pipeline_status = 'dat_coc', temperature = 'hot', security_expires_at = NULL WHERE id = ?")->execute([$contactId]);
+
+    // Create deposit
+    $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'U-TEST-94', 1500000000.00, 45000000.00, 'pending_admin', ?)")
+       ->execute([$contactId, $projectId, $saleUserId]);
+    $depId94 = (int)$db->lastInsertId();
+    $db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1', 10000000.00, 'pending')")
+       ->execute([$depId94]);
+
+    // Cancel deposit via API
+    $callApi("deposits/$depId94/cancel", 'POST', ['reason' => 'Hủy trước DT - Không booking'], $adminToken);
+    $contact94 = $db->query("SELECT status, pipeline_status, security_expires_at FROM contacts WHERE id = $contactId")->fetch(PDO::FETCH_ASSOC);
+    $secTime94 = $contact94['security_expires_at'] ? (strtotime($contact94['security_expires_at']) - time()) : 0;
+    
+    // Timer should be around 5 days (e.g. between 4.9 and 5.1 days)
+    $isTimer5Days = ($secTime94 > 4 * 24 * 3600 && $secTime94 < 6 * 24 * 3600);
+    assertTest("TEST 94: Revert to `da_gap` on Cancel before Revenue", $contact94['status'] === 'lead' && $contact94['pipeline_status'] === 'da_gap' && $isTimer5Days, "Status: {$contact94['status']}, Pipeline: {$contact94['pipeline_status']}, SecTime: " . round($secTime94 / 3600, 2) . " hrs");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 95: Revert to `booking` on Cancel before Revenue with history (Rule 1)
+    // ─────────────────────────────────────────────────────────────────
+    // Setup contact with a move to booking stage in audit logs
+    $db->prepare("UPDATE contacts SET status = 'customer', pipeline_status = 'dat_coc', temperature = 'hot', security_expires_at = NULL WHERE id = ?")->execute([$contactId]);
+    $db->prepare("INSERT INTO audit_logs (tenant_id, user_id, resource, resource_id, action, new_data) VALUES (?, ?, 'contact', ?, 'MOVE_STAGE', '{\"pipeline_status\":\"booking\"}')")
+       ->execute([$tenantId, $saleUserId, $contactId]);
+
+    // Create deposit
+    $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'U-TEST-95', 1500000000.00, 45000000.00, 'pending_admin', ?)")
+       ->execute([$contactId, $projectId, $saleUserId]);
+    $depId95 = (int)$db->lastInsertId();
+    $db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1', 10000000.00, 'pending')")
+       ->execute([$depId95]);
+
+    // Cancel deposit via API
+    $callApi("deposits/$depId95/cancel", 'POST', ['reason' => 'Hủy trước DT - Có booking'], $adminToken);
+    $contact95 = $db->query("SELECT status, pipeline_status, security_expires_at FROM contacts WHERE id = $contactId")->fetch(PDO::FETCH_ASSOC);
+    $secTime95 = $contact95['security_expires_at'] ? (strtotime($contact95['security_expires_at']) - time()) : 0;
+    
+    // Timer should be around 3 months (e.g. between 85 and 95 days)
+    $isTimer3Months = ($secTime95 > 80 * 24 * 3600 && $secTime95 < 100 * 24 * 3600);
+    assertTest("TEST 95: Revert to `booking` on Cancel before Revenue", $contact95['status'] === 'lead' && $contact95['pipeline_status'] === 'booking' && $isTimer3Months, "Status: {$contact95['status']}, Pipeline: {$contact95['pipeline_status']}, SecTime: " . round($secTime95 / (24 * 3600), 1) . " days");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 96: Temperature Decay Verification (Rule 1)
+    // ─────────────────────────────────────────────────────────────────
+    // Test warm -> neutral decay
+    $db->prepare("UPDATE contacts SET status = 'customer', pipeline_status = 'dat_coc', temperature = 'warm', security_expires_at = NULL WHERE id = ?")->execute([$contactId]);
+    $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'U-TEST-96', 1500000000.00, 45000000.00, 'pending_admin', ?)")
+       ->execute([$contactId, $projectId, $saleUserId]);
+    $depId96 = (int)$db->lastInsertId();
+    $db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1', 10000000.00, 'pending')")
+       ->execute([$depId96]);
+
+    // Cancel deposit via API
+    $callApi("deposits/$depId96/cancel", 'POST', ['reason' => 'Decay Temp Test'], $adminToken);
+    $decayedTemp = $db->query("SELECT temperature FROM contacts WHERE id = $contactId")->fetchColumn();
+    assertTest("TEST 96: Temperature Decay Verification", $decayedTemp === 'neutral', "Temperature decayed to: $decayedTemp");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 97: Retain Status on Cancel after Revenue (Rule 2)
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("UPDATE contacts SET status = 'customer', pipeline_status = 'dat_coc', temperature = 'hot', security_expires_at = NULL WHERE id = ?")->execute([$contactId]);
+    $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'U-TEST-97', 1500000000.00, 45000000.00, 'approved', ?)")
+       ->execute([$contactId, $projectId, $saleUserId]);
+    $depId97 = (int)$db->lastInsertId();
+    // Insert an APPROVED milestone
+    $db->prepare("INSERT INTO deposit_milestones (deposit_id, milestone_name, expected_amount, status) VALUES (?, 'Đợt 1', 50000000.00, 'approved')")
+       ->execute([$depId97]);
+
+    // Cancel deposit via API
+    $callApi("deposits/$depId97/cancel", 'POST', ['reason' => 'Hủy sau DT'], $adminToken);
+    $contact97 = $db->query("SELECT status, pipeline_status, temperature FROM contacts WHERE id = $contactId")->fetch(PDO::FETCH_ASSOC);
+    assertTest("TEST 97: Retain Status on Cancel after Revenue", $contact97['status'] === 'customer' && $contact97['pipeline_status'] === 'dat_coc' && $contact97['temperature'] === 'hot', "Status: {$contact97['status']}, Pipeline: {$contact97['pipeline_status']}, Temp: {$contact97['temperature']}");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 98: Unit Switching Old/New Deals (Rule 3)
+    // ─────────────────────────────────────────────────────────────────
+    $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch cũ A-101', ?, 2000000000.00)")
+       ->execute([$tenantId, $contactId, $saleUserId, $saleUserId, $stageId]);
+    $dealOldId = (int)$db->lastInsertId();
+
+    // Call REST API to switch
+    $switchRes = $callApi("deals/$dealOldId/switch", 'POST', [
+        'new_unit_code' => 'C-505',
+        'new_price' => 2500000000.00,
+        'new_project_id' => $projectId,
+        'reason' => 'Khách thích tầng cao căn C-505'
+    ], $salesToken);
+
+    // Verify deals
+    $oldDealStatus = $db->query("SELECT stage_id, lost_reason, actual_close_date FROM deals WHERE id = $dealOldId")->fetch(PDO::FETCH_ASSOC);
+    $newDeal98 = $db->query("SELECT id, title, value, switched_from_deal_id FROM deals WHERE switched_from_deal_id = $dealOldId AND deleted_at IS NULL LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $newDeal98Id = (int)($newDeal98['id'] ?? 0);
+
+    // Verify lost stage
+    $lostStage = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId AND is_lost = 1 LIMIT 1")->fetchColumn();
+    $isOldDealClosed = ($lostStage > 0 && (int)$oldDealStatus['stage_id'] === $lostStage && $oldDealStatus['lost_reason'] === 'Unit Switch' && !empty($oldDealStatus['actual_close_date']));
+    
+    // Check audit notes
+    $noteOld98 = $db->query("SELECT body FROM notes WHERE entity_type = 'deal' AND entity_id = $dealOldId ORDER BY id DESC LIMIT 1")->fetchColumn();
+    $noteNew98 = $db->query("SELECT body FROM notes WHERE entity_type = 'deal' AND entity_id = $newDeal98Id ORDER BY id DESC LIMIT 1")->fetchColumn();
+
+    $isAuditLinked = (strpos($noteOld98, "Khách hàng đổi sang căn hộ mới C-505") !== false && strpos($noteNew98, "Yêu cầu đổi căn hộ từ deal cũ") !== false);
+
+    assertTest("TEST 98: Unit Switching Old/New Deals", $isOldDealClosed && $newDeal98Id > 0 && (float)$newDeal98['value'] === 2500000000.00 && $isAuditLinked, "OldClosed: " . ($isOldDealClosed?'Yes':'No') . ", NewDealID: $newDeal98Id, AuditLinked: " . ($isAuditLinked?'Yes':'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 99: Deposit Auto-switching under Unit Switch (Rule 3)
+    // ─────────────────────────────────────────────────────────────────
+    // Setup contact, deal and deposit
+    $db->prepare("INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, stage_id, value) VALUES (?, ?, ?, ?, '[E2E] Giao dịch cũ B-101', ?, 2000000000.00)")
+       ->execute([$tenantId, $contactId, $saleUserId, $saleUserId, $stageId]);
+    $dealOldId99 = (int)$db->lastInsertId();
+
+    $db->prepare("INSERT INTO deposits (contact_id, project_id, unit_code, price, expected_commission, status, created_by) VALUES (?, ?, 'B-101', 2000000000.00, 60000000.00, 'approved', ?)")
+       ->execute([$contactId, $projectId, $saleUserId]);
+    $depOldId99 = (int)$db->lastInsertId();
+
+    // Call REST API to switch
+    $callApi("deals/$dealOldId99/switch", 'POST', [
+        'new_unit_code' => 'D-808',
+        'new_price' => 3000000000.00,
+        'new_project_id' => $projectId,
+        'reason' => 'Đổi sang căn lớn hơn D-808'
+    ], $salesToken);
+
+    // Verify deposits
+    $oldDepStatus = $db->query("SELECT status, cancelled_reason FROM deposits WHERE id = $depOldId99")->fetch(PDO::FETCH_ASSOC);
+    $newDep99 = $db->query("SELECT id, unit_code, price, status FROM deposits WHERE contact_id = $contactId AND id > $depOldId99 ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    $newDepId99 = (int)($newDep99['id'] ?? 0);
+
+    // Verify milestone
+    $milestoneCount99 = (int)$db->query("SELECT COUNT(*) FROM deposit_milestones WHERE deposit_id = $newDepId99 AND milestone_name LIKE '%(Đổi căn)%' AND status = 'pending'")->fetchColumn();
+
+    $isOldDepCancelled = ($oldDepStatus['status'] === 'cancelled' && strpos($oldDepStatus['cancelled_reason'], 'Đổi sang căn mới D-808') !== false);
+    $isNewDepCreated = ($newDepId99 > 0 && $newDep99['unit_code'] === 'D-808' && (float)$newDep99['price'] === 3000000000.00 && $newDep99['status'] === 'pending_admin');
+
+    assertTest("TEST 99: Deposit Auto-switching under Unit Switch", $isOldDepCancelled && $isNewDepCreated && $milestoneCount99 === 1, "OldCancelled: " . ($isOldDepCancelled?'Yes':'No') . ", NewCreated: " . ($isNewDepCreated?'Yes':'No') . ", MilestoneCount: $milestoneCount99");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 100: Meta CAPI Backtracking Prevention (Rule 4)
+    // ─────────────────────────────────────────────────────────────────
+    // Resolve stage IDs with safe fallback self-healing
+    $bookingStageId = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId AND system_slug = 'booking' LIMIT 1")->fetchColumn();
+    $daGapStageId = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId AND system_slug = 'da_gap' LIMIT 1")->fetchColumn();
+    $datCocStageId = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId AND system_slug = 'dat_coc' LIMIT 1")->fetchColumn();
+
+    if (!$bookingStageId) {
+        $db->prepare("INSERT INTO pipeline_stages (tenant_id, name, system_slug, order_index) VALUES (?, 'Booking', 'booking', 1)")->execute([$tenantId]);
+        $bookingStageId = (int)$db->lastInsertId();
+    }
+    if (!$daGapStageId) {
+        $db->prepare("INSERT INTO pipeline_stages (tenant_id, name, system_slug, order_index) VALUES (?, 'Đã gặp', 'da_gap', 2)")->execute([$tenantId]);
+        $daGapStageId = (int)$db->lastInsertId();
+    }
+    if (!$datCocStageId) {
+        $db->prepare("INSERT INTO pipeline_stages (tenant_id, name, system_slug, order_index) VALUES (?, 'Đặt cọc', 'dat_coc', 3)")->execute([$tenantId]);
+        $datCocStageId = (int)$db->lastInsertId();
+    }
+
+    // Clear CAPI logs for this contact
+    $db->prepare("DELETE FROM capi_logs WHERE contact_id = ?")->execute([$contactId]);
+    
+    // Set setting
+    $db->exec("DELETE FROM system_settings WHERE setting_key IN ('meta_pixel_id', 'meta_access_token')");
+    $db->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('meta_pixel_id', '123456'), ('meta_access_token', 'mock_token')")->execute();
+
+    // 1. Move to customer / dat_coc (should send Purchase CAPI)
+    $db->prepare("UPDATE contacts SET status = 'lead', pipeline_status = 'booking', stage_id = $bookingStageId WHERE id = ?")->execute([$contactId]);
+    $resMove1 = $callApi("contacts/$contactId/stage", 'PATCH', ['stage_id' => $datCocStageId], $adminToken);
+    $purchaseCapiCount = (int)$db->query("SELECT COUNT(*) FROM capi_logs WHERE contact_id = $contactId AND event_name = 'Purchase'")->fetchColumn();
+
+    // 2. Move backwards from customer/dat_coc to booking (backtracking)
+    $resMove2 = $callApi("contacts/$contactId/stage", 'PATCH', ['stage_id' => $bookingStageId], $adminToken);
+
+    // Verify NO backtracking / refund signals were sent
+    $backtrackCount = (int)$db->query("SELECT COUNT(*) FROM capi_logs WHERE contact_id = $contactId AND event_name IN ('Refund', 'Cancel', 'Revert')")->fetchColumn();
+    
+    // Reset setting
+    $db->exec("DELETE FROM system_settings WHERE setting_key IN ('meta_pixel_id', 'meta_access_token')");
+    foreach ($capiBackup as $b) {
+        $db->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES (?, ?)")->execute([$b['setting_key'], $b['setting_value']]);
+    }
+
+    $capiOk = ($purchaseCapiCount === 1 && $backtrackCount === 0);
+    assertTest("TEST 100: Meta CAPI Backtracking Prevention", $capiOk, "Purchase Count: $purchaseCapiCount, Backtrack Count: $backtrackCount, Resp1: " . json_encode($resMove1) . ", Resp2: " . json_encode($resMove2));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 101: Security Expiration Timer Policies
+    // ─────────────────────────────────────────────────────────────────
+    // Test 1: transition to booking -> security timer should be set to +3 months
+    $db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', security_expires_at = NULL WHERE id = ?")->execute([$contactId]);
+    $resB1 = $callApi("contacts/$contactId/stage", 'PATCH', ['stage_id' => $bookingStageId], $adminToken);
+    $secTimeBooking = $db->query("SELECT security_expires_at FROM contacts WHERE id = $contactId")->fetchColumn();
+    $diffBooking = $secTimeBooking ? (strtotime($secTimeBooking) - time()) : 0;
+    $isBookingOk = ($diffBooking > 85 * 24 * 3600 && $diffBooking < 95 * 24 * 3600);
+
+    // Test 2: transition to da_gap -> security timer should be set to +5 days
+    $db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', security_expires_at = NULL WHERE id = ?")->execute([$contactId]);
+    $resB2 = $callApi("contacts/$contactId/stage", 'PATCH', ['stage_id' => $daGapStageId], $adminToken);
+    $secTimeDaGap = $db->query("SELECT security_expires_at FROM contacts WHERE id = $contactId")->fetchColumn();
+    $diffDaGap = $secTimeDaGap ? (strtotime($secTimeDaGap) - time()) : 0;
+    $isDaGapOk = ($diffDaGap > 4 * 24 * 3600 && $diffDaGap < 6 * 24 * 3600);
+
+    // Test 3: transition to dat_coc -> security timer should be NULL/indefinite
+    $db->prepare("UPDATE contacts SET pipeline_status = 'booking', security_expires_at = NOW() WHERE id = ?")->execute([$contactId]);
+    $resB3 = $callApi("contacts/$contactId/stage", 'PATCH', ['stage_id' => $datCocStageId], $adminToken);
+    $secTimeDatCoc = $db->query("SELECT security_expires_at FROM contacts WHERE id = $contactId")->fetchColumn();
+    $isDatCocOk = ($secTimeDatCoc === null);
+
+    $test101Success = ($isBookingOk && $isDaGapOk && $isDatCocOk);
+    assertTest("TEST 101: Security Expiration Timer Policies", $test101Success, "Booking: " . ($isBookingOk?'Ok':'Fail') . " (Res: " . json_encode($resB1) . "), DaGap: " . ($isDaGapOk?'Ok':'Fail') . " (Res: " . json_encode($resB2) . "), DatCoc: " . ($isDatCocOk?'Ok':'Fail') . " (Res: " . json_encode($resB3) . ")");
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 102: Backpressure Valve - Interaction resets count (Rule 2.8)
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Set backpressure_limit setting to 3
+    $db->prepare("INSERT INTO system_settings (setting_key, setting_value) VALUES ('backpressure_limit', '3') ON DUPLICATE KEY UPDATE setting_value = '3'")->execute();
+    
+    // Ensure approved check-in exists for this user for Gate 2 to pass
+    $db->prepare("DELETE FROM check_ins WHERE user_id = ? AND check_in_date = ?")->execute([$saleUserId, date('Y-m-d')]);
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, status) VALUES (?, ?, 'approved')")->execute([$saleUserId, date('Y-m-d')]);
+
+    // 2. Clear pre-existing uncontacted leads for this user to make test deterministic
+    $db->prepare("DELETE FROM contacts WHERE owner_id = ? AND pipeline_status IN ('chua_xac_dinh', 'quan_tam')")->execute([$saleUserId]);
+
+    // 3. Insert 3 uncontacted contacts in 'chua_xac_dinh' owned by $saleUserId
+    $leads102 = [];
+    for ($i = 0; $i < 3; $i++) {
+        $db->prepare("INSERT INTO contacts (tenant_id, owner_id, first_name, last_name, pipeline_status, phone, source, status) VALUES (?, ?, '[E2E] Chống ôm 102', ?, 'chua_xac_dinh', ?, 'facebook', 'lead')")
+           ->execute([$tenantId, $saleUserId, "Lead $i", '098' . mt_rand(1000000, 9999999)]);
+        $leads102[] = (int)$db->lastInsertId();
+    }
+
+    // 4. Update one lead to stage 'quan_tam' and add a note to it (completed interaction)
+    $quanTamStageId102 = (int)$db->query("SELECT id FROM pipeline_stages WHERE tenant_id = $tenantId AND system_slug = 'quan_tam' LIMIT 1")->fetchColumn();
+    if (!$quanTamStageId102) {
+        $db->prepare("INSERT INTO pipeline_stages (tenant_id, name, system_slug, order_index) VALUES (?, 'Quan tâm', 'quan_tam', 2)")->execute([$tenantId]);
+        $quanTamStageId102 = (int)$db->lastInsertId();
+    }
+    
+    $targetContact102 = $leads102[0];
+    $db->prepare("UPDATE contacts SET stage_id = ?, pipeline_status = 'quan_tam' WHERE id = ?")->execute([$quanTamStageId102, $targetContact102]);
+    $db->prepare("INSERT INTO notes (tenant_id, entity_type, entity_id, user_id, body) VALUES (?, 'contact', ?, ?, 'E2E Note interaction 102')")
+       ->execute([$tenantId, $targetContact102, $saleUserId]);
+
+    // 5. Call checkConsultantGates. Since one contact has note, count of uncontacted leads is 2, which is < limit (3)
+    require_once __DIR__ . '/webhook_logic.php';
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $gateResult102 = checkConsultantGates($mysqliConn, $saleUserId);
+    $mysqliConn->close();
+
+    $isGatePassed102 = ($gateResult102 === true || strpos($gateResult102, 'Failed Gate 4') === false);
+    
+    // Reset backpressure_limit to default (5)
+    $db->prepare("UPDATE system_settings SET setting_value = '5' WHERE setting_key = 'backpressure_limit'")->execute();
+
+    assertTest("TEST 102: Backpressure Valve - Interaction resets count", $isGatePassed102, "Gate Result: " . (is_string($gateResult102) ? $gateResult102 : 'Passed (true)'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 103: Databank Claim Lockout Enforcement (Rule 5.13)
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Create a public person and lead
+    $test103Phone = '0908103103';
+    $db->prepare("DELETE FROM leads WHERE phone = ?")->execute([$test103Phone]);
+    $db->prepare("INSERT INTO leads (phone, name, source, status) VALUES (?, 'Test 103 Lockout', 'facebook', 'unassigned')")->execute([$test103Phone]);
+    $leadId103 = (int)$db->lastInsertId();
+
+    $db->prepare("DELETE FROM persons WHERE phone = ?")->execute([$test103Phone]);
+    $db->prepare("INSERT INTO persons (phone, email, full_name, is_public) VALUES (?, 'test103@richland.com', 'Test 103 Databank Claim', 1)")->execute([$test103Phone]);
+    $personId103 = (int)$db->lastInsertId();
+
+    $db->prepare("UPDATE leads SET person_id = ? WHERE id = ?")->execute([$personId103, $leadId103]);
+
+    // 2. Insert 3 approved reports (tickets) with reason 'Số ảo' for this person's lead
+    $db->prepare("DELETE FROM data_reports WHERE lead_id = ?")->execute([$leadId103]);
+    for ($i = 0; $i < 3; $i++) {
+        $db->prepare("INSERT INTO data_reports (lead_id, consultant_id, round_id, reason, status) VALUES (?, ?, ?, 'Số ảo', 'approved')")
+           ->execute([$leadId103, $saleUserId, $roundId]);
+    }
+
+    // 3. Attempt to claim public lead 103 via API
+    $claimRes103 = $callApi('claim_public_lead', 'POST', ['person_id' => $personId103], $salesToken);
+    
+    // 4. Verify that it was blocked with correct message
+    $isBlocked103 = (isset($claimRes103['success']) && $claimRes103['success'] === false && strpos($claimRes103['message'], 'khóa nhận') !== false);
+
+    assertTest("TEST 103: Databank Claim Lockout Enforcement", $isBlocked103, "Claim Resp: " . json_encode($claimRes103));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 104: SLA Gate - Approved Check-in Requirement
+    // ─────────────────────────────────────────────────────────────────
+    $todayStr104 = date('Y-m-d');
+    $db->prepare("DELETE FROM check_ins WHERE user_id = ? AND check_in_date = ?")->execute([$saleUserId, $todayStr104]);
+    
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $gateResultWeekday = checkConsultantGates($mysqliConn, $saleUserId);
+    $mysqliConn->close();
+
+    $isCheckinBlocked = (strpos($gateResultWeekday, 'Failed Gate 2: No approved check-in for today') !== false);
+
+    // Now, insert an approved check-in
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, status) VALUES (?, ?, 'approved')")->execute([$saleUserId, $todayStr104]);
+    
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $gateResultWeekdayPassed = checkConsultantGates($mysqliConn, $saleUserId);
+    $mysqliConn->close();
+
+    $isCheckinPassed = ($gateResultWeekdayPassed === true || strpos($gateResultWeekdayPassed, 'Failed Gate 2') === false);
+
+    assertTest("TEST 104: SLA Gate - Approved Check-in Requirement", $isCheckinBlocked && $isCheckinPassed, "Blocked: " . ($isCheckinBlocked?'Yes':'No') . ", Passed with Checkin: " . ($isCheckinPassed?'Yes':'No') . ", Gate Msg: " . $gateResultWeekday);
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 105: Cooperation Slip Share Split Validation
+    // ─────────────────────────────────────────────────────────────────
+    // Create a slip and attempt to set total shares to 110% (should fail)
+    $db->prepare("INSERT INTO cooperation_slips (contact_id, total_percentage, shares_json, signatures_json, status, created_by) VALUES (?, 100, '{}', '{}', 'pending_signatures', ?)")
+       ->execute([$contactId, $saleUserId]);
+    $slipId105 = (int)$db->lastInsertId();
+
+    $badSharesRes1 = $callApi("cooperation-slips/$slipId105/shares", 'PUT', [
+        'shares' => ["$saleUserId" => 60, "$mgrUserId" => 50]
+    ], $salesToken);
+
+    $badSharesRes2 = $callApi("cooperation-slips/$slipId105/shares", 'PUT', [
+        'shares' => ["$saleUserId" => 110, "$mgrUserId" => -10]
+    ], $salesToken);
+
+    $goodSharesRes = $callApi("cooperation-slips/$slipId105/shares", 'PUT', [
+        'shares' => ["$saleUserId" => 50, "$mgrUserId" => 50]
+    ], $salesToken);
+
+    // Cleanup
+    $db->prepare("DELETE FROM cooperation_slips WHERE id = ?")->execute([$slipId105]);
+
+    $isBad1Blocked = (isset($badSharesRes1['success']) && $badSharesRes1['success'] === false);
+    $isBad2Blocked = (isset($badSharesRes2['success']) && $badSharesRes2['success'] === false);
+    $isGoodAllowed = (isset($goodSharesRes['success']) && $goodSharesRes['success'] === true);
+
+    assertTest("TEST 105: Cooperation Slip Share Split Validation", $isBad1Blocked && $isBad2Blocked && $isGoodAllowed, "Bad1Blocked: " . ($isBad1Blocked?'Yes':'No') . ", Bad2Blocked: " . ($isBad2Blocked?'Yes':'No') . ", GoodAllowed: " . ($isGoodAllowed?'Yes':'No'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 106: Tự động trả về Databank khi hết hạn bảo mật
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Create a person who is currently NOT public
+    $test106Phone = '0908106106';
+    $db->prepare("DELETE FROM persons WHERE phone = ?")->execute([$test106Phone]);
+    $db->prepare("INSERT INTO persons (phone, email, full_name, is_public, public_count) VALUES (?, 'test106@richland.com', 'Test 106 Databank Release', 0, 0)")->execute([$test106Phone]);
+    $personId106 = (int)$db->lastInsertId();
+
+    // 2. Create a contact under this person with security_expires_at in the past
+    $db->prepare("DELETE FROM contacts WHERE phone = ?")->execute([$test106Phone]);
+    $db->prepare("INSERT INTO contacts (tenant_id, person_id, owner_id, first_name, last_name, pipeline_status, phone, source, status, security_expires_at) VALUES (?, ?, ?, 'Test', '106 Release', 'chua_xac_dinh', ?, 'R3_Fb', 'lead', '2026-07-14 10:00:00')")
+       ->execute([$tenantId, $personId106, $saleUserId, $test106Phone]);
+    $contactId106 = (int)$db->lastInsertId();
+
+    // 3. Create a lead link
+    $db->prepare("DELETE FROM leads WHERE phone = ?")->execute([$test106Phone]);
+    $db->prepare("INSERT INTO leads (phone, name, source, status, person_id, assigned_to, last_assigned_at) VALUES (?, 'Test 106 Release', 'R3_Fb', 'assigned', ?, ?, NOW())")
+       ->execute([$test106Phone, $personId106, $saleUserId]);
+    $leadId106 = (int)$db->lastInsertId();
+
+    // 4. Run releaseExpiredLeadsToKho
+    require_once __DIR__ . '/cron_sync.php';
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    releaseExpiredLeadsToKho($mysqliConn);
+    $mysqliConn->close();
+
+    // 5. Verify the person is now public, contact is soft-deleted, and lead assignment cleared
+    $personIsPublic = (int)$db->query("SELECT is_public FROM persons WHERE id = $personId106")->fetchColumn();
+    $contactDeleted = $db->query("SELECT deleted_at FROM contacts WHERE id = $contactId106")->fetchColumn();
+    $leadAssignedTo = $db->query("SELECT assigned_to FROM leads WHERE id = $leadId106")->fetchColumn();
+
+    // Cleanup
+    $db->prepare("DELETE FROM persons WHERE id = ?")->execute([$personId106]);
+    $db->prepare("DELETE FROM contacts WHERE id = ?")->execute([$contactId106]);
+    $db->prepare("DELETE FROM leads WHERE id = ?")->execute([$leadId106]);
+
+    $isReleased106 = ($personIsPublic === 1 && $contactDeleted !== null && $leadAssignedTo === null);
+    assertTest("TEST 106: Auto Databank Release on Security Expiration", $isReleased106, "Public: " . ($personIsPublic?'Yes':'No') . ", Contact Deleted: " . ($contactDeleted?'Yes':'No') . ", Lead Assigned: " . ($leadAssignedTo ?: 'None'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 107: Thu hồi lead chưa tiếp nhận (Unaccepted Recall)
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Create a sheet connection to configure timeout
+    $db->prepare("INSERT INTO sheet_connections (spreadsheet_id, sheet_name, webhook_token, lead_recall_minutes) VALUES ('123_107', 'Sheet1', 'token_107', 1)")
+       ->execute();
+    $connId107 = (int)$db->lastInsertId();
+
+    // 2. Create a lead assigned to Sale but unaccepted, with last_interaction_date in the past
+    $test107Phone = '0908107107';
+    $db->prepare("DELETE FROM leads WHERE phone = ?")->execute([$test107Phone]);
+    $db->prepare("INSERT INTO leads (phone, name, source, status, assigned_to, is_accepted, last_interaction_date, connection_id) VALUES (?, 'Test 107 Recall', 'facebook', 'assigned', ?, 0, DATE_SUB(NOW(), INTERVAL 5 MINUTE), ?)")
+       ->execute([$test107Phone, $saleUserId, $connId107]);
+    $leadId107 = (int)$db->lastInsertId();
+
+    // Create a round consultant record and distribution log to mock previous assignment
+    $db->prepare("INSERT INTO distribution_logs (round_id, lead_id, assigned_to, status, message, received_at) VALUES (?, ?, ?, 'assigned', 'Mock assigned', NOW())")
+       ->execute([$roundId, $leadId107, $saleUserId]);
+    $logId107 = (int)$db->lastInsertId();
+
+    // 3. Run recallInactiveLeads
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    recallInactiveLeads($mysqliConn);
+    $mysqliConn->close();
+
+    // 4. Verify old log is marked as recalled, and lead is reassigned to the next consultant or fallback
+    $logStatus = $db->query("SELECT status FROM distribution_logs WHERE id = $logId107")->fetchColumn();
+    $newAssignedTo = $db->query("SELECT assigned_to FROM leads WHERE id = $leadId107")->fetchColumn();
+
+    // Cleanup
+    $db->prepare("DELETE FROM distribution_logs WHERE id = ?")->execute([$logId107]);
+    $db->prepare("DELETE FROM leads WHERE id = ?")->execute([$leadId107]);
+    $db->prepare("DELETE FROM sheet_connections WHERE id = ?")->execute([$connId107]);
+
+    $isRecalled107 = ($logStatus === 'recalled' && $newAssignedTo !== null && (int)$newAssignedTo !== $saleUserId);
+    assertTest("TEST 107: Auto Recall of Unaccepted Leads", $isRecalled107, "Log Status: $logStatus, New Assigned ID: " . ($newAssignedTo ?: 'None'));
+
+    // ─────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 108: Priority Weight Lead Assignment (Receive Ratio)
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Ensure sale2UserId is active in consultants and users
+    $db->prepare("UPDATE consultants SET status = 'active', vacation_mode = 0 WHERE id = ?")->execute([$sale2UserId]);
+    $db->prepare("UPDATE users SET status = 'active', vacation_mode = 0 WHERE id = ?")->execute([$sale2UserId]);
+
+    // Delete other consultants from round_consultants so only Sale and Sale 2 are tested
+    $db->prepare("DELETE FROM round_consultants WHERE round_id = ? AND consultant_id NOT IN (?, ?)")->execute([$roundId, $saleUserId, $sale2UserId]);
+    $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, is_active) VALUES (?, ?, 2, 1) ON DUPLICATE KEY UPDATE receive_ratio = 2, skip_count = 0, current_turn_remaining = 0, compensation_count = 0, is_active = 1")->execute([$roundId, $saleUserId]);
+    $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, is_active) VALUES (?, ?, 1, 1) ON DUPLICATE KEY UPDATE receive_ratio = 1, skip_count = 0, current_turn_remaining = 0, compensation_count = 0, is_active = 1")->execute([$roundId, $sale2UserId]);
+
+    // Ensure last_assigned_consultant_id is set to Sale 2 so Sale is evaluated first
+    $db->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?")->execute([$sale2UserId, $roundId]);
+
+    // Mock check-ins for both so they are available
+    $db->prepare("DELETE FROM check_ins WHERE user_id IN (?, ?)")->execute([$saleUserId, $sale2UserId]);
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, check_in_time, status) VALUES (?, CURDATE(), CURRENT_TIME(), 'approved')")->execute([$saleUserId]);
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, check_in_time, status) VALUES (?, CURDATE(), CURRENT_TIME(), 'approved')")->execute([$sale2UserId]);
+
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $sale2Gate = checkConsultantGates($mysqliConn, $sale2UserId);
+
+    // Call getNextConsultantInRound 3 times
+    $r1 = getNextConsultantInRound($mysqliConn, $roundId);
+    $r2 = getNextConsultantInRound($mysqliConn, $roundId);
+    $r3 = getNextConsultantInRound($mysqliConn, $roundId);
+    $mysqliConn->close();
+
+    $saleCount = ($r1['id'] == $saleUserId ? 1 : 0) + ($r2['id'] == $saleUserId ? 1 : 0) + ($r3['id'] == $saleUserId ? 1 : 0);
+    $sale2Count = ($r1['id'] == $sale2UserId ? 1 : 0) + ($r2['id'] == $sale2UserId ? 1 : 0) + ($r3['id'] == $sale2UserId ? 1 : 0);
+    $seqOk = ($saleCount === 2 && $sale2Count === 1);
+
+    // Reset ratios
+    $db->prepare("UPDATE round_consultants SET receive_ratio = 1 WHERE round_id = ?")->execute([$roundId]);
+
+    assertTest("TEST 108: Priority Weight Lead Assignment Sequence", $seqOk, "Sequence: " . json_encode([$r1, $r2, $r3]) . " | Sale2Gate: " . json_encode($sale2Gate));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 109: Duplicate Phone Guard (Source Washing Prevention)
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Insert an active contact
+    $test109Phone = '0989109109';
+    $db->prepare("DELETE FROM contacts WHERE phone = ?")->execute([$test109Phone]);
+    $db->prepare("INSERT INTO contacts (tenant_id, owner_id, first_name, last_name, pipeline_status, phone, source, status) VALUES (?, ?, 'Active', 'Contact 109', 'chua_xac_dinh', ?, 'facebook', 'lead')")
+       ->execute([$tenantId, $saleUserId, $test109Phone]);
+    $firstContactId = (int)$db->lastInsertId();
+
+    // 2. Post a manual insert request with the same phone and personal source ('ca_nhan')
+    $dupRes = $callApi('contacts', 'POST', [
+        'first_name' => 'Washed',
+        'last_name' => 'Contact 109',
+        'phone' => $test109Phone,
+        'source' => 'ca_nhan',
+        'status' => 'lead'
+    ], $salesToken);
+
+    // 3. Verify duplicate flag is 1 and duplicate_with_id is set
+    $isDupChecked = (isset($dupRes['success']) && $dupRes['success'] === true && (int)$dupRes['data']['duplicate_flag'] === 1 && (int)$dupRes['data']['duplicate_with_id'] === $firstContactId);
+
+    // Cleanup
+    $db->prepare("DELETE FROM contacts WHERE phone = ?")->execute([$test109Phone]);
+
+    assertTest("TEST 109: Duplicate Phone Guard (Rule 1.9)", $isDupChecked, "Response: " . json_encode($dupRes));
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 110: Vacation Mode & Leave Auto-Escalation Bypass
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Reset round consultants
+    $db->prepare("UPDATE round_consultants SET receive_ratio = 1, skip_count = 0, current_turn_remaining = 0, compensation_count = 0 WHERE round_id = ?")->execute([$roundId]);
+    $db->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?")->execute([$sale2UserId, $roundId]);
+
+    // 2. Put Sale on vacation
+    $db->prepare("UPDATE consultants SET vacation_mode = 1 WHERE id = ?")->execute([$saleUserId]);
+    $db->prepare("UPDATE users SET vacation_mode = 1 WHERE id = ?")->execute([$saleUserId]);
+
+    // Ensure check-ins are active for both
+    $db->prepare("DELETE FROM check_ins WHERE user_id IN (?, ?)")->execute([$saleUserId, $sale2UserId]);
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, check_in_time, status) VALUES (?, CURDATE(), CURRENT_TIME(), 'approved')")->execute([$saleUserId]);
+    $db->prepare("INSERT INTO check_ins (user_id, check_in_date, check_in_time, status) VALUES (?, CURDATE(), CURRENT_TIME(), 'approved')")->execute([$sale2UserId]);
+
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $vResult1 = getNextConsultantInRound($mysqliConn, $roundId);
+    $mysqliConn->close();
+
+    // 3. Turn off vacation mode, but mock leave dates directly on the consultant
+    $db->prepare("UPDATE consultants SET vacation_mode = 0, leave_start = CURDATE(), leave_end = CURDATE() WHERE id = ?")->execute([$saleUserId]);
+    $db->prepare("UPDATE users SET vacation_mode = 0 WHERE id = ?")->execute([$saleUserId]);
+
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $vResult2 = getNextConsultantInRound($mysqliConn, $roundId);
+    $mysqliConn->close();
+
+    // Cleanup leave and vacation mode on consultant and user
+    $db->prepare("UPDATE consultants SET leave_start = NULL, leave_end = NULL, vacation_mode = 0 WHERE id = ?")->execute([$saleUserId]);
+    $db->prepare("UPDATE users SET vacation_mode = 0 WHERE id = ?")->execute([$saleUserId]);
+
+    $isBypassed = ($vResult1['id'] == $sale2UserId && $vResult2['id'] == $sale2UserId);
+
+    assertTest("TEST 110: Vacation Mode & Leave Auto-Escalation Bypass", $isBypassed, "Res1: " . json_encode($vResult1) . ", Res2: " . json_encode($vResult2));
 
     // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)

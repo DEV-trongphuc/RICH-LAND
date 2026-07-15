@@ -415,7 +415,7 @@ class DepositController {
                       AND resource = 'contact' 
                       AND resource_id = ? 
                       AND action = 'MOVE_STAGE'
-                      AND (details LIKE '%\"pipeline_status\":\"booking\"%' OR details LIKE '%\"to_stage\":\"booking\"%')
+                      AND (new_data LIKE '%\"pipeline_status\":\"booking\"%' OR new_data LIKE '%\"to_stage\":\"booking\"%')
                     LIMIT 1
                 ");
                 $stmtHasBooking->execute([$auth['tenant_id'], $contactId]);

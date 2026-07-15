@@ -126,25 +126,18 @@ class ContactController {
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
-            LEFT JOIN (
-                SELECT l1.* FROM leads l1
-                INNER JOIN (
-                    SELECT person_id, MAX(id) as max_id 
-                    FROM leads 
-                    WHERE person_id IS NOT NULL 
-                    GROUP BY person_id
-                ) l2 ON l1.id = l2.max_id
-            ) l ON l.person_id = c.person_id
-            LEFT JOIN (
-                SELECT dl1.* FROM distribution_logs dl1
-                INNER JOIN (
-                    SELECT lead_id, assigned_to, MAX(id) as max_id 
-                    FROM distribution_logs 
-                    GROUP BY lead_id, assigned_to
-                ) dl2 ON dl1.id = dl2.max_id
-            ) dl ON dl.lead_id = l.id AND dl.assigned_to = c.owner_id
+            LEFT JOIN leads l ON l.id = (
+                SELECT MAX(id) FROM leads WHERE person_id = c.person_id
+            )
+            LEFT JOIN distribution_logs dl ON dl.id = (
+                SELECT MAX(id) FROM distribution_logs 
+                WHERE lead_id = l.id AND assigned_to = c.owner_id
+            )
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
-            LEFT JOIN data_reports dr ON dr.lead_id = l.id AND dr.consultant_id = c.owner_id
+            LEFT JOIN data_reports dr ON dr.id = (
+                SELECT MAX(id) FROM data_reports 
+                WHERE lead_id = l.id AND consultant_id = c.owner_id
+            )
             WHERE $whereStr
             ORDER BY c.$sortBy $order
             LIMIT $limit OFFSET $offset
@@ -799,7 +792,7 @@ class ContactController {
         }
 
         $note = $b['note'] ?? "Khách hàng đã được chuyển trạng thái.";
-        // logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'MOVE_STAGE', 'contact', $id, json_encode(['stage_id' => $stageId, 'pipeline_status' => $newStatus, 'note' => $note]));
         respond(200, null, 'Đã cập nhật stage thành công');
     }

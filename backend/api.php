@@ -14610,6 +14610,26 @@ switch ($action) {
                 break;
             }
 
+            // 1b. Check Same-Reason Reject Lockout (Rule 5.13)
+            $stmtLock = $conn->prepare("
+                SELECT reason, COUNT(*) as cnt 
+                FROM data_reports 
+                WHERE status = 'approved' AND lead_id IN (SELECT id FROM leads WHERE person_id = ?)
+                GROUP BY reason 
+                HAVING cnt >= 3 
+                LIMIT 1
+            ");
+            $stmtLock->bind_param("i", $personId);
+            $stmtLock->execute();
+            $lockout = $stmtLock->get_result()->fetch_assoc();
+            $stmtLock->close();
+
+            if ($lockout) {
+                $conn->rollback();
+                echo json_encode(['success' => false, 'message' => 'Khách hàng này đã bị khóa nhận do có từ 3 báo cáo lỗi cùng lý do: ' . $lockout['reason']]);
+                break;
+            }
+
             // 2. Check if Sale already has a contact for this Person
             $stmtCheck = $conn->prepare("SELECT id FROM contacts WHERE person_id = ? AND owner_id = ? AND deleted_at IS NULL LIMIT 1");
             $stmtCheck->bind_param("ii", $personId, $saleUserId);
@@ -14981,7 +15001,7 @@ switch ($action) {
               $stmtCoop = $conn->prepare("
                   SELECT id FROM cooperation_slips 
                   WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ? AND deleted_at IS NULL) 
-                    AND status != 'rejected' AND deleted_at IS NULL LIMIT 1
+                    AND status != 'rejected' LIMIT 1
               ");
               $stmtCoop->bind_param("i", $personId);
               $stmtCoop->execute();
