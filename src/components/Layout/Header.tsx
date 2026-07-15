@@ -409,7 +409,12 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   };
 
   const handleProfileClick = () => {
-    window.dispatchEvent(new CustomEvent('open-profile-modal'));
+    setIsProfileMenuOpen(false);
+    if (['sale', 'sales'].includes(user?.role || '')) {
+      navigate('/account');
+    } else {
+      window.dispatchEvent(new CustomEvent('open-profile-modal'));
+    }
   };
 
   const handleActivityClick = () => {

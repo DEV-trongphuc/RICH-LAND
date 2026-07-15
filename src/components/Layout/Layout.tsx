@@ -638,7 +638,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       </div>
       <AlertToast />
       <QuickAddLeadModal />
-      <ProfileModal />
       {showPOS && (
         <POSModal 
           onClose={() => setShowPOS(false)} 

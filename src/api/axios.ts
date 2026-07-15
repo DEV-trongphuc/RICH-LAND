@@ -24,6 +24,16 @@ api.interceptors.request.use((config) => {
     }
   }
 
+  // Remove Content-Type header for FormData payloads to allow automatic boundary configuration
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      delete config.headers['Content-Type'];
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+      }
+    }
+  }
+
   // Translate PUT, PATCH, DELETE to POST with method override header/param for production to bypass server restrictions
   if (!DEV_MODE && config.method && ['put', 'patch', 'delete'].includes(config.method.toLowerCase())) {
     const originalMethod = config.method.toUpperCase();

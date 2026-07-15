@@ -36,7 +36,7 @@ class CheckInController {
             $sql .= " AND (u.id = ? OR u.team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
-            if (isset($_GET['user_id']) && !empty($_GET['user_id'])) {
+            if (isset($_GET['user_id']) && !empty($_GET['user_id']) && $_GET['user_id'] !== 'all') {
                 $sql .= " AND c.user_id = ?";
                 $params[] = (int)$_GET['user_id'];
             }
@@ -45,7 +45,7 @@ class CheckInController {
             $params[] = $auth['user_id'];
         } else {
             // Admin/Assistant/Superadmin filtering
-            if (isset($_GET['user_id']) && !empty($_GET['user_id'])) {
+            if (isset($_GET['user_id']) && !empty($_GET['user_id']) && $_GET['user_id'] !== 'all') {
                 $sql .= " AND c.user_id = ?";
                 $params[] = (int)$_GET['user_id'];
             }
@@ -188,6 +188,10 @@ class CheckInController {
 
         if (!in_array($status, ['approved', 'rejected', 'pending_approval'], true)) {
             respond(422, null, 'Trạng thái phê duyệt không hợp lệ', false);
+        }
+
+        if ($status === 'rejected' && empty($reason)) {
+            respond(422, null, 'Vui lòng cung cấp lý do từ chối yêu cầu chấm công', false);
         }
 
         // Fetch check-in record to make sure it belongs to the same tenant

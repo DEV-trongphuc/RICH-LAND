@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -2084,7 +2084,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         };
 
         const webpBlob = await compressToWebP(capturedImage);
-        const file = new File([webpBlob], 'selfie.webp', { type: 'image/webp' });
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const timestamp = `${year}-${month}-${day}_${hours}-${minutes}-${seconds}`;
+        const saleName = (user?.name || displayUser?.name || 'selfie').replace(/[^a-zA-Z0-9\s\u00C0-\u1EF9]/g, '').trim().replace(/\s+/g, '_');
+        const fileName = `${saleName}_${timestamp}.webp`;
+        const file = new File([webpBlob], fileName, { type: 'image/webp' });
         const formData = new FormData();
         formData.append('file', file);
         const uploadRes = await fetchAPI('upload', {
@@ -7059,11 +7069,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             flexDirection: 'column',
             justifyContent: 'space-between',
             transition: 'all 0.2s',
-            backgroundColor: isToday
-              ? 'rgba(189, 29, 45, 0.08)'
-              : isWeekend
-                ? 'var(--color-calendar-weekend)'
-                : 'var(--color-surface)',
+            backgroundColor: isWeekend
+              ? 'var(--color-calendar-weekend)'
+              : 'var(--color-surface)',
             cursor: 'pointer',
             position: 'relative'
           }}
@@ -7288,14 +7296,46 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', padding: '1.5rem 0' }}>
-        {/* Header Title */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-            {t('QUẢN LÝ TÀI KHOẢN')}
-          </h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
-            {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
-          </p>
+        {/* Sticky Header block */}
+        <div style={{
+          position: 'sticky',
+          top: '-1.5rem',
+          zIndex: 100,
+          background: 'var(--color-bg)',
+          padding: '1.5rem 0 1rem 0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid var(--color-border)',
+          margin: '-1.5rem 0 1.5rem 0'
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+              {t('QUẢN LÝ TÀI KHOẢN')}
+            </h2>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
+              {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
+            </p>
+          </div>
+
+          <button
+            className="btn primary"
+            style={{ height: '38px', padding: '0 1.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
+            onClick={handleSaveProfile}
+            disabled={savingProfile || isUploadingAvatar}
+          >
+            {savingProfile ? (
+              <>
+                <RefreshCw size={14} className="spin" />
+                {t('Đang lưu...')}
+              </>
+            ) : (
+              <>
+                <Save size={14} />
+                {t('Lưu thiết lập')}
+              </>
+            )}
+          </button>
         </div>
 
         {/* 2-Column Grid */}
@@ -7754,30 +7794,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
                   </div>
                 </div>
-
-                {/* Save Button */}
-                <button
-                  className="btn primary"
-                  style={{ width: '100%', marginTop: '1rem', height: '46px' }}
-                  onClick={handleSaveProfile}
-                  disabled={savingProfile || isUploadingAvatar}
-                >
-                  {savingProfile ? (
-                    <>
-                      <RefreshCw size={18} className="spin" />
-                      {t('Đang lưu thiết lập...')}
-                    </>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}>
-                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                        <polyline points="17 21 17 13 7 13 7 21" />
-                        <polyline points="7 3 7 8 15 8" />
-                      </svg>
-                      {t('Lưu thiết lập')}
-                    </>
-                  )}
-                </button>
               </div>
             </div>
           </div>
