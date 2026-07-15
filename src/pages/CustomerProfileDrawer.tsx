@@ -1636,6 +1636,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           return {
             id: a.id,
             title: a.subject,
+            subject: a.subject,
+            body: a.body,
             done: a.status === 'done',
             priority: a.priority,
             due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—',
@@ -1649,7 +1651,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             progress: a.progress || 0,
             require_approval: a.require_approval || 0,
             approver_id: a.approver_id,
-            approval_status: a.approval_status
+            approval_status: a.approval_status,
+            created_by: a.created_by,
+            created_by_name: a.created_by_name,
+            created_by_avatar: a.created_by_avatar,
+            created_at: a.created_at,
+            contact_id: a.contact_id,
+            contact_name: a.contact_name,
+            related_id: a.related_id,
+            related_type: a.related_type
           };
         }));
       }

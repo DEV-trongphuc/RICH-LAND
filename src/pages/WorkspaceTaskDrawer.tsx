@@ -876,6 +876,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   };
 
   const allowedContacts = contacts.filter(c => {
+    const activeContactId = formData.contact_id || (formData.related_type === 'contact' ? formData.related_id : null);
+    if (activeContactId && Number(c.id) === Number(activeContactId)) {
+      return true;
+    }
     if (isSale) {
       return Number(c.owner_id) === Number(currentUser?.id);
     }
@@ -988,10 +992,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 }}>#{formData.id}</span>
               </h3>
               {!isMobileOrTablet && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Người tạo:')}</span>
                   <Avatar src={formData.created_by_avatar || undefined} name={formData.created_by_name || t('Hệ thống / Admin')} size={20} />
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{formData.created_by_name || t('Hệ thống / Admin')}</span>
+                  {formData.created_at && (
+                    <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginLeft: '4px' }}>
+                      • {new Date(formData.created_at).toLocaleString('vi-VN')}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
