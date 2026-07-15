@@ -68,7 +68,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
     
     const fieldsToCompare = [
-      'name', 'email', 'phone', 'website', 'tax_code', 'address', 'city', 'ward', 'status', 'description'
+      'name', 'email', 'phone', 'website', 'tax_id', 'address', 'city', 'ward', 'status', 'notes',
+      'industry', 'size', 'stage_id', 'expected_revenue', 'social_link', 'legal_representative', 'erp_code'
     ];
     
     for (const key of fieldsToCompare) {
@@ -406,12 +407,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                           />
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Mã số thuế</label>
-                          <input className="form-input" placeholder="MST..." value={formData?.tax_id || ''} onChange={e => setFormData((prev: any) => ({ ...prev, tax_id: e.target.value }))} />
+                          <label className="form-label">Người đại diện pháp luật</label>
+                          <input className="form-input" placeholder="Tên người đại diện..." value={formData?.legal_representative || ''} onChange={e => setFormData((prev: any) => ({ ...prev, legal_representative: e.target.value }))} />
                         </div>
                         <div className="form-group">
-                          <label className="form-label">Lĩnh vực kinh doanh</label>
-                          <input className="form-input" placeholder="VD: Công nghệ, Xây dựng..." value={formData?.industry || ''} onChange={e => setFormData((prev: any) => ({ ...prev, industry: e.target.value }))} />
+                          <label className="form-label">Mã ERP doanh nghiệp</label>
+                          <input className="form-input" placeholder="Nhập mã ERP..." value={formData?.erp_code || ''} onChange={e => setFormData((prev: any) => ({ ...prev, erp_code: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Doanh thu dự kiến</label>
@@ -452,6 +453,18 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                         value={formData?.address || ''}
                         onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
                         placeholder="Chọn địa chỉ trụ sở..."
+                      />
+                    </div>
+
+                    <div className="card-panel">
+                      <h4 className="panel-title">Ghi chú chi tiết</h4>
+                      <textarea
+                        className="form-input"
+                        placeholder="Nhập ghi chú hoặc mô tả chi tiết về doanh nghiệp này..."
+                        rows={4}
+                        value={formData?.notes || ''}
+                        onChange={e => setFormData((prev: any) => ({ ...prev, notes: e.target.value }))}
+                        style={{ resize: 'vertical' }}
                       />
                     </div>
 
