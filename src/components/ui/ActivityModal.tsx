@@ -45,7 +45,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
   useEffect(() => {
     if (isOpen) {
-      const defaultDate = new Date();
+      const defaultDate = activity?.due_date ? new Date(activity.due_date) : new Date();
       // Adjust timezone offset to get local YYYY-MM-DDTHH:mm
       const tzOffset = defaultDate.getTimezoneOffset() * 60000;
       const localISOTime = new Date(defaultDate.getTime() - tzOffset).toISOString().slice(0, 16);
@@ -54,7 +54,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
         type: activity?.type || 'call',
         subject: activity?.subject || '',
         body: activity?.body || '',
-        due_date: activity?.due_date ? new Date(activity.due_date).toISOString().slice(0, 16) : localISOTime,
+        due_date: localISOTime,
         priority: activity?.priority || 'medium',
         status: activity?.status || (activity?.type === 'call' ? 'done' : 'planned'),
         auto_trigger: false,
