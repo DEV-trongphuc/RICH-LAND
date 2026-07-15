@@ -40,6 +40,10 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
     category: 'Ăn uống',
     notes: '',
     beneficiary: '', // free text or selected supplier
+    has_vat_invoice: false,
+    is_vat_inclusive: false,
+    vat_amount: '',
+    image_url: '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -66,6 +70,10 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
         category: 'Ăn uống',
         notes: '',
         beneficiary: '',
+        has_vat_invoice: false,
+        is_vat_inclusive: false,
+        vat_amount: '',
+        image_url: '',
       });
       setBeneficiarySearch('');
       setContactSearch('');
@@ -148,6 +156,10 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
         category: formData.category,
         notes: formData.notes,
         beneficiary: formData.beneficiary || beneficiarySearch,
+        has_vat_invoice: formData.has_vat_invoice ? 1 : 0,
+        is_vat_inclusive: formData.is_vat_inclusive ? 1 : 0,
+        vat_amount: formData.has_vat_invoice ? parseFloat(String(formData.vat_amount || 0).replace(/,/g, '')) : 0,
+        image_url: formData.image_url || null,
         entities,
       });
 
@@ -491,6 +503,60 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                 onChange={e => setFormData({ ...formData, notes: e.target.value })}
               />
              </div>
+
+            {/* VAT & Invoice details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.has_vat_invoice}
+                    onChange={e => setFormData({ ...formData, has_vat_invoice: e.target.checked })}
+                    style={{ accentColor: 'var(--color-primary)' }}
+                  />
+                  Xuất hóa đơn VAT (Có hóa đơn đỏ)
+                </label>
+              </div>
+
+              {formData.has_vat_invoice && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Số tiền VAT (VNĐ)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        placeholder="VD: 50000"
+                        value={formData.vat_amount}
+                        onChange={e => setFormData({ ...formData, vat_amount: e.target.value })}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', height: '100%', marginTop: '1.25rem' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text)', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.is_vat_inclusive}
+                          onChange={e => setFormData({ ...formData, is_vat_inclusive: e.target.checked })}
+                          style={{ accentColor: 'var(--color-primary)' }}
+                        />
+                        Giá bán đã bao gồm thuế VAT
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Receipt Image link */}
+            <div className="form-group" style={{ marginTop: '0.5rem' }}>
+              <label className="form-label">Link ảnh chụp hóa đơn / chứng từ đính kèm</label>
+              <input
+                className="form-input"
+                placeholder="https://imgur.com/..., https://uploads/..."
+                value={formData.image_url}
+                onChange={e => setFormData({ ...formData, image_url: e.target.value })}
+              />
+            </div>
             </fieldset>
           </div>
 
