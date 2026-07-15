@@ -35,7 +35,11 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
   const [products, setProducts] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
-    supplier_id: '', order_date: new Date().toISOString().split('T')[0], notes: '', items: [] as any[]
+    supplier_id: '', 
+    order_date: new Date().toISOString().split('T')[0], 
+    notes: '', 
+    items: [] as any[],
+    tax_rate: 0
   });
 
   const fetchOrders = async () => {
@@ -113,14 +117,23 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
 
     setIsSubmitting(true);
     try {
+      const subtotal = calculateTotal();
+      const taxRate = Number(formData.tax_rate || 0);
+      const tax = Math.round(subtotal * taxRate / 100);
+      const total = subtotal + tax;
+
       await api.post('/purchase-orders', {
-        ...formData,
-        total: calculateTotal(),
-        subtotal: calculateTotal()
+        supplier_id: formData.supplier_id,
+        order_date: formData.order_date,
+        notes: formData.notes,
+        items: formData.items.map(i => ({ product_id: i.product_id, name: i.name, quantity: i.quantity, unit_cost: i.unit_cost, subtotal: i.subtotal })),
+        subtotal,
+        tax,
+        total
       });
       addToast('Đã tạo đơn nhập hàng mới', 'success');
       setShowModal(false);
-      setFormData({ supplier_id: '', order_date: new Date().toISOString().split('T')[0], notes: '', items: [] });
+      setFormData({ supplier_id: '', order_date: new Date().toISOString().split('T')[0], notes: '', items: [], tax_rate: 0 });
       fetchOrders();
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi lưu đơn hàng', 'error');
@@ -270,7 +283,7 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                   <div style={{ padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     
                     {/* Settings Form */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                           <Truck size={13} /> Nhà cung cấp <span className="text-danger">*</span>
@@ -295,6 +308,36 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                           onChange={e => setFormData({...formData, order_date: e.target.value})} 
                         />
                       </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                          Thuế suất VAT (%)
+                        </label>
+                        <CustomSelect 
+                          options={[
+                            { value: '0', label: '0% (Không thuế)' },
+                            { value: '5', label: '5%' },
+                            { value: '8', label: '8%' },
+                            { value: '10', label: '10%' }
+                          ]}
+                          value={String(formData.tax_rate || 0)} 
+                          onChange={val => setFormData({...formData, tax_rate: Number(val)})}
+                          placeholder="Chọn thuế suất"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Order Notes */}
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', marginBottom: '6px' }}>
+                        Ghi chú đơn hàng (Notes)
+                      </label>
+                      <textarea
+                        className="form-input"
+                        placeholder="Nhập ghi chú chi tiết cho đơn nhập hàng này..."
+                        style={{ height: '3.5rem', fontSize: '0.85rem', fontWeight: 600, borderRadius: '10px', resize: 'vertical' }}
+                        value={formData.notes}
+                        onChange={e => setFormData({...formData, notes: e.target.value})}
+                      />
                     </div>
 
                     {/* Selected Products */}
@@ -347,21 +390,36 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                   
                   {/* Summary Box */}
                   <div style={{ marginTop: 'auto', padding: '1.25rem 1.5rem', borderTop: '1px solid var(--color-border)' }}>
-                    <div style={{ padding: '1rem 1.5rem', backgroundColor: '#0f172a', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#fff', boxShadow: '0 8px 20px -5px rgba(15, 23, 42, 0.25)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <DollarSign size={20} style={{ color: '#38bdf8' }} />
+                    {(() => {
+                      const subtotal = calculateTotal();
+                      const taxRate = Number(formData.tax_rate || 0);
+                      const tax = Math.round(subtotal * taxRate / 100);
+                      const total = subtotal + tax;
+                      return (
+                        <div style={{ padding: '1rem 1.5rem', backgroundColor: '#0f172a', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#fff', boxShadow: '0 8px 20px -5px rgba(15, 23, 42, 0.25)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                            <span>Tạm tính (Subtotal):</span>
+                            <span>{new Intl.NumberFormat('vi-VN').format(subtotal)} đ</span>
+                          </div>
+                          {tax > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)' }}>
+                              <span>Thuế VAT ({taxRate}%):</span>
+                              <span>{new Intl.NumberFormat('vi-VN').format(tax)} đ</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed rgba(255,255,255,0.15)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
+                            <div>
+                              <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Tổng thanh toán (Total)</p>
+                              <p style={{ fontSize: '1.25rem', fontWeight: 900, margin: '2px 0 0', color: '#38bdf8' }}>{new Intl.NumberFormat('vi-VN').format(total)} đ</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Hình thức</p>
+                              <p style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.8)', margin: '2px 0 0' }}>Công nợ / Tiền mặt</p>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Tổng thanh toán</p>
-                          <p style={{ fontSize: '1.25rem', fontWeight: 900, margin: '2px 0 0' }}>{new Intl.NumberFormat('vi-VN').format(calculateTotal())} đ</p>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                         <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Hình thức</p>
-                         <p style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8', margin: '2px 0 0' }}>Công nợ / Tiền mặt</p>
-                      </div>
-                    </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
