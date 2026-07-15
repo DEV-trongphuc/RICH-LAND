@@ -5019,80 +5019,81 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div className="segmented-control-wrapper" style={{ marginBottom: '1.25rem' }}>
                         <div style={{
                           display: 'flex',
-                          gap: '4px',
-                          marginBottom: 0,
-                        background: 'rgba(15, 23, 42, 0.05)',
-                        padding: '4px',
-                        borderRadius: '10px',
-                        width: 'fit-content',
-                        position: 'relative',
-                        border: '1px solid var(--color-border-light)'
-                      }}>
-                        {/* Sliding Pill Background Indicator */}
-                        {(() => {
-                          const tabs = [
-                            { value: 'all', label: 'Tất cả', icon: null },
-                            { value: 'call', label: 'Cuộc gọi', icon: null },
-                            { value: 'email', label: 'Email', icon: null },
-                            { value: 'meeting', label: 'Gặp gỡ', icon: null },
-                            { value: 'task', label: 'Công việc', icon: null }
-                          ];
-                          const activeIndex = tabs.findIndex(t => t.value === timelineFilter);
-                          const safeIndex = activeIndex === -1 ? 0 : activeIndex;
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              top: '4px',
-                              bottom: '4px',
-                              width: '90px',
-                              borderRadius: '7px',
-                              background: 'var(--color-surface)',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-                              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                              transform: `translateX(${safeIndex * 94}px)`,
-                              zIndex: 1
-                            }} />
-                          );
-                        })()}
-
-                        {[
-                          { value: 'all', label: 'Tất cả', icon: null },
-                          { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
-                          { value: 'email', label: 'Email', icon: <Mail size={13} /> },
-                          { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
-                          { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
-                        ].map(tab => {
-                          const isSelected = timelineFilter === tab.value;
-                          return (
-                            <button
-                              key={tab.value}
-                              onClick={() => setTimelineFilter(tab.value as any)}
-                              style={{
+                          gap: '2px',
+                          background: 'var(--color-border-light)',
+                          border: '1px solid var(--color-border)',
+                          padding: '2px',
+                          borderRadius: '8px',
+                          width: 'fit-content',
+                          position: 'relative'
+                        }}>
+                          {/* Sliding Pill Background Indicator */}
+                          {(() => {
+                            const tabs = [
+                              { value: 'all', label: 'Tất cả', icon: null },
+                              { value: 'call', label: 'Cuộc gọi', icon: null },
+                              { value: 'email', label: 'Email', icon: null },
+                              { value: 'meeting', label: 'Gặp gỡ', icon: null },
+                              { value: 'task', label: 'Công việc', icon: null }
+                            ];
+                            const activeIndex = tabs.findIndex(t => t.value === timelineFilter);
+                            const safeIndex = activeIndex === -1 ? 0 : activeIndex;
+                            return (
+                              <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                bottom: '2px',
                                 width: '90px',
-                                height: '26px',
-                                borderRadius: '7px',
-                                border: 'none',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                background: 'transparent',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                position: 'relative',
-                                zIndex: 2,
-                                transition: 'color 0.25s ease'
-                              }}
-                            >
-                              {tab.icon}
-                              <span>{tab.label}</span>
-                            </button>
-                          );
-                        })}
+                                borderRadius: '6px',
+                                background: 'var(--color-surface)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                transform: `translateX(${safeIndex * 92}px)`,
+                                zIndex: 1
+                              }} />
+                            );
+                          })()}
+
+                          {[
+                            { value: 'all', label: 'Tất cả', icon: null },
+                            { value: 'call', label: 'Cuộc gọi', icon: <Phone size={13} /> },
+                            { value: 'email', label: 'Email', icon: <Mail size={13} /> },
+                            { value: 'meeting', label: 'Gặp gỡ', icon: <Users size={13} /> },
+                            { value: 'task', label: 'Công việc', icon: <CheckSquare size={13} /> }
+                          ].map(tab => {
+                            const isSelected = timelineFilter === tab.value;
+                            return (
+                              <button
+                                key={tab.value}
+                                onClick={() => setTimelineFilter(tab.value as any)}
+                                style={{
+                                  width: '90px',
+                                  height: '26px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  background: 'transparent',
+                                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '6px',
+                                  position: 'relative',
+                                  outline: 'none',
+                                  boxShadow: 'none',
+                                  zIndex: 2,
+                                  transition: 'color 0.2s ease'
+                                }}
+                              >
+                                {tab.icon}
+                                <span>{tab.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
 
                       {timeline.length === 0 ? (
                         <EmptyCard
@@ -5695,76 +5696,77 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
                         <div style={{
                           display: 'flex',
-                          gap: '4px',
-                          marginBottom: 0,
-                        background: 'rgba(15, 23, 42, 0.05)',
-                        padding: '4px',
-                        borderRadius: '10px',
-                        width: 'fit-content',
-                        position: 'relative',
-                        border: '1px solid var(--color-border-light)'
-                      }}>
-                        {/* Sliding Pill Background Indicator */}
-                        {(() => {
-                          const tabs = [
+                          gap: '2px',
+                          background: 'var(--color-border-light)',
+                          border: '1px solid var(--color-border)',
+                          padding: '2px',
+                          borderRadius: '8px',
+                          width: 'fit-content',
+                          position: 'relative'
+                        }}>
+                          {/* Sliding Pill Background Indicator */}
+                          {(() => {
+                            const tabs = [
+                              { value: 'all', label: 'Tất cả' },
+                              { value: 'assigned_to_me', label: 'Tôi thực hiện' },
+                              currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: 'Tôi duyệt' },
+                              { value: 'collaborator', label: 'Tôi liên quan' }
+                            ].filter(Boolean) as any[];
+                            const activeIndex = tabs.findIndex(t => t.value === drawerTaskFilter);
+                            const safeIndex = activeIndex === -1 ? 0 : activeIndex;
+                            return (
+                              <div style={{
+                                position: 'absolute',
+                                top: '2px',
+                                bottom: '2px',
+                                width: '110px',
+                                borderRadius: '6px',
+                                background: 'var(--color-surface)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                transform: `translateX(${safeIndex * 112}px)`,
+                                zIndex: 1
+                              }} />
+                            );
+                          })()}
+
+                          {[
                             { value: 'all', label: 'Tất cả' },
                             { value: 'assigned_to_me', label: 'Tôi thực hiện' },
                             currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: 'Tôi duyệt' },
                             { value: 'collaborator', label: 'Tôi liên quan' }
-                          ].filter(Boolean) as any[];
-                          const activeIndex = tabs.findIndex(t => t.value === drawerTaskFilter);
-                          const safeIndex = activeIndex === -1 ? 0 : activeIndex;
-                          return (
-                            <div style={{
-                              position: 'absolute',
-                              top: '4px',
-                              bottom: '4px',
-                              width: '110px',
-                              borderRadius: '7px',
-                              background: 'var(--color-surface)',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
-                              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                              transform: `translateX(${safeIndex * 114}px)`,
-                              zIndex: 1
-                            }} />
-                          );
-                        })()}
-
-                        {[
-                          { value: 'all', label: 'Tất cả' },
-                          { value: 'assigned_to_me', label: 'Tôi thực hiện' },
-                          currentUser && ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'vp', 'leader', 'assistant'].includes(String(currentUser.role).toLowerCase()) && { value: 'approve_by_me', label: 'Tôi duyệt' },
-                          { value: 'collaborator', label: 'Tôi liên quan' }
-                        ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
-                          const isSelected = drawerTaskFilter === tab.value;
-                          return (
-                            <button
-                              key={tab.value}
-                              onClick={() => setDrawerTaskFilter(tab.value as any)}
-                              style={{
-                                width: '110px',
-                                height: '26px',
-                                borderRadius: '7px',
-                                border: 'none',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                background: 'transparent',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                position: 'relative',
-                                zIndex: 2,
-                                transition: 'color 0.25s ease'
-                              }}
-                            >
-                              {tab.label}
-                            </button>
-                          );
-                        })}
+                          ].filter((tab): tab is { value: string; label: string } => !!tab).map(tab => {
+                            const isSelected = drawerTaskFilter === tab.value;
+                            return (
+                              <button
+                                key={tab.value}
+                                onClick={() => setDrawerTaskFilter(tab.value as any)}
+                                style={{
+                                  width: '110px',
+                                  height: '26px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  background: 'transparent',
+                                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  position: 'relative',
+                                  outline: 'none',
+                                  boxShadow: 'none',
+                                  zIndex: 2,
+                                  transition: 'color 0.2s ease'
+                                }}
+                              >
+                                {tab.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
 
                       {(() => {
                         const filteredTasks = tasks.filter(t => {

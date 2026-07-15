@@ -196,13 +196,26 @@ export const QuotesPage: React.FC = () => {
         </div>
         <div className="flex gap-3">
           <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); setPage(1); }} />
-          <button className="btn outline" onClick={fetchQuotes} title="Làm mới">
-            <RefreshCw size={18} />
-            <span className="hide-on-mobile"> Làm mới</span>
-          </button>
           {!isViewer && (
-            <button className="btn primary" onClick={() => handleOpenEditor()} title="Tạo báo giá mới">
-              <Plus size={18} />
+            <button 
+              onClick={() => handleOpenEditor()} 
+              style={{
+                height: '38px',
+                fontSize: '0.875rem',
+                padding: '0 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              title="Tạo báo giá mới"
+            >
+              <Plus size={16} />
               <span className="hide-on-mobile"> Tạo báo giá mới</span>
             </button>
           )}

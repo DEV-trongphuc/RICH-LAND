@@ -2296,33 +2296,33 @@ export default function ProjectsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', width: '100%' }}>
         <div style={{
           display: 'flex',
-          background: 'rgba(15, 23, 42, 0.05)',
-          padding: '4px',
-          borderRadius: '12px',
-          gap: '4px',
+          background: 'var(--color-border-light)',
+          border: '1px solid var(--color-border)',
+          padding: '2px',
+          borderRadius: '8px',
+          gap: '2px',
           width: 'fit-content',
           position: 'relative',
-          border: '1px solid var(--color-border-light)',
           maxWidth: '100%',
           overflowX: 'auto'
         }}>
           {/* Sliding Pill Background Indicator */}
           <div style={{
             position: 'absolute',
-            top: '4px',
-            bottom: '4px',
+            top: '2px',
+            bottom: '2px',
             width: '160px',
-            borderRadius: '10px',
+            borderRadius: '6px',
             background: 'var(--color-surface)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '164px'})`,
+            transform: `translateX(${activeSubTab === 'projects' ? '0px' : '162px'})`,
             zIndex: 1
           }} />
 
           {[
-            { id: 'projects', label: 'Dự án', count: totalProjects },
-            { id: 'campaigns', label: 'Chiến dịch', count: totalCampaigns }
+            { id: 'projects', label: 'Dự án', count: totalProjects, icon: <Building2 size={14} /> },
+            { id: 'campaigns', label: 'Chiến dịch', count: totalCampaigns, icon: <Layers size={14} /> }
           ].map(tab => {
             const isSelected = activeSubTab === tab.id;
             return (
@@ -2331,33 +2331,36 @@ export default function ProjectsPage() {
                 onClick={() => setActiveSubTab(tab.id as any)}
                 style={{
                   width: '160px',
-                  height: '38px',
-                  borderRadius: '10px',
+                  height: '32px',
+                  borderRadius: '6px',
                   border: 'none',
                   fontSize: '0.85rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   background: 'transparent',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
                   position: 'relative',
+                  outline: 'none',
+                  boxShadow: 'none',
                   zIndex: 2,
-                  transition: 'color 0.25s ease'
+                  transition: 'color 0.2s ease'
                 }}
                 className=""
               >
+                {tab.icon}
                 <span>{tab.label}</span>
                 <span style={{
                   fontSize: '0.72rem',
-                  padding: '1px 6px',
+                  padding: '2px 6px',
                   borderRadius: '10px',
-                  background: isSelected ? 'var(--color-primary-light)' : 'rgba(15, 23, 42, 0.05)',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  background: isSelected ? 'var(--color-border-light)' : 'rgba(0, 0, 0, 0.04)',
+                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
                   fontWeight: 800,
-                  transition: 'background 0.25s ease, color 0.25s ease'
+                  transition: 'background 0.2s ease, color 0.2s ease'
                 }}>
                   {tab.count}
                 </span>

@@ -520,25 +520,25 @@ export const ReportsPage: React.FC = () => {
           <div className="segmented-control-wrapper" style={{ marginBottom: '1.5rem' }}>
             <div style={{
               display: 'flex',
-              background: 'rgba(15, 23, 42, 0.05)',
-              padding: '4px',
-              borderRadius: '12px',
-              gap: '4px',
+              background: 'var(--color-border-light)',
+              border: '1px solid var(--color-border)',
+              padding: '2px',
+              borderRadius: '8px',
+              gap: '2px',
               width: 'fit-content',
-              position: 'relative',
-              border: '1px solid var(--color-border-light)'
+              position: 'relative'
             }}>
               {/* Sliding Pill Background Indicator */}
               <div style={{
                 position: 'absolute',
-                top: '4px',
-                bottom: '4px',
+                top: '2px',
+                bottom: '2px',
                 width: '110px',
-                borderRadius: '10px',
+                borderRadius: '6px',
                 background: 'var(--color-surface)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                 transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: `translateX(${activeTabIndex * (110 + 4)}px)`,
+                transform: `translateX(${activeTabIndex * (110 + 2)}px)`,
                 zIndex: 1
               }} />
               {TABS.map((t) => (
@@ -547,17 +547,18 @@ export const ReportsPage: React.FC = () => {
                   onClick={() => setTab(t.key as any)}
                   style={{
                     width: '110px',
-                    height: '36px',
+                    height: '32px',
                     border: 'none',
                     outline: 'none',
+                    boxShadow: 'none',
                     background: 'none',
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    color: tab === t.key ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    color: tab === t.key ? 'var(--color-text)' : 'var(--color-text-muted)',
                     position: 'relative',
                     zIndex: 2,
-                    transition: 'color 0.25s'
+                    transition: 'color 0.2s'
                   }}
                 >
                   {t.label}

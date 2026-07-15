@@ -94,7 +94,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           onMouseEnter={e => {
             if (page > 1) {
               e.currentTarget.style.background = 'var(--color-bg-light)';
-              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+              e.currentTarget.style.borderColor = 'var(--color-border)';
             }
           }}
           onMouseLeave={e => {
@@ -121,8 +121,8 @@ export const Pagination: React.FC<PaginationProps> = ({
                   fontSize: '0.8125rem',
                   fontWeight: page === p ? 600 : 650,
                   border: page === p ? 'none' : '1px solid var(--color-border-light)',
-                  background: page === p ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: page === p ? 'white' : 'var(--color-text)',
+                  background: page === p ? 'var(--color-text)' : 'var(--color-surface)',
+                  color: page === p ? 'var(--color-surface)' : 'var(--color-text)',
                   cursor: page === p ? 'default' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -134,7 +134,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                 onMouseEnter={e => {
                   if (page !== p) {
                     e.currentTarget.style.background = 'var(--color-bg-light)';
-                    e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+                    e.currentTarget.style.borderColor = 'var(--color-border)';
                   }
                 }}
                 onMouseLeave={e => {
@@ -174,7 +174,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           onMouseEnter={e => {
             if (page < totalPages) {
               e.currentTarget.style.background = 'var(--color-bg-light)';
-              e.currentTarget.style.borderColor = 'var(--color-primary-light)';
+              e.currentTarget.style.borderColor = 'var(--color-border)';
             }
           }}
           onMouseLeave={e => {

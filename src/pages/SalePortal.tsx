@@ -142,6 +142,71 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     });
   }, []);
 
+  const [showDatabankSettingsModal, setShowDatabankSettingsModal] = useState(false);
+  const [dbLimitHour, setDbLimitHour] = useState(3);
+  const [dbLimitDay, setDbLimitDay] = useState(2);
+  const [dbLimitMonth, setDbLimitMonth] = useState(300);
+  const [dbApplicableSources, setDbApplicableSources] = useState('');
+  const [dbTimerChuaXacDinh, setDbTimerChuaXacDinh] = useState('');
+  const [dbTimerQuanTam, setDbTimerQuanTam] = useState('');
+  const [dbTimerThienChi, setDbTimerThienChi] = useState('');
+  const [dbTimerDongYGap, setDbTimerDongYGap] = useState('');
+  const [dbTimerDaGap, setDbTimerDaGap] = useState('');
+  const [dbTimerBooking, setDbTimerBooking] = useState('');
+
+  useEffect(() => {
+    if (sysSettings) {
+      setDbLimitHour(Number(sysSettings.databank_limit_per_hour ?? 3));
+      setDbLimitDay(Number(sysSettings.databank_limit_per_day ?? 2));
+      setDbLimitMonth(Number(sysSettings.databank_limit_per_month ?? 300));
+      setDbApplicableSources(sysSettings.databank_applicable_sources ?? '');
+      setDbTimerChuaXacDinh(sysSettings.security_timer_chua_xac_dinh ?? '');
+      setDbTimerQuanTam(sysSettings.security_timer_quan_tam ?? '');
+      setDbTimerThienChi(sysSettings.security_timer_thien_chi ?? '');
+      setDbTimerDongYGap(sysSettings.security_timer_dong_y_gap ?? '');
+      setDbTimerDaGap(sysSettings.security_timer_da_gap ?? '');
+      setDbTimerBooking(sysSettings.security_timer_booking ?? '');
+    }
+  }, [sysSettings]);
+
+  const [isSavingDbSettings, setIsSavingDbSettings] = useState(false);
+  const handleSaveDatabankSettings = async () => {
+    setIsSavingDbSettings(true);
+    try {
+      const payload = {
+        ...sysSettings,
+        databank_limit_per_hour: dbLimitHour,
+        databank_limit_per_day: dbLimitDay,
+        databank_limit_per_month: dbLimitMonth,
+        databank_applicable_sources: dbApplicableSources,
+        security_timer_chua_xac_dinh: dbTimerChuaXacDinh,
+        security_timer_quan_tam: dbTimerQuanTam,
+        security_timer_thien_chi: dbTimerThienChi,
+        security_timer_dong_y_gap: dbTimerDongYGap,
+        security_timer_da_gap: dbTimerDaGap,
+        security_timer_booking: dbTimerBooking
+      };
+
+      const res = await fetchAPI('save_settings', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (res && res.success) {
+        toast.success(t("Cấu hình Kho Data Chung đã được lưu!"));
+        setSysSettings(payload);
+        setShowDatabankSettingsModal(false);
+        fetchPublicLeads();
+      } else {
+        toast.error(res?.message || t("Lỗi khi lưu cấu hình"));
+      }
+    } catch (err) {
+      toast.error(t("Không thể kết nối máy chủ"));
+    } finally {
+      setIsSavingDbSettings(false);
+    }
+  };
+
 
   const [isLangOpen, setIsLangOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -308,7 +373,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [calendarSubTab, setCalendarSubTab] = useState<'calendar' | 'attendance'>('calendar');
   const [wsTaskFilter, setWsTaskFilter] = useState<'all' | 'assigned_to_me' | 'approve_by_me' | 'collaborator'>('all');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [wsSubTab, setWsSubTab] = useState<'customer' | 'team' | 'personal'>('customer');
+  const [wsSubTab, setWsSubTab] = useState<'all' | 'customer' | 'team' | 'personal'>('all');
   const [wsTeamSubFilter, setWsTeamSubFilter] = useState<'all' | 'task' | 'announcement' | 'campaign' | 'policy'>('all');
   
   // Task participant modal states
@@ -3249,40 +3314,24 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
           <div style={{
             display: 'flex',
-            background: 'rgba(15, 23, 42, 0.05)',
-            padding: '4px',
-            borderRadius: '12px',
-            gap: '4px',
+            background: 'var(--color-border-light)',
+            border: '1px solid var(--color-border)',
+            padding: '2px',
+            borderRadius: '8px',
+            gap: '2px',
             width: 'fit-content',
-            position: 'relative',
-            border: '1px solid var(--color-border-light)'
+            position: 'relative'
           }}>
-            {/* Sliding Pill Background Indicator */}
-            <div style={{
-              position: 'absolute',
-              top: '4px',
-              bottom: '4px',
-              width: '210px',
-              borderRadius: '10px',
-              background: 'var(--color-surface)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
-              transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: `translateX(${
-                wsSubTab === 'customer' ? '0px' : 
-                wsSubTab === 'team' ? '214px' : '428px'
-              })`,
-              zIndex: 1
-            }} />
-
             {[
-              { id: 'customer', label: t('Công việc khách hàng'), count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
-              { id: 'team', label: t('Công việc nội bộ team'), count: wsTasks.filter(task => {
+              { id: 'all', label: t('Tất cả'), icon: <Layers size={14} />, count: wsTasks.length },
+              { id: 'customer', label: t('Công việc khách hàng'), icon: <Users size={14} />, count: wsTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type)).length },
+              { id: 'team', label: t('Công việc nội bộ team'), icon: <CheckSquare size={14} />, count: wsTasks.filter(task => {
                   const isClient = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
                   const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
                   return !isClient && !tagsList.includes('personal_task');
                 }).length
               },
-              { id: 'personal', label: t('Công việc cá nhân'), count: wsTasks.filter(task => {
+              { id: 'personal', label: t('Công việc cá nhân'), icon: <User size={14} />, count: wsTasks.filter(task => {
                   const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
                   return tagsList.includes('personal_task');
                 }).length
@@ -3297,34 +3346,60 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     setWsTeamSubFilter('all');
                   }}
                   style={{
-                    width: '210px',
-                    height: '38px',
-                    borderRadius: '10px',
+                    padding: '6px 16px',
+                    height: '34px',
+                    borderRadius: '6px',
                     border: 'none',
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     background: 'transparent',
-                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                    color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
                     position: 'relative',
+                    outline: 'none',
+                    boxShadow: 'none',
+                    flexShrink: 0,
                     zIndex: 2,
-                    transition: 'color 0.25s ease'
+                    transition: 'color 0.2s ease'
                   }}
-                  className=""
                 >
-                  <span>{tab.label}</span>
+                  {isSelected && (
+                    <motion.div 
+                      layoutId="activeWsSubTabIndicator"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'var(--color-surface)',
+                        borderRadius: '6px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                        zIndex: 1
+                      }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  
+                  <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    {tab.icon}
+                    <span>{tab.label}</span>
+                  </span>
+                  
                   <span style={{
+                    position: 'relative',
+                    zIndex: 2,
                     fontSize: '0.75rem',
                     padding: '2px 6px',
                     borderRadius: '10px',
-                    background: isSelected ? 'var(--color-primary-light)' : 'rgba(15, 23, 42, 0.05)',
-                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                    background: isSelected ? 'var(--color-border-light)' : 'rgba(0, 0, 0, 0.04)',
+                    color: isSelected ? 'var(--color-text)' : 'var(--color-text-muted)',
                     fontWeight: 800,
-                    transition: 'background 0.25s ease, color 0.25s ease'
+                    transition: 'background 0.2s ease, color 0.2s ease'
                   }}>
                     {tab.count}
                   </span>
@@ -3608,7 +3683,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* Right side: Role filters & View Mode switcher */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: isMobile ? 'flex-start' : 'flex-end', width: isMobile ? '100%' : 'auto' }}>
               <div className="segmented-control-wrapper">
-                <div style={{ display: 'flex', gap: '4px', background: 'rgba(15, 23, 42, 0.05)', padding: '4px', borderRadius: '10px', width: 'fit-content', position: 'relative', border: '1px solid var(--color-border-light)' }}>
+                <div style={{ display: 'flex', gap: '2px', background: 'var(--color-border-light)', border: '1px solid var(--color-border)', padding: '2px', borderRadius: '8px', width: 'fit-content', position: 'relative' }}>
                   {/* Sliding Pill Background Indicator */}
                   {(() => {
                     const tabs = [
@@ -3622,14 +3697,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     return (
                       <div style={{
                         position: 'absolute',
-                        top: '4px',
-                        bottom: '4px',
+                        top: '2px',
+                        bottom: '2px',
                         width: '110px',
-                        borderRadius: '7px',
+                        borderRadius: '6px',
                         background: 'var(--color-surface)',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                         transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                        transform: `translateX(${safeIndex * 114}px)`,
+                        transform: `translateX(${safeIndex * 112}px)`,
                         zIndex: 1
                       }} />
                     );
@@ -3649,19 +3724,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         style={{
                           width: '110px',
                           height: '28px',
-                          borderRadius: '7px',
+                          borderRadius: '6px',
                           border: 'none',
                           fontSize: '0.78rem',
                           fontWeight: 700,
                           cursor: 'pointer',
                           background: 'transparent',
-                          color: isSelected ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                          color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           position: 'relative',
+                          outline: 'none',
+                          boxShadow: 'none',
                           zIndex: 2,
-                          transition: 'color 0.25s ease'
+                          transition: 'color 0.2s ease'
                         }}
                         className=""
                       >
@@ -3676,27 +3753,29 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <div style={{
                   display: 'flex',
                   background: 'var(--color-border-light)',
-                  padding: '4px',
-                  borderRadius: '10px',
-                  gap: '4px'
+                  border: '1px solid var(--color-border)',
+                  padding: '2px',
+                  borderRadius: '8px',
+                  gap: '2px'
                 }}>
                   <button
                     onClick={() => setWsViewMode('grid')}
                     title={t('Dạng lưới')}
                     style={{
                       width: '32px',
-                      height: '32px',
-                      borderRadius: '7px',
+                      height: '28px',
+                      borderRadius: '6px',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       background: wsViewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
-                      color: wsViewMode === 'grid' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                      boxShadow: wsViewMode === 'grid' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                      color: wsViewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-light)',
+                      boxShadow: wsViewMode === 'grid' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       padding: 0,
+                      outline: 'none',
                       transform: 'none'
                     }}
                   >
@@ -3707,18 +3786,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     title={t('Dạng Kanban')}
                     style={{
                       width: '32px',
-                      height: '32px',
-                      borderRadius: '7px',
+                      height: '28px',
+                      borderRadius: '6px',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       background: wsViewMode === 'kanban' ? 'var(--color-surface)' : 'transparent',
-                      color: wsViewMode === 'kanban' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                      boxShadow: wsViewMode === 'kanban' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                      color: wsViewMode === 'kanban' ? 'var(--color-text)' : 'var(--color-text-light)',
+                      boxShadow: wsViewMode === 'kanban' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       padding: 0,
+                      outline: 'none',
                       transform: 'none'
                     }}
                   >
@@ -3729,18 +3809,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     title={t('Chế độ Focus')}
                     style={{
                       width: '32px',
-                      height: '32px',
-                      borderRadius: '7px',
+                      height: '28px',
+                      borderRadius: '6px',
                       border: 'none',
                       cursor: 'pointer',
                       transition: 'all 0.2s',
                       background: (wsViewMode as string) === 'focus' ? 'var(--color-surface)' : 'transparent',
-                      color: (wsViewMode as string) === 'focus' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                      boxShadow: (wsViewMode as string) === 'focus' ? '0 2px 6px rgba(0,0,0,0.05)' : 'none',
+                      color: (wsViewMode as string) === 'focus' ? 'var(--color-text)' : 'var(--color-text-light)',
+                      boxShadow: (wsViewMode as string) === 'focus' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       padding: 0,
+                      outline: 'none',
                       transform: 'none'
                     }}
                   >
@@ -6329,125 +6410,102 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {t('Danh sách các khách hàng tiềm năng đã công khai. Bấm "Nhận Data" để trực tiếp nhận chăm sóc.')}
             </p>
           </div>
-          {isAdmin && selectedPublicLeads.length > 0 && (
-            <button
-              onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
-              className="btn danger sm"
-              style={{
-                borderRadius: '20px',
-                padding: '8px 16px',
-                fontSize: '0.75rem',
-                fontWeight: 700,
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* 3 Quota Badges */}
+            {publicQuota && [
+              {
+                label: t('Giờ'),
+                value: publicQuota.claims_hour,
+                limit: publicQuota.limit_hour,
+                icon: <Clock size={12} />,
+                color: 'var(--color-primary)',
+              },
+              {
+                label: t('Ngày'),
+                value: publicQuota.claims_day,
+                limit: publicQuota.limit_day,
+                icon: <Calendar size={12} />,
+                color: '#d97706',
+              },
+              {
+                label: t('Tháng'),
+                value: publicQuota.claims_month,
+                limit: publicQuota.limit_month,
+                icon: <Layers size={12} />,
+                color: '#2563eb',
+              }
+            ].map((q, idx) => (
+              <div key={idx} style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                background: '#dc2626',
-                color: 'white',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
-                cursor: 'pointer'
-              }}
-            >
-              <Trash2 size={14} />
-              {t('Xóa đã chọn')} ({selectedPublicLeads.length})
-            </button>
-          )}
-        </div>
+                background: 'transparent',
+                border: '1px solid var(--color-border-light)',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                height: '32px'
+              }} title={t('Hạn mức ') + q.label}>
+                <span style={{ color: q.color, display: 'flex', alignItems: 'center' }}>{q.icon}</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{q.label}:</span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--color-text)', fontWeight: 800 }}>
+                  {q.value} / {q.limit}
+                </span>
+              </div>
+            ))}
 
-        {publicQuota && (
-          <div style={{
-            display: isMobile ? 'grid' : 'flex',
-            gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : undefined,
-            gap: isMobile ? '0.5rem' : '1rem',
-            flexWrap: isMobile ? undefined : 'wrap',
-            marginBottom: '1rem',
-            width: '100%'
-          }}>
-            {[
-              {
-                label: t('Hạn mức giờ'),
-                value: publicQuota.claims_hour,
-                limit: publicQuota.limit_hour,
-                icon: <Clock size={14} />,
-                color: 'var(--color-primary)',
-                bg: 'rgba(189, 29, 45, 0.05)',
-                border: 'rgba(189, 29, 45, 0.15)'
-              },
-              {
-                label: t('Hạn mức ngày'),
-                value: publicQuota.claims_day,
-                limit: publicQuota.limit_day,
-                icon: <Calendar size={14} />,
-                color: '#d97706',
-                bg: 'rgba(245, 158, 11, 0.06)',
-                border: 'rgba(245, 158, 11, 0.15)'
-              },
-              {
-                label: t('Hạn mức tháng'),
-                value: publicQuota.claims_month,
-                limit: publicQuota.limit_month,
-                icon: <Layers size={14} />,
-                color: '#2563eb',
-                bg: 'rgba(37, 99, 235, 0.06)',
-                border: 'rgba(37, 99, 235, 0.15)'
-              }
-            ].map((q, idx) => {
-              const percent = Math.min(100, (q.value / q.limit) * 100);
-              return (
-                <div key={idx} style={{
-                  flex: isMobile ? undefined : '1 1 200px',
+            {/* Quick settings button for Admin */}
+            {isAdmin && (
+              <button
+                onClick={() => setShowDatabankSettingsModal(true)}
+                className="btn secondary"
+                style={{
+                  height: '32px',
+                  width: '32px',
+                  padding: 0,
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
                   background: 'var(--color-surface)',
-                  border: '1px solid var(--color-border-light)',
-                  borderRadius: isMobile ? '12px' : '16px',
-                  padding: isMobile ? '0.5rem 0.35rem' : '1rem 1.25rem',
+                  color: 'var(--color-text-light)',
+                  cursor: 'pointer',
                   display: 'flex',
-                  flexDirection: isMobile ? 'column' : 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: isMobile ? '6px' : '12px',
-                  boxShadow: 'var(--shadow-sm)',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    height: '3px',
-                    width: `${percent}%`,
-                    background: q.color,
-                    transition: 'width 0.4s ease'
-                  }} />
+                  flexShrink: 0
+                }}
+                title={t("Cấu hình nhanh Kho Databank")}
+              >
+                <Settings size={14} />
+              </button>
+            )}
 
-                  <div style={{
-                    width: isMobile ? '28px' : '36px',
-                    height: isMobile ? '28px' : '36px',
-                    borderRadius: isMobile ? '8px' : '12px',
-                    background: q.bg,
-                    border: `1px solid ${q.border}`,
-                    color: q.color,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {isMobile ? React.cloneElement(q.icon as any, { size: 12 }) : q.icon}
-                  </div>
-
-                  <div style={{ flex: 1, textAlign: isMobile ? 'center' : 'left', display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-start', minWidth: 0, width: '100%' }}>
-                    <div style={{ fontSize: isMobile ? '0.625rem' : '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }} title={q.label}>
-                      {isMobile ? q.label.replace('Hạn mức ', '') : q.label}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '3px', marginTop: '2px' }}>
-                      <span style={{ fontSize: isMobile ? '0.9rem' : '1.125rem', fontWeight: 800, color: 'var(--color-text)' }}>{q.value}</span>
-                      <span style={{ fontSize: isMobile ? '0.65rem' : '0.75rem', color: 'var(--color-text-light)' }}>/ {q.limit} {isMobile ? '' : 'lead'}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {/* Delete button for Admin */}
+            {isAdmin && selectedPublicLeads.length > 0 && (
+              <button
+                onClick={() => handleDeletePublicLeads(selectedPublicLeads)}
+                className="btn danger sm"
+                style={{
+                  borderRadius: '8px',
+                  padding: '0 12px',
+                  height: '32px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Trash2 size={14} />
+                {t('Xóa đã chọn')} ({selectedPublicLeads.length})
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {publicLoading ? (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
@@ -6472,7 +6530,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           }}>
             <div style={{
               overflowX: isMobile ? 'visible' : 'auto',
-              maxHeight: isMobile ? 'none' : '520px',
+              maxHeight: isMobile ? 'none' : '680px',
               overflowY: isMobile ? 'visible' : 'auto'
             }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
@@ -9112,9 +9170,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
                     <div style={{
                       display: 'inline-flex',
-                      background: 'var(--color-bg)',
-                      padding: '4px',
-                      borderRadius: '8px'
+                      background: 'var(--color-border-light)',
+                      border: '1px solid var(--color-border)',
+                      padding: '2px',
+                      borderRadius: '8px',
+                      position: 'relative',
+                      gap: '2px'
                     }}>
                       <button
                         onClick={() => setCalendarSubTab('calendar')}
@@ -9123,19 +9184,40 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           borderRadius: '6px',
                           fontSize: '0.8125rem',
                           fontWeight: 700,
-                          background: calendarSubTab === 'calendar' ? 'var(--color-surface)' : 'transparent',
-                          color: calendarSubTab === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                          boxShadow: calendarSubTab === 'calendar' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                          background: 'transparent',
+                          color: calendarSubTab === 'calendar' ? 'var(--color-text)' : 'var(--color-text-light)',
                           border: 'none',
+                          outline: 'none',
+                          boxShadow: 'none',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '6px',
-                          transition: 'all 0.2s'
+                          transition: 'color 0.2s',
+                          position: 'relative'
                         }}
                       >
-                        <Calendar size={14} style={{ color: calendarSubTab === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)' }} />
-                        {t('Lịch biểu')}
+                        {calendarSubTab === 'calendar' && (
+                          <motion.div 
+                            layoutId="activeCalendarSubTabIndicator"
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: 'var(--color-surface)',
+                              borderRadius: '6px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                              zIndex: 1
+                            }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                          />
+                        )}
+                        <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Calendar size={14} />
+                          {t('Lịch biểu')}
+                        </span>
                       </button>
                       <button
                         onClick={() => setCalendarSubTab('attendance')}
@@ -9144,19 +9226,40 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           borderRadius: '6px',
                           fontSize: '0.8125rem',
                           fontWeight: 700,
-                          background: calendarSubTab === 'attendance' ? 'var(--color-surface)' : 'transparent',
-                          color: calendarSubTab === 'attendance' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                          boxShadow: calendarSubTab === 'attendance' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                          background: 'transparent',
+                          color: calendarSubTab === 'attendance' ? 'var(--color-text)' : 'var(--color-text-light)',
                           border: 'none',
+                          outline: 'none',
+                          boxShadow: 'none',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: '6px',
-                          transition: 'all 0.2s'
+                          transition: 'color 0.2s',
+                          position: 'relative'
                         }}
                       >
-                        <Clock size={14} style={{ color: calendarSubTab === 'attendance' ? 'var(--color-primary)' : 'var(--color-text-light)' }} />
-                        {t('Chấm công')}
+                        {calendarSubTab === 'attendance' && (
+                          <motion.div 
+                            layoutId="activeCalendarSubTabIndicator"
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: 'var(--color-surface)',
+                              borderRadius: '6px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                              zIndex: 1
+                            }}
+                            transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                          />
+                        )}
+                        <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Clock size={14} />
+                          {t('Chấm công')}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -10443,6 +10546,161 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
           <button className="btn primary" onClick={() => setShowTicketHelpModal(false)} style={{ minWidth: 100 }}>{t("Đồng ý")}</button>
+        </div>
+      </CustomModal>
+
+      <CustomModal
+        isOpen={showDatabankSettingsModal}
+        onClose={() => setShowDatabankSettingsModal(false)}
+        title={t("Cấu hình nhanh Kho Databank")}
+        width="620px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem' }}>
+              {t("1. Hạn mức nhận số (Claim Limits)")}
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Hạn mức giờ")}</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={dbLimitHour}
+                    onChange={e => setDbLimitHour(Number(e.target.value))}
+                    min={0}
+                    style={{ width: '100%', height: '34px', paddingRight: '2.5rem' }}
+                  />
+                  <span style={{ position: 'absolute', right: '8px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>/giờ</span>
+                </div>
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Hạn mức ngày")}</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={dbLimitDay}
+                    onChange={e => setDbLimitDay(Number(e.target.value))}
+                    min={0}
+                    style={{ width: '100%', height: '34px', paddingRight: '2.5rem' }}
+                  />
+                  <span style={{ position: 'absolute', right: '8px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>/ngày</span>
+                </div>
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Hạn mức tháng")}</label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={dbLimitMonth}
+                    onChange={e => setDbLimitMonth(Number(e.target.value))}
+                    min={0}
+                    style={{ width: '100%', height: '34px', paddingRight: '2.5rem' }}
+                  />
+                  <span style={{ position: 'absolute', right: '8px', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>/tháng</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+            <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem' }}>
+              {t("2. Thời hạn bảo mật (Security Timers)")}
+            </h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Chưa xác định")}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dbTimerChuaXacDinh}
+                  onChange={e => setDbTimerChuaXacDinh(e.target.value)}
+                  placeholder="Ví dụ: +3 hours"
+                  style={{ height: '34px' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Quan tâm")}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dbTimerQuanTam}
+                  onChange={e => setDbTimerQuanTam(e.target.value)}
+                  placeholder="Ví dụ: +1 day"
+                  style={{ height: '34px' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Thiện chí")}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dbTimerThienChi}
+                  onChange={e => setDbTimerThienChi(e.target.value)}
+                  placeholder="Ví dụ: +3 days"
+                  style={{ height: '34px' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Đồng ý gặp")}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dbTimerDongYGap}
+                  onChange={e => setDbTimerDongYGap(e.target.value)}
+                  placeholder="Ví dụ: +4 days"
+                  style={{ height: '34px' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Đã gặp")}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dbTimerDaGap}
+                  onChange={e => setDbTimerDaGap(e.target.value)}
+                  placeholder="Ví dụ: +5 days"
+                  style={{ height: '34px' }}
+                />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>{t("Booking")}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={dbTimerBooking}
+                  onChange={e => setDbTimerBooking(e.target.value)}
+                  placeholder="Ví dụ: +3 months"
+                  style={{ height: '34px' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+            <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>{t("3. Nguồn lead áp dụng ra kho")}</label>
+            <input
+              type="text"
+              className="form-input"
+              value={dbApplicableSources}
+              onChange={e => setDbApplicableSources(e.target.value)}
+              placeholder="Ví dụ: R3_Fb,R3,R2,broadcast"
+              style={{ height: '34px' }}
+            />
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+              {t("Các nguồn lead cách nhau bằng dấu phẩy.")}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem', gap: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+            <button className="btn outline" onClick={() => setShowDatabankSettingsModal(false)} disabled={isSavingDbSettings}>{t("Hủy")}</button>
+            <button className="btn primary" onClick={handleSaveDatabankSettings} disabled={isSavingDbSettings}>
+              {isSavingDbSettings ? t("Đang lưu...") : t("Lưu cấu hình")}
+            </button>
+          </div>
         </div>
       </CustomModal>
 

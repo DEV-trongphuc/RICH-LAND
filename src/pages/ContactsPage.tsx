@@ -812,12 +812,17 @@ export const ContactsPage: React.FC = () => {
 
       {/* Search + filter row */}
       <div className="card" style={{ padding: isMobile ? '10px' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
-        {/* Row 1: Search and Filter Button */}
-        <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-          <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto' }}>
-            <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
-            <input placeholder="Tìm tên, email, điện thoại..." value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{ paddingRight: '2rem' }}/>
-            <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+        {/* Row 1: Search (with embedded Advanced Filter Button) */}
+        <div style={{ display: 'flex', gap: '8px', width: '100%', flex: 1 }}>
+          <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '3.5rem' }}>
+            <Search size={14} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
+            <input 
+              placeholder="Tìm tên, email, điện thoại..." 
+              value={search} 
+              onChange={e=>{setSearch(e.target.value);setPage(1);}} 
+              style={{ paddingRight: '0.5rem', height: '100%' }}
+            />
+            <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <AnimatePresence>
                 {search && (
                   <motion.button 
@@ -827,29 +832,37 @@ export const ContactsPage: React.FC = () => {
                     transition={{ duration: 0.15 }}
                     className="btn-icon-bare" 
                     onClick={() => setSearch('')} 
-                    style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', background: 'transparent' }}
                     title="Xóa tìm kiếm"
                   >
                     <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
                   </motion.button>
                 )}
               </AnimatePresence>
+              <button 
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                style={{
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'transparent',
+                  color: showAdvancedFilters ? 'var(--color-text)' : 'var(--color-text-muted)',
+                  outline: 'none',
+                  boxShadow: 'none'
+                }}
+                title="Bộ lọc nâng cao"
+              >
+                <Filter size={16} />
+              </button>
             </div>
           </div>
-
-          <button 
-            className={`btn sm ${showAdvancedFilters ? 'primary' : 'outline'}`} 
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '38px', width: isMobile ? '38px' : 'auto', minWidth: isMobile ? '38px' : 'auto', borderRadius: '10px', padding: isMobile ? 0 : '8px 12px', flexShrink: 0 }}
-            title="Bộ lọc nâng cao"
-          >
-            <Filter size={14} />
-            {!isMobile && <span>Bộ lọc nâng cao</span>}
-          </button>
         </div>
 
         {/* Row 2: Sort Select & View Mode switchers */}
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', flex: isMobile ? undefined : 1 }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', flexShrink: 0 }}>
           {!isMobile && <div style={{ flex: 1 }} />}
           
           <div style={{ width: isMobile ? '130px' : 170 }}>
@@ -864,29 +877,83 @@ export const ContactsPage: React.FC = () => {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-            <button 
-              className={`btn sm ${viewMode === 'list' ? 'primary' : 'ghost'}`} 
-              onClick={() => setViewMode('list')} 
-              title="Danh sách"
-              style={{ padding: '0.5rem', height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}
-            >
-              <List size={16} />
-            </button>
-            <button 
-              className={`btn sm ${viewMode === 'card' ? 'primary' : 'ghost'}`} 
-              onClick={() => setViewMode('card')} 
-              title="Dạng thẻ"
-              style={{ padding: '0.5rem', height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}
-            >
-              <LayoutGrid size={16} />
-            </button>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{
+              display: 'flex',
+              background: 'var(--color-border-light)',
+              border: '1px solid var(--color-border)',
+              padding: '2px',
+              borderRadius: '8px',
+              gap: '2px',
+              alignItems: 'center',
+              height: '38px',
+              boxSizing: 'border-box'
+            }}>
+              <button 
+                onClick={() => setViewMode('list')} 
+                title="Danh sách"
+                style={{ 
+                  padding: 0, 
+                  height: '32px', 
+                  width: '32px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  borderRadius: '6px',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
+                  color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-light)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <List size={16} />
+              </button>
+              <button 
+                onClick={() => setViewMode('card')} 
+                title="Dạng thẻ"
+                style={{ 
+                  padding: 0, 
+                  height: '32px', 
+                  width: '32px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  borderRadius: '6px',
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: viewMode === 'card' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent',
+                  color: viewMode === 'card' ? 'var(--color-text)' : 'var(--color-text-light)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <LayoutGrid size={16} />
+              </button>
+            </div>
             
             <button 
-              className="btn outline" 
               onClick={() => setShowColumns(true)} 
               title="Tùy chỉnh cột"
-              style={{ padding: 0, height: '38px', width: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '10px' }}
+              style={{ 
+                padding: 0, 
+                height: '38px', 
+                width: '38px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text)',
+                outline: 'none',
+                boxShadow: 'none',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
             >
               <Columns size={16} />
             </button>

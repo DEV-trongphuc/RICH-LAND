@@ -360,15 +360,16 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             <button
               type="button"
               onClick={handleGoToToday}
-              className="btn outline sm"
+              className="btn outline"
               style={{
-                borderColor: 'var(--color-primary)',
-                color: 'var(--color-primary)',
-                borderRadius: '20px',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text)',
+                borderRadius: '8px',
                 height: '38px',
                 padding: '0 16px',
                 fontWeight: 600,
-                fontSize: '0.8125rem'
+                fontSize: '0.8125rem',
+                background: 'var(--color-surface)'
               }}
             >
               {t('Hôm nay')}
@@ -417,7 +418,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 setFilterUser(isSales ? String(user?.id) : 'all');
                 setFilterStatus('all');
               }}
-              className="btn outline sm"
+              className="btn outline"
               style={{ height: '38px', borderRadius: '8px' }}
             >
               {t('Đặt lại bộ lọc')}
@@ -429,10 +430,10 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: '2px',
-            backgroundColor: 'var(--color-border-light)',
+            gap: '1px',
+            backgroundColor: 'var(--color-border)',
             overflow: 'hidden',
-            border: '1px solid var(--color-border-light)',
+            border: '1px solid var(--color-border)',
             minWidth: isMobile ? '700px' : 'auto'
           }}>
           {weekDays.map((day, idx) => (
@@ -442,9 +443,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
               textAlign: 'center',
               fontSize: '0.75rem',
               fontWeight: 800,
-              color: idx === 6 ? 'var(--color-primary)' : 'var(--color-text-muted)',
-              borderBottom: '1px solid var(--color-border-light)',
-              borderRight: idx < 6 ? '1px solid var(--color-border-light)' : 'none'
+              color: idx === 6 ? 'var(--color-primary)' : 'var(--color-text-muted)'
             }}>
               {day}
             </div>
@@ -469,7 +468,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 }}
                 style={{
                   backgroundColor: isToday
-                    ? 'rgba(189, 29, 45, 0.08)'
+                    ? 'rgba(99, 102, 241, 0.025)'
                     : cell.isCurrentMonth
                       ? isWeekend
                         ? 'var(--color-calendar-weekend)'
@@ -482,8 +481,6 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                   justifyContent: 'space-between',
                   cursor: cell.dateStr ? 'pointer' : 'default',
                   opacity: cell.isCurrentMonth ? 1 : 0.4,
-                  borderRight: '1px solid var(--color-border)',
-                  borderBottom: '1px solid var(--color-border)',
                   position: 'relative'
                 }}
                 className={cell.dateStr ? 'calendar-day-cell' : ''}
@@ -499,7 +496,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                     justifyContent: 'center',
                     borderRadius: '50%',
                     backgroundColor: isToday ? 'var(--color-primary)' : 'transparent',
-                    color: isToday ? 'white' : isWeekend ? 'var(--color-danger)' : 'var(--color-text-light)'
+                    color: isToday ? 'white' : 'var(--color-text-light)'
                   }}>{cell.day}</span>
                   {isToday && <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--color-primary)' }}>{t('Hôm nay')}</span>}
                 </div>
@@ -664,25 +661,34 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           </div>
 
           {/* View Mode Switcher */}
-          <div style={{ display: 'flex', backgroundColor: 'var(--color-border-light)', padding: '4px', borderRadius: '12px', gap: '4px' }}>
+          <div style={{
+            display: 'flex',
+            backgroundColor: 'var(--color-border-light)',
+            border: '1px solid var(--color-border)',
+            padding: '2px',
+            borderRadius: '8px',
+            gap: '2px',
+            width: 'fit-content'
+          }}>
             <button
               onClick={() => setViewMode('list')}
               style={{
-                padding: '8px 20px',
+                height: '30px',
+                padding: '0 16px',
                 fontSize: '0.85rem',
                 fontWeight: 700,
-                borderRadius: '10px',
+                borderRadius: '6px',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 backgroundColor: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
-                color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                boxShadow: viewMode === 'list' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                transition: 'all 0.2s'
+                color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-light)',
+                boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s',
+                outline: 'none'
               }}
-              className={viewMode === 'list' ? '' : 'hover-lift'}
             >
               <Clock size={14} />
               {t('Danh sách')}
@@ -690,21 +696,22 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             <button
               onClick={() => setViewMode('calendar')}
               style={{
-                padding: '8px 20px',
+                height: '30px',
+                padding: '0 16px',
                 fontSize: '0.85rem',
                 fontWeight: 700,
-                borderRadius: '10px',
+                borderRadius: '6px',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
                 backgroundColor: viewMode === 'calendar' ? 'var(--color-surface)' : 'transparent',
-                color: viewMode === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                boxShadow: viewMode === 'calendar' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
-                transition: 'all 0.2s'
+                color: viewMode === 'calendar' ? 'var(--color-text)' : 'var(--color-text-light)',
+                boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                transition: 'all 0.2s',
+                outline: 'none'
               }}
-              className={viewMode === 'calendar' ? '' : 'hover-lift'}
             >
               <Calendar size={14} />
               {t('Lịch biểu')}
@@ -931,7 +938,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                 setFilterUser(isSales ? String(user?.id) : 'all');
                 setFilterStatus('all');
               }}
-              className="btn outline sm"
+              className="btn outline"
               style={{ marginTop: '20px', height: '38px', borderRadius: '8px' }}
             >
               {t('Đặt lại bộ lọc')}

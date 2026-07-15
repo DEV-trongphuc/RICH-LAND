@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Folder, FileText, Download, Trash2, Upload, Search, X,
   MoreVertical, File, Filter, LayoutGrid, List, Plus, Edit,
-  Shield, User, Globe, Clock, ChevronRight, HardDrive,
+  Shield, User, Users, Globe, Clock, ChevronRight, HardDrive,
   Star, Clock3, FileJson, FileCode, FileImage, FileVideo,
   MoreHorizontal, Share2, Info, Building2, Eye
 } from 'lucide-react';
@@ -359,12 +359,12 @@ export const FilesPage: React.FC = () => {
 
   const getFileIcon = (name: string) => {
     const ext = name.split('.').pop()?.toLowerCase();
-    if (['pdf'].includes(ext!)) return { icon: <FileText size={20} />, color: '#ef4444', bg: '#fef2f2' };
-    if (['doc', 'docx'].includes(ext!)) return { icon: <FileText size={20} />, color: '#3b82f6', bg: '#eff6ff' };
-    if (['xls', 'xlsx'].includes(ext!)) return { icon: <FileText size={20} />, color: '#10b981', bg: '#ecfdf5' };
-    if (['jpg', 'jpeg', 'png', 'svg'].includes(ext!)) return { icon: <FileImage size={20} />, color: '#BD1D2D', bg: '#fff5f6' };
-    if (['zip', 'rar', '7z'].includes(ext!)) return { icon: <Folder size={20} />, color: '#f59e0b', bg: '#fffbeb' };
-    return { icon: <File size={20} />, color: '#64748b', bg: 'var(--color-bg)' };
+    if (['pdf'].includes(ext!)) return { icon: <FileText size={22} />, color: '#ffffff', bg: '#ef4444' };
+    if (['doc', 'docx'].includes(ext!)) return { icon: <FileText size={22} />, color: '#ffffff', bg: '#3b82f6' };
+    if (['xls', 'xlsx'].includes(ext!)) return { icon: <FileText size={22} />, color: '#ffffff', bg: '#10b981' };
+    if (['jpg', 'jpeg', 'png', 'svg', 'webp'].includes(ext!)) return { icon: <FileImage size={22} />, color: '#ffffff', bg: '#BD1D2D' };
+    if (['zip', 'rar', '7z'].includes(ext!)) return { icon: <Folder size={22} />, color: '#ffffff', bg: '#f59e0b' };
+    return { icon: <File size={22} />, color: '#ffffff', bg: '#64748b' };
   };
 
   return (
@@ -381,19 +381,32 @@ export const FilesPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
            {/* Pill Tab Switcher */}
-           <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', gap: '4px', position: 'relative' }}>
+           <div style={{ 
+              display: 'flex', 
+              background: 'var(--color-border-light)', 
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px', 
+              padding: '2px', 
+              gap: '2px', 
+              position: 'relative' 
+            }}>
               <button 
                  style={{ 
-                   padding: '8px 20px', 
-                   borderRadius: '10px', 
+                   padding: '6px 16px', 
+                   borderRadius: '6px', 
                    fontSize: '0.85rem', 
                    fontWeight: 700, 
                    background: 'transparent', 
                    color: activeTab === 'shared' ? 'var(--color-text)' : 'var(--color-text-light)', 
                    transition: 'color 0.2s', 
                    border: 'none', 
+                   outline: 'none',
+                   boxShadow: 'none',
                    cursor: 'pointer',
-                   position: 'relative'
+                   position: 'relative',
+                   display: 'inline-flex',
+                   alignItems: 'center',
+                   gap: '6px'
                  }}
                  onClick={() => { setActiveTab('shared'); setCurrentPath([]); setCategory('all'); }}
               >
@@ -407,27 +420,35 @@ export const FilesPage: React.FC = () => {
                       right: 0,
                       bottom: 0,
                       background: 'var(--color-surface)',
-                      borderRadius: '10px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      borderRadius: '6px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                       zIndex: 1
                     }}
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
-                <span style={{ position: 'relative', zIndex: 2 }}>Dùng chung</span>
+                <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={14} />
+                  Dùng chung
+                </span>
               </button>
               <button 
                  style={{ 
-                   padding: '8px 20px', 
-                   borderRadius: '10px', 
+                   padding: '6px 16px', 
+                   borderRadius: '6px', 
                    fontSize: '0.85rem', 
                    fontWeight: 700, 
                    background: 'transparent', 
                    color: activeTab === 'personal' ? 'var(--color-text)' : 'var(--color-text-light)', 
                    transition: 'color 0.2s', 
                    border: 'none', 
+                   outline: 'none',
+                   boxShadow: 'none',
                    cursor: 'pointer',
-                   position: 'relative'
+                   position: 'relative',
+                   display: 'inline-flex',
+                   alignItems: 'center',
+                   gap: '6px'
                  }}
                  onClick={() => { setActiveTab('personal'); setCurrentPath([]); setCategory('all'); }}
               >
@@ -441,19 +462,22 @@ export const FilesPage: React.FC = () => {
                       right: 0,
                       bottom: 0,
                       background: 'var(--color-surface)',
-                      borderRadius: '10px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      borderRadius: '6px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
                       zIndex: 1
                     }}
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
                 )}
-                <span style={{ position: 'relative', zIndex: 2 }}>Cá nhân</span>
+                <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <User size={14} />
+                  Cá nhân
+                </span>
               </button>
            </div>
            
            {!isViewer && (
-             <button className="btn secondary" onClick={() => fileInputRef.current?.click()} title="Tải tệp mới" style={{ border: '1px solid var(--color-border)' }}>
+             <button className="btn secondary" onClick={() => fileInputRef.current?.click()} title="Tải tệp mới" style={{ border: '1px solid var(--color-border)', borderRadius: '8px' }}>
                <Plus size={16} />
                <span className="hide-on-mobile"> Tải tệp mới</span>
              </button>
@@ -471,7 +495,7 @@ export const FilesPage: React.FC = () => {
             <div style={{
               background: 'linear-gradient(135deg, #1e1b4b 0%, #311042 100%)',
               border: '1px solid rgba(99, 102, 241, 0.45)',
-              borderRadius: '16px',
+              borderRadius: '12px',
               padding: '1.5rem',
               display: 'flex',
               alignItems: 'center',
@@ -517,130 +541,135 @@ export const FilesPage: React.FC = () => {
             </div>
           )}
 
-          {/* Sleek Explorer Header & Breadcrumbs Bar */}
+          {/* Unified Explorer Control Panel */}
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
             background: 'var(--color-surface)',
             border: '1px solid rgba(226, 232, 240, 0.8)',
             borderRadius: '12px',
-            padding: '10px 16px',
-            gap: '1.5rem',
-            flexWrap: 'wrap',
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', flex: 1, paddingBottom: '2px' }}>
-              <button 
-                onClick={() => { setCurrentPath([]); setCategory('all'); }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: currentPath.length === 0 ? 'var(--color-primary)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
-              >
-                <HardDrive size={16} /> Gốc
-              </button>
-              {currentPath.map((folder, idx) => (
-                <React.Fragment key={idx}>
-                  <ChevronRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                  <button
-                    onClick={() => {
-                      const newPath = currentPath.slice(0, idx + 1);
-                      setCurrentPath(newPath);
-                      const partialLabel = newPath.join('/');
-                      const catObj = categories.find(c => c.label === partialLabel);
-                      setCategory(catObj ? catObj.id : 'all');
-                    }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: idx === currentPath.length - 1 ? 'var(--color-primary)' : 'var(--color-text-muted)', padding: 0 }}
-                  >
-                    {folder}
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-            
-            {/* Storage Progress indicator & Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--color-text-muted)' }}>Dung lượng:</span>
-                <div style={{ width: '80px', height: '6px', background: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden', position: 'relative' }}>
-                  <div style={{ 
-                    height: '100%', 
-                    width: `${Math.min((totalSizeBytes / (10 * 1024 * 1024 * 1024)) * 100, 100)}%`, 
-                    background: activeTab === 'personal' ? 'var(--color-indigo)' : 'var(--color-primary)' 
-                  }} />
-                </div>
-                <span style={{ fontSize: '10.5px', color: 'var(--color-text)', fontWeight: 800 }}>
-                  {formatSize(totalSizeBytes)} / 10 GB
-                </span>
-              </div>
-
-              {!isViewer && (
+            {/* Row 1: Sleek Explorer Header & Breadcrumbs Bar */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1.5rem',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflowX: 'auto', flex: 1, paddingBottom: '2px' }}>
                 <button 
-                  className="btn secondary"
-                  onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
-                  style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', height: '32px', border: '1px solid var(--color-border)' }}
+                  onClick={() => { setCurrentPath([]); setCategory('all'); }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: currentPath.length === 0 ? 'var(--color-primary)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
                 >
-                  <Plus size={14} /> Thư mục mới
+                  <HardDrive size={16} /> Gốc
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile Folder/Category Dropdown */}
-          <div className="mobile-only" style={{ width: '100%', marginBottom: '0.5rem' }}>
-            <CustomSelect
-              value={category}
-              onChange={val => { setPage(1); setCategory(val); }}
-              options={categories.map(c => ({ value: c.id, label: c.label }))}
-            />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-             <div style={{ display: 'flex', gap: '1rem', flex: 1, maxWidth: '650px', alignItems: 'center' }}>
-               <div className="filter-search" style={{ flex: 1 }}>
-                  <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-                  <input 
-                    type="text"
-                    placeholder="Tìm kiếm tài liệu..." 
-                    value={searchTerm}
-                    onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
-                  />
-                  {searchTerm && (
-                    <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
-                      <X size={14} />
+                {currentPath.map((folder, idx) => (
+                  <React.Fragment key={idx}>
+                    <ChevronRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                    <button
+                      onClick={() => {
+                        const newPath = currentPath.slice(0, idx + 1);
+                        setCurrentPath(newPath);
+                        const partialLabel = newPath.join('/');
+                        const catObj = categories.find(c => c.label === partialLabel);
+                        setCategory(catObj ? catObj.id : 'all');
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 800, color: idx === currentPath.length - 1 ? 'var(--color-primary)' : 'var(--color-text-muted)', padding: 0 }}
+                    >
+                      {folder}
                     </button>
-                  )}
-               </div>
+                  </React.Fragment>
+                ))}
+              </div>
+              
+              {/* Storage Progress indicator & Actions */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: 800, color: 'var(--color-text-muted)' }}>Dung lượng:</span>
+                  <div style={{ width: '80px', height: '6px', background: 'var(--color-border)', borderRadius: '999px', overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ 
+                      height: '100%', 
+                      width: `${Math.min((totalSizeBytes / (10 * 1024 * 1024 * 1024)) * 100, 100)}%`, 
+                      background: activeTab === 'personal' ? 'var(--color-indigo)' : 'var(--color-primary)' 
+                    }} />
+                  </div>
+                  <span style={{ fontSize: '10.5px', color: 'var(--color-text)', fontWeight: 800 }}>
+                    {formatSize(totalSizeBytes)} / 10 GB
+                  </span>
+                </div>
 
-               {/* Project Filter Dropdown */}
-               <div style={{ width: '220px', flexShrink: 0 }}>
-                 <CustomSelect
-                   options={[
-                     { value: 'all', label: 'Tất cả dự án' },
-                     ...projects.map(p => ({ value: String(p.id), label: p.name }))
-                   ]}
-                   value={selectedProjectId}
-                   onChange={val => {
-                     setPage(1);
-                     setSelectedProjectId(String(val));
-                   }}
-                   placeholder="Lọc theo dự án"
-                   searchable
-                 />
+                {!isViewer && (
+                  <button 
+                    className="btn secondary"
+                    onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
+                    style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', height: '32px', border: '1px solid var(--color-border)' }}
+                  >
+                    <Plus size={14} /> Thư mục mới
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: '1px', background: 'var(--color-border-light)' }} />
+
+            {/* Row 2: Search and filtering controls */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+               <div style={{ display: 'flex', gap: '1rem', flex: 1, maxWidth: '650px', alignItems: 'center', flexWrap: 'wrap' }}>
+                 <div className="filter-search" style={{ flex: 1, borderRadius: '8px', height: '34px', minWidth: '200px' }}>
+                    <Search size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                    <input 
+                      type="text"
+                      placeholder="Tìm kiếm tài liệu..." 
+                      value={searchTerm}
+                      onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
+                      style={{ fontSize: '0.8rem' }}
+                    />
+                    {searchTerm && (
+                      <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center' }}>
+                        <X size={14} />
+                      </button>
+                    )}
+                 </div>
+
+                 {/* Project Filter Dropdown */}
+                 <div style={{ width: '200px', flexShrink: 0 }}>
+                   <CustomSelect
+                     options={[
+                       { value: 'all', label: 'Tất cả dự án' },
+                       ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                     ]}
+                     value={selectedProjectId}
+                     onChange={val => {
+                       setPage(1);
+                       setSelectedProjectId(String(val));
+                     }}
+                     placeholder="Lọc theo dự án"
+                     searchable
+                   />
+                 </div>
                </div>
-             </div>
-             <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
-                <button 
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'grid' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                  onClick={() => setViewMode('grid')}
-                >
-                  <LayoutGrid size={16} /> Lưới thẻ
-                </button>
-                <button 
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'list' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                  onClick={() => setViewMode('list')}
-                >
-                  <List size={16} /> Danh sách
-                </button>
-             </div>
+               
+               {/* View Switcher (with OS-style 8px border-radius) */}
+               <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '3px' }}>
+                  <button 
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, background: viewMode === 'grid' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid size={14} /> Lưới thẻ
+                  </button>
+                  <button 
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 10px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, background: viewMode === 'list' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                    onClick={() => setViewMode('list')}
+                  >
+                    <List size={14} /> Danh sách
+                  </button>
+               </div>
+            </div>
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
@@ -697,8 +726,8 @@ export const FilesPage: React.FC = () => {
                                   setCategory(sub.id);
                                 }}
                               >
-                                <div style={{ color: '#d97706', flexShrink: 0 }}>
-                                  <Folder size={30} fill="#eab308" fillOpacity={0.2} />
+                                <div style={{ color: '#f59e0b', flexShrink: 0 }}>
+                                  <Folder size={30} fill="#f59e0b" stroke="#f59e0b" />
                                 </div>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <h5 style={{ fontWeight: 750, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={displayLabel}>
@@ -811,31 +840,35 @@ export const FilesPage: React.FC = () => {
                               layout
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              style={{ background: 'var(--color-surface)', padding: '1.15rem', borderRadius: '16px', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', position: 'relative' }}
+                              style={{ background: 'var(--color-surface)', padding: '1.15rem', borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', position: 'relative' }}
                               className="hover-shadow"
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                                <div style={{ width: '48px', height: '48px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
-                                  {getMimeIcon(f.mime_type)}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '0.75rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                                  <div style={{ width: '32px', height: '32px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: 'none' }}>
+                                    {React.cloneElement(getFileIcon(f.name).icon, { size: 16 })}
+                                  </div>
+                                  <h4 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>
+                                    {f.name}
+                                  </h4>
                                 </div>
-                                <div style={{ display: 'flex', gap: '4px' }}>
-                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={15} /></button>}
-                                  <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={15} /></button>
-                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={15} /></button>}
+                                <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={14} /></button>}
+                                  <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={14} /></button>
+                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={14} /></button>}
                                 </div>
                               </div>
                               
-                              <h4 style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--color-text)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>{f.name}</h4>
-                              <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: f.project_name ? '0.5rem' : '1.15rem' }}>
+                              <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: f.project_name ? '0.5rem' : '1.15rem', paddingLeft: '40px' }}>
                                 {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
                               </p>
                               {f.project_name && (
-                                <div style={{ gap: '4px', background: 'rgba(99, 102, 241, 0.08)', color: '#4f46e5', padding: '2px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 800, marginBottom: '1.15rem', display: 'inline-flex', alignItems: 'center' }}>
+                                <div style={{ gap: '4px', background: 'rgba(99, 102, 241, 0.08)', color: '#4f46e5', padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: 800, marginBottom: '1.15rem', display: 'inline-flex', alignItems: 'center', marginLeft: '40px' }}>
                                   <Building2 size={10} /> {f.project_name}
                                 </div>
                               )}
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', background: 'var(--color-bg)', borderRadius: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px', background: 'var(--color-bg)', borderRadius: '8px' }}>
                                 <Avatar name={f.uploader_name} size="sm" />
                                 <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                                   <span style={{ fontSize: '9.5px', fontWeight: 800, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.uploader_name}</span>
@@ -902,7 +935,7 @@ export const FilesPage: React.FC = () => {
                                 <td data-label="Tên tài liệu" style={{ padding: '1.25rem 2rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                     <div style={{ color: '#f59e0b' }}>
-                                      <Folder size={20} fill="#f59e0b" fillOpacity={0.25} />
+                                      <Folder size={20} fill="#f59e0b" stroke="#f59e0b" />
                                     </div>
                                     <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{displayLabel}</span>
                                   </div>
@@ -922,10 +955,89 @@ export const FilesPage: React.FC = () => {
                                 <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
                                     {!isViewer && (
-                                      <>
-                                        <button className="btn-icon-bare" onClick={() => { setEditingCat(sub); setCatFormData({ label: displayLabel }); setShowCatModal(true); }}><Edit size={16} /></button>
-                                        <button className="btn-icon-bare" onClick={() => deleteCategory(sub.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>
-                                      </>
+                                      <div style={{ position: 'relative' }}>
+                                        <button 
+                                          className="btn-icon-bare" 
+                                          title="Thao tác" 
+                                          onClick={() => setActiveFolderMenuId(activeFolderMenuId === sub.id ? null : sub.id)}
+                                          style={{ padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                          <MoreHorizontal size={16} />
+                                        </button>
+
+                                        {activeFolderMenuId === sub.id && (
+                                          <>
+                                            {/* Click overlay to close dropdown */}
+                                            <div 
+                                              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                                              onClick={() => setActiveFolderMenuId(null)}
+                                            />
+                                            <div 
+                                              style={{ 
+                                                position: 'absolute', 
+                                                right: 0, 
+                                                top: '100%', 
+                                                marginTop: '4px',
+                                                background: 'var(--color-surface)', 
+                                                borderRadius: '8px', 
+                                                border: '1px solid var(--color-border)', 
+                                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                                padding: '4px', 
+                                                zIndex: 1000, 
+                                                display: 'flex', 
+                                                flexDirection: 'column', 
+                                                gap: '2px',
+                                                minWidth: '100px'
+                                              }}
+                                            >
+                                              <button 
+                                                className="btn-icon-bare" 
+                                                style={{ 
+                                                  padding: '6px 12px', 
+                                                  fontSize: '0.75rem', 
+                                                  fontWeight: 700, 
+                                                  width: '100%', 
+                                                  textAlign: 'left', 
+                                                  display: 'flex', 
+                                                  alignItems: 'center', 
+                                                  gap: '6px', 
+                                                  borderRadius: '6px',
+                                                  color: 'var(--color-text-light)'
+                                                }} 
+                                                onClick={() => { 
+                                                  setActiveFolderMenuId(null); 
+                                                  setEditingCat(sub); 
+                                                  setCatFormData({ label: displayLabel }); 
+                                                  setShowCatModal(true); 
+                                                }}
+                                              >
+                                                <Edit size={12} /> Sửa
+                                              </button>
+                                              <button 
+                                                className="btn-icon-bare" 
+                                                style={{ 
+                                                  padding: '6px 12px', 
+                                                  fontSize: '0.75rem', 
+                                                  fontWeight: 700, 
+                                                  width: '100%', 
+                                                  textAlign: 'left', 
+                                                  display: 'flex', 
+                                                  alignItems: 'center', 
+                                                  gap: '6px', 
+                                                  borderRadius: '6px',
+                                                  color: 'var(--color-danger)'
+                                                }} 
+                                                onClick={() => { 
+                                                  setActiveFolderMenuId(null); 
+                                                  deleteCategory(sub.id); 
+                                                }}
+                                              >
+                                                <Trash2 size={12} /> Xóa
+                                              </button>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 </td>
@@ -938,7 +1050,7 @@ export const FilesPage: React.FC = () => {
                             <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                               <td data-label="Tên tài liệu" style={{ padding: '1.25rem 2rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
+                                    <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
                                       {getFileIcon(f.name).icon}
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>

@@ -609,11 +609,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             {/* View Mode Toggle Buttons */}
             <div style={{
               display: 'flex',
-              background: 'transparent',
+              background: 'var(--color-border-light)',
               borderRadius: '8px',
-              padding: '0',
+              padding: '2px',
               height: '32px',
-              alignItems: 'center'
+              alignItems: 'center',
+              gap: '2px'
             }}>
               <button
                 type="button"
@@ -622,16 +623,17 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '4px 10px',
+                  padding: '0 10px',
                   borderRadius: '6px',
                   border: 'none',
-                  background: viewMode === 'grid' ? 'var(--color-primary)' : 'transparent',
-                  color: viewMode === 'grid' ? 'white' : 'var(--color-text-muted)',
+                  background: viewMode === 'grid' ? 'var(--color-surface)' : 'transparent',
+                  color: viewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-light)',
                   fontSize: '0.78rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  height: '28px'
+                  height: '28px',
+                  boxShadow: viewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
                 }}
               >
                 <LayoutGrid size={13} /> <span className="hide-on-mobile">{t("Lưới")}</span>
@@ -643,16 +645,17 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '4px 10px',
+                  padding: '0 10px',
                   borderRadius: '6px',
                   border: 'none',
-                  background: viewMode === 'list' ? 'var(--color-primary)' : 'transparent',
-                  color: viewMode === 'list' ? 'white' : 'var(--color-text-muted)',
+                  background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent',
+                  color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-light)',
                   fontSize: '0.78rem',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  height: '28px'
+                  height: '28px',
+                  boxShadow: viewMode === 'list' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none'
                 }}
               >
                 <List size={13} /> <span className="hide-on-mobile">{t("Danh sách")}</span>
@@ -674,7 +677,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 borderRadius: '6px',
                 border: 'none',
                 background: 'transparent',
-                color: 'var(--color-primary)',
+                color: 'var(--color-text-light)',
                 fontSize: '0.78rem',
                 fontWeight: 700,
                 cursor: 'pointer',
@@ -682,7 +685,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 height: '28px'
               }}
             >
-              <Scale size={13} /> <span>{t("Đối soát")}<span className="hide-on-mobile"> {t("công bằng")}</span></span>
+              <Scale size={13} style={{ color: 'var(--color-text-muted)' }} /> <span>{t("Đối soát")}<span className="hide-on-mobile"> {t("công bằng")}</span></span>
             </button>
 
             {/* Separator line */}
@@ -701,7 +704,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   borderRadius: '6px',
                   border: 'none',
                   background: 'transparent',
-                  color: 'var(--color-primary)',
+                  color: 'var(--color-text-light)',
                   fontSize: '0.78rem',
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -709,7 +712,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                   height: '28px'
                 }}
               >
-                <Plus size={13} /> <span>{t("Thêm")}<span className="hide-on-mobile"> {t("Vòng")}</span></span>
+                <Plus size={13} style={{ color: 'var(--color-text-muted)' }} /> <span>{t("Thêm")}<span className="hide-on-mobile"> {t("Vòng")}</span></span>
               </button>
             )}
           </div>
@@ -987,12 +990,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       <Info size={13} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                     </button>
                     {!isReadOnly && (
-                      <button className="btn primary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
+                      <button className="btn secondary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
                         <Zap size={13} /> {t("Bù Data")}
                       </button>
                     )}
                     {!isReadOnly && (
-                      <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}>
+                      <button className="btn outline sm" onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} style={{ padding: '0 0.75rem', color: 'var(--color-text-muted)', borderColor: 'var(--color-border)' }}>
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -1213,12 +1216,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     <Info size={16} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                   </button>
                   {!isReadOnly && (
-                    <button onClick={() => openCompModal(r)} className="btn primary" style={{ flex: 1, padding: '0.625rem' }}>
+                    <button onClick={() => openCompModal(r)} className="btn secondary" style={{ flex: 1, padding: '0.625rem' }}>
                       <Zap size={16} /> {t("Bù Data")}
                     </button>
                   )}
                   {!isReadOnly && (
-                    <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline danger" style={{ padding: '0.625rem', width: 42, flexShrink: 0, justifyContent: 'center' }}>
+                    <button onClick={() => { setDeleteId(r.id); setConfirmDeleteOpen(true); }} className="btn outline" style={{ padding: '0.625rem', width: 42, flexShrink: 0, justifyContent: 'center' }}>
                       <Trash2 size={16} />
                     </button>
                   )}

@@ -741,27 +741,27 @@ const ConsultantsInner = () => {
         <div className="segmented-control-wrapper" style={{ marginBottom: '1.5rem' }}>
           <div style={{
             display: 'flex',
-            background: 'rgba(15, 23, 42, 0.05)',
-            padding: '4px',
-            borderRadius: '12px',
-            gap: '4px',
+            background: 'var(--color-border-light)',
+            border: '1px solid var(--color-border)',
+            padding: '2px',
+            borderRadius: '8px',
+            gap: '2px',
             width: 'fit-content',
-            position: 'relative',
-            border: '1px solid var(--color-border-light)'
+            position: 'relative'
           }}>
             {/* Sliding Pill Background Indicator */}
             <div style={{
               position: 'absolute',
-              top: '4px',
-              bottom: '4px',
+              top: '2px',
+              bottom: '2px',
               width: '160px',
-              borderRadius: '10px',
+              borderRadius: '6px',
               background: 'var(--color-surface)',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
               transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
               transform: `translateX(${
                 activeTab === 'consultants' ? '0px' : 
-                activeTab === 'teams' ? '164px' : '328px'
+                activeTab === 'teams' ? '162px' : '324px'
               })`,
               zIndex: 1
             }} />
@@ -778,21 +778,23 @@ const ConsultantsInner = () => {
                   onClick={() => navigate(`/consultants?tab=${tab.id}`)}
                   style={{
                     width: '160px',
-                    height: '38px',
-                    borderRadius: '10px',
+                    height: '32px',
+                    borderRadius: '6px',
                     border: 'none',
                     fontSize: '0.85rem',
                     fontWeight: 700,
                     cursor: 'pointer',
                     background: 'transparent',
-                    color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                    color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
                     position: 'relative',
+                    outline: 'none',
+                    boxShadow: 'none',
                     zIndex: 2,
-                    transition: 'color 0.25s ease'
+                    transition: 'color 0.2s ease'
                   }}
                   className=""
                 >

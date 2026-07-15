@@ -813,31 +813,32 @@ export default function CooperationSlipsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                       <div style={{ 
                         padding: '10px', 
-                        background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.08) 0%, rgba(163, 20, 34, 0.02) 100%)', 
+                        background: 'var(--color-border-light)', 
                         borderRadius: '8px', 
-                        color: 'var(--color-primary)', 
+                        color: 'var(--color-text-muted)', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        border: '1px solid rgba(163, 20, 34, 0.15)'
+                        border: '1px solid var(--color-border)'
                       }}>
                         <FileText size={18} />
                       </div>
                       
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                         <span style={{ 
-                          fontSize: '0.65rem', 
+                          fontSize: '0.7rem', 
                           fontWeight: 700, 
-                          color: 'var(--color-primary)', 
-                          background: 'rgba(163, 20, 34, 0.08)', 
+                          color: 'var(--color-text)', 
+                          background: 'var(--color-border-light)', 
                           padding: '2px 6px', 
                           borderRadius: '4px',
-                          letterSpacing: '0.5px'
+                          letterSpacing: '0.5px',
+                          border: '1px solid var(--color-border)'
                         }}>
                           ID: #{slip.id}
                         </span>
                         <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, display: 'inline-flex', alignItems: 'center' }}>
-                          Căn: <span style={{ color: 'var(--color-primary)' }}>{slip.unit_code || '—'}</span>
+                          Căn: <span style={{ color: 'var(--color-text)' }}>{slip.unit_code || '—'}</span>
                           {slip.unit_code && <CopyButton text={slip.unit_code} />}
                         </h3>
                         <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>•</span>
@@ -863,16 +864,16 @@ export default function CooperationSlipsPage() {
                       <span
                         className="badge"
                         style={{
-                          background: isPendingSignatures ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'approved' ? 'rgba(16, 185, 129, 0.08)' : slip.status === 'pending_manager_approval' ? 'rgba(245, 158, 11, 0.08)' : slip.status === 'rejected' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(99, 102, 241, 0.08)',
-                          color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : '#6366f1',
-                          border: isPendingSignatures ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'approved' ? '1px solid rgba(16, 185, 129, 0.2)' : slip.status === 'pending_manager_approval' ? '1px solid rgba(245, 158, 11, 0.2)' : slip.status === 'rejected' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(99, 102, 241, 0.2)',
+                          background: 'var(--color-surface)',
+                          color: isPendingSignatures ? 'var(--color-warning)' : slip.status === 'approved' ? 'var(--color-success)' : slip.status === 'pending_manager_approval' ? 'var(--color-warning)' : slip.status === 'rejected' ? 'var(--color-danger)' : 'var(--color-text)',
+                          border: '1px solid var(--color-border)',
                           padding: '4px 10px',
                           borderRadius: '20px',
                           fontSize: '0.7rem',
                           fontWeight: 700,
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px'
+                          gap: '6px'
                         }}
                       >
                         {isPendingSignatures ? (
@@ -930,7 +931,7 @@ export default function CooperationSlipsPage() {
                           <div key={sh.user_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg-light)', padding: '3px 8px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
                             <Avatar src={(sh as any).avatar} name={sh.name} size={16} />
                             <span style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--color-text)' }}>{sh.name}</span>
-                            <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-primary)' }}>{sh.percentage}%</span>
+                            <span style={{ fontSize: '0.725rem', fontWeight: 800, color: 'var(--color-text)' }}>{sh.percentage}%</span>
                           </div>
                         ))}
                       </div>
@@ -954,37 +955,74 @@ export default function CooperationSlipsPage() {
                     </div>
 
                     {/* Right: Actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
                       
                       {/* Sign / Update buttons */}
                       {(slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (String(slip.created_by) === String(user?.id) || isManager) && (
                         <button
                           onClick={() => handleOpenUpdateShares(slip)}
-                          className="btn sm outline"
-                          style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', borderRadius: '6px', fontWeight: 600 }}
+                          style={{
+                            height: '38px',
+                            padding: '0 16px',
+                            fontSize: '0.85rem',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            border: '1px solid var(--color-border)',
+                            background: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            transition: 'all 0.2s'
+                          }}
                         >
                           Cấu hình chia %
                         </button>
                       )}
 
-                      {isShareholder && !hasSigned && (
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                      {isShareholder && !hasSigned && (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (
+                        <div style={{ display: 'flex', gap: '6px' }}>
                           <button
                             onClick={() => handleOpenSignModal(slip)}
-                            className="btn sm primary"
-                            style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '6px', fontWeight: 600 }}
+                            style={{
+                              height: '38px',
+                              padding: '0 16px',
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              border: 'none',
+                              background: 'var(--color-text)',
+                              color: 'var(--color-surface)',
+                              transition: 'all 0.2s'
+                            }}
                           >
-                            <PenTool size={11} /> Ký
+                            <PenTool size={14} /> Ký
                           </button>
-                          {(slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (
-                            <button
-                              onClick={() => handleRejectSlip(slip.id)}
-                              className="btn sm outline"
-                              style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', color: 'var(--color-danger)', borderColor: 'var(--color-danger)', borderRadius: '6px', fontWeight: 600 }}
-                            >
-                              Từ chối
-                            </button>
-                          )}
+                          <button
+                            onClick={() => handleRejectSlip(slip.id)}
+                            style={{
+                              height: '38px',
+                              padding: '0 16px',
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              border: '1px solid var(--color-danger)',
+                              background: 'transparent',
+                              color: 'var(--color-danger)',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Từ chối
+                          </button>
                         </div>
                       )}
 
@@ -993,8 +1031,21 @@ export default function CooperationSlipsPage() {
                        (isManager || isShareholder || String(slip.created_by) === String(user?.id)) && (
                         <button
                           onClick={() => handleOpenUpdateShares(slip)}
-                          className="btn sm outline"
-                          style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', borderRadius: '6px', fontWeight: 600 }}
+                          style={{
+                            height: '38px',
+                            padding: '0 16px',
+                            fontSize: '0.85rem',
+                            borderRadius: '8px',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            border: '1px solid var(--color-border)',
+                            background: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            transition: 'all 0.2s'
+                          }}
                         >
                           {isManager ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
                         </button>
@@ -1002,20 +1053,46 @@ export default function CooperationSlipsPage() {
 
                       {/* Manager Approval actions */}
                       {isManager && slip.status === 'pending_manager_approval' && (
-                        <div style={{ display: 'flex', gap: '4px' }}>
+                        <div style={{ display: 'flex', gap: '6px' }}>
                           <button
                             onClick={() => handleApproveSlip(slip)}
-                            className="btn sm primary"
-                            style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', background: 'var(--color-success)', border: 'none', borderRadius: '6px', fontWeight: 600 }}
+                            style={{
+                              height: '38px',
+                              padding: '0 16px',
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              border: 'none',
+                              background: '#10b981',
+                              color: 'white',
+                              transition: 'all 0.2s'
+                            }}
                           >
-                            <CheckCircle size={11} /> Duyệt
+                            <CheckCircle size={14} /> Duyệt
                           </button>
                           <button
                             onClick={() => handleRejectSlip(slip.id)}
-                            className="btn sm"
-                            style={{ height: '30px', padding: '0 10px', fontSize: '0.725rem', background: 'var(--color-danger)', border: 'none', color: 'white', borderRadius: '6px', fontWeight: 600 }}
+                            style={{
+                              height: '38px',
+                              padding: '0 16px',
+                              fontSize: '0.85rem',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              borderRadius: '8px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              border: 'none',
+                              background: 'var(--color-danger)',
+                              color: 'white',
+                              transition: 'all 0.2s'
+                            }}
                           >
-                            <X size={11} /> Bác bỏ
+                            <X size={14} /> Bác bỏ
                           </button>
                         </div>
                       )}

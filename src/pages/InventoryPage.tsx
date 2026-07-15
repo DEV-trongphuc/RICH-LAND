@@ -295,13 +295,166 @@ export default function InventoryPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           
           {/* Pill Tab Switcher */}
-          <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', gap: '4px', flexWrap: 'wrap' }}>
-            <button style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'batches' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'batches' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'batches' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('batches')} className={activeTab === 'batches' ? '' : 'hover-lift'}>Danh sách căn / lô</button>
-            <button style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'history' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'history' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')} className={activeTab === 'history' ? '' : 'hover-lift'}>Lịch sử giao dịch</button>
-            <button style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'purchase_orders' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')} className={activeTab === 'purchase_orders' ? '' : 'hover-lift'}>Hợp đồng/Bảng hàng</button>
+          <div style={{ 
+            display: 'flex', 
+            background: 'var(--color-border-light)', 
+            border: '1px solid var(--color-border)',
+            padding: '2px', 
+            borderRadius: '8px',
+            gap: '2px', 
+            flexWrap: 'wrap',
+            position: 'relative'
+          }}>
+            <button 
+              style={{ 
+                padding: '6px 16px', 
+                borderRadius: '6px', 
+                fontSize: '0.85rem', 
+                fontWeight: 700, 
+                background: 'transparent', 
+                color: activeTab === 'batches' ? 'var(--color-text)' : 'var(--color-text-light)', 
+                border: 'none', 
+                outline: 'none',
+                boxShadow: 'none',
+                cursor: 'pointer', 
+                whiteSpace: 'nowrap', 
+                transition: 'color 0.2s',
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }} 
+              onClick={() => setActiveTab('batches')}
+            >
+              {activeTab === 'batches' && (
+                <motion.div 
+                  layoutId="activeInventoryTabIndicator"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'var(--color-surface)',
+                    borderRadius: '6px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    zIndex: 1
+                  }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Package size={14} />
+                Danh sách căn / lô
+              </span>
+            </button>
+            <button 
+              style={{ 
+                padding: '6px 16px', 
+                borderRadius: '6px', 
+                fontSize: '0.85rem', 
+                fontWeight: 700, 
+                background: 'transparent', 
+                color: activeTab === 'history' ? 'var(--color-text)' : 'var(--color-text-light)', 
+                border: 'none', 
+                outline: 'none',
+                boxShadow: 'none',
+                cursor: 'pointer', 
+                whiteSpace: 'nowrap', 
+                transition: 'color 0.2s',
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }} 
+              onClick={() => setActiveTab('history')}
+            >
+              {activeTab === 'history' && (
+                <motion.div 
+                  layoutId="activeInventoryTabIndicator"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'var(--color-surface)',
+                    borderRadius: '6px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    zIndex: 1
+                  }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <History size={14} />
+                Lịch sử giao dịch
+              </span>
+            </button>
+            <button 
+              style={{ 
+                padding: '6px 16px', 
+                borderRadius: '6px', 
+                fontSize: '0.85rem', 
+                fontWeight: 700, 
+                background: 'transparent', 
+                color: activeTab === 'purchase_orders' ? 'var(--color-text)' : 'var(--color-text-light)', 
+                border: 'none', 
+                outline: 'none',
+                boxShadow: 'none',
+                cursor: 'pointer', 
+                whiteSpace: 'nowrap', 
+                transition: 'color 0.2s',
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }} 
+              onClick={() => setActiveTab('purchase_orders')}
+            >
+              {activeTab === 'purchase_orders' && (
+                <motion.div 
+                  layoutId="activeInventoryTabIndicator"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'var(--color-surface)',
+                    borderRadius: '6px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    zIndex: 1
+                  }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 2, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Layers size={14} />
+                Hợp đồng/Bảng hàng
+              </span>
+            </button>
           </div>
 
-          <button className="btn outline" onClick={handleExport} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px', gap: '0.4rem' }} title="Xuất Excel/CSV">
+          <button 
+            onClick={handleExport} 
+            style={{ 
+              height: '38px', 
+              fontSize: '0.875rem', 
+              padding: '0 16px', 
+              gap: '0.4rem', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              borderRadius: '8px',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text)',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }} 
+            title="Xuất Excel/CSV"
+          >
             <Download size={14} />
             <span className="hide-on-mobile"> Xuất file</span>
           </button>
@@ -310,12 +463,48 @@ export default function InventoryPage() {
             <>
               <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
 
-               <button className="btn outline" onClick={() => setShowInventorySync(true)} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px', gap: '0.4rem' }} title="Đồng bộ Google Sheets">
+              <button 
+                onClick={() => setShowInventorySync(true)} 
+                style={{ 
+                  height: '38px', 
+                  fontSize: '0.875rem', 
+                  padding: '0 16px', 
+                  gap: '0.4rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }} 
+                title="Đồng bộ Google Sheets"
+              >
                 <FileSpreadsheet size={14} />
                 <span> Đồng bộ Google Sheets</span>
               </button>
 
-              <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} style={{ height: '38px', fontSize: '0.875rem', padding: '0 16px' }} title="Khai báo căn / lô">
+              <button 
+                onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} 
+                style={{ 
+                  height: '38px', 
+                  fontSize: '0.875rem', 
+                  padding: '0 16px', 
+                  gap: '0.4rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  borderRadius: '8px',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }} 
+                title="Khai báo căn / lô"
+              >
                 <Plus size={14} />
                 <span> Khai báo căn / lô</span>
               </button>

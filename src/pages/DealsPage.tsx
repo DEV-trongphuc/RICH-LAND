@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Pagination } from '../components/ui/Pagination';
-import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X, AlertCircle, AlertTriangle, ShieldAlert, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import confetti from 'canvas-confetti';
@@ -478,6 +478,12 @@ export const DealsPage: React.FC = () => {
       return;
     }
 
+    const isForwardSkip = (fromIdx !== -1 && toIdx !== -1 && toIdx > fromIdx + 1);
+    if (isForwardSkip) {
+      addToast("Không được phép nhảy cóc giai đoạn. Tiến trình chuyển giai đoạn phải đi tuần tự từng bước.", "error");
+      return;
+    }
+
     setTransitionModal({
       isOpen: true,
       itemId,
@@ -587,35 +593,37 @@ export const DealsPage: React.FC = () => {
         {/* Desktop Pipeline Tabs Switcher (Moved to Left) */}
         <div className="hide-on-mobile" style={{ 
           display: 'flex', 
-          background: 'rgba(15, 23, 42, 0.05)', 
-          padding: '4px', 
-          borderRadius: '12px', 
-          gap: '4px',
+          background: 'var(--color-border-light)', 
+          border: '1px solid var(--color-border)',
+          padding: '2px', 
+          borderRadius: '8px', 
+          gap: '2px',
           height: '38px', 
           marginRight: '0.5rem', 
-          border: '1px solid var(--color-border-light)',
           position: 'relative',
-          width: 'fit-content'
+          width: 'fit-content',
+          alignItems: 'center',
+          boxSizing: 'border-box'
         }}>
           {/* Sliding Pill Background Indicator */}
           <div style={{
             position: 'absolute',
-            top: '4px',
-            bottom: '4px',
+            top: '2px',
+            bottom: '2px',
             width: '140px',
-            borderRadius: '10px',
+            borderRadius: '6px',
             background: 'var(--color-surface)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             transform: `translateX(${
               pipelineView === 'contacts' ? '0px' : 
-              pipelineView === 'deals' ? '144px' : '288px'
+              pipelineView === 'deals' ? '142px' : '284px'
             })`,
             zIndex: 1
           }} />
 
           {[
-            { id: 'contacts', label: 'Khách hàng', icon: <User size={14} /> },
+            { id: 'contacts', label: 'Khách hàng', icon: <Users size={14} /> },
             { id: 'deals', label: 'Cơ hội', icon: <DollarSign size={14} /> },
             { id: 'companies', label: 'Doanh nghiệp', icon: <Building2 size={14} /> }
           ].map(tab => {
@@ -626,14 +634,14 @@ export const DealsPage: React.FC = () => {
                 onClick={() => setPipelineView(tab.id as any)}
                 style={{
                   width: '140px',
-                  height: '28px',
-                  borderRadius: '10px',
+                  height: '32px',
+                  borderRadius: '6px',
                   border: 'none',
                   fontSize: '0.825rem',
                   fontWeight: 700,
                   cursor: 'pointer',
                   background: 'transparent',
-                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -667,27 +675,29 @@ export const DealsPage: React.FC = () => {
         {/* Kanban vs List Toggle (Moved to Right) */}
         <div style={{ 
           display: 'flex', 
-          background: 'rgba(15, 23, 42, 0.05)', 
-          padding: '4px', 
-          borderRadius: '12px', 
-          gap: '4px',
+          background: 'var(--color-border-light)', 
+          border: '1px solid var(--color-border)',
+          padding: '2px', 
+          borderRadius: '8px', 
+          gap: '2px',
           marginRight: '0.5rem', 
           height: '38px', 
-          border: '1px solid var(--color-border-light)',
           position: 'relative',
-          width: 'fit-content'
+          width: 'fit-content',
+          alignItems: 'center',
+          boxSizing: 'border-box'
         }}>
           {/* Sliding Pill Background Indicator */}
           <div style={{
             position: 'absolute',
-            top: '4px',
-            bottom: '4px',
-            width: '36px',
-            borderRadius: '10px',
-            background: 'var(--color-primary)',
-            boxShadow: '0 2px 6px rgba(189, 29, 45, 0.2)',
+            top: '2px',
+            bottom: '2px',
+            width: '32px',
+            borderRadius: '6px',
+            background: 'var(--color-surface)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            transform: `translateX(${viewMode === 'kanban' ? '0px' : '40px'})`,
+            transform: `translateX(${viewMode === 'kanban' ? '0px' : '34px'})`,
             zIndex: 1
           }} />
 
@@ -702,13 +712,13 @@ export const DealsPage: React.FC = () => {
                 onClick={() => setViewMode(tab.id as any)}
                 title={tab.title}
                 style={{
-                  width: '36px',
-                  height: '28px',
-                  borderRadius: '10px',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
                   border: 'none',
                   cursor: 'pointer',
                   background: 'transparent',
-                  color: isSelected ? '#ffffff' : 'var(--color-text-light)',
+                  color: isSelected ? 'var(--color-text)' : 'var(--color-text-light)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -725,7 +735,27 @@ export const DealsPage: React.FC = () => {
         </div>
 
         {currentUser?.role !== 'viewer' && currentUser?.role !== 'sale' && (
-          <button className="btn outline" style={{ height: 38, borderRadius: 'var(--radius-md)', marginRight: '0.5rem', fontSize: '0.8rem', padding: '0 12px' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+          <button 
+            onClick={() => setShowImportExport(true)} 
+            title="Nhập/Xuất"
+            style={{ 
+              height: '38px', 
+              fontSize: '0.8rem', 
+              padding: '0 12px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              borderRadius: '8px',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text)',
+              outline: 'none',
+              boxShadow: 'none',
+              cursor: 'pointer',
+              marginRight: '0.5rem',
+              transition: 'all 0.2s'
+            }}
+          >
             <Download size={14} />
             <span className="hide-on-mobile" style={{ marginLeft: '0.25rem' }}> Nhập/Xuất</span>
           </button>
@@ -789,11 +819,16 @@ export const DealsPage: React.FC = () => {
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
               style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
             >
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div className="filter-search" style={{ width: '400px', position: 'relative' }}>
-                  <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
-                  <input placeholder="Tìm tên, email, điện thoại..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} style={{ paddingRight: '2rem' }} />
-                  <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
+                <div className="filter-search" style={{ width: '400px', position: 'relative', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '3.5rem' }}>
+                  <Search size={14} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
+                  <input 
+                    placeholder="Tìm tên, email, điện thoại..." 
+                    value={searchTerm} 
+                    onChange={e => { setSearchTerm(e.target.value); setPage(1); }} 
+                    style={{ paddingRight: '0.5rem', height: '100%' }} 
+                  />
+                  <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <AnimatePresence>
                       {searchTerm && (
                         <motion.button 
@@ -803,21 +838,33 @@ export const DealsPage: React.FC = () => {
                           transition={{ duration: 0.15 }}
                           className="btn-icon-bare" 
                           onClick={() => setSearchTerm('')} 
-                          style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', background: 'transparent' }}
                           title="Xóa tìm kiếm"
                         >
                           <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
                         </motion.button>
                       )}
                     </AnimatePresence>
+                    <button 
+                      onClick={() => setShowFilterPanel(!showFilterPanel)}
+                      style={{
+                        padding: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        border: 'none',
+                        background: 'transparent',
+                        color: showFilterPanel ? 'var(--color-text)' : 'var(--color-text-muted)',
+                        outline: 'none',
+                        boxShadow: 'none'
+                      }}
+                      title="Bộ lọc nâng cao"
+                    >
+                      <Filter size={16} />
+                    </button>
                   </div>
                 </div>
-                
-                <div style={{ flex: 1 }} />
-
-                <button className={`btn ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => setShowFilterPanel(!showFilterPanel)} style={{ borderRadius: 'var(--radius-md)', padding: '0 1rem', height: 38, fontSize: '0.8125rem' }}>
-                  <Filter size={14} /> {showFilterPanel ? 'Đóng bộ lọc' : 'Bộ lọc nâng cao'}
-                </button>
               </div>
 
               {/* The Filter Panel */}
@@ -873,59 +920,110 @@ export const DealsPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Quick Filter Pills */}
-              <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', marginTop: '0.25rem' }}>
-                {filterPills.map(pill => (
-                  <button key={pill.id} onClick={() => handlePillClick(pill.id)}
-                    style={{ 
-                      padding: '5px 14px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600, 
-                      border: `1.5px solid ${activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-border-light)'}`, 
-                      background: activeFilterPill === pill.id ? 'var(--color-primary-light)' : 'var(--color-surface)', 
-                      color: activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-text-light)', 
-                      cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
-                    }}>
-                    {pill.label}
-                  </button>
-                ))}
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
       {viewMode === 'list' && (
-        <div className="no-scrollbar" style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'none', alignItems: 'center' }}>
-          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', marginRight: '0.5rem' }}>Giai đoạn:</span>
+        <div 
+          className="custom-scrollbar" 
+          style={{ 
+            display: 'flex', 
+            gap: '0.25rem', 
+            overflowX: 'auto', 
+            padding: '4px 6px 12px 6px', 
+            alignItems: 'center',
+            background: 'var(--color-bg-light)',
+            borderRadius: '10px',
+            border: '1px solid var(--color-border)',
+            marginBottom: '1rem'
+          }}
+        >
+          <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', paddingLeft: '10px', paddingRight: '6px' }}>Giai đoạn:</span>
+          
           <button
             onClick={() => setActiveStageFilter('all')}
             style={{
-              padding: '6px 16px', borderRadius: '99px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
-              border: `1px solid ${activeStageFilter === 'all' ? 'var(--color-primary)' : 'var(--color-border)'}`,
-              background: activeStageFilter === 'all' ? 'var(--color-primary-light)' : 'var(--color-surface)',
-              color: activeStageFilter === 'all' ? 'var(--color-primary)' : 'var(--color-text-light)',
+              padding: '6px 14px', 
+              borderRadius: '6px', 
+              fontSize: '0.8125rem', 
+              fontWeight: 700, 
+              cursor: 'pointer', 
+              whiteSpace: 'nowrap', 
+              transition: 'all 0.2s',
+              border: activeStageFilter === 'all' ? '1px solid var(--color-text)' : '1px solid var(--color-border)',
+              background: activeStageFilter === 'all' ? 'var(--color-text)' : 'var(--color-surface)',
+              color: activeStageFilter === 'all' ? 'var(--color-surface)' : 'var(--color-text)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: activeStageFilter === 'all' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
             }}
           >
             Tất cả ({Object.values(filteredItems).flat().length})
           </button>
-          {stages.map(stage => {
-            const count = (filteredItems[stage.id] || []).length;
-            const isActive = activeStageFilter === stage.id;
-            return (
-              <button
-                key={stage.id}
-                onClick={() => setActiveStageFilter(stage.id)}
-                style={{
-                  padding: '6px 16px', borderRadius: '99px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  border: `1px solid ${isActive ? stage.color || 'var(--color-primary)' : 'var(--color-border)'}`,
-                  background: isActive ? `${stage.color || 'var(--color-primary)'}15` : 'var(--color-surface)',
-                  color: isActive ? stage.color || 'var(--color-primary)' : 'var(--color-text-light)',
-                }}
-              >
-                {stage.name} ({count})
-              </button>
-            );
-          })}
+
+          <div style={{ width: '1px', height: '22px', background: 'var(--color-border)', margin: '0 0.5rem', flexShrink: 0 }} />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'nowrap' }}>
+            {stages.map((stage, idx) => {
+              const count = (filteredItems[stage.id] || []).length;
+              const isActive = activeStageFilter === stage.id;
+              return (
+                <React.Fragment key={stage.id}>
+                  {idx > 0 && (
+                    <ChevronRight size={14} style={{ color: 'var(--color-text-muted)', opacity: 0.6, flexShrink: 0 }} />
+                  )}
+                  <button
+                    onClick={() => setActiveStageFilter(stage.id)}
+                    style={{
+                      padding: '6px 14px', 
+                      borderRadius: '6px', 
+                      fontSize: '0.8125rem', 
+                      fontWeight: 700, 
+                      cursor: 'pointer', 
+                      whiteSpace: 'nowrap', 
+                      transition: 'all 0.2s',
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '6px',
+                      opacity: count === 0 && !isActive ? 0.55 : 1,
+                      border: `1px solid ${isActive ? stage.color || 'var(--color-primary)' : 'var(--color-border)'}`,
+                      background: isActive ? `${stage.color || 'var(--color-primary)'}12` : 'var(--color-surface)',
+                      color: isActive ? stage.color || 'var(--color-text)' : 'var(--color-text-light)',
+                      boxShadow: isActive ? `0 2px 4px ${stage.color || 'var(--color-primary)'}15` : 'none'
+                    }}
+                  >
+                    <span 
+                      style={{ 
+                        width: '8px', 
+                        height: '8px', 
+                        borderRadius: '50%', 
+                        background: stage.color || 'var(--color-primary)',
+                        display: 'inline-block',
+                        flexShrink: 0
+                      }} 
+                    />
+                    {stage.name}
+                    <span 
+                      style={{ 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        color: isActive ? 'inherit' : 'var(--color-text-muted)',
+                        background: isActive ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.04)',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        marginLeft: '2px'
+                      }}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -960,7 +1058,7 @@ export const DealsPage: React.FC = () => {
 
       {/* Main Content Area */}
       {viewMode === 'kanban' ? (
-        <div className="card no-scrollbar" style={{ 
+        <div className="card custom-scrollbar" style={{ 
           display: 'flex', 
           gap: isMobile ? '0.75rem' : '1.25rem', 
           overflowX: 'auto', 
@@ -1266,7 +1364,7 @@ export const DealsPage: React.FC = () => {
               <motion.div 
                 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
                 onClick={e => e.stopPropagation()}
-                style={{ background: 'var(--color-surface)', width: '90%', maxWidth: transitionModal.isCancellation ? '480px' : '400px', borderRadius: '8px', padding: '1.75rem', boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)' }}
+                style={{ background: 'var(--color-surface)', width: '90%', maxWidth: transitionModal.isCancellation ? '580px' : '520px', borderRadius: '12px', padding: '1.75rem', boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)' }}
               >
                 {transitionModal.isCancellation ? (
                   <>

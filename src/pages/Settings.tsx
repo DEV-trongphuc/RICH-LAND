@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
@@ -1141,55 +1142,195 @@ const SettingsInner = () => {
         />
       </div>
 
-      <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', alignSelf: 'flex-start', marginBottom: '1.5rem', width: 'fit-content', gap: '4px', flexWrap: 'wrap' }} className="hide-on-mobile">
+      <div 
+        style={{ 
+          display: 'flex', 
+          background: 'var(--color-border-light)', 
+          border: '1px solid var(--color-border)',
+          borderRadius: '8px', 
+          padding: '2px', 
+          alignSelf: 'flex-start', 
+          marginBottom: '1.5rem', 
+          width: 'fit-content', 
+          gap: '2px', 
+          flexWrap: 'wrap' 
+        }} 
+        className="hide-on-mobile"
+      >
         <button
           onClick={() => setActiveTab('processing')}
-          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'processing' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'processing' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'processing' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
-          className={activeTab === 'processing' ? '' : 'hover-lift'}
+          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'processing' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
         >
-          <SettingsIcon size={16} /> {t('Cấu hình Xử lý')}
+          {activeTab === 'processing' && (
+            <motion.div 
+              layoutId="activeSettingsTabIndicator"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                zIndex: 1
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <SettingsIcon size={16} /> {t('Cấu hình Xử lý')}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('communications')}
-          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'communications' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'communications' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'communications' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
-          className={activeTab === 'communications' ? '' : 'hover-lift'}
+          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'communications' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
         >
-          <Send size={16} /> {t('Cấu hình Gửi tin & Email')}
+          {activeTab === 'communications' && (
+            <motion.div 
+              layoutId="activeSettingsTabIndicator"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                zIndex: 1
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Send size={16} /> {t('Cấu hình Gửi tin & Email')}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('report')}
-          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'report' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'report' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'report' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
-          className={activeTab === 'report' ? '' : 'hover-lift'}
+          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'report' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
         >
-          <BarChart2 size={16} /> {t('Báo cáo')}
+          {activeTab === 'report' && (
+            <motion.div 
+              layoutId="activeSettingsTabIndicator"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                zIndex: 1
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <BarChart2 size={16} /> {t('Báo cáo')}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('duplicate_check')}
-          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'duplicate_check' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'duplicate_check' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'duplicate_check' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
-          className={activeTab === 'duplicate_check' ? '' : 'hover-lift'}
+          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'duplicate_check' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
         >
-          <FileSpreadsheet size={16} /> {t('Ánh xạ dữ liệu cũ')}
+          {activeTab === 'duplicate_check' && (
+            <motion.div 
+              layoutId="activeSettingsTabIndicator"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                zIndex: 1
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FileSpreadsheet size={16} /> {t('Ánh xạ dữ liệu cũ')}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('ai')}
-          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'ai' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'ai' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'ai' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
-          className={activeTab === 'ai' ? '' : 'hover-lift'}
+          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'ai' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
         >
-          <Zap size={16} /> {t('Cấu hình Trợ lý AI')}
+          {activeTab === 'ai' && (
+            <motion.div 
+              layoutId="activeSettingsTabIndicator"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                zIndex: 1
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Zap size={16} /> {t('Cấu hình Trợ lý AI')}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('workflow')}
-          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'workflow' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'workflow' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'workflow' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
-          className={activeTab === 'workflow' ? '' : 'hover-lift'}
+          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'workflow' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
         >
-          <Activity size={16} /> {t('Mẫu Quy trình')}
+          {activeTab === 'workflow' && (
+            <motion.div 
+              layoutId="activeSettingsTabIndicator"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                zIndex: 1
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Activity size={16} /> {t('Mẫu Quy trình')}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('database')}
-          style={{ padding: '8px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'database' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'database' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'database' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', cursor: 'pointer', transition: 'all 0.2s', border: 'none', flexShrink: 0 }}
-          className={activeTab === 'database' ? '' : 'hover-lift'}
+          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'database' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
         >
-          <Database size={16} /> {t('Bảo trì Database')}
+          {activeTab === 'database' && (
+            <motion.div 
+              layoutId="activeSettingsTabIndicator"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'var(--color-surface)',
+                borderRadius: '6px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                zIndex: 1
+              }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+            />
+          )}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Database size={16} /> {t('Bảo trì Database')}
+          </span>
         </button>
       </div>
 
