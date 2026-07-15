@@ -238,6 +238,7 @@ CREATE TABLE IF NOT EXISTS `leads` (
   `ad_id` varchar(255) DEFAULT NULL,
   `raw_payload` longtext DEFAULT NULL, -- JSON payload from Meta/Google
   `assigned_to` int(11) DEFAULT NULL, -- FK to users
+  `last_assigned_at` datetime DEFAULT NULL,
   `target_round_id` int(11) DEFAULT NULL,
   `is_accepted` tinyint(1) DEFAULT 0,
   `accepted_at` datetime DEFAULT NULL,

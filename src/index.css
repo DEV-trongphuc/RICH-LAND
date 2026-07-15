@@ -1054,10 +1054,10 @@ tbody tr:hover .row-actions {
 }
 
 .table-row-hover:hover {
-  background: rgba(189, 29, 45, 0.03) !important;
+  background: rgba(0, 0, 0, 0.025) !important;
 }
 [data-theme="dark"] .table-row-hover:hover {
-  background: rgba(255, 69, 58, 0.04) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
 }
 
 
@@ -2252,7 +2252,7 @@ input[type="radio"]:hover:not(:checked) {
 
 /* Dark mode improvements */
 [data-theme="dark"] tbody tr:hover {
-  background: rgba(189, 29, 45, 0.06);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme="dark"] th {
@@ -3358,7 +3358,10 @@ tbody tr td {
 }
 
 tbody tr:hover td {
-  background-color: var(--color-bg-alt, var(--color-surface-hover, rgba(163, 20, 34, 0.04))) !important;
+  background-color: var(--color-bg-alt, var(--color-surface-hover, rgba(0, 0, 0, 0.025))) !important;
+}
+[data-theme="dark"] tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.04) !important;
 }
 
 /* Left edge slide-in indicator on the first column cell */

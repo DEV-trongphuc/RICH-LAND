@@ -2076,6 +2076,13 @@ try {
             $logMsg("Đã thêm cột duplicate_with_id cho contacts", "success");
         }
 
+        // Self-healing check: ensure last_assigned_at exists in leads
+        $chkLastAssignedAt = $conn->query("SHOW COLUMNS FROM leads LIKE 'last_assigned_at'");
+        if ($chkLastAssignedAt && $chkLastAssignedAt->num_rows === 0) {
+            $conn->query("ALTER TABLE leads ADD COLUMN last_assigned_at DATETIME DEFAULT NULL AFTER assigned_to");
+            $logMsg("Đã thêm cột last_assigned_at cho leads", "success");
+        }
+
         // Self-healing check: ensure ticket_comments table exists
         $conn->query("
             CREATE TABLE IF NOT EXISTS `ticket_comments` (

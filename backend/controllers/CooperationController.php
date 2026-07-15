@@ -10,18 +10,65 @@ class CooperationController {
 
     private function notifyShareholders(int $slipId, array $shares, string $subject, string $title, string $content): void {
         require_once __DIR__ . '/../mailer.php';
+
+        // Fetch slip and contact info to enrich notifications with customer details
+        $stmtSlip = $this->db->prepare("
+            SELECT cs.created_by, c.tenant_id, c.first_name, c.last_name, c.phone, c.owner_id
+            FROM cooperation_slips cs
+            JOIN contacts c ON cs.contact_id = c.id
+            WHERE cs.id = ?
+        ");
+        $stmtSlip->execute([$slipId]);
+        $slip = $stmtSlip->fetch(PDO::FETCH_ASSOC);
+        if (!$slip) return;
+
+        $tenantId = (int)$slip['tenant_id'];
+        $customerName = trim($slip['first_name'] . ' ' . $slip['last_name']) ?: 'Khách hàng ẩn danh';
+        $customerPhone = $slip['phone'] ?: 'Không có SĐT';
+
+        // Enrich subject and content with customer info
+        $enrichedSubject = $subject . " - Khách: " . $customerName;
+        $enrichedContent = $content . "<br/><br/>" .
+                           "<strong>Thông tin khách hàng:</strong><br/>" .
+                           "- Họ tên: " . htmlspecialchars($customerName) . "<br/>" .
+                           "- Số điện thoại: " . htmlspecialchars($customerPhone) . "<br/>";
+
         $uids = array_map('intval', array_keys($shares));
+        if ($slip['created_by']) {
+            $uids[] = (int)$slip['created_by'];
+        }
+        if ($slip['owner_id']) {
+            $uids[] = (int)$slip['owner_id'];
+        }
+        $uids = array_unique($uids);
         if (empty($uids)) return;
-        
+
         $inClause = implode(',', array_fill(0, count($uids), '?'));
-        $stmtU = $this->db->prepare("SELECT email, full_name FROM users WHERE id IN ($inClause)");
+        $stmtU = $this->db->prepare("SELECT id, email, full_name FROM users WHERE id IN ($inClause)");
         $stmtU->execute($uids);
         $users = $stmtU->fetchAll(PDO::FETCH_ASSOC);
-        
+
+        // Prepare statement for in-app notification insertion
+        $stmtNotif = $this->db->prepare("
+            INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+            VALUES (?, ?, ?, ?, 'cooperation_status', ?)
+        ");
+
+        $notifBody = strip_tags(str_replace(['<br/>', '<br>', '<strong>', '</strong>', '<em>', '</em>'], [' ', ' ', '', '', '', ''], $enrichedContent));
+
         foreach ($users as $u) {
+            // 1. Send Email Notification
             if (!empty($u['email'])) {
-                sendEmailNotification($u['email'], $subject, $title, $content, '', false);
+                sendEmailNotification($u['email'], $enrichedSubject, $title, $enrichedContent, '', false);
             }
+            // 2. Insert In-App Web Notification
+            $stmtNotif->execute([
+                (int)$u['id'],
+                $tenantId,
+                $enrichedSubject,
+                $notifBody,
+                '/cooperation-slips'
+            ]);
         }
     }
 

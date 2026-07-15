@@ -92,6 +92,7 @@ export const FilesPage: React.FC = () => {
   const [editingCat, setEditingCat] = useState<any>(null);
   const [catFormData, setCatFormData] = useState({ label: '' });
   const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [activeFolderMenuId, setActiveFolderMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -380,25 +381,79 @@ export const FilesPage: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
            {/* Pill Tab Switcher */}
-           <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', gap: '4px' }}>
-             <button 
-                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'shared' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'shared' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'shared' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => { setActiveTab('shared'); setCurrentPath([]); setCategory('all'); }}
-                className={activeTab === 'shared' ? '' : 'hover-lift'}
-             >
-               Dùng chung
-             </button>
-             <button 
-                style={{ padding: '8px 20px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700, background: activeTab === 'personal' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'personal' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'personal' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => { setActiveTab('personal'); setCurrentPath([]); setCategory('all'); }}
-                className={activeTab === 'personal' ? '' : 'hover-lift'}
-             >
-               Cá nhân
-             </button>
+           <div style={{ display: 'flex', background: 'var(--color-border-light)', borderRadius: '12px', padding: '4px', gap: '4px', position: 'relative' }}>
+              <button 
+                 style={{ 
+                   padding: '8px 20px', 
+                   borderRadius: '10px', 
+                   fontSize: '0.85rem', 
+                   fontWeight: 700, 
+                   background: 'transparent', 
+                   color: activeTab === 'shared' ? 'var(--color-text)' : 'var(--color-text-light)', 
+                   transition: 'color 0.2s', 
+                   border: 'none', 
+                   cursor: 'pointer',
+                   position: 'relative'
+                 }}
+                 onClick={() => { setActiveTab('shared'); setCurrentPath([]); setCategory('all'); }}
+              >
+                {activeTab === 'shared' && (
+                  <motion.div 
+                    layoutId="activeTabIndicator"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'var(--color-surface)',
+                      borderRadius: '10px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      zIndex: 1
+                    }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 2 }}>Dùng chung</span>
+              </button>
+              <button 
+                 style={{ 
+                   padding: '8px 20px', 
+                   borderRadius: '10px', 
+                   fontSize: '0.85rem', 
+                   fontWeight: 700, 
+                   background: 'transparent', 
+                   color: activeTab === 'personal' ? 'var(--color-text)' : 'var(--color-text-light)', 
+                   transition: 'color 0.2s', 
+                   border: 'none', 
+                   cursor: 'pointer',
+                   position: 'relative'
+                 }}
+                 onClick={() => { setActiveTab('personal'); setCurrentPath([]); setCategory('all'); }}
+              >
+                {activeTab === 'personal' && (
+                  <motion.div 
+                    layoutId="activeTabIndicator"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'var(--color-surface)',
+                      borderRadius: '10px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                      zIndex: 1
+                    }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 2 }}>Cá nhân</span>
+              </button>
            </div>
            
            {!isViewer && (
-             <button className="btn primary" onClick={() => fileInputRef.current?.click()} title="Tải tệp mới">
+             <button className="btn secondary" onClick={() => fileInputRef.current?.click()} title="Tải tệp mới" style={{ border: '1px solid var(--color-border)' }}>
                <Plus size={16} />
                <span className="hide-on-mobile"> Tải tệp mới</span>
              </button>
@@ -519,9 +574,9 @@ export const FilesPage: React.FC = () => {
 
               {!isViewer && (
                 <button 
-                  className="btn outline"
+                  className="btn secondary"
                   onClick={() => { setEditingCat(null); setCatFormData({ label: '' }); setShowCatModal(true); }}
-                  style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', height: '32px', border: '1px solid rgba(226, 232, 240, 0.8)' }}
+                  style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '4px', height: '32px', border: '1px solid var(--color-border)' }}
                 >
                   <Plus size={14} /> Thư mục mới
                 </button>
@@ -574,13 +629,13 @@ export const FilesPage: React.FC = () => {
              </div>
              <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
                 <button 
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'grid' ? 'var(--color-primary-light)' : 'transparent', color: viewMode === 'grid' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'grid' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'grid' ? 'var(--color-text)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                   onClick={() => setViewMode('grid')}
                 >
                   <LayoutGrid size={16} /> Lưới thẻ
                 </button>
                 <button 
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'list' ? 'var(--color-primary-light)' : 'transparent', color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'list' ? 'var(--color-bg)' : 'transparent', color: viewMode === 'list' ? 'var(--color-text)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                   onClick={() => setViewMode('list')}
                 >
                   <List size={16} /> Danh sách
@@ -654,11 +709,90 @@ export const FilesPage: React.FC = () => {
                                   </p>
                                 </div>
                                 {!isViewer && (
-                                  <div style={{ display: 'flex', gap: '2px' }} onClick={e => e.stopPropagation()}>
-                                    <button className="btn-icon-bare" title="Sửa" onClick={() => { setEditingCat(sub); setCatFormData({ label: displayLabel }); setShowCatModal(true); }}><Edit size={14} /></button>
-                                    <button className="btn-icon-bare" title="Xóa" onClick={() => deleteCategory(sub.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={14} /></button>
-                                  </div>
-                                )}
+                                   <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+                                     <button 
+                                       className="btn-icon-bare" 
+                                       title="Thao tác" 
+                                       onClick={() => setActiveFolderMenuId(activeFolderMenuId === sub.id ? null : sub.id)}
+                                       style={{ padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                     >
+                                       <MoreHorizontal size={16} />
+                                     </button>
+
+                                     {activeFolderMenuId === sub.id && (
+                                       <>
+                                         {/* Click overlay to close dropdown */}
+                                         <div 
+                                           style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                                           onClick={() => setActiveFolderMenuId(null)}
+                                         />
+                                         <div 
+                                           style={{ 
+                                             position: 'absolute', 
+                                             right: 0, 
+                                             top: '100%', 
+                                             marginTop: '4px',
+                                             background: 'var(--color-surface)', 
+                                             borderRadius: '8px', 
+                                             border: '1px solid var(--color-border)', 
+                                             boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                             padding: '4px', 
+                                             zIndex: 1000, 
+                                             display: 'flex', 
+                                             flexDirection: 'column', 
+                                             gap: '2px',
+                                             minWidth: '100px'
+                                           }}
+                                         >
+                                           <button 
+                                             className="btn-icon-bare" 
+                                             style={{ 
+                                               padding: '6px 12px', 
+                                               fontSize: '0.75rem', 
+                                               fontWeight: 700, 
+                                               width: '100%', 
+                                               textAlign: 'left', 
+                                               display: 'flex', 
+                                               alignItems: 'center', 
+                                               gap: '6px', 
+                                               borderRadius: '6px',
+                                               color: 'var(--color-text-light)'
+                                             }} 
+                                             onClick={() => { 
+                                               setActiveFolderMenuId(null); 
+                                               setEditingCat(sub); 
+                                               setCatFormData({ label: displayLabel }); 
+                                               setShowCatModal(true); 
+                                             }}
+                                           >
+                                             <Edit size={12} /> Sửa
+                                           </button>
+                                           <button 
+                                             className="btn-icon-bare" 
+                                             style={{ 
+                                               padding: '6px 12px', 
+                                               fontSize: '0.75rem', 
+                                               fontWeight: 700, 
+                                               width: '100%', 
+                                               textAlign: 'left', 
+                                               display: 'flex', 
+                                               alignItems: 'center', 
+                                               gap: '6px', 
+                                               borderRadius: '6px',
+                                               color: 'var(--color-danger)'
+                                             }} 
+                                             onClick={() => { 
+                                               setActiveFolderMenuId(null); 
+                                               deleteCategory(sub.id); 
+                                             }}
+                                           >
+                                             <Trash2 size={12} /> Xóa
+                                           </button>
+                                         </div>
+                                       </>
+                                     )}
+                                   </div>
+                                 )}
                               </motion.div>
                             );
                           })}
@@ -681,7 +815,7 @@ export const FilesPage: React.FC = () => {
                               className="hover-shadow"
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                                <div style={{ width: '48px', height: '48px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: '48px', height: '48px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
                                   {getMimeIcon(f.mime_type)}
                                 </div>
                                 <div style={{ display: 'flex', gap: '4px' }}>
@@ -696,7 +830,7 @@ export const FilesPage: React.FC = () => {
                                 {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
                               </p>
                               {f.project_name && (
-                                <div style={{ gap: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 800, marginBottom: '1.15rem', display: 'inline-flex', alignItems: 'center' }}>
+                                <div style={{ gap: '4px', background: 'rgba(99, 102, 241, 0.08)', color: '#4f46e5', padding: '2px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 800, marginBottom: '1.15rem', display: 'inline-flex', alignItems: 'center' }}>
                                   <Building2 size={10} /> {f.project_name}
                                 </div>
                               )}
@@ -716,16 +850,16 @@ export const FilesPage: React.FC = () => {
                                   href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="btn primary" 
-                                  style={{ flex: 1, padding: '7px', fontSize: '0.75rem', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                                  className="btn secondary" 
+                                  style={{ flex: 1, padding: '7px', fontSize: '0.75rem', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid var(--color-border)' }}
                                 >
                                   <Eye size={13} /> Xem tài liệu
                                 </a>
                                 <a 
                                   href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
                                   download={f.name}
-                                  className="btn outline" 
-                                  style={{ padding: '7px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  className="btn secondary" 
+                                  style={{ padding: '7px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)' }}
                                   title="Tải xuống"
                                 >
                                   <Download size={15} />
@@ -804,13 +938,13 @@ export const FilesPage: React.FC = () => {
                             <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                               <td data-label="Tên tài liệu" style={{ padding: '1.25rem 2rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                    <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }}>
                                       {getFileIcon(f.name).icon}
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                       <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
                                       {f.project_name && (
-                                        <span style={{ fontSize: '10px', color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
+                                        <span style={{ fontSize: '10px', color: '#4f46e5', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
                                           <Building2 size={10} /> {f.project_name}
                                         </span>
                                       )}

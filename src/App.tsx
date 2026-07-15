@@ -79,7 +79,7 @@ const AppTabs = () => {
 
   // Route protection mapping
   const adminPaths = ['/consultants', '/rounds', '/tickets', '/rules', '/integrations', '/settings', '/accounts', '/gatekeeper', '/capi'];
-  const userPaths = ['/', '/workspace', '/data', '/calendar', '/databank', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/support-tickets', '/attendance'];
+  const userPaths = ['/', '/workspace', '/data', '/calendar', '/databank', '/contacts', '/companies', '/deals', '/quotes', '/activities', '/products', '/invoices', '/expenses', '/reports-crm', '/suppliers', '/files', '/inventory', '/projects', '/cooperation-slips', '/deposits', '/support-tickets', '/attendance', '/fair-share'];
   const allPaths = [...userPaths, ...adminPaths];
   const isAdminPath = adminPaths.includes(currentPath);
 
@@ -183,6 +183,8 @@ const AppTabs = () => {
         return <Integrations key="integrations" />;
       case '/settings':
         return <Settings key="settings" />;
+      case '/accounts':
+        return <Accounts key="accounts" />;
       case '/gatekeeper':
         return <Gatekeeper key="gatekeeper" />;
       case '/fair-share':
@@ -478,7 +480,7 @@ export default function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <AuthProvider>
-          <Toaster position="top-right" containerStyle={{ zIndex: 999999 }} toastOptions={{ className: 'custom-toast' }} />
+          <Toaster position="top-right" containerStyle={{ zIndex: 999999999 }} toastOptions={{ className: 'custom-toast' }} />
           <Router>
             <Suspense fallback={<PageLoader />}>
               <Routes>

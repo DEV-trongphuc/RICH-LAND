@@ -1415,7 +1415,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(163, 20, 34, 0.3)' }}>
+            <span style={{ display: 'inline-flex', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', padding: 8, borderRadius: 12, boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)' }}>
               <Shield size={24} />
             </span>
             {t('AI Pre-screener')}
@@ -1442,10 +1442,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               e.currentTarget.style.borderColor = 'var(--color-border)';
             }}
           >
-            <Sparkles size={14} color="var(--color-primary)" /> {t('Hướng dẫn')}
+            <Sparkles size={14} color="#4f46e5" /> {t('Hướng dẫn')}
           </button>
 
-          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(163, 20, 34,0.15)' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(79, 70, 229, 0.15)' }} />
 
           {/* Settings Button */}
           <button
@@ -1467,12 +1467,12 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               e.currentTarget.style.borderColor = 'var(--color-border)';
             }}
           >
-            <Settings size={14} color="var(--color-primary)" />
+            <Settings size={14} color="#4f46e5" />
             <span className="hide-on-mobile">{t('Cấu hình quy tắc')}</span>
             <span className="mobile-only">{t('Cấu hình')}</span>
           </button>
 
-          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(163, 20, 34,0.15)' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 16, background: 'rgba(79, 70, 229, 0.15)' }} />
 
           {/* Lọc AI Toggle */}
           <div
@@ -1491,9 +1491,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
               transition: 'background 0.2s',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(163, 20, 34,0.05)';
+              e.currentTarget.style.background = 'rgba(79, 70, 229, 0.05)';
               const label = e.currentTarget.querySelector('.auto-approve-label') as HTMLSpanElement;
-              if (label) label.style.color = 'var(--color-primary)';
+              if (label) label.style.color = '#4f46e5';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = 'transparent';
@@ -1536,8 +1536,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
       {/* Intro explain card styled identically to FairShareAudit */}
       <div className="hide-on-mobile" style={{
-        background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.05) 0%, rgba(189, 29, 45, 0.1) 100%)',
-        border: '1px solid var(--color-primary-light)', borderLeft: '4px solid var(--color-primary)',
+        background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.05) 0%, rgba(124, 92, 246, 0.08) 100%)',
+        border: '1px solid rgba(79, 70, 229, 0.15)', borderLeft: '4px solid #4f46e5',
         borderRadius: 'var(--radius-lg)', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem'
       }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
@@ -1545,12 +1545,12 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             background: 'var(--color-card, #fff)',
             width: 40, height: 40, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: 'var(--color-primary)'
+            borderRadius: '50%', boxShadow: 'var(--shadow-sm)', color: '#4f46e5'
           }}>
             <Sparkles size={20} />
           </div>
           <div style={{ flex: 1 }}>
-            <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-primary)', marginBottom: 4, marginTop: 0 }}>
+            <h4 style={{ fontWeight: 700, fontSize: '1rem', color: '#4f46e5', marginBottom: 4, marginTop: 0 }}>
               {t("Bộ Lọc AI Pre-screener hoạt động thế nào?")}
             </h4>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', lineHeight: 1.6, margin: 0 }}>
@@ -1562,9 +1562,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             style={{
               padding: '6px 14px',
               borderRadius: '8px',
-              border: '1px solid var(--color-primary-light)',
+              border: '1px solid rgba(79, 70, 229, 0.25)',
               background: 'var(--color-surface)',
-              color: 'var(--color-primary)',
+              color: '#4f46e5',
               fontSize: '0.8125rem',
               fontWeight: 700,
               cursor: 'pointer',
@@ -1587,10 +1587,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           <div style={{
             marginTop: '0.5rem',
             paddingTop: '1.25rem',
-            borderTop: '1px dashed var(--color-primary-light)',
+            borderTop: '1px dashed rgba(79, 70, 229, 0.25)',
             animation: 'fadeIn 0.2s ease-out'
           }}>
-            <h5 style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-primary)' }}>
+            <h5 style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', fontWeight: 800, color: '#4f46e5' }}>
               {t('LUỒNG XỬ LÝ HIỆN TẠI (DYNAMIC FLOW):')}
             </h5>
 
@@ -1617,14 +1617,14 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     fontWeight: 600,
                     padding: '2px 8px',
                     borderRadius: '20px',
-                    background: 'rgba(163, 20, 34, 0.08)',
-                    color: '#a31422',
-                    border: '1px solid rgba(163, 20, 34, 0.15)',
+                    background: 'rgba(79, 70, 229, 0.08)',
+                    color: '#4f46e5',
+                    border: '1px solid rgba(79, 70, 229, 0.15)',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px'
                   }}>
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#a31422' }} />
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#4f46e5' }} />
                     {t('Thời gian thực (Realtime)')}
                   </span>
                 </div>
@@ -1645,11 +1645,11 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     gap: '5px',
                     padding: '2px 8px',
                     borderRadius: '20px',
-                    background: aiScreenerEnabled ? 'rgba(16, 185, 129, 0.08)' : 'rgba(163, 20, 34, 0.08)',
-                    border: aiScreenerEnabled ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(163, 20, 34, 0.2)',
+                    background: aiScreenerEnabled ? 'rgba(16, 185, 129, 0.08)' : 'rgba(79, 70, 229, 0.08)',
+                    border: aiScreenerEnabled ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(79, 70, 229, 0.2)',
                     fontSize: '0.6875rem',
                     fontWeight: 700,
-                    color: aiScreenerEnabled ? '#10b981' : '#a31422'
+                    color: aiScreenerEnabled ? '#10b981' : '#4f46e5'
                   }}>
                     {aiScreenerEnabled ? (
                       <>
@@ -1754,9 +1754,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       fontWeight: 700,
                       padding: '2px 8px',
                       borderRadius: '20px',
-                      background: 'rgba(163, 20, 34, 0.08)',
-                      color: '#a31422',
-                      border: '1px solid rgba(163, 20, 34, 0.2)',
+                      background: 'rgba(79, 70, 229, 0.08)',
+                      color: '#4f46e5',
+                      border: '1px solid rgba(79, 70, 229, 0.2)',
                       whiteSpace: 'nowrap'
                     }}>
                       {t('Ví dụ cấu hình')}
@@ -1781,7 +1781,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                             borderBottom: idx < aiScreenerConfigs.length - 1 ? '1px dashed var(--color-border)' : 'none',
                             paddingBottom: idx < aiScreenerConfigs.length - 1 ? 6 : 0
                           }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5' }}>
                               {cfg.name || `${t('Nhóm')} ${idx + 1}`}
                             </span>
                             <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
@@ -1821,7 +1821,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       borderBottom: '1px dashed var(--color-border)',
                       paddingBottom: 6
                     }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5' }}>
                         {t('Ví dụ: Nhóm Lọc Tự Động')}
                       </span>
                       <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
@@ -1836,7 +1836,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       flexDirection: 'column',
                       gap: 2
                     }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5' }}>
                         {t('Ví dụ: Nhóm Duyệt Tay')}
                       </span>
                       <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
@@ -1865,9 +1865,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       fontWeight: 700,
                       padding: '2px 8px',
                       borderRadius: '20px',
-                      background: 'rgba(163, 20, 34, 0.08)',
-                      color: '#a31422',
-                      border: '1px solid rgba(163, 20, 34, 0.2)',
+                      background: 'rgba(79, 70, 229, 0.08)',
+                      color: '#4f46e5',
+                      border: '1px solid rgba(79, 70, 229, 0.2)',
                       whiteSpace: 'nowrap'
                     }}>
                       {t('Ví dụ cấu hình')}
@@ -1906,8 +1906,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             display: 'flex',
             flexDirection: 'column',
             gap: '0.75rem',
-            background: theme === 'dark' ? 'rgba(163, 20, 34, 0.08)' : 'rgba(163, 20, 34, 0.02)',
-            border: theme === 'dark' ? '1px solid rgba(163, 20, 34, 0.15)' : '1px solid rgba(163, 20, 34, 0.08)',
+            background: theme === 'dark' ? 'rgba(79, 70, 229, 0.08)' : 'rgba(79, 70, 229, 0.02)',
+            border: theme === 'dark' ? '1px solid rgba(79, 70, 229, 0.15)' : '1px solid rgba(79, 70, 229, 0.08)',
             minHeight: '94px',
             height: 'auto',
             boxSizing: 'border-box'
@@ -1937,8 +1937,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             flexDirection: 'column',
             gap: '0.75rem',
             animation: 'fadeIn 0.3s ease-out',
-            background: theme === 'dark' ? 'rgba(163, 20, 34, 0.12)' : 'rgba(163, 20, 34, 0.04)',
-            border: theme === 'dark' ? '1px solid rgba(163, 20, 34, 0.25)' : '1px solid rgba(163, 20, 34, 0.12)',
+            background: theme === 'dark' ? 'rgba(79, 70, 229, 0.12)' : 'rgba(79, 70, 229, 0.04)',
+            border: theme === 'dark' ? '1px solid rgba(79, 70, 229, 0.25)' : '1px solid rgba(79, 70, 229, 0.12)',
             minHeight: '94px',
             height: 'auto',
             boxSizing: 'border-box',
@@ -1972,7 +1972,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                     style={{
                       width: `${aiPassedPercent}%`,
                       height: '100%',
-                      background: 'linear-gradient(90deg, var(--color-primary) 0%, #a78bfa 100%)',
+                      background: 'linear-gradient(90deg, #4f46e5 0%, #a78bfa 100%)',
                       transition: 'width 0.8s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}
                     title={`${t('Đạt chuẩn')}: ${aiPassedPercent}%`}
@@ -2065,9 +2065,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             style={{
               padding: 0,
               borderRadius: 8,
-              border: '1px solid var(--color-primary)',
-              background: 'rgba(189, 29, 45, 0.08)',
-              color: 'var(--color-primary)',
+              border: '1px solid #4f46e5',
+              background: 'rgba(79, 70, 229, 0.08)',
+              color: '#4f46e5',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -2087,9 +2087,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             style={{
               padding: 0,
               borderRadius: 8,
-              border: '1px solid var(--color-primary)',
-              background: 'rgba(163, 20, 34,0.08)',
-              color: 'var(--color-primary)',
+              border: '1px solid #4f46e5',
+              background: 'rgba(79, 70, 229, 0.08)',
+              color: '#4f46e5',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -2112,9 +2112,9 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             style={{
               padding: 0,
               borderRadius: 8,
-              border: '1px solid var(--color-primary)',
-              background: 'rgba(163, 20, 34,0.08)',
-              color: 'var(--color-primary)',
+              border: '1px solid #4f46e5',
+              background: 'rgba(79, 70, 229, 0.08)',
+              color: '#4f46e5',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -2176,7 +2176,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   borderRadius: '10px',
                   border: 'none',
                   background: isActiveTab ? 'var(--color-surface)' : 'transparent',
-                  color: isActiveTab ? 'var(--color-primary)' : 'var(--color-text-light)',
+                  color: isActiveTab ? '#4f46e5' : 'var(--color-text-light)',
                   boxShadow: isActiveTab ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
                   cursor: 'pointer',
                   fontWeight: 700,
@@ -2195,8 +2195,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                   height: '20px',
                   padding: '0 6px',
                   borderRadius: '10px',
-                  background: isActiveTab ? 'rgba(189, 29, 45, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                  color: isActiveTab ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  background: isActiveTab ? 'rgba(79, 70, 229, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  color: isActiveTab ? '#4f46e5' : 'var(--color-text-muted)',
                   fontSize: '0.72rem',
                   fontWeight: 700
                 }}>
@@ -2212,15 +2212,15 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
         <div className={`responsive-filter-row ${!showMobileFilters ? 'filter-hide-on-mobile' : ''}`} style={{
           position: 'relative', zIndex: 100,
           display: 'flex', gap: 12, padding: '14px 18px',
-          background: 'linear-gradient(135deg, rgba(163, 20, 34,0.04) 0%, rgba(189, 29, 45,0.02) 100%)',
+          background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.04) 0%, rgba(124, 92, 246, 0.02) 100%)',
           borderBottom: '1px solid var(--color-border)',
           flexWrap: 'wrap', alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#a31422', fontWeight: 700, fontSize: '0.8125rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#4f46e5', fontWeight: 700, fontSize: '0.8125rem' }}>
             <Filter size={14} />
             <span>{t('Bộ lọc')}</span>
           </div>
-          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(163, 20, 34,0.2)', margin: '0 4px' }} />
+          <div className="hide-on-mobile" style={{ width: 1, height: 20, background: 'rgba(79, 70, 229, 0.2)', margin: '0 4px' }} />
 
           <div className="mobile-stack" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: 260 }}>
             {/* Search Input */}
@@ -2337,10 +2337,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 marginRight: '8px',
                 padding: '0 16px',
                 borderRadius: 'var(--radius-lg)',
-                background: 'linear-gradient(135deg, #BD1D2D 0%, #a31422 100%)',
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
                 color: '#fff',
                 border: 'none',
-                boxShadow: '0 2px 6px rgba(189, 29, 45, 0.25)',
+                boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 transition: 'all 0.2s ease'
@@ -2361,10 +2361,10 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                 gap: '6px',
                 padding: '0 16px',
                 borderRadius: 'var(--radius-lg)',
-                background: 'linear-gradient(135deg, #a31422 0%, #a31422 100%)',
+                background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
                 color: '#fff',
                 border: 'none',
-                boxShadow: '0 2px 6px rgba(163, 20, 34, 0.25)',
+                boxShadow: '0 2px 6px rgba(99, 102, 241, 0.25)',
                 cursor: 'pointer',
                 fontWeight: 600,
                 transition: 'all 0.2s ease'
@@ -2468,7 +2468,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                               </div>
                             </div>
                           ) : (
-                            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, background: 'rgba(163, 20, 34,0.08)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
+                            <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, background: 'rgba(79, 70, 229, 0.08)', color: '#4f46e5', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>
                               <Zap size={12} /> {l.round_name || '-'}
                             </div>
                           )}
@@ -2477,7 +2477,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {activeTab !== 'assigned' && (
                               activeTab === 'ai_pending' ? (
-                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(163, 20, 34, 0.1)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ padding: '4px 10px', alignSelf: 'flex-start', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5', display: 'flex', alignItems: 'center', gap: 4 }}>
                                   <RefreshCw size={12} className="spin" /> {t('Chờ AI đánh giá')}
                                 </span>
                               ) : l.ai_screener_status === 'error' ? (
@@ -2737,7 +2737,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                           {new Date(l.created_at).toLocaleDateString('vi-VN')}
                         </div>
                         {l.round_name && (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(163, 20, 34,0.08)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(79, 70, 229, 0.08)', color: '#4f46e5', padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 700 }}>
                             <Zap size={10} /> {l.round_name}
                           </div>
                         )}
@@ -2749,7 +2749,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
                       background: activeTab === 'assigned'
                         ? 'var(--color-bg-alt)'
                         : activeTab === 'ai_pending'
-                          ? 'rgba(163, 20, 34, 0.04)'
+                          ? 'rgba(79, 70, 229, 0.04)'
                           : (l.ai_screener_status === 'error' || l.ai_screener_status === 'pending')
                             ? 'rgba(245, 158, 11, 0.04)'
                             : 'rgba(239, 68, 68, 0.04)',
@@ -6975,8 +6975,8 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
             transform: translateY(0);
           }
           15%, 35% {
-            border-color: var(--color-primary);
-            box-shadow: 0 8px 24px rgba(163, 20, 34, 0.12), 0 2px 4px rgba(163, 20, 34, 0.06);
+            border-color: #6366f1;
+            box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12), 0 2px 4px rgba(99, 102, 241, 0.06);
             transform: translateY(-4px);
           }
           50% {
@@ -6988,7 +6988,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
 
         .flow-step-number {
           position: relative;
-          background: linear-gradient(135deg, #a31422 0%, #a31422 100%);
+          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
           color: #fff;
           font-weight: 800;
           width: 24px;
@@ -6998,7 +6998,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           align-items: center;
           justify-content: center;
           font-size: 0.75rem;
-          box-shadow: 0 2px 6px rgba(163, 20, 34, 0.25);
+          box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
           flex-shrink: 0;
           z-index: 2;
         }
@@ -7008,7 +7008,7 @@ const GatekeeperInner = ({ isActive, searchParams, setSearchParams }: { isActive
           position: absolute;
           inset: -4px;
           border-radius: 50%;
-          border: 2px solid var(--color-primary);
+          border: 2px solid #6366f1;
           opacity: 0;
           z-index: 1;
           pointer-events: none;

@@ -934,7 +934,7 @@ class ContactController {
         $stmtCoop = $this->db->prepare("
             SELECT id FROM cooperation_slips 
             WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ? AND deleted_at IS NULL) 
-              AND status != 'rejected' AND deleted_at IS NULL LIMIT 1
+              AND status != 'rejected' LIMIT 1
         ");
         $stmtCoop->execute([$personId]);
         if ($stmtCoop->fetch()) {
@@ -982,6 +982,16 @@ class ContactController {
                 $stmtLeadUpdate = $this->db->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
                 $stmtLeadUpdate->execute([$personId]);
 
+                // Xóa toàn bộ thông tin công việc (activities) và ghi chú (notes) khi trả về Databank
+                $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)");
+                $stmtDelNotes->execute([$personId]);
+
+                $stmtDelActs = $this->db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)");
+                $stmtDelActs->execute([$personId]);
+
+                $stmtClearNotes = $this->db->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
+                $stmtClearNotes->execute([$personId]);
+
                 // Log distribution log for releasing to databank
                 $stmtLog = $this->db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
                 $stmtLog->execute([$leadId, null, null, 'released_to_kho', 'Tư vấn viên chủ động trả về Databank chung (do chỉ có 1 Sale chăm sóc)']);
@@ -994,9 +1004,16 @@ class ContactController {
             respond(200, ['action' => 'released'], 'Đã trả khách hàng về Databank chung thành công!');
         } else {
             // 2 or more sales own this Person in parallel.
-            // Just soft-delete this sale's contact row!
-            $stmtDelete = $this->db->prepare("UPDATE contacts SET deleted_at = NOW() WHERE id = ? AND tenant_id = ?");
+            // Just soft-delete this sale's contact row and clear notes!
+            $stmtDelete = $this->db->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE id = ? AND tenant_id = ?");
             $stmtDelete->execute([$id, $tid]);
+
+            // Xóa thông tin công việc (activities) và ghi chú (notes) liên quan đến contact bị xóa này
+            $stmtDelNotes = $this->db->prepare("DELETE FROM notes WHERE entity_type = 'contact' AND entity_id = ?");
+            $stmtDelNotes->execute([$id]);
+
+            $stmtDelActs = $this->db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id = ?");
+            $stmtDelActs->execute([$id]);
 
             // Log distribution log for removing parallel contact
             if ($leadId && $consultantId) {

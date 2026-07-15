@@ -1991,7 +1991,7 @@ function releaseExpiredLeadsToKho($conn) {
                     $checkCoopStmt = $conn->prepare("
                         SELECT id FROM cooperation_slips 
                         WHERE contact_id IN (SELECT id FROM contacts WHERE person_id = ? AND deleted_at IS NULL) 
-                          AND status != 'rejected' AND deleted_at IS NULL LIMIT 1
+                          AND status != 'rejected' LIMIT 1
                     ");
                     $checkCoopStmt->bind_param("i", $personId);
                     $checkCoopStmt->execute();
@@ -2018,11 +2018,37 @@ function releaseExpiredLeadsToKho($conn) {
                         $upd->close();
                     }
 
-                    // Soft-delete the expired contacts so the claim slot becomes available again
-                    $updContacts = $conn->prepare("UPDATE contacts SET deleted_at = NOW() WHERE person_id = ? AND security_expires_at <= NOW() AND deleted_at IS NULL");
+                    // Delete notes records for these contacts
+                    $stmtDelNotes = $conn->prepare("
+                        DELETE FROM notes 
+                        WHERE entity_type = 'contact' 
+                          AND entity_id IN (SELECT id FROM contacts WHERE person_id = ?)
+                    ");
+                    $stmtDelNotes->bind_param("i", $personId);
+                    $stmtDelNotes->execute();
+                    $stmtDelNotes->close();
+
+                    // Delete activities records for these contacts
+                    $stmtDelActs = $conn->prepare("
+                        DELETE FROM activities 
+                        WHERE related_type = 'contact' 
+                          AND related_id IN (SELECT id FROM contacts WHERE person_id = ?)
+                    ");
+                    $stmtDelActs->bind_param("i", $personId);
+                    $stmtDelActs->execute();
+                    $stmtDelActs->close();
+
+                    // Soft-delete the expired contacts and clear notes
+                    $updContacts = $conn->prepare("UPDATE contacts SET deleted_at = NOW(), notes = NULL WHERE person_id = ? AND security_expires_at <= NOW() AND deleted_at IS NULL");
                     $updContacts->bind_param("i", $personId);
                     $updContacts->execute();
                     $updContacts->close();
+
+                    // Clear notes for all contacts of this person (just in case)
+                    $updAllNotes = $conn->prepare("UPDATE contacts SET notes = NULL WHERE person_id = ?");
+                    $updAllNotes->bind_param("i", $personId);
+                    $updAllNotes->execute();
+                    $updAllNotes->close();
 
                     // Clear assignment on leads table
                     $updLeads = $conn->prepare("UPDATE leads SET assigned_to = NULL, last_assigned_at = NULL WHERE person_id = ?");
