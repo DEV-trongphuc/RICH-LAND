@@ -969,7 +969,7 @@ export const ContactsPage: React.FC = () => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            style={{ overflow: 'hidden', marginBottom: '0.75rem' }}
+            style={{ overflow: showAdvancedFilters ? 'visible' : 'hidden', marginBottom: '0.75rem' }}
           >
             <div className="card" style={{ padding: '1.25rem', border: '1px solid var(--color-primary-light)', background: 'var(--color-surface)', borderRadius: '16px' }}>
               {/* Nhóm 1: Thông tin khách hàng */}
