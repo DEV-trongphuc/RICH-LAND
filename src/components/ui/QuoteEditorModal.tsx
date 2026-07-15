@@ -103,6 +103,12 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
       api.get('/deals').then(r => setDeals(r.data.data?.items || r.data.data || [])).catch(() => {});
       
       if (quote) {
+        const qSub = Number(quote.subtotal) || 0;
+        const qDisc = Number(quote.discount) || 0;
+        const qTax = Number(quote.tax) || 0;
+        const base = qSub - qDisc;
+        const calculatedTaxRate = base > 0 ? Math.round((qTax / base) * 100) : 10;
+
         setForm({
           title: quote.title || '',
           contact_id: quote.contact_id || null,
@@ -112,7 +118,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
           notes: quote.notes || '',
           terms: quote.terms || '',
           discount: Number(quote.discount) || 0,
-          tax_rate: 10,
+          tax_rate: calculatedTaxRate,
         });
         api.get(`/quotes/${quote.id}`).then(r => {
           setItems(r.data.data?.items || []);
