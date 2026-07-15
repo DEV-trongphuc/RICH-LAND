@@ -131,32 +131,31 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
             <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: 8 }}>{t("Điều kiện kích hoạt")}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {(() => {
-                let parsed = [];
-                if (rule.conditions_json) {
-                  try {
-                    parsed = typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
-                  } catch (e) {
-                    parsed = [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
+                const parsed = (() => {
+                  if (rule.conditions_json) {
+                    try {
+                      return typeof rule.conditions_json === 'string' ? JSON.parse(rule.conditions_json) : rule.conditions_json;
+                    } catch (e) {
+                      return [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
+                    }
                   }
-                } else {
-                  parsed = [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
-                }
+                  return [{ col: rule.condition_column, op: rule.condition_operator, val: rule.condition_value }];
+                })();
 
                 // Normalize to new structure: { conditions: [...] }
-                let normalizedBranches = [];
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  if (parsed[0].col) {
-                    normalizedBranches = [{ conditions: parsed }];
-                  } else if (Array.isArray(parsed[0])) {
-                    normalizedBranches = parsed.map(b => ({ conditions: b }));
-                  } else if (parsed[0].conditions) {
-                    normalizedBranches = parsed;
-                  } else {
-                    normalizedBranches = [{ conditions: [] }];
+                const normalizedBranches = (() => {
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    if (parsed[0].col) {
+                      return [{ conditions: parsed }];
+                    } else if (Array.isArray(parsed[0])) {
+                      return parsed.map(b => ({ conditions: b }));
+                    } else if (parsed[0].conditions) {
+                      return parsed;
+                    }
+                    return [{ conditions: [] }];
                   }
-                } else {
-                  normalizedBranches = [{ conditions: [] }];
-                }
+                  return [{ conditions: [] }];
+                })();
 
                 return normalizedBranches.map((branch: any, bIndex: number) => (
                   <div key={bIndex} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -254,7 +253,7 @@ const SortableRuleItem = ({ rule, idx, connections, onEdit, onDelete, isDragDisa
 
 const parseMarkdownToHtml = (markdown: string) => {
   if (!markdown) return '';
-  let html = markdown
+  const html = markdown
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -263,7 +262,7 @@ const parseMarkdownToHtml = (markdown: string) => {
     .replace(/^# (.*$)/gim, '<h2 style="font-size: 1.3rem; font-weight: 800; color: var(--color-primary); margin-top: 1.5rem; margin-bottom: 1rem;">$1</h2>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/^\s*[\-\*]\s+(.*$)/gim, '<li style="margin-left: 1.25rem; margin-bottom: 0.25rem; list-style-type: disc;">$1</li>')
+    .replace(/^\s*[-*]\s+(.*$)/gim, '<li style="margin-left: 1.25rem; margin-bottom: 0.25rem; list-style-type: disc;">$1</li>')
     .replace(/\n\n/g, '<div style="margin-bottom: 0.75rem;"></div>')
     .replace(/\n/g, '<br/>');
 
@@ -425,7 +424,7 @@ const RuleSettingsInner = () => {
         const conns = connRes.data.map((c: any) => ({
           ...c,
           mappings: mapRes.data.filter((m: any) => Number(m.connection_id) === Number(c.id))
-        })).filter((c: any) => !Boolean(Number(c.is_silent)));
+        })).filter((c: any) => Number(c.is_silent) !== 1);
         setConnections(conns);
       }
     } catch (e: any) {
@@ -655,19 +654,20 @@ const RuleSettingsInner = () => {
   ];
 
   const filteredRules = rules.filter(r => {
-    let matchConnection = true;
-    if (activeFilter === 'all') {
-      matchConnection = true;
-    } else if (activeFilter === null) {
-      matchConnection = r.connection_id === null || r.connection_id === '' || r.connection_id === 'all';
-    } else {
-      if (r.connection_id === null || r.connection_id === '' || r.connection_id === 'all') {
-        matchConnection = false;
+    const matchConnection = (() => {
+      if (activeFilter === 'all') {
+        return true;
+      } else if (activeFilter === null) {
+        return r.connection_id === null || r.connection_id === '' || r.connection_id === 'all';
       } else {
-        const cIds = r.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
-        matchConnection = cIds.includes(activeFilter);
+        if (r.connection_id === null || r.connection_id === '' || r.connection_id === 'all') {
+          return false;
+        } else {
+          const cIds = r.connection_id.toString().split(',').map((id: string) => Number(id.trim()));
+          return cIds.includes(activeFilter);
+        }
       }
-    }
+    })();
 
     let matchRound = true;
     if (activeRoundFilter !== 'all') {
@@ -1664,15 +1664,17 @@ const RuleSettingsInner = () => {
                           parsedConds = typeof r.conditions_json === 'string' ? JSON.parse(r.conditions_json) : r.conditions_json;
                         } catch (e) {}
                       }
-                      let condText = "";
-                      if (Array.isArray(parsedConds) && parsedConds.length > 0) {
-                        const firstBranch = parsedConds[0];
-                        const conds = firstBranch.conditions || [];
-                        condText = conds.map((c: any) => `${c.col} ${c.op} "${c.val}"`).join(' VÀ ');
-                        if (parsedConds.length > 1) condText += ` (+ ${parsedConds.length - 1} nhánh OR)`;
-                      } else {
-                        condText = `${r.condition_column} ${r.condition_operator} "${r.condition_value}"`;
-                      }
+                      const condText = (() => {
+                        if (Array.isArray(parsedConds) && parsedConds.length > 0) {
+                          const firstBranch = parsedConds[0];
+                          const conds = firstBranch.conditions || [];
+                          let txt = conds.map((c: any) => `${c.col} ${c.op} "${c.val}"`).join(' VÀ ');
+                          if (parsedConds.length > 1) txt += ` (+ ${parsedConds.length - 1} nhánh OR)`;
+                          return txt;
+                        } else {
+                          return `${r.condition_column} ${r.condition_operator} "${r.condition_value}"`;
+                        }
+                      })();
                       
                       return (
                         <div key={idx} style={{ 

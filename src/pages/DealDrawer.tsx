@@ -479,7 +479,20 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         </div>
                         <div className="form-group">
                           <label className="form-label">Ngày dự kiến chốt</label>
-                          <input className="form-input" type="date" value={formData?.close || ''} onChange={e => setFormData({...formData, close: e.target.value})} />
+                          <input className="form-input" type="date" value={formData?.expected_close_date || ''} onChange={e => setFormData({...formData, expected_close_date: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Độ ưu tiên (Priority)</label>
+                          <CustomSelect
+                            options={[
+                              { value: 'low', label: 'Thấp (Low)' },
+                              { value: 'medium', label: 'Trung bình (Medium)' },
+                              { value: 'high', label: 'Cao (High)' }
+                            ]}
+                            value={formData?.priority || 'medium'}
+                            onChange={val => setFormData({...formData, priority: val as string})}
+                            disabled={isViewer}
+                          />
                         </div>
                       </div>
                     </div>
