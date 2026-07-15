@@ -121,15 +121,15 @@ export const Pagination: React.FC<PaginationProps> = ({
                   fontSize: '0.8125rem',
                   fontWeight: page === p ? 600 : 650,
                   border: page === p ? 'none' : '1px solid var(--color-border-light)',
-                  background: page === p ? 'var(--color-text)' : 'var(--color-surface)',
-                  color: page === p ? 'var(--color-surface)' : 'var(--color-text)',
+                  background: page === p ? 'var(--color-primary)' : 'var(--color-surface)',
+                  color: page === p ? '#ffffff' : 'var(--color-text)',
                   cursor: page === p ? 'default' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   transition: 'all 0.15s ease',
                   padding: 0,
-                  boxShadow: page === p ? 'var(--shadow-sm)' : 'none'
+                  boxShadow: page === p ? '0 4px 10px rgba(189, 29, 45, 0.2)' : 'none'
                 }}
                 onMouseEnter={e => {
                   if (page !== p) {
