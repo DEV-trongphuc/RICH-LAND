@@ -17,3 +17,7 @@
 * **Rule**: Đối với tín hiệu Conversion API (CAPI) gửi về Meta:
   * Tuyệt đối **không bắn lùi tín hiệu** (không gửi sự kiện hoàn trả hoặc hạ cấp) về Meta khi deal bị bể hoặc tụt trạng thái.
   * Tín hiệu chỉ đi một chiều (Forward-only). Một khi đã gửi tín hiệu "Purchase" (Mua hàng) đi là kết thúc giao dịch CAPI cho lead đó.
+
+## 5. Quy trình Deploy & Git Commit
+* **Rule**: Bất cứ khi nào có yêu cầu deploy ("deploy", "deploy đi",...), hệ thống phải thực hiện **song song cả 2 nhiệm vụ**: Chạy lệnh deploy (`npm run deploy`) và tự động Commit/Push code mới nhất lên kho Git (`git add .`, `git commit`, `git push origin main`) để đồng bộ tuyệt đối giữa server và mã nguồn gốc.
+
