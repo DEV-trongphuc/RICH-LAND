@@ -1192,6 +1192,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const handleSignCoopSlip = async (signatureImg: string) => {
     if (!coopSlip) return;
 
+    // Check for expected revenue
+    if (!formData.expected_revenue || Number(formData.expected_revenue) === 0) {
+      addToast('Vui lòng nhập Doanh thu dự kiến trước khi ký xác nhận!', 'error');
+      return;
+    }
+
     // Check for mandatory files based on admin configuration
     const files = coopSlip.attachment_url ? coopSlip.attachment_url.split(',') : [];
     if (coopDefaultFiles && coopDefaultFiles.length > 0) {
@@ -1576,9 +1582,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         const secondaryTasks = allTasks.filter((a: any) => {
           if (a.type !== 'task') return false;
           if (rawActivities.some((ra: any) => ra.id === a.id)) return false;
-          if (a.body && a.body.startsWith('{"erp_task":')) {
+          if (a.body && a.body.trim().startsWith('{"erp_task"')) {
             try {
-              const parsed = JSON.parse(a.body);
+              const parsed = JSON.parse(a.body.trim());
               const rContactIds = parsed.erp_task?.related_contact_ids || [];
               return rContactIds.includes(Number(contact.id)) || rContactIds.includes(String(contact.id));
             } catch (e) {
@@ -1591,15 +1597,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         const combinedActivities = [...rawActivities, ...secondaryTasks];
         setDrawerActivities(combinedActivities);
         setTasks(combinedActivities.filter((a: any) => a.type === 'task').map((a: any) => {
-          const link = a.body && !a.body.startsWith('{"erp_task":') 
+          const link = a.body && !a.body.trim().startsWith('{"erp_task"') 
             ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') 
             : '';
           
           let description = '';
           if (a.body) {
-            if (a.body.startsWith('{"erp_task":')) {
+            const bodyTrimmed = a.body.trim();
+            if (bodyTrimmed.startsWith('{"erp_task"')) {
               try {
-                const parsed = JSON.parse(a.body);
+                const parsed = JSON.parse(bodyTrimmed);
                 description = parsed.erp_task?.description || '';
               } catch (e) {
                 description = a.body;
@@ -1702,7 +1709,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (tabToLoad === 'docs') {
         const docsRes = await api.get(`/cloud-files?contact_id=${contact.id}&limit=1000`);
         const docsData = docsRes.data.data?.items || [];
-        setDocs(docsData.map((d: any) => ({
+        const mappedDocs = docsData.map((d: any) => ({
           id: d.id,
           name: d.name,
           date: new Date(d.created_at).toLocaleDateString('vi-VN'),
@@ -1710,7 +1717,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           type: d.name.split('.').pop() || 'file',
           path: d.file_path,
           category: d.category
-        })));
+        }));
+
+        // Fetch and include cooperation slip attachments dynamically
+        let activeCoopSlip = coopSlip;
+        if (!activeCoopSlip) {
+          try {
+            const resSlips = await fetchAPI('cooperation-slips');
+            if (resSlips.success) {
+              activeCoopSlip = (resSlips.data || []).find((s: any) => Number(s.contact_id) === Number(contact.id)) || null;
+            }
+          } catch (coopErr) {
+            console.error("Lỗi khi tải thông tin hợp tác cho tài liệu:", coopErr);
+          }
+        }
+
+        if (activeCoopSlip && activeCoopSlip.attachment_url) {
+          const coopFiles = activeCoopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean);
+          coopFiles.forEach((fileUrl: string, idx: number) => {
+            const filename = fileUrl.split('/').pop() || 'coop_file';
+            mappedDocs.push({
+              id: `coop_slip_attachment_${idx}`,
+              name: filename,
+              date: activeCoopSlip.created_at ? new Date(activeCoopSlip.created_at).toLocaleDateString('vi-VN') : new Date().toLocaleDateString('vi-VN'),
+              size: '—',
+              type: filename.split('.').pop() || 'file',
+              path: fileUrl,
+              category: 'Tài liệu Hợp tác & Hoa hồng',
+              isCoopAttachment: true
+            });
+          });
+        }
+
+        setDocs(mappedDocs);
       }
     } catch (e: any) {
       console.error("Error fetching tab data:", e);
@@ -4850,6 +4889,84 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </div>
                           )}
 
+                          {/* Expected Revenue Input for Cooperation */}
+                          <div className="card-panel" style={{ padding: '1.5rem', marginBottom: '1.25rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                              <div style={{ flex: 1, minWidth: '200px' }}>
+                                <h4 style={{ fontWeight: 700, marginBottom: '6px', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <DollarSign size={18} /> Doanh thu dự kiến (Bắt buộc để ký)
+                                </h4>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                                  Doanh thu dự kiến là thông tin bắt buộc phải nhập trước khi ký xác nhận tỷ lệ chia sẻ hoa hồng.
+                                </p>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '320px', maxWidth: '100%', flexShrink: 0 }}>
+                                <div style={{ flex: 1 }}>
+                                  <CurrencyInput
+                                    value={formData.expected_revenue || 0}
+                                    onChange={val => setFormData((prev: any) => ({ ...prev, expected_revenue: val }))}
+                                    placeholder="VD: 1.500.000.000"
+                                  />
+                                </div>
+                                <button
+                                  className="btn primary"
+                                  style={{ padding: '8px 16px', fontSize: '0.825rem', height: '34px', flexShrink: 0 }}
+                                  disabled={isSubmitting}
+                                  onClick={async () => {
+                                    setIsSubmitting(true);
+                                    try {
+                                      await api.put(`/contacts/${contact.id}`, {
+                                        expected_revenue: formData.expected_revenue,
+                                        company_id: formData.company_id,
+                                        company_name: formData.company_name,
+                                        owner_id: formData.owner_id,
+                                        first_name: formData.first_name,
+                                        last_name: formData.last_name,
+                                        email: formData.email,
+                                        phone: formData.phone,
+                                        mobile: formData.mobile,
+                                        job_title: formData.job_title,
+                                        department: formData.department,
+                                        source: formData.source,
+                                        status: formData.status,
+                                        notes: formData.notes,
+                                        birthday: formData.birthday,
+                                        address: formData.address,
+                                        city: formData.city,
+                                        ward: formData.ward,
+                                        win_probability: formData.win_probability,
+                                        last_contact: formData.last_contact,
+                                        gender: formData.gender,
+                                        zalo_link: formData.zalo_link,
+                                        fb_link: formData.fb_link,
+                                        customer_type: formData.customer_type,
+                                        industry: formData.industry,
+                                        budget_range: formData.budget_range,
+                                        project_id: formData.project_id,
+                                        campaign_id: formData.campaign_id,
+                                        ttl1_completed: formData.ttl1_completed,
+                                        ttl1_data: formData.ttl1_data,
+                                        stage_id: formData.stage_id,
+                                        pipeline_status: formData.pipeline_status,
+                                        temperature: formData.temperature,
+                                        suggested_temperature: formData.suggested_temperature
+                                      });
+                                      setBaseData(prev => ({ ...prev, expected_revenue: formData.expected_revenue }));
+                                      addToast('Đã cập nhật doanh thu dự kiến thành công!', 'success');
+                                      window.dispatchEvent(new CustomEvent('contact-updated'));
+                                    } catch (err: any) {
+                                      addToast(err.response?.data?.message || 'Lỗi khi cập nhật doanh thu', 'error');
+                                    } finally {
+                                      setIsSubmitting(false);
+                                    }
+                                  }}
+                                >
+                                  Lưu
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
                           {/* Cooperation Slip Attachment */}
                           <div className="card-panel" style={{ padding: '1.5rem' }}>
                             <h4 style={{ fontWeight: 700, marginBottom: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -5345,7 +5462,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 const hasLink = !!linkMatch || !!ev.expense_image_url;
                                 const linkUrl = linkMatch ? linkMatch[1].trim() : (ev.expense_image_url || '');
                                 let displayNoteText = linkMatch ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : (ev.note || '');
-                                if (displayNoteText.startsWith('{"erp_task":')) {
+                                if (displayNoteText.trim().startsWith('{"erp_task"')) {
                                   try {
                                     const parsed = JSON.parse(displayNoteText);
                                     displayNoteText = parsed.erp_task?.description || '';
@@ -6722,7 +6839,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </a>
                                   <p className="text-xs text-light mt-1">Tải lên: {doc.date} • {doc.size}</p>
                                 </div>
-                                {isOwnerOrAdmin && (
+                                {isOwnerOrAdmin && !doc.isCoopAttachment && (
                                   <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
                                     <button
                                       style={{
