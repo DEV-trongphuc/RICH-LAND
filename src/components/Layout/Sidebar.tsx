@@ -341,13 +341,13 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         {/* Collapse Button */}
         <button
           onClick={onToggleCollapse}
-          className="responsive-hide-mobile"
+          className="responsive-hide-mobile no-active-scale"
           style={{
-            position: 'absolute', right: -12, top: 36, transform: 'translateY(-50%)',
-            width: 24, height: 24, borderRadius: '50%', background: 'var(--color-surface)', color: 'var(--color-text)',
+            position: 'absolute', right: -12, top: '50%', transform: 'translateY(-50%)',
+            width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary)', color: '#ffffff',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 200, border: '1px solid var(--color-border)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s',
+            cursor: 'pointer', zIndex: 200, border: 'none',
+            boxShadow: '0 2px 10px rgba(189, 29, 45, 0.4)', transition: 'all 0.2s',
             opacity: isHovered ? 1 : 0,
             visibility: isHovered ? 'visible' : 'hidden',
             pointerEvents: isHovered ? 'auto' : 'none'

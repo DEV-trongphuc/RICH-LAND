@@ -3558,8 +3558,8 @@ select:focus {
 }
 
 /* Premium Tactile Mobile Feedback */
-button:active, 
-.btn:active, 
+button:not(.no-active-scale):active, 
+.btn:not(.no-active-scale):active, 
 .timeline-card:active, 
 .detail-action-btn:active,
 .interactive-tab-btn:active {
