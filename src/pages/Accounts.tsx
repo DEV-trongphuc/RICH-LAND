@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw, Loader2 } from 'lucide-react';
+import { Search, Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw, Loader2 } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -176,6 +176,7 @@ const AccountsInner = () => {
 
   const [activeTab, setActiveTab] = useState<'accounts' | 'logs'>('accounts');
   const [accountsPage, setAccountsPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
   const ACCOUNTS_PER_PAGE = 10;
   const [logs, setLogs] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
@@ -467,8 +468,19 @@ const AccountsInner = () => {
   const totalLogPages = Math.ceil(logs.length / LOGS_PER_PAGE);
   const paginatedLogs = logs.slice((logsPage - 1) * LOGS_PER_PAGE, logsPage * LOGS_PER_PAGE);
 
-  const totalAccountsPages = Math.ceil(accounts.length / ACCOUNTS_PER_PAGE);
-  const paginatedAccounts = accounts.slice((accountsPage - 1) * ACCOUNTS_PER_PAGE, accountsPage * ACCOUNTS_PER_PAGE);
+  const filteredAccounts = accounts.filter(acc => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    return (
+      (acc.name && acc.name.toLowerCase().includes(query)) ||
+      (acc.email && acc.email.toLowerCase().includes(query)) ||
+      (acc.username && acc.username.toLowerCase().includes(query)) ||
+      (acc.role && acc.role.toLowerCase().includes(query))
+    );
+  });
+
+  const totalAccountsPages = Math.ceil(filteredAccounts.length / ACCOUNTS_PER_PAGE);
+  const paginatedAccounts = filteredAccounts.slice((accountsPage - 1) * ACCOUNTS_PER_PAGE, accountsPage * ACCOUNTS_PER_PAGE);
 
   if (isSale) {
     return (
@@ -727,6 +739,73 @@ const AccountsInner = () => {
             <TableSkeleton cols={6} rows={5} />
           ) : (
             <>
+            <div style={{
+              padding: '1.25rem 1.5rem',
+              borderBottom: '1px solid var(--color-border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: 'var(--color-surface)',
+              gap: '1rem',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ position: 'relative', width: '100%', maxWidth: '360px' }}>
+                <input
+                  type="text"
+                  placeholder={t('Tìm kiếm tên, email, chức vụ...')}
+                  value={searchQuery}
+                  onChange={e => {
+                    setSearchQuery(e.target.value);
+                    setAccountsPage(1);
+                  }}
+                  className="form-input"
+                  style={{
+                    paddingLeft: '2.5rem',
+                    borderRadius: '10px',
+                    fontSize: '0.875rem',
+                    width: '100%'
+                  }}
+                />
+                <Search 
+                  size={16} 
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--color-text-muted)',
+                    pointerEvents: 'none'
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setAccountsPage(1);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-text-muted)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                {t('Tổng số')}: <strong style={{ color: 'var(--color-text)' }}>{filteredAccounts.length}</strong> / {accounts.length} {t('tài khoản')}
+              </div>
+            </div>
             <div className="table-wrap responsive-table-wrap mobile-card-table" style={{ border: 'none', borderRadius: 0 }}>
               <table className="mobile-table-compact" style={{ width: '100%', minWidth: 850, borderCollapse: 'collapse' }}>
                 <thead>
