@@ -21,6 +21,9 @@ class UserController {
         try {
             $this->db->exec("ALTER TABLE users ADD COLUMN bank_account VARCHAR(100) NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE users ADD COLUMN permissions_json LONGTEXT NULL");
+        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {
@@ -53,7 +56,7 @@ class UserController {
         $whereClause = implode(" AND ", $where);
         
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,team_id FROM users WHERE $whereClause ORDER BY full_name");
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,team_id,permissions_json FROM users WHERE $whereClause ORDER BY full_name");
             $stmt->execute($params);
             respond(200,$stmt->fetchAll());
         } catch (PDOException $e) {
@@ -96,7 +99,7 @@ class UserController {
     public function show(array $auth,int $id): void {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
         try {
-            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account FROM users WHERE id=? AND tenant_id=?");
+            $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at,dob,gender,citizen_id,address,bank_name,bank_account,permissions_json FROM users WHERE id=? AND tenant_id=?");
             $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         } catch (PDOException $e) {
             $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
@@ -109,7 +112,7 @@ class UserController {
         if (!in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         
         $b = getBody();
-        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account'];
+        $fields = ['email', 'full_name', 'phone', 'avatar_url', 'is_active', 'dob', 'gender', 'citizen_id', 'address', 'bank_name', 'bank_account', 'permissions_json'];
         if (in_array($auth['role'], ['admin', 'super_admin', 'superadmin', 'director'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';

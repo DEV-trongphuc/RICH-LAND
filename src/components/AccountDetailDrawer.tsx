@@ -5,7 +5,7 @@ import {
   X, Camera, ChevronDown, ChevronUp, Save, Trash2, Download, 
   Paperclip, Loader2, Eye, EyeOff, User, Shield, Info, Send, 
   Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText,
-  CreditCard, PhoneCall
+  CreditCard, PhoneCall, Lock
 } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
@@ -147,6 +147,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const fileInputRef = useRef<HTMLInputElement>(null);
   const docInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isPermissionModalOpen, setIsPermissionModalOpen] = useState(false);
+  const [permissionsJson, setPermissionsJson] = useState<any>({});
+  const [managerTeams, setManagerTeams] = useState<number[]>([]);
+  const [allTeams, setAllTeams] = useState<any[]>([]);
 
   // Zalo Bot Helpers
   const [quickMsgText, setQuickMsgText] = useState('');
@@ -156,6 +160,21 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   // Reset/Load form on account change
   useEffect(() => {
     if (!isOpen) return;
+
+    // Fetch all teams
+    const fetchTeams = async () => {
+      try {
+        const res = await fetchAPI('teams');
+        if (res && Array.isArray(res)) {
+          setAllTeams(res);
+        } else if (res?.success && Array.isArray(res.data)) {
+          setAllTeams(res.data);
+        }
+      } catch (e) {
+        console.error("Lỗi tải danh sách teams:", e);
+      }
+    };
+    fetchTeams();
 
     if (account) {
       setLoading(true);
@@ -188,6 +207,12 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setCitizenId(d.citizen_id || '');
             setBankName(d.bank_name || '');
             setBankAccount(d.bank_account || '');
+            setManagerTeams(d.manager_teams || []);
+            try {
+              setPermissionsJson(d.permissions_json ? JSON.parse(d.permissions_json) : {});
+            } catch {
+              setPermissionsJson({});
+            }
 
             let addressPayload = d.address || '';
             try {
@@ -304,6 +329,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setWorkEndTime('17:30');
       setScheduleMode('daily');
       setWorkSchedule(DEFAULT_SCHEDULE);
+      setPermissionsJson({});
+      setManagerTeams([]);
 
       setDocuments([]);
       setLoading(false);
@@ -525,7 +552,9 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         citizen_id: citizenId || null,
         address: addressPayload,
         bank_name: bankName || null,
-        bank_account: bankAccount || null
+        bank_account: bankAccount || null,
+        permissions_json: JSON.stringify(permissionsJson),
+        manager_teams: managerTeams
       };
 
       const resAccount = await fetchAPI(action, {
@@ -947,7 +976,32 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
                     <Shield size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ & TÀI KHOẢN')}
                   </span>
-                  {openSections.account ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
+                    {isAdmin && account && (
+                      <button
+                        type="button"
+                        className="btn primary sm hover-lift"
+                        onClick={() => setIsPermissionModalOpen(true)}
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.75rem',
+                          height: '26px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          borderRadius: '6px',
+                          background: 'var(--color-primary)',
+                          border: 'none',
+                          color: 'white',
+                          cursor: 'pointer',
+                          fontWeight: 700
+                        }}
+                      >
+                        <Shield size={12} /> {t('Phân quyền chi tiết')}
+                      </button>
+                    )}
+                    {openSections.account ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </div>
                 </div>
 
                 {openSections.account && (
@@ -1614,6 +1668,275 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           )}
         </div>
       </motion.div>
+
+      {/* Detailed Permission Modal */}
+      <AnimatePresence>
+        {isPermissionModalOpen && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '1.5rem'
+          }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              style={{
+                background: 'var(--color-surface)',
+                borderRadius: '24px',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-xl)',
+                width: '720px',
+                maxWidth: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                maxHeight: '85vh',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Modal Header */}
+              <div style={{
+                padding: '1.25rem 1.5rem',
+                borderBottom: '1px solid var(--color-border-light)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--color-bg-light)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: 'var(--color-primary-light)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--color-primary)'
+                  }}>
+                    <Shield size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontWeight: 800, fontSize: '1.125rem', color: 'var(--color-text)', margin: 0 }}>
+                      Phân quyền chi tiết: {name}
+                    </h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                      Cài đặt các nhóm quản lý và quyền thao tác chi tiết trên từng module.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPermissionModalOpen(false)}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    cursor: 'pointer',
+                    color: 'var(--color-text-muted)',
+                    padding: '4px'
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
+                
+                {/* 1. TEAM LEADERSHIP */}
+                <div>
+                  <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    1. Nhóm quản lý (Manager Team Control)
+                  </h4>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+                    Chọn các nhóm/phòng ban mà nhân viên này trực tiếp quản lý, chỉ đạo (áp dụng cho vai trò Trưởng nhóm/Manager).
+                  </p>
+                  
+                  {allTeams.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', borderRadius: '12px', color: 'var(--color-text-light)' }}>
+                      Chưa có nhóm nào trên hệ thống
+                    </div>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+                      {allTeams.map((team: any) => {
+                        const isChecked = managerTeams.includes(team.id);
+                        return (
+                          <label
+                            key={team.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '10px 12px',
+                              background: isChecked ? 'var(--color-primary-light)' : 'var(--color-bg-light)',
+                              border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                              borderRadius: '12px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              fontSize: '0.8125rem',
+                              fontWeight: 600,
+                              color: isChecked ? 'var(--color-primary)' : 'var(--color-text)'
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setManagerTeams([...managerTeams, team.id]);
+                                } else {
+                                  setManagerTeams(managerTeams.filter(id => id !== team.id));
+                                }
+                              }}
+                              style={{
+                                accentColor: 'var(--color-primary)',
+                                width: '15px',
+                                height: '15px',
+                                cursor: 'pointer'
+                              }}
+                            />
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <p style={{ margin: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</p>
+                              {team.leader_name && (
+                                <span style={{ fontSize: '0.6875rem', color: isChecked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                                  Trưởng nhóm: {team.leader_name}
+                                </span>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border-light)', margin: 0 }} />
+
+                {/* 2. DETAILED MODULE PERMISSIONS */}
+                <div>
+                  <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    2. Quyền thao tác các Modules (Module Permissions)
+                  </h4>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+                    Cấu hình sâu quyền hạn của người dùng đối với các mục dữ liệu trong hệ thống.
+                  </p>
+
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '14px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--color-bg-light)', borderBottom: '1px solid var(--color-border)' }}>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Module</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Xem (Read)</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Sửa (Write)</th>
+                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Xóa (Delete)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          { key: 'leads', label: 'Khách hàng (Leads/Contacts)' },
+                          { key: 'deals', label: 'Đặt cọc & Hợp đồng (Deals/Deposits)' },
+                          { key: 'cooperation', label: 'Phiếu Hợp tác (Cooperation Slips)' },
+                          { key: 'quotes', label: 'Báo giá & Hóa đơn (Quotes/Invoices)' },
+                          { key: 'projects', label: 'Dự án & Roster (Projects)' },
+                          { key: 'settings', label: 'Cấu hình & Tích hợp (Settings)' }
+                        ].map((mod) => {
+                          const getVal = (action: 'read' | 'write' | 'delete') => {
+                            return permissionsJson[mod.key]?.[action] || 'none';
+                          };
+                          const setVal = (action: 'read' | 'write' | 'delete', val: string) => {
+                            setPermissionsJson((prev: any) => ({
+                              ...prev,
+                              [mod.key]: {
+                                ...(prev[mod.key] || {}),
+                                [action]: val
+                              }
+                            }));
+                          };
+
+                          const renderSelect = (action: 'read' | 'write' | 'delete') => (
+                            <select
+                              value={getVal(action)}
+                              onChange={(e) => setVal(action, e.target.value)}
+                              style={{
+                                width: '100%',
+                                padding: '6px 8px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--color-border)',
+                                background: 'var(--color-surface)',
+                                color: 'var(--color-text)',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <option value="none">Không có quyền</option>
+                              <option value="own">Cá nhân (Own)</option>
+                              <option value="team">Nhóm (Team)</option>
+                              <option value="all">Toàn bộ (All)</option>
+                            </select>
+                          );
+
+                          return (
+                            <tr key={mod.key} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>
+                                {mod.label}
+                              </td>
+                              <td style={{ padding: '8px 10px' }}>{renderSelect('read')}</td>
+                              <td style={{ padding: '8px 10px' }}>{renderSelect('write')}</td>
+                              <td style={{ padding: '8px 10px' }}>{renderSelect('delete')}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: '1rem 1.5rem',
+                borderTop: '1px solid var(--color-border-light)',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                background: 'var(--color-bg-light)'
+              }}>
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={() => setIsPermissionModalOpen(false)}
+                  style={{ minWidth: '100px', height: '36px' }}
+                >
+                  {t('Hủy')}
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={() => {
+                    setIsPermissionModalOpen(false);
+                    toast.success(t('Đã lưu cấu hình phân quyền chi tiết. Vui lòng bấm "Lưu thay đổi" ở góc dưới để cập nhật lên máy chủ.'));
+                  }}
+                  style={{ minWidth: '120px', height: '36px' }}
+                >
+                  {t('Xác nhận')}
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </>,
     document.body
   );

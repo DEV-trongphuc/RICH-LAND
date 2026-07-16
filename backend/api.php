@@ -10640,6 +10640,31 @@ switch ($action) {
             if ($stmt->execute()) {
                 $newId = $conn->insert_id;
 
+                // Save permissions_json if provided
+                if (isset($input['permissions_json'])) {
+                    $stmtPerm = $conn->prepare("UPDATE users SET permissions_json = ? WHERE id = ?");
+                    $stmtPerm->bind_param("si", $input['permissions_json'], $newId);
+                    $stmtPerm->execute();
+                    $stmtPerm->close();
+                }
+
+                // Sync manager teams if provided
+                if (isset($input['manager_teams']) && is_array($input['manager_teams'])) {
+                    // Clear old leadership
+                    $stmtClear = $conn->prepare("UPDATE teams SET leader_id = 0 WHERE leader_id = ?");
+                    $stmtClear->execute([$newId]);
+                    $stmtClear->close();
+
+                    if (!empty($input['manager_teams'])) {
+                        foreach ($input['manager_teams'] as $teamId) {
+                            $stmtSet = $conn->prepare("UPDATE teams SET leader_id = ? WHERE id = ?");
+                            $stmtSet->bind_param("ii", $newId, $teamId);
+                            $stmtSet->execute();
+                            $stmtSet->close();
+                        }
+                    }
+                }
+
                 // Build confirm link
                 $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                 $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
@@ -10753,6 +10778,31 @@ switch ($action) {
             }
 
             if ($stmt->execute()) {
+                // Save permissions_json if provided
+                if (isset($input['permissions_json'])) {
+                    $stmtPerm = $conn->prepare("UPDATE users SET permissions_json = ? WHERE id = ?");
+                    $stmtPerm->bind_param("si", $input['permissions_json'], $id);
+                    $stmtPerm->execute();
+                    $stmtPerm->close();
+                }
+
+                // Sync manager teams if provided
+                if (isset($input['manager_teams']) && is_array($input['manager_teams'])) {
+                    // Clear old leadership
+                    $stmtClear = $conn->prepare("UPDATE teams SET leader_id = 0 WHERE leader_id = ?");
+                    $stmtClear->execute([$id]);
+                    $stmtClear->close();
+
+                    if (!empty($input['manager_teams'])) {
+                        foreach ($input['manager_teams'] as $teamId) {
+                            $stmtSet = $conn->prepare("UPDATE teams SET leader_id = ? WHERE id = ?");
+                            $stmtSet->bind_param("ii", $id, $teamId);
+                            $stmtSet->execute();
+                            $stmtSet->close();
+                        }
+                    }
+                }
+
                 logAdminAction($conn, $decodedUser['id'], 'EDIT_ACCOUNT', ['id' => $id, 'username' => $username, 'name' => $name, 'role' => $role, 'email' => $email, 'avatar' => $avatar, 'phone' => $phone, 'is_active' => $is_active]);
                 echo json_encode(['success' => true]);
             } else {
@@ -10883,7 +10933,7 @@ switch ($action) {
             exit;
         }
 
-        $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, zalo_chat_id, overtime_mode FROM users WHERE id = ?");
+        $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, zalo_chat_id, overtime_mode, permissions_json FROM users WHERE id = ?");
         $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
@@ -10891,6 +10941,17 @@ switch ($action) {
             if (!empty($consultantProfile['work_schedule'])) {
                 $consultantProfile['work_schedule'] = json_decode($consultantProfile['work_schedule'], true);
             }
+            // Fetch teams managed by this user
+            $stmtT = $conn->prepare("SELECT id FROM teams WHERE leader_id = ?");
+            $stmtT->bind_param("i", $targetUserId);
+            $stmtT->execute();
+            $teamRes = $stmtT->get_result();
+            $managedTeams = [];
+            while ($tRow = $teamRes->fetch_assoc()) {
+                $managedTeams[] = (int)$tRow['id'];
+            }
+            $stmtT->close();
+            $consultantProfile['manager_teams'] = $managedTeams;
         }
         $stmtP->close();
         echo json_encode(['success' => true, 'data' => $consultantProfile]);
