@@ -3038,26 +3038,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <X size={20} />
                   </button>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', margin: '0 0.5rem', overflow: 'hidden' }}>
-                    <div
-                      style={{
-                        background: formData.avatar_url 
-                          ? `url(${formData.avatar_url}) center/cover` 
-                          : `linear-gradient(135deg, ${formData.stage_color || 'var(--color-primary)'} 0%, ${formData.stage_color ? formData.stage_color + 'cc' : '#8a0f1b'} 100%)`,
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.65rem',
-                        fontWeight: 800,
-                        flexShrink: 0,
-                        boxShadow: 'var(--shadow-sm)'
-                      }}
-                    >
-                      {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
-                    </div>
+                    <Avatar 
+                      src={formData.avatar_url} 
+                      name={fullName} 
+                      size={24} 
+                    />
                     <h3 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {fullName}
                     </h3>
@@ -3159,13 +3144,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     {/* Avatar Section */}
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       <div
-                        className="avatar-placeholder lg"
                         style={{
-                          background: formData.avatar_url 
-                            ? `url(${formData.avatar_url}) center/cover` 
-                            : `linear-gradient(135deg, ${formData.stage_color || 'var(--color-primary)'} 0%, ${formData.stage_color ? formData.stage_color + 'cc' : '#8a0f1b'} 100%)`,
-                          fontSize: '1.25rem', width: 56, height: 56, borderRadius: '50%',
-                          boxShadow: '0 4px 12px rgba(189, 29, 45, 0.12)',
+                          width: 56,
+                          height: 56,
+                          borderRadius: '50%',
                           overflow: 'hidden',
                           cursor: 'pointer',
                           position: 'relative'
@@ -3175,7 +3157,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           setShowAvatarModal(true);
                         }}
                       >
-                        {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
+                        <Avatar 
+                          src={formData.avatar_url} 
+                          name={fullName} 
+                          size={56} 
+                        />
                         <div
                           style={{
                             position: 'absolute',
