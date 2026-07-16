@@ -769,6 +769,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReasonType, setReportReasonType] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [reportReasons, setReportReasons] = useState<any[]>([]);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<any>(null);
   const [taskComments, setTaskComments] = useState<any[]>([]);
   const [checklist, setChecklist] = useState<Array<{ text: string; checked: boolean }>>([]);
@@ -2663,6 +2668,52 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
+  const handleSubmitReport = async () => {
+    const leadId = formData.lead_id || contact?.lead_id;
+    const saleId = formData.owner_id || contact?.owner_id;
+    const roundId = formData.dl_round_id || contact?.dl_round_id;
+    if (!leadId || !saleId || !roundId) {
+      addToast('Thiếu thông tin phân bổ để báo lỗi', 'error');
+      return;
+    }
+    if (!reportReasonType.trim() || submittingReport) return;
+    const isOtherReason = reportReasonType.toLowerCase().includes('khác') || reportReasonType.toLowerCase().includes('other');
+    if (isOtherReason && !reportDetails.trim()) {
+      addToast('Vui lòng nhập mô tả chi tiết lý do lỗi.', 'error');
+      return;
+    }
+    setSubmittingReport(true);
+    try {
+      const finalReason = isOtherReason
+        ? `${reportReasonType}: ${reportDetails.trim()}`
+        : (reportDetails.trim() ? `${reportReasonType} (Ghi chú: ${reportDetails.trim()})` : reportReasonType);
+
+      const payload = {
+        lead_id: Number(leadId),
+        sale_id: Number(saleId),
+        round_id: Number(roundId),
+        reason: finalReason
+      };
+
+      const res = await api.post('/api.php?action=submit_report', payload);
+      if (res.data.success) {
+        if (res.data.auto_approved) {
+          addToast('Báo cáo lỗi đã được HỆ THỐNG TỰ ĐỘNG PHÊ DUYỆT & ĐỀN BÙ thành công!', 'success');
+        } else {
+          addToast('Gửi báo lỗi data thành công! Đang chờ admin duyệt bù.', 'success');
+        }
+        setShowReportModal(false);
+        fetchData();
+      } else {
+        addToast(res.data.message || 'Gửi báo lỗi thất bại', 'error');
+      }
+    } catch (err: any) {
+      addToast('Lỗi kết nối: ' + (err?.response?.data?.message || err.message || ''), 'error');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   const [isVisible, setIsVisible] = useState(isOpen);
   const [animateIn, setAnimateIn] = useState(isOpen);
 
@@ -3503,16 +3554,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               )}
                             </button>
                           ))}
-                          {group.title === 'Nghiệp vụ & Hỗ trợ' && !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && (
+                          {group.title === 'Nghiệp vụ & Hỗ trợ' && 
+                           !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && 
+                           (formData.dl_status || contact?.dl_status) !== 'databank_claim' && 
+                           Number(formData.dl_round_id || contact?.dl_round_id) > 0 && (
                             <button
                               className={styles.sidebarTabBtn}
-                              onClick={() => {
-                                setTicketForm({
-                                  subject: 'Báo lỗi data',
-                                  priority: 'medium',
-                                  description: ''
-                                });
-                                setShowTicketModal(true);
+                              onClick={async () => {
+                                if (reportReasons.length === 0) {
+                                  try {
+                                    const res = await api.get('/api.php?action=get_report_context');
+                                    if (res.data && res.data.success && res.data.data.report_error_reasons) {
+                                      setReportReasons(res.data.data.report_error_reasons);
+                                      setReportReasonType(res.data.data.report_error_reasons[0]?.reason || 'Sai số điện thoại / Số ảo');
+                                    } else {
+                                      setReportReasonType('Sai số điện thoại / Số ảo');
+                                    }
+                                  } catch (e) {
+                                    console.error(e);
+                                    setReportReasonType('Sai số điện thoại / Số ảo');
+                                  }
+                                } else {
+                                  setReportReasonType(reportReasons[0]?.reason || 'Sai số điện thoại / Số ảo');
+                                }
+                                setReportDetails('');
+                                setShowReportModal(true);
                               }}
                               style={isMobileOrTablet ? {} : {
                                 padding: '11px 0.875rem',
@@ -7746,26 +7812,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <button className="btn-icon sm" onClick={() => setShowTicketModal(false)}><X size={18} /></button>
               </div>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: ticketForm.subject === 'Báo lỗi data' ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Tiêu đề hỗ trợ *</label>
-                    <input className="form-input" placeholder="Tóm tắt yêu cầu/lỗi..." value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} disabled={ticketForm.subject === 'Báo lỗi data'} autoFocus />
+                    <input className="form-input" placeholder="Tóm tắt yêu cầu/lỗi..." value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} autoFocus />
                   </div>
-                  {ticketForm.subject !== 'Báo lỗi data' && (
-                    <div className="form-group">
-                      <label className="form-label">Độ ưu tiên</label>
-                      <CustomSelect
-                        options={[
-                          { value: 'low', label: 'Thấp' },
-                          { value: 'medium', label: 'Trung bình' },
-                          { value: 'high', label: 'Cao' },
-                          { value: 'urgent', label: 'Khẩn cấp' }
-                        ]}
-                        value={ticketForm.priority}
-                        onChange={val => setTicketForm({ ...ticketForm, priority: val.toString() })}
-                      />
-                    </div>
-                  )}
+                  <div className="form-group">
+                    <label className="form-label">Độ ưu tiên</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'low', label: 'Thấp' },
+                        { value: 'medium', label: 'Trung bình' },
+                        { value: 'high', label: 'Cao' },
+                        { value: 'urgent', label: 'Khẩn cấp' }
+                      ]}
+                      value={ticketForm.priority}
+                      onChange={val => setTicketForm({ ...ticketForm, priority: val.toString() })}
+                    />
+                  </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Mô tả chi tiết</label>
@@ -7782,6 +7846,85 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </div>
         )}
       </AnimatePresence>
+      <CustomModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        title="Báo cáo dữ liệu lỗi / Trùng lặp"
+      >
+        <div style={{ padding: '0.5rem 0' }}>
+          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+            <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Lý do báo lỗi (Chọn mẫu có sẵn)</label>
+            <CustomSelect
+              options={
+                reportReasons.length > 0
+                  ? reportReasons.map(r => ({ value: r.reason, label: r.reason }))
+                  : [
+                      { value: 'Sai số điện thoại / Số ảo', label: 'Sai số điện thoại / Số ảo' },
+                      { value: 'Trùng của tôi (Trùng Saleperson)', label: 'Trùng của tôi (Trùng Saleperson)' },
+                      { value: 'Trùng của người khác (Saleperson khác đã chăm)', label: 'Trùng của người khác (Saleperson khác đã chăm)' },
+                      { value: 'Spam ảo / Junk lead', label: 'Spam ảo / Junk lead' },
+                      { value: 'Khác', label: 'Khác' }
+                    ]
+              }
+              value={reportReasonType}
+              onChange={(val) => setReportReasonType(String(val))}
+            />
+            {(() => {
+              const matchedReason = reportReasons.find(r => r.reason === reportReasonType);
+              if (matchedReason && matchedReason.note) {
+                return (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px', background: 'var(--color-surface-hover)', padding: '8px 12px', borderRadius: '6px', borderLeft: '3px solid var(--color-primary)' }}>
+                    {matchedReason.note.replace('{n}', '6')}
+                  </div>
+                );
+              }
+              return null;
+            })()}
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+            <label className="form-label" style={{ fontWeight: 700, marginBottom: '6px', display: 'block' }}>Nội dung chi tiết báo cáo</label>
+            <textarea
+              className="form-input"
+              rows={4}
+              placeholder="Nhập chi tiết lý do báo lỗi, bằng chứng cuộc gọi/hình ảnh (nếu có)..."
+              value={reportDetails}
+              onChange={e => setReportDetails(e.target.value)}
+              style={{ resize: 'none', width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--color-border)' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '1.5rem' }}>
+            <button
+              className="btn outline"
+              onClick={() => setShowReportModal(false)}
+              disabled={submittingReport}
+              style={{ borderRadius: '8px', padding: '8px 16px' }}
+            >
+              Hủy
+            </button>
+            <button
+              className="btn primary"
+              onClick={handleSubmitReport}
+              disabled={submittingReport}
+              style={{
+                background: 'var(--color-danger)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '8px 16px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              {submittingReport ? 'Đang gửi...' : 'Gửi báo cáo'}
+            </button>
+          </div>
+        </div>
+      </CustomModal>
       <CreateExpenseModal
         isOpen={showExpenseModal}
         onClose={() => setShowExpenseModal(false)}

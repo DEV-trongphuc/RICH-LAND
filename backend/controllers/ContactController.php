@@ -326,11 +326,21 @@ class ContactController {
                             UNION ALL
                             SELECT ee.entity_id as cid, e.approved_at as dt FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND e.status = 'approved' AND e.deleted_at IS NULL
                         ) as t WHERE t.cid = c.id
-                    ) as last_order_at
+                    ) as last_order_at,
+                    l.id as lead_id,
+                    dl.round_id as dl_round_id,
+                    dl.status as dl_status
             FROM contacts c
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
+            LEFT JOIN leads l ON l.id = (
+                SELECT MAX(id) FROM leads WHERE person_id = c.person_id
+            )
+            LEFT JOIN distribution_logs dl ON dl.id = (
+                SELECT MAX(id) FROM distribution_logs 
+                WHERE lead_id = l.id AND assigned_to = c.owner_id
+            )
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
