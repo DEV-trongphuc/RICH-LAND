@@ -3787,49 +3787,73 @@ export default function ProjectsPage() {
 
               {/* Add Team Dropdown / Buttons */}
               {canEditRoster && teams.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(0, 0, 0, 0.015)', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
-                    Thêm nhanh theo Nhóm (Team)
-                  </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    {teams.map(team => {
-                      const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
-                      const assignedInTeam = teamMembers.filter(m => m.is_assigned === 1);
-                      const isAllAssigned = teamMembers.length > 0 && assignedInTeam.length === teamMembers.length;
-                      
-                      if (teamMembers.length === 0) return null;
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '12px', 
+                  background: 'rgba(0, 0, 0, 0.015)', 
+                  padding: '10px 16px', 
+                  borderRadius: '12px', 
+                  border: '1px solid var(--color-border-light)'
+                }}>
+                  <div style={{ flexShrink: 0 }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      Thêm nhanh theo Nhóm (Team):
+                    </span>
+                  </div>
+                  <div style={{ flex: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <select
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (!val) return;
+                        const teamId = Number(val);
+                        setRosterMembers(prev =>
+                          prev.map(m => (Number(m.team_id) === teamId ? { ...m, is_assigned: 1 } : m))
+                        );
+                        e.target.value = '';
+                      }}
+                      defaultValue=""
+                      style={{
+                        flex: 1,
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--color-border)',
+                        fontSize: '0.8125rem',
+                        background: 'var(--color-surface)',
+                        color: 'var(--color-text)',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="" disabled>-- Chọn Nhóm --</option>
+                      {teams.map(team => {
+                        const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                        const assignedInTeam = teamMembers.filter(m => m.is_assigned === 1);
+                        if (teamMembers.length === 0) return null;
+                        return (
+                          <option key={team.id} value={team.id}>
+                            {team.name} ({assignedInTeam.length}/{teamMembers.length} thành viên)
+                          </option>
+                        );
+                      })}
+                    </select>
 
-                      return (
-                        <button
-                          key={team.id}
-                          type="button"
-                          onClick={() => {
-                            if (isAllAssigned) {
-                              setRosterMembers(prev =>
-                                prev.map(m => (Number(m.team_id) === Number(team.id) ? { ...m, is_assigned: 0 } : m))
-                              );
-                            } else {
-                              setRosterMembers(prev =>
-                                prev.map(m => (Number(m.team_id) === Number(team.id) ? { ...m, is_assigned: 1 } : m))
-                              );
-                            }
-                          }}
-                          className={`btn sm ${isAllAssigned ? 'primary' : 'outline'}`}
-                          style={{ 
-                            borderRadius: '8px', 
-                            fontSize: '0.75rem', 
-                            padding: '4px 10px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontWeight: 600
-                          }}
-                        >
-                          {isAllAssigned ? <Check size={12} /> : <Plus size={12} />}
-                          {team.name} ({assignedInTeam.length}/{teamMembers.length})
-                        </button>
-                      );
-                    })}
+                    <button
+                      type="button"
+                      className="btn sm outline"
+                      onClick={() => {
+                        setRosterMembers(prev => prev.map(m => ({ ...m, is_assigned: 0 })));
+                      }}
+                      style={{ 
+                        borderRadius: '8px', 
+                        padding: '6px 12px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      Bỏ chọn tất cả
+                    </button>
                   </div>
                 </div>
               )}
