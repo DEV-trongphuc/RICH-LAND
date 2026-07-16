@@ -53,6 +53,7 @@ interface RosterMember {
   role: string;
   is_assigned: number;
   avatar_url?: string;
+  team_id?: number;
 }
 
 interface ProjectDoc {
@@ -331,6 +332,7 @@ export default function ProjectsPage() {
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [rosterMembers, setRosterMembers] = useState<RosterMember[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
 
   const [projectRoster, setProjectRoster] = useState<any[]>([]);
   const [projectRosterLoading, setProjectRosterLoading] = useState(false);
@@ -2139,10 +2141,24 @@ export default function ProjectsPage() {
   };
 
   // Roster logic
+  const fetchTeams = async () => {
+    try {
+      const res = await fetchAPI('teams');
+      if (Array.isArray(res)) {
+        setTeams(res);
+      } else if (res && res.success && Array.isArray(res.data)) {
+        setTeams(res.data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch teams:', e);
+    }
+  };
+
   const handleOpenRoster = async (projectId: number) => {
     setSelectedProjectId(projectId);
     setRosterSearch('');
     setIsRosterModalOpen(true);
+    fetchTeams();
     try {
       const res = await fetchAPI(`projects/${projectId}/roster`);
       if (res.success) {
@@ -3768,6 +3784,55 @@ export default function ProjectsPage() {
                   }}
                 />
               </div>
+
+              {/* Add Team Dropdown / Buttons */}
+              {canEditRoster && teams.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(0, 0, 0, 0.015)', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                    Thêm nhanh theo Nhóm (Team)
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    {teams.map(team => {
+                      const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                      const assignedInTeam = teamMembers.filter(m => m.is_assigned === 1);
+                      const isAllAssigned = teamMembers.length > 0 && assignedInTeam.length === teamMembers.length;
+                      
+                      if (teamMembers.length === 0) return null;
+
+                      return (
+                        <button
+                          key={team.id}
+                          type="button"
+                          onClick={() => {
+                            if (isAllAssigned) {
+                              setRosterMembers(prev =>
+                                prev.map(m => (Number(m.team_id) === Number(team.id) ? { ...m, is_assigned: 0 } : m))
+                              );
+                            } else {
+                              setRosterMembers(prev =>
+                                prev.map(m => (Number(m.team_id) === Number(team.id) ? { ...m, is_assigned: 1 } : m))
+                              );
+                            }
+                          }}
+                          className={`btn sm ${isAllAssigned ? 'primary' : 'outline'}`}
+                          style={{ 
+                            borderRadius: '8px', 
+                            fontSize: '0.75rem', 
+                            padding: '4px 10px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontWeight: 600
+                          }}
+                        >
+                          {isAllAssigned ? <Check size={12} /> : <Plus size={12} />}
+                          {team.name} ({assignedInTeam.length}/{teamMembers.length})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', paddingRight: '4px' }}>
                 {sorted.length === 0 ? (
