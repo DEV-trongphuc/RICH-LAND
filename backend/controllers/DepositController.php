@@ -132,6 +132,10 @@ class DepositController {
             $stmtUpC = $this->db->prepare("UPDATE contacts SET pipeline_status = 'dat_coc', status = 'customer', temperature = 'hot', suggested_temperature = 'hot' WHERE id = ? AND tenant_id = ?");
             $stmtUpC->execute([$contactId, $auth['tenant_id']]);
 
+            // Withdraw from databank and terminate other parallel contacts
+            require_once __DIR__ . '/../config/ParallelHelper.php';
+            ParallelHelper::lockPersonForWinningContact($this->db, (int)$contactId);
+
             // Side effect: Automatically generate cooperation slip for commissions
             require_once __DIR__ . '/CooperationController.php';
             $coopCtrl = new CooperationController($this->db);

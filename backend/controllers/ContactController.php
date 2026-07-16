@@ -640,15 +640,10 @@ class ContactController {
                     WorkflowHelper::triggerTasks($this->db, $auth['tenant_id'], $id, $targetStageId, $auth['user_id']);
                 }
 
-                // Withdraw from databank if dat_coc
+                // Withdraw from databank and terminate other parallel contacts if dat_coc
                 if ($newStatus === 'dat_coc') {
-                    $stmtGetPerson = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ?");
-                    $stmtGetPerson->execute([$id]);
-                    $pId = $stmtGetPerson->fetchColumn();
-                    if ($pId) {
-                        $stmtUpPerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
-                        $stmtUpPerson->execute([$pId]);
-                    }
+                    require_once __DIR__ . '/../config/ParallelHelper.php';
+                    ParallelHelper::lockPersonForWinningContact($this->db, (int)$id);
                 }
             }
         }
@@ -809,15 +804,10 @@ class ContactController {
             require_once __DIR__ . '/../config/WorkflowHelper.php';
             WorkflowHelper::triggerTasks($this->db, $auth['tenant_id'], $id, $stageId, $auth['user_id']);
 
-            // Withdraw from databank if dat_coc
+            // Withdraw from databank and terminate other parallel contacts if dat_coc
             if ($newStatus === 'dat_coc') {
-                $stmtGetPerson = $this->db->prepare("SELECT person_id FROM contacts WHERE id = ?");
-                $stmtGetPerson->execute([$id]);
-                $pId = $stmtGetPerson->fetchColumn();
-                if ($pId) {
-                    $stmtUpPerson = $this->db->prepare("UPDATE persons SET is_public = 0 WHERE id = ?");
-                    $stmtUpPerson->execute([$pId]);
-                }
+                require_once __DIR__ . '/../config/ParallelHelper.php';
+                ParallelHelper::lockPersonForWinningContact($this->db, (int)$id);
             }
         }
 

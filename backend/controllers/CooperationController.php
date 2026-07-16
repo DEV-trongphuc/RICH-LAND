@@ -707,6 +707,10 @@ class CooperationController {
         $stmtIns->execute([$contactId, $sharesJson, $auth['user_id']]);
         $slipId = $this->db->lastInsertId();
 
+        // Withdraw from databank and terminate other parallel contacts
+        require_once __DIR__ . '/../config/ParallelHelper.php';
+        ParallelHelper::lockPersonForWinningContact($this->db, (int)$contactId);
+
         respond(201, ['id' => (int)$slipId], 'Khởi tạo phiếu hợp tác thành công');
     }
 
