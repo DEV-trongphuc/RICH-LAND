@@ -5858,7 +5858,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 campaign_target: '',
                                 related_id: contact?.id,
                                 related_type: 'contact',
-                                contact_name: fullName
+                                contact_name: fullName,
+                                contact_id: contact?.id
                               });
                             }}><Plus size={14} /> Thêm công việc</button>
                           )}

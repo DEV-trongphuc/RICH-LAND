@@ -364,8 +364,22 @@ class ActivityController {
         if ($status)   { $where[]='a.status=?';  $params[]=$status; }
         if ($uid)      { $where[]='a.user_id=?'; $params[]=(int)$uid; }
         if ($teamId)   { $where[]='a.user_id IN (SELECT id FROM users WHERE team_id = ?)'; $params[]=(int)$teamId; }
-        if ($relType)  { $where[]='a.related_type=?'; $params[]=$relType; }
-        if ($relId)    { $where[]='a.related_id=?';   $params[]=(int)$relId; }
+        if ($relType && $relId) {
+            if ($relType === 'contact') {
+                $where[] = '((a.related_type = ? AND a.related_id = ?) OR a.contact_id = ?)';
+                $params[] = 'contact';
+                $params[] = (int)$relId;
+                $params[] = (int)$relId;
+            } else {
+                $where[] = 'a.related_type = ?';
+                $params[] = $relType;
+                $where[] = 'a.related_id = ?';
+                $params[] = (int)$relId;
+            }
+        } else {
+            if ($relType)  { $where[]='a.related_type=?'; $params[]=$relType; }
+            if ($relId)    { $where[]='a.related_id=?';   $params[]=(int)$relId; }
+        }
         $priority = $_GET['priority'] ?? '';
         if ($priority) { $where[]='a.priority=?'; $params[]=$priority; }
         $w=implode(' AND ',$where);
