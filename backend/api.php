@@ -11459,6 +11459,40 @@ switch ($action) {
 
     case 'get_dashboard_stats':
         $date = $_GET['date'] ?? 'Hôm nay';
+        
+        $isManager = (isset($decodedUser['role']) && $decodedUser['role'] === 'manager');
+        $managerUserIds = [];
+        $managerFilter = "";
+        $managerFilterDl = "";
+        $managerFilterLeads = "";
+        $managerFilterReports = "";
+        $consultantFilter = "";
+        
+        if ($isManager) {
+            $mgrTeamRes = $conn->query("SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['user_id']);
+            $mgrTeamIds = [];
+            if ($mgrTeamRes) {
+                while ($tr = $mgrTeamRes->fetch_assoc()) {
+                    $mgrTeamIds[] = (int)$tr['id'];
+                }
+            }
+            if (!empty($mgrTeamIds)) {
+                $mgrUserRes = $conn->query("SELECT id FROM users WHERE team_id IN (" . implode(',', $mgrTeamIds) . ")");
+                if ($mgrUserRes) {
+                    while ($ur = $mgrUserRes->fetch_assoc()) {
+                        $managerUserIds[] = (int)$ur['id'];
+                    }
+                }
+            }
+            $managerUserIds[] = (int)$decodedUser['user_id'];
+            $idsList = implode(',', $managerUserIds);
+            
+            $managerFilter = " AND assigned_to IN ($idsList) ";
+            $managerFilterDl = " AND dl.assigned_to IN ($idsList) ";
+            $managerFilterLeads = " AND l.assigned_to IN ($idsList) ";
+            $managerFilterReports = " AND consultant_id IN ($idsList) ";
+            $consultantFilter = " AND email IN (SELECT email FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['user_id'] . "))";
+        }
         $dbVer = 0;
         $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
         if ($vStmt && $vStmt->num_rows > 0) {
@@ -11510,10 +11544,10 @@ switch ($action) {
                      INNER JOIN (
                          SELECT lead_id, MAX(id) as max_id 
                          FROM distribution_logs 
-                         WHERE status != 'silent' AND $dateCondition
+                         WHERE status != 'silent' AND $dateCondition $managerFilter
                          GROUP BY lead_id
                      ) dl_max ON dl.id = dl_max.max_id
-                     WHERE $dateConditionDl 
+                     WHERE $dateConditionDl $managerFilterDl 
                      GROUP BY dl.status";
         $statsResRaw = $conn->query($statsSql);
         $statusCounts = [
@@ -11549,10 +11583,10 @@ switch ($action) {
                          INNER JOIN (
                              SELECT lead_id, MAX(id) as max_id 
                              FROM distribution_logs 
-                             WHERE status != 'silent' AND $prevDateCondition
+                             WHERE status != 'silent' AND $prevDateCondition $managerFilter
                              GROUP BY lead_id
                          ) dl_max ON dl.id = dl_max.max_id
-                         WHERE $prevDateConditionDl 
+                         WHERE $prevDateConditionDl $managerFilterDl 
                          GROUP BY dl.status";
         $prevStatsResRaw = $conn->query($prevStatsSql);
         $prevStatusCounts = [
@@ -11587,15 +11621,19 @@ switch ($action) {
         $prevDateConditionCreated = str_replace('received_at', 'created_at', $prevDateCondition);
 
         $autoBlacklistCnt = 0;
-        $blacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND log_type = 'auto' AND $dateConditionCreated");
-        if ($blacklistRes && $row = $blacklistRes->fetch_assoc()) {
-            $autoBlacklistCnt = (int) $row['cnt'];
+        if (!$isManager) {
+            $blacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND log_type = 'auto' AND $dateConditionCreated");
+            if ($blacklistRes && $row = $blacklistRes->fetch_assoc()) {
+                $autoBlacklistCnt = (int) $row['cnt'];
+            }
         }
 
         $prevAutoBlacklistCnt = 0;
-        $prevBlacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND log_type = 'auto' AND $prevDateConditionCreated");
-        if ($prevBlacklistRes && $row = $prevBlacklistRes->fetch_assoc()) {
-            $prevAutoBlacklistCnt = (int) $row['cnt'];
+        if (!$isManager) {
+            $prevBlacklistRes = $conn->query("SELECT COUNT(*) as cnt FROM admin_logs WHERE action = 'BLOCK_LEAD_BLACKLIST' AND log_type = 'auto' AND $prevDateConditionCreated");
+            if ($prevBlacklistRes && $row = $prevBlacklistRes->fetch_assoc()) {
+                $prevAutoBlacklistCnt = (int) $row['cnt'];
+            }
         }
 
         // Query AI Pre-screener statistics (passed vs failed)
@@ -11608,7 +11646,7 @@ switch ($action) {
         } else {
             $dateConditionAI = str_replace('received_at', 'created_at', $dateCondition);
         }
-        $aiScreenerSql = "SELECT ai_screener_status, COUNT(*) as cnt FROM leads WHERE $dateConditionAI AND ai_screener_status IN ('passed', 'failed') GROUP BY ai_screener_status";
+        $aiScreenerSql = "SELECT ai_screener_status, COUNT(*) as cnt FROM leads WHERE $dateConditionAI $managerFilter AND ai_screener_status IN ('passed', 'failed') GROUP BY ai_screener_status";
         $aiScreenerRes = $conn->query($aiScreenerSql);
         if ($aiScreenerRes) {
             while ($row = $aiScreenerRes->fetch_assoc()) {
@@ -11622,28 +11660,28 @@ switch ($action) {
 
         // Query accepted leads count
         $acceptedCount = 0;
-        $acceptedRes = $conn->query("SELECT COUNT(*) as cnt FROM leads WHERE $dateConditionCreated AND is_accepted = 1");
+        $acceptedRes = $conn->query("SELECT COUNT(*) as cnt FROM leads WHERE $dateConditionCreated $managerFilter AND is_accepted = 1");
         if ($acceptedRes && $row = $acceptedRes->fetch_assoc()) {
             $acceptedCount = (int) $row['cnt'];
         }
 
         // ticket_count counts ALL tickets created in the date range (for Chatbot card)
         $todayTickets = 0;
-        $ticketRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE $dateConditionCreated");
+        $ticketRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE $dateConditionCreated $managerFilterReports");
         if ($ticketRes && $row = $ticketRes->fetch_assoc()) {
             $todayTickets = (int) $row['cnt'];
         }
 
         // ticket_errors counts only APPROVED tickets in the date range created_at (for Dashboard card details)
         $ticketErrors = 0;
-        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $dateConditionCreated");
+        $tktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $dateConditionCreated $managerFilterReports");
         if ($tktErrRes && $row = $tktErrRes->fetch_assoc()) {
             $ticketErrors = (int) $row['cnt'];
         }
 
         // Previous period calculations for change percentage
         $prevTicketErrors = 0;
-        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $prevDateConditionCreated");
+        $prevTktErrRes = $conn->query("SELECT COUNT(*) as cnt FROM data_reports WHERE status IN ('approved', 'approved_no_comp') AND $prevDateConditionCreated $managerFilterReports");
         if ($prevTktErrRes && $row = $prevTktErrRes->fetch_assoc()) {
             $prevTicketErrors = (int) $row['cnt'];
         }
@@ -11711,14 +11749,14 @@ switch ($action) {
 
         // NEW CALCULATIONS: Out-of-Hours Lead Ratio and Fair-Share Equity
         // 1. Out of Hours Lead Ratio
-        $outOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $dateCondition");
+        $outOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $dateCondition $managerFilter");
         $outOfHoursCount = ($outOfHoursRes && $row = $outOfHoursRes->fetch_assoc()) ? (int)$row['cnt'] : 0;
         
         $totalLogsCount = (int)$statsRes['total'];
         $outOfHoursRatioVal = $totalLogsCount > 0 ? ($outOfHoursCount / $totalLogsCount) * 100 : 0;
         $outOfHoursRatio = number_format($outOfHoursRatioVal, 1) . '%';
 
-        $prevOutOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $prevDateCondition");
+        $prevOutOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $prevDateCondition $managerFilter");
         $prevOutOfHoursCount = ($prevOutOfHoursRes && $row = $prevOutOfHoursRes->fetch_assoc()) ? (int)$row['cnt'] : 0;
         
         $prevTotalLogsCount = (int)$prevStatsRes['total'];
@@ -11727,9 +11765,9 @@ switch ($action) {
         $outOfHoursChange = $calcChange($outOfHoursCount, $prevOutOfHoursCount);
 
         // 2. Fair-Share Equity
-        $calcFairness = function($conn, $dateCondition) {
+        $calcFairness = function($conn, $dateCondition) use ($consultantFilter, $managerFilter) {
             $consultants = [];
-            $sql = "SELECT id FROM consultants WHERE status = 'active'";
+            $sql = "SELECT id FROM consultants WHERE status = 'active' $consultantFilter";
             $res = $conn->query($sql);
             if ($res) {
                 while ($row = $res->fetch_assoc()) {
@@ -11753,7 +11791,7 @@ switch ($action) {
                                      END as adjusted_status, 
                                      COUNT(*) as cnt 
                               FROM distribution_logs 
-                              WHERE $dateCondition 
+                              WHERE $dateCondition $managerFilter
                                 AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
                               GROUP BY assigned_to, adjusted_status";
             $countsRes = $conn->query($leadCountsSql);
@@ -11847,10 +11885,11 @@ switch ($action) {
             $type = $chartMetric;
             $dateConditionSent = str_replace('received_at', 'sent_at', $dateCondition);
             if ($chartMode === 'heatmap') {
-                $heatmapSql = "SELECT WEEKDAY(sent_at) as wday, HOUR(sent_at) as h, COUNT(*) as vol 
-                               FROM communication_logs 
-                               WHERE type = '$type' AND status = 'sent' AND $dateConditionSent
-                               GROUP BY WEEKDAY(sent_at), HOUR(sent_at) 
+                $heatmapSql = "SELECT WEEKDAY(cl.sent_at) as wday, HOUR(cl.sent_at) as h, COUNT(*) as vol 
+                               FROM communication_logs cl 
+                               JOIN leads l ON cl.lead_id = l.id
+                               WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads
+                               GROUP BY WEEKDAY(cl.sent_at), HOUR(cl.sent_at) 
                                ORDER BY wday ASC, h ASC";
                 $res = $conn->query($heatmapSql);
                 if ($res) {
@@ -11865,10 +11904,11 @@ switch ($action) {
             } else {
                 $useHourly = ($chartMode === 'hour') || ($chartMode !== 'day' && ($date === 'Hôm nay' || $date === 'Hôm qua'));
                 if ($useHourly) {
-                    $hourlySql = "SELECT HOUR(sent_at) as h, COUNT(*) as vol 
-                                  FROM communication_logs 
-                                  WHERE type = '$type' AND status = 'sent' AND $dateConditionSent
-                                  GROUP BY HOUR(sent_at) 
+                    $hourlySql = "SELECT HOUR(cl.sent_at) as h, COUNT(*) as vol 
+                                  FROM communication_logs cl 
+                                  JOIN leads l ON cl.lead_id = l.id
+                                  WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads
+                                  GROUP BY HOUR(cl.sent_at) 
                                   ORDER BY h ASC";
                     $res = $conn->query($hourlySql);
                     $hourlyMap = [];
@@ -11882,10 +11922,11 @@ switch ($action) {
                         $chartData[] = ['time' => str_pad($i, 2, '0', STR_PAD_LEFT) . 'h', 'volume' => $vol];
                     }
                 } else {
-                    $dailySql = "SELECT DATE(sent_at) as d, COUNT(*) as vol 
-                                 FROM communication_logs 
-                                 WHERE type = '$type' AND status = 'sent' AND $dateConditionSent
-                                 GROUP BY DATE(sent_at) 
+                    $dailySql = "SELECT DATE(cl.sent_at) as d, COUNT(*) as vol 
+                                 FROM communication_logs cl 
+                                 JOIN leads l ON cl.lead_id = l.id
+                                 WHERE cl.type = '$type' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads
+                                 GROUP BY DATE(cl.sent_at) 
                                  ORDER BY d ASC";
                     $res = $conn->query($dailySql);
                     if ($res) {
@@ -11900,7 +11941,7 @@ switch ($action) {
             if ($chartMode === 'heatmap') {
                 $heatmapSql = "SELECT WEEKDAY($timeCol) as wday, HOUR($timeCol) as h, SUM(ai_total_tokens) as vol 
                                FROM leads 
-                               WHERE $dateConditionAI
+                               WHERE $dateConditionAI $managerFilter
                                GROUP BY WEEKDAY($timeCol), HOUR($timeCol) 
                                ORDER BY wday ASC, h ASC";
                 $res = $conn->query($heatmapSql);
@@ -11918,7 +11959,7 @@ switch ($action) {
                 if ($useHourly) {
                     $hourlySql = "SELECT HOUR($timeCol) as h, SUM(ai_total_tokens) as vol 
                                   FROM leads 
-                                  WHERE $dateConditionAI
+                                  WHERE $dateConditionAI $managerFilter
                                   GROUP BY HOUR($timeCol) 
                                   ORDER BY h ASC";
                     $res = $conn->query($hourlySql);
@@ -11935,7 +11976,7 @@ switch ($action) {
                 } else {
                     $dailySql = "SELECT DATE($timeCol) as d, SUM(ai_total_tokens) as vol 
                                  FROM leads 
-                                 WHERE $dateConditionAI
+                                 WHERE $dateConditionAI $managerFilter
                                  GROUP BY DATE($timeCol) 
                                  ORDER BY d ASC";
                     $res = $conn->query($dailySql);
@@ -11953,10 +11994,10 @@ switch ($action) {
                                INNER JOIN (
                                    SELECT lead_id, MAX(id) as max_id 
                                    FROM distribution_logs 
-                                   WHERE status != 'silent' AND $dateCondition
+                                   WHERE status != 'silent' AND $dateCondition $managerFilter
                                    GROUP BY lead_id
                                ) dl_max ON dl.id = dl_max.max_id
-                               WHERE $dateConditionDl 
+                               WHERE $dateConditionDl $managerFilterDl 
                                GROUP BY WEEKDAY(dl.received_at), HOUR(dl.received_at) 
                                ORDER BY wday ASC, h ASC";
                 $res = $conn->query($heatmapSql);
@@ -11977,10 +12018,10 @@ switch ($action) {
                                   INNER JOIN (
                                       SELECT lead_id, MAX(id) as max_id 
                                       FROM distribution_logs 
-                                      WHERE status != 'silent' AND $dateCondition
+                                      WHERE status != 'silent' AND $dateCondition $managerFilter
                                       GROUP BY lead_id
-                                  ) dl_max ON dl.id = dl_max.max_id
-                                  WHERE $dateConditionDl 
+                                      ) dl_max ON dl.id = dl_max.max_id
+                                  WHERE $dateConditionDl $managerFilterDl 
                                   GROUP BY HOUR(dl.received_at) 
                                   ORDER BY h ASC";
                     $res = $conn->query($hourlySql);
@@ -12001,10 +12042,10 @@ switch ($action) {
                                  INNER JOIN (
                                      SELECT lead_id, MAX(id) as max_id 
                                      FROM distribution_logs 
-                                     WHERE status != 'silent' AND $dateCondition
+                                     WHERE status != 'silent' AND $dateCondition $managerFilter
                                      GROUP BY lead_id
                                  ) dl_max ON dl.id = dl_max.max_id
-                                 WHERE $dateConditionDl 
+                                 WHERE $dateConditionDl $managerFilterDl 
                                  GROUP BY DATE(dl.received_at) 
                                  ORDER BY d ASC";
                     $res = $conn->query($dailySql);
@@ -12023,11 +12064,11 @@ switch ($action) {
                               INNER JOIN (
                                   SELECT lead_id, MAX(id) as max_id 
                                   FROM distribution_logs 
-                                  WHERE status != 'silent' AND $dateCondition
+                                  WHERE status != 'silent' AND $dateCondition $managerFilter
                                   GROUP BY lead_id
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
-                              WHERE $dateConditionDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder', 'databank_claim') 
+                              WHERE $dateConditionDl $managerFilterDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder', 'databank_claim') 
                               GROUP BY c.id, c.status, c.vacation_mode, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $consultantStats = [];
@@ -12069,6 +12110,7 @@ switch ($action) {
               AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
               AND c.id IS NOT NULL 
               AND (c.last_contact IS NULL OR c.last_contact = '')
+              $managerFilterLeads
             GROUP BY l.assigned_to
         ");
         if ($uncontactedRes) {
@@ -12082,7 +12124,7 @@ switch ($action) {
         $recalledRes = $conn->query("
             SELECT assigned_to, COUNT(*) as cnt 
             FROM distribution_logs 
-            WHERE status = 'recalled' AND $dateCondition 
+            WHERE status = 'recalled' AND $dateCondition $managerFilter
             GROUP BY assigned_to
         ");
         if ($recalledRes) {
@@ -12151,7 +12193,7 @@ switch ($action) {
         $roundRatioSql = "SELECT dr.id, dr.round_name, dl.status, COUNT(dl.id) as cnt 
                           FROM distribution_logs dl 
                           JOIN distribution_rounds dr ON dl.round_id = dr.id 
-                          WHERE $dateCondition AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
+                          WHERE $dateCondition $managerFilterDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
                           GROUP BY dr.id, dl.status";
         $roundRatioRes = $conn->query($roundRatioSql);
         $roundStats = [];
@@ -12214,12 +12256,12 @@ switch ($action) {
                       INNER JOIN (
                           SELECT lead_id, MAX(id) as max_id 
                           FROM distribution_logs 
-                          WHERE status != 'silent' AND $dateCondition
+                          WHERE status != 'silent' AND $dateCondition $managerFilter
                           GROUP BY lead_id
                       ) dl_max ON dl.id = dl_max.max_id
                       JOIN leads l ON dl.lead_id = l.id
                       LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
-                      WHERE $dateConditionDl
+                      WHERE $dateConditionDl $managerFilterDl
                       GROUP BY 
                         CASE 
                             WHEN sc.id IS NOT NULL THEN sc.sheet_name
@@ -12247,11 +12289,11 @@ switch ($action) {
                           INNER JOIN (
                               SELECT lead_id, MAX(id) as max_id 
                               FROM distribution_logs 
-                              WHERE status != 'silent' AND $dateCondition
+                              WHERE status != 'silent' AND $dateCondition $managerFilter
                               GROUP BY lead_id
                           ) dl_max ON dl.id = dl_max.max_id
                           JOIN leads l ON dl.lead_id = l.id
-                          WHERE $dateConditionDl
+                          WHERE $dateConditionDl $managerFilterDl
                           GROUP BY COALESCE(NULLIF(TRIM(l.source), ''), 'Không xác định') 
                           ORDER BY count DESC";
         $leadSourceResRaw = $conn->query($leadSourceSql);
@@ -12275,7 +12317,7 @@ switch ($action) {
         $errorSql = "SELECT c.name, COUNT(dr.id) as count 
                      FROM data_reports dr 
                      JOIN consultants c ON dr.consultant_id = c.id
-                     WHERE dr.status IN ('approved', 'approved_no_comp') AND $dateConditionCreated
+                     WHERE dr.status IN ('approved', 'approved_no_comp') AND $dateConditionCreated $managerFilterReports
                      GROUP BY c.id ORDER BY count DESC";
         $errorResRaw = $conn->query($errorSql);
         $errorStats = [];
@@ -12299,13 +12341,13 @@ switch ($action) {
         $dateConditionSent = str_replace('received_at', 'sent_at', $dateCondition);
         
         $totalZaloSent = 0;
-        $zaloSentRes = $conn->query("SELECT COUNT(*) as cnt FROM communication_logs WHERE type = 'zalo' AND status = 'sent' AND $dateConditionSent");
+        $zaloSentRes = $conn->query("SELECT COUNT(cl.id) as cnt FROM communication_logs cl JOIN leads l ON cl.lead_id = l.id WHERE cl.type = 'zalo' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads");
         if ($zaloSentRes && $row = $zaloSentRes->fetch_assoc()) {
             $totalZaloSent = (int)$row['cnt'];
         }
 
         $totalEmailsSent = 0;
-        $emailsSentRes = $conn->query("SELECT COUNT(*) as cnt FROM communication_logs WHERE type = 'email' AND status = 'sent' AND $dateConditionSent");
+        $emailsSentRes = $conn->query("SELECT COUNT(cl.id) as cnt FROM communication_logs cl JOIN leads l ON cl.lead_id = l.id WHERE cl.type = 'email' AND cl.status = 'sent' AND $dateConditionSent $managerFilterLeads");
         if ($emailsSentRes && $row = $emailsSentRes->fetch_assoc()) {
             $totalEmailsSent = (int)$row['cnt'];
         }
@@ -12320,7 +12362,7 @@ switch ($action) {
         } else {
             $dateConditionAI = str_replace('received_at', 'created_at', $dateCondition);
         }
-        $tokensRes = $conn->query("SELECT SUM(ai_total_tokens) as cnt, SUM(ai_prompt_tokens) as prompt_cnt, SUM(ai_completion_tokens) as completion_cnt FROM leads WHERE $dateConditionAI");
+        $tokensRes = $conn->query("SELECT SUM(ai_total_tokens) as cnt, SUM(ai_prompt_tokens) as prompt_cnt, SUM(ai_completion_tokens) as completion_cnt FROM leads WHERE $dateConditionAI $managerFilter");
         if ($tokensRes && $row = $tokensRes->fetch_assoc()) {
             $totalTokensUsed = (int)$row['cnt'];
             $totalPromptTokensUsed = (int)$row['prompt_cnt'];
