@@ -494,6 +494,63 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const removeChecklistItem = (idx: number) => {
     setChecklist(prev => prev.filter((_, i) => i !== idx));
   };
+
+  const getPresetDates = (preset: string) => {
+    let start = '';
+    let end = '';
+    if (preset === 'today') {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      start = todayStr;
+      end = todayStr;
+    } else if (preset === 'tomorrow') {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomStr = tomorrow.toISOString().slice(0, 10);
+      start = tomStr;
+      end = tomStr;
+    } else if (preset === 'week') {
+      const today = new Date();
+      const first = today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1);
+      const monday = new Date(today);
+      const sunday = new Date(today);
+      sunday.setDate(monday.getDate() + 6);
+      start = monday.toISOString().slice(0, 10);
+      end = sunday.toISOString().slice(0, 10);
+    } else if (preset === '7_days') {
+      const now = new Date();
+      const startD = new Date();
+      startD.setDate(now.getDate() - 7);
+      start = startD.toISOString().slice(0, 10);
+      end = now.toISOString().slice(0, 10);
+    } else if (preset === '30_days') {
+      const now = new Date();
+      const startD = new Date();
+      startD.setDate(now.getDate() - 30);
+      start = startD.toISOString().slice(0, 10);
+      end = now.toISOString().slice(0, 10);
+    } else if (preset === 'this_month') {
+      const now = new Date();
+      const startD = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endD = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      start = startD.toISOString().slice(0, 10);
+      end = endD.toISOString().slice(0, 10);
+    } else if (preset === 'last_month') {
+      const now = new Date();
+      const startD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const endD = new Date(now.getFullYear(), now.getMonth(), 0);
+      start = startD.toISOString().slice(0, 10);
+      end = endD.toISOString().slice(0, 10);
+    } else if (preset === 'overdue') {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      end = yesterday.toISOString().slice(0, 10);
+    } else if (preset === 'custom') {
+      start = wsStartDate;
+      end = wsEndDate;
+    }
+    return { start, end };
+  };
+
   const filteredWsTasks = useMemo(() => {
     let list = wsTasks;
     const targetUserId = wsUserId ? Number(wsUserId) : Number(currentUser?.id);
@@ -1139,61 +1196,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
-  const getPresetDates = (preset: string) => {
-    let start = '';
-    let end = '';
-    if (preset === 'today') {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      start = todayStr;
-      end = todayStr;
-    } else if (preset === 'tomorrow') {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomStr = tomorrow.toISOString().slice(0, 10);
-      start = tomStr;
-      end = tomStr;
-    } else if (preset === 'week') {
-      const today = new Date();
-      const first = today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1);
-      const monday = new Date(today);
-      const sunday = new Date(today);
-      sunday.setDate(monday.getDate() + 6);
-      start = monday.toISOString().slice(0, 10);
-      end = sunday.toISOString().slice(0, 10);
-    } else if (preset === '7_days') {
-      const now = new Date();
-      const startD = new Date();
-      startD.setDate(now.getDate() - 7);
-      start = startD.toISOString().slice(0, 10);
-      end = now.toISOString().slice(0, 10);
-    } else if (preset === '30_days') {
-      const now = new Date();
-      const startD = new Date();
-      startD.setDate(now.getDate() - 30);
-      start = startD.toISOString().slice(0, 10);
-      end = now.toISOString().slice(0, 10);
-    } else if (preset === 'this_month') {
-      const now = new Date();
-      const startD = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endD = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      start = startD.toISOString().slice(0, 10);
-      end = endD.toISOString().slice(0, 10);
-    } else if (preset === 'last_month') {
-      const now = new Date();
-      const startD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endD = new Date(now.getFullYear(), now.getMonth(), 0);
-      start = startD.toISOString().slice(0, 10);
-      end = endD.toISOString().slice(0, 10);
-    } else if (preset === 'overdue') {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      end = yesterday.toISOString().slice(0, 10);
-    } else if (preset === 'custom') {
-      start = wsStartDate;
-      end = wsEndDate;
-    }
-    return { start, end };
-  };
+
 
   const handleOpenCallsModal = async () => {
     setShowCallsModal(true);
