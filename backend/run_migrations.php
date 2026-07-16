@@ -18,7 +18,7 @@ $apply = (isset($_GET['apply']) && $_GET['apply'] === 'true')
       || (isset($_POST['execute_migration']) && $_POST['execute_migration'] === '1')
       || ($isCli && in_array('--apply', $argv));
 
-$targetVersion = 157;
+$targetVersion = 158;
 $currentVersion = 0;
 
 // Query current DB version
@@ -2129,7 +2129,70 @@ try {
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_admin_group_chat_id', '')");
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_notify_only_group', '0')");
 
-        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '157') ON DUPLICATE KEY UPDATE setting_value = '157'");
+        // Step 20: Version 158 (RESTRICT Project - Campaign to One-to-Many via project_id column)
+        $logMsg("Đang chạy cập nhật phiên bản 158 (Tạo trường project_id trong marketing_campaigns và đồng bộ dữ liệu cũ)...", "info");
+        // Ensure table marketing_campaigns exists
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS `marketing_campaigns` (
+                `id` INT AUTO_INCREMENT PRIMARY KEY,
+                `tenant_id` INT NOT NULL DEFAULT 1,
+                `name` VARCHAR(255) NOT NULL,
+                `description` TEXT DEFAULT NULL,
+                `status` VARCHAR(50) DEFAULT 'active',
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        ");
+        
+        // Ensure project_id column exists
+        $chkColPI = $conn->query("SHOW COLUMNS FROM marketing_campaigns LIKE 'project_id'");
+        if ($chkColPI && $chkColPI->num_rows === 0) {
+            $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN project_id INT NULL DEFAULT NULL AFTER tenant_id");
+            $logMsg("Đã thêm cột project_id vào marketing_campaigns", "success");
+            // Add foreign key constraint
+            try {
+                $conn->query("ALTER TABLE marketing_campaigns ADD CONSTRAINT fk_mc_project_id FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL");
+                $logMsg("Đã tạo liên kết khóa ngoại fk_mc_project_id", "success");
+            } catch (Throwable $ex) {
+                $logMsg("Không thể tạo ràng buộc khóa ngoại: " . $ex->getMessage(), "warning");
+            }
+        }
+
+        // Migrate existing campaigns data from project_ids (project names comma-separated)
+        $chkColOld = $conn->query("SHOW COLUMNS FROM marketing_campaigns LIKE 'project_ids'");
+        if ($chkColOld && $chkColOld->num_rows > 0) {
+            $resOld = $conn->query("SELECT id, project_ids FROM marketing_campaigns WHERE project_id IS NULL");
+            if ($resOld) {
+                while ($rowOld = $resOld->fetch_assoc()) {
+                    $pNamesStr = trim($rowOld['project_ids'] ?? '');
+                    if ($pNamesStr !== '') {
+                        $pNames = array_filter(array_map('trim', explode(',', $pNamesStr)));
+                        if (!empty($pNames)) {
+                            $firstName = reset($pNames);
+                            $stmtP = $conn->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                            if ($stmtP) {
+                                $stmtP->bind_param("s", $firstName);
+                                $stmtP->execute();
+                                $pRow = $stmtP->get_result()->fetch_assoc();
+                                $stmtP->close();
+                                if ($pRow) {
+                                    $pId = (int)$pRow['id'];
+                                    $stmtU = $conn->prepare("UPDATE marketing_campaigns SET project_id = ? WHERE id = ?");
+                                    if ($stmtU) {
+                                        $stmtU->bind_param("ii", $pId, $rowOld['id']);
+                                        $stmtU->execute();
+                                        $stmtU->close();
+                                        $logMsg("Đã đồng bộ chiến dịch ID {$rowOld['id']} liên kết với dự án '{$firstName}' (ID: {$pId})", "success");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '158') ON DUPLICATE KEY UPDATE setting_value = '158'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 

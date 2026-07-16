@@ -1646,23 +1646,42 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
 {
     // GATE 1: Roster chiến dịch (Project Roster)
     if ($lead) {
-        // Resolve project_id from lead attributes
-        $stmtProj = $conn->query("SELECT id, code, name FROM projects WHERE status = 'active'");
         $matchedProjectId = null;
-        if ($stmtProj) {
-            while ($p = $stmtProj->fetch_assoc()) {
-                $code = strtolower($p['code'] ?? '');
-                $pName = strtolower($p['name'] ?? '');
-                
-                $searchIn = '';
-                if (!empty($lead['campaign_name'])) $searchIn .= ' ' . $lead['campaign_name'];
-                if (!empty($lead['note'])) $searchIn .= ' ' . $lead['note'];
-                if (!empty($lead['source'])) $searchIn .= ' ' . $lead['source'];
-                if (!empty($lead['name'])) $searchIn .= ' ' . $lead['name'];
-                
-                if (($code !== '' && stripos($searchIn, $code) !== false) || ($pName !== '' && stripos($searchIn, $pName) !== false)) {
-                    $matchedProjectId = (int) $p['id'];
-                    break;
+        
+        // 1. Try to resolve project_id via Campaign linkage
+        $campId = $lead['campaign_id'] ?? '';
+        $campName = $lead['campaign_name'] ?? '';
+        if ($campId !== '' || $campName !== '') {
+            $stmtC = $conn->prepare("SELECT project_id FROM marketing_campaigns WHERE id = ? OR name = ? LIMIT 1");
+            if ($stmtC) {
+                $stmtC->bind_param("ss", $campId, $campName);
+                $stmtC->execute();
+                $cRow = $stmtC->get_result()->fetch_assoc();
+                $stmtC->close();
+                if ($cRow && !empty($cRow['project_id'])) {
+                    $matchedProjectId = (int)$cRow['project_id'];
+                }
+            }
+        }
+
+        // 2. Fallback to old keyword matching method if not resolved via Campaign
+        if (!$matchedProjectId) {
+            $stmtProj = $conn->query("SELECT id, code, name FROM projects WHERE status = 'active'");
+            if ($stmtProj) {
+                while ($p = $stmtProj->fetch_assoc()) {
+                    $code = strtolower($p['code'] ?? '');
+                    $pName = strtolower($p['name'] ?? '');
+                    
+                    $searchIn = '';
+                    if (!empty($lead['campaign_name'])) $searchIn .= ' ' . $lead['campaign_name'];
+                    if (!empty($lead['note'])) $searchIn .= ' ' . $lead['note'];
+                    if (!empty($lead['source'])) $searchIn .= ' ' . $lead['source'];
+                    if (!empty($lead['name'])) $searchIn .= ' ' . $lead['name'];
+                    
+                    if (($code !== '' && stripos($searchIn, $code) !== false) || ($pName !== '' && stripos($searchIn, $pName) !== false)) {
+                        $matchedProjectId = (int) $p['id'];
+                        break;
+                    }
                 }
             }
         }

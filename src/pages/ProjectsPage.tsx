@@ -1579,10 +1579,12 @@ export default function ProjectsPage() {
                   </div>
                   
                   {(() => {
-                    const associatedProjs = projects.filter(p => {
-                      const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
-                      return campIds.includes(editingCampaign?.name);
-                    });
+                    const associatedProjs = editingCampaign?.project_id 
+                      ? projects.filter(p => p.id === editingCampaign.project_id)
+                      : projects.filter(p => {
+                          const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
+                          return campIds.includes(editingCampaign?.name);
+                        });
 
                     if (associatedProjs.length === 0) {
                       return (
@@ -2281,7 +2283,7 @@ export default function ProjectsPage() {
         {isAdmin && activeSubTab === 'campaigns' && (
           <button
             onClick={() => {
-              setEditingCampaign({ name: '', description: '', status: 'active', start_date: '', end_date: '', project_ids: '', user_ids: '', manager_ids: '', document_ids: '', folder_path: '' });
+              setEditingCampaign({ name: '', description: '', status: 'active', start_date: '', end_date: '', project_id: null, project_ids: '', user_ids: '', manager_ids: '', document_ids: '', folder_path: '' });
               setCampaignModalMode('create');
               setIsCampaignModalOpen(true);
             }}
@@ -2592,10 +2594,12 @@ export default function ProjectsPage() {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
               {campaigns.map(camp => {
-                const associatedProjs = projects.filter(p => {
-                  const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
-                  return campIds.includes(camp.name);
-                });
+                const associatedProj = camp.project_id 
+                  ? projects.find(p => p.id === camp.project_id)
+                  : projects.find(p => {
+                      const campIds = p.campaign_ids ? p.campaign_ids.split(',').map((id: string) => id.trim()) : [];
+                      return campIds.includes(camp.name);
+                    });
                 const docCount = parseIds(camp.document_ids).length;
                 const staffCount = parseIds(camp.user_ids).length;
 
@@ -2657,22 +2661,20 @@ export default function ProjectsPage() {
                         </p>
                       )}
 
-                      {/* Associated project name tags preview */}
-                      {associatedProjs.length > 0 && (
+                      {/* Associated project name tag preview */}
+                      {associatedProj && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '1.25rem' }}>
-                          {associatedProjs.map(p => (
-                            <span key={p.id} style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', color: 'var(--color-text)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>
-                              {p.name}
-                            </span>
-                          ))}
+                          <span style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border-light)', color: 'var(--color-text)', padding: '2px 8px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 600 }}>
+                            {associatedProj.name}
+                          </span>
                         </div>
                       )}
                     </div>
 
                     {/* Footer Stats Bar */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                      <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <span><strong>{associatedProjs.length}</strong> Dự án</span>
+                      <div style={{ display: 'flex', gap: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>
+                        <span title={associatedProj ? associatedProj.name : 'Chưa liên kết'}>Dự án: <strong>{associatedProj ? associatedProj.name : 'Chưa liên kết'}</strong></span>
                         <span>•</span>
                         <span><strong>{docCount}</strong> Tài liệu</span>
                         <span>•</span>
@@ -4452,14 +4454,17 @@ export default function ProjectsPage() {
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Dự án liên kết (Chọn nhiều)</label>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Dự án liên kết</label>
                     <CustomSelect
-                      multiple
                       searchable={true}
-                      options={projects.map(p => ({ value: p.name, label: `${p.name} (${p.code})` }))}
-                      value={parseIds(editingCampaign?.project_ids)}
-                      onChange={val => setEditingCampaign({ ...editingCampaign, project_ids: Array.isArray(val) ? val.join(',') : String(val) })}
-                      placeholder="Chọn các dự án..."
+                      options={projects.map(p => ({ value: String(p.id), label: `${p.name} (${p.code})` }))}
+                      value={editingCampaign?.project_id ? String(editingCampaign.project_id) : ''}
+                      onChange={val => setEditingCampaign({ 
+                        ...editingCampaign, 
+                        project_id: val ? Number(val) : null,
+                        project_ids: val ? (projects.find(p => String(p.id) === String(val))?.name || '') : ''
+                      })}
+                      placeholder="Chọn dự án..."
                     />
                   </div>
 

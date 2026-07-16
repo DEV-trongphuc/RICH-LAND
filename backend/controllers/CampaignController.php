@@ -29,6 +29,9 @@ class CampaignController {
                 $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN project_ids TEXT NULL");
             } catch (Exception $e) {}
             try {
+                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN project_id INT NULL DEFAULT NULL");
+            } catch (Exception $e) {}
+            try {
                 $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN user_ids TEXT NULL");
             } catch (Exception $e) {}
             try {
@@ -85,7 +88,7 @@ class CampaignController {
             $total = (int)$stmtCount->fetchColumn();
 
             $offset = ($page - 1) * $limit;
-            $stmt = $this->db->prepare("SELECT * FROM marketing_campaigns $where ORDER BY created_at DESC LIMIT $offset, $limit");
+            $stmt = $this->db->prepare("SELECT *, (SELECT name FROM projects WHERE id = project_id) as project_name, (SELECT code FROM projects WHERE id = project_id) as project_code FROM marketing_campaigns $where ORDER BY created_at DESC LIMIT $offset, $limit");
             $stmt->execute($params);
             $campaigns = $stmt->fetchAll();
 
@@ -96,7 +99,7 @@ class CampaignController {
                 'limit' => $limit
             ], 'Lấy danh sách chiến dịch thành công');
         } else {
-            $stmt = $this->db->prepare("SELECT * FROM marketing_campaigns $where ORDER BY created_at DESC");
+            $stmt = $this->db->prepare("SELECT *, (SELECT name FROM projects WHERE id = project_id) as project_name, (SELECT code FROM projects WHERE id = project_id) as project_code FROM marketing_campaigns $where ORDER BY created_at DESC");
             $stmt->execute($params);
             respond(200, $stmt->fetchAll(), 'Lấy danh sách chiến dịch thành công');
         }
@@ -110,6 +113,7 @@ class CampaignController {
         $status = trim($b['status'] ?? 'active');
         $start_date = !empty($b['start_date']) ? $b['start_date'] : null;
         $end_date = !empty($b['end_date']) ? $b['end_date'] : null;
+        $project_id = isset($b['project_id']) && $b['project_id'] !== '' ? (int)$b['project_id'] : null;
         $project_ids = trim($b['project_ids'] ?? '');
         $user_ids = trim($b['user_ids'] ?? '');
         $manager_ids = trim($b['manager_ids'] ?? '');
@@ -124,14 +128,31 @@ class CampaignController {
         $tenantId = $auth['tenant_id'] ?? 1;
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
 
+        if ($project_id === null && !empty($project_ids)) {
+            $pNames = array_filter(array_map('trim', explode(',', $project_ids)));
+            if (!empty($pNames)) {
+                $firstName = reset($pNames);
+                if (is_numeric($firstName)) {
+                    $project_id = (int)$firstName;
+                } else {
+                    $stmtP = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                    $stmtP->execute([$firstName]);
+                    $pId = $stmtP->fetchColumn();
+                    if ($pId !== false) {
+                        $project_id = (int)$pId;
+                    }
+                }
+            }
+        }
+
         $stmt = $this->db->prepare("
-            INSERT INTO marketing_campaigns (tenant_id, name, description, status, start_date, end_date, project_ids, user_ids, manager_ids, document_ids, folder_path, reference_url, created_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO marketing_campaigns (tenant_id, name, description, status, start_date, end_date, project_id, project_ids, user_ids, manager_ids, document_ids, folder_path, reference_url, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$tenantId, $name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url, $userId]);
+        $stmt->execute([$tenantId, $name, $description, $status, $start_date, $end_date, $project_id, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url, $userId]);
         $newId = (int)$this->db->lastInsertId();
 
-        $this->propagateCampaignRoster($project_ids, $user_ids);
+        $this->propagateCampaignRoster($project_id ?: $project_ids, $user_ids);
 
         logActivity($this->db, $tenantId, $userId, 'CREATE_CAMPAIGN', 'marketing_campaigns', $newId, "Tạo chiến dịch: $name");
         respond(200, ['id' => $newId], 'Tạo chiến dịch thành công');
@@ -165,6 +186,7 @@ class CampaignController {
         $status = trim($b['status'] ?? 'active');
         $start_date = !empty($b['start_date']) ? $b['start_date'] : null;
         $end_date = !empty($b['end_date']) ? $b['end_date'] : null;
+        $project_id = isset($b['project_id']) && $b['project_id'] !== '' ? (int)$b['project_id'] : null;
         $project_ids = trim($b['project_ids'] ?? '');
         $user_ids = trim($b['user_ids'] ?? '');
         $manager_ids = trim($b['manager_ids'] ?? '');
@@ -179,31 +201,53 @@ class CampaignController {
         $tenantId = $auth['tenant_id'] ?? 1;
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
 
+        if ($project_id === null && !empty($project_ids)) {
+            $pNames = array_filter(array_map('trim', explode(',', $project_ids)));
+            if (!empty($pNames)) {
+                $firstName = reset($pNames);
+                if (is_numeric($firstName)) {
+                    $project_id = (int)$firstName;
+                } else {
+                    $stmtP = $this->db->prepare("SELECT id FROM projects WHERE name = ? LIMIT 1");
+                    $stmtP->execute([$firstName]);
+                    $pId = $stmtP->fetchColumn();
+                    if ($pId !== false) {
+                        $project_id = (int)$pId;
+                    }
+                }
+            }
+        }
+
         $stmt = $this->db->prepare("
             UPDATE marketing_campaigns 
-            SET name = ?, description = ?, status = ?, start_date = ?, end_date = ?, project_ids = ?, user_ids = ?, manager_ids = ?, document_ids = ?, folder_path = ?, reference_url = ? 
+            SET name = ?, description = ?, status = ?, start_date = ?, end_date = ?, project_id = ?, project_ids = ?, user_ids = ?, manager_ids = ?, document_ids = ?, folder_path = ?, reference_url = ? 
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url, $id, $tenantId]);
+        $stmt->execute([$name, $description, $status, $start_date, $end_date, $project_id, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url, $id, $tenantId]);
 
-        $this->propagateCampaignRoster($project_ids, $user_ids);
+        $this->propagateCampaignRoster($project_id ?: $project_ids, $user_ids);
 
         logActivity($this->db, $tenantId, $userId, 'UPDATE_CAMPAIGN', 'marketing_campaigns', $id, "Cập nhật chiến dịch: $name");
         respond(200, null, 'Cập nhật chiến dịch thành công');
     }
 
-    private function propagateCampaignRoster(string $projectIdsStr, string $userIdsStr): void {
-        if (empty($projectIdsStr) || empty($userIdsStr)) return;
-        // Project names mapping to IDs
-        $pNames = array_filter(array_map('trim', explode(',', $projectIdsStr)));
+    private function propagateCampaignRoster($projectIdOrStr, string $userIdsStr): void {
+        if (empty($projectIdOrStr) || empty($userIdsStr)) return;
         $uids = array_filter(array_map('intval', explode(',', $userIdsStr)));
-        if (empty($pNames) || empty($uids)) return;
+        if (empty($uids)) return;
 
-        // Fetch project IDs by name matching
-        $inClause = implode(',', array_fill(0, count($pNames), '?'));
-        $stmtProj = $this->db->prepare("SELECT id FROM projects WHERE name IN ($inClause)");
-        $stmtProj->execute($pNames);
-        $pids = $stmtProj->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $pids = [];
+        if (is_numeric($projectIdOrStr)) {
+            $pids[] = (int)$projectIdOrStr;
+        } else {
+            $pNames = array_filter(array_map('trim', explode(',', $projectIdOrStr)));
+            if (!empty($pNames)) {
+                $inClause = implode(',', array_fill(0, count($pNames), '?'));
+                $stmtProj = $this->db->prepare("SELECT id FROM projects WHERE name IN ($inClause)");
+                $stmtProj->execute($pNames);
+                $pids = $stmtProj->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            }
+        }
 
         foreach ($pids as $pid) {
             foreach ($uids as $uid) {

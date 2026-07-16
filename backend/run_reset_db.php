@@ -255,17 +255,17 @@ try {
     ");
     $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN start_date DATE DEFAULT NULL");
     $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN end_date DATE DEFAULT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN project_ids TEXT NULL");
+    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN project_id INT NULL DEFAULT NULL");
     $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN user_ids TEXT NULL");
     $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN manager_ids TEXT NULL");
     $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN document_ids TEXT NULL");
     $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
     $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN reference_url VARCHAR(500) NULL");
 
-    $stmtCamp = $conn->prepare("INSERT INTO marketing_campaigns (tenant_id, name, description, status, project_ids, user_ids) VALUES (1, 'Chiến dịch Vinhomes Vũ Yên Hè 2026', 'Tập trung phân phối biệt thự đảo sinh thái Vũ Yên', 'active', ?, ?)");
-    $projList = (string)$vinId;
+    $stmtCamp = $conn->prepare("INSERT INTO marketing_campaigns (tenant_id, name, description, status, project_id, user_ids) VALUES (1, 'Chiến dịch Vinhomes Vũ Yên Hè 2026', 'Tập trung phân phối biệt thự đảo sinh thái Vũ Yên', 'active', ?, ?)");
+    $projIdVal = (int)$vinId;
     $usersList = implode(',', $salesIds);
-    $stmtCamp->bind_param("ss", $projList, $usersList);
+    $stmtCamp->bind_param("is", $projIdVal, $usersList);
     $stmtCamp->execute();
     $campaignId = $stmtCamp->insert_id;
     echo "   - Created Campaign: Chiến dịch Vinhomes Vũ Yên Hè 2026\n";

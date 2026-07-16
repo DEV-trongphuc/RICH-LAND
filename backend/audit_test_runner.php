@@ -2778,6 +2778,60 @@ try {
     assertTest("TEST 110: Vacation Mode & Leave Auto-Escalation Bypass", $isBypassed, "Res1: " . json_encode($vResult1) . ", Res2: " . json_encode($vResult2));
 
     // ─────────────────────────────────────────────────────────────────
+    // TEST 111: Campaign-Project One-to-Many & Roster Auto-Propagation
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Create a test project
+    $db->prepare("DELETE FROM projects WHERE name = 'E2E Campaign Project 111'")->execute();
+    $db->prepare("INSERT INTO projects (tenant_id, name, code, status) VALUES (1, 'E2E Campaign Project 111', 'PROJ111', 'active')")->execute();
+    $proj111Id = (int)$db->lastInsertId();
+
+    // 2. Call API to create a campaign linked to this project
+    $db->prepare("DELETE FROM marketing_campaigns WHERE name = 'E2E Campaign 111'")->execute();
+    $camp111Res = $callApi('campaigns', 'POST', [
+        'name' => 'E2E Campaign 111',
+        'description' => 'Test campaign for project_id association',
+        'status' => 'active',
+        'project_id' => $proj111Id,
+        'user_ids' => (string)$saleUserId
+    ], $adminToken);
+
+    $campaignCreatedId = isset($camp111Res['data']['id']) ? (int)$camp111Res['data']['id'] : 0;
+
+    // 3. Verify project_id is saved correctly in database
+    $dbProjId = 0;
+    if ($campaignCreatedId) {
+        $dbProjId = (int)$db->query("SELECT project_id FROM marketing_campaigns WHERE id = $campaignCreatedId")->fetchColumn();
+    }
+
+    // 4. Verify user_id is automatically propagated to project_roster
+    $hasRosterPropagated = (int)$db->query("SELECT COUNT(*) FROM project_roster WHERE project_id = $proj111Id AND user_id = $saleUserId")->fetchColumn() > 0;
+
+    // 5. Verify checkConsultantGates resolves project_id from campaign for Gate 1
+    $mysqliConn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+    $leadMock111 = [
+        'campaign_name' => 'E2E Campaign 111',
+        'note' => '',
+        'source' => '',
+        'name' => ''
+    ];
+    $gateResultSale1 = checkConsultantGates($mysqliConn, $saleUserId, $leadMock111); // Should pass (null / boolean true)
+    $gateResultSale2 = checkConsultantGates($mysqliConn, $sale2UserId, $leadMock111); // Should fail (Failed Gate 1)
+    $mysqliConn->close();
+
+    $isGateResolvedCorrectly = ($gateResultSale1 === null || $gateResultSale1 === true) && (strpos($gateResultSale2, 'Failed Gate 1') !== false);
+
+    $test111Passed = ($dbProjId === $proj111Id && $hasRosterPropagated && $isGateResolvedCorrectly);
+
+    // Clean up
+    if ($campaignCreatedId) {
+        $db->prepare("DELETE FROM marketing_campaigns WHERE id = ?")->execute([$campaignCreatedId]);
+    }
+    $db->prepare("DELETE FROM project_roster WHERE project_id = ?")->execute([$proj111Id]);
+    $db->prepare("DELETE FROM projects WHERE id = ?")->execute([$proj111Id]);
+
+    assertTest("TEST 111: Campaign-Project One-to-Many & Roster Auto-Propagation", $test111Passed, "dbProjId: $dbProjId, hasRosterPropagated: " . json_encode($hasRosterPropagated) . ", GateSale1: " . json_encode($gateResultSale1) . ", GateSale2: " . json_encode($gateResultSale2));
+
+    // ─────────────────────────────────────────────────────────────────
     // Phase 18: DB Persistence Verification (Previously Clean-Up Cascade)
     // We intentionally do not delete these records so they are visible in the CRM frontend UI.
     $userCount = $db->query("SELECT COUNT(*) FROM users WHERE id IN ($saleUserId, $assistUserId, $mgrUserId, $adminUserId, $saUserId, $viewerUserId)")->fetchColumn();
