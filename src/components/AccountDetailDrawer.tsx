@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Camera, ChevronDown, ChevronUp, Save, Trash2, Download, 
   Paperclip, Loader2, Eye, EyeOff, User, Shield, Info, Send, 
-  Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText
+  Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText,
+  CreditCard, PhoneCall
 } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
@@ -90,6 +91,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [avatar, setAvatar] = useState('');
   const [phone, setPhone] = useState('');
   const [isActive, setIsActive] = useState('1');
+  const [bankName, setBankName] = useState('');
+  const [bankAccount, setBankAccount] = useState('');
 
   // 2. Personal Profile Fields
   const [dob, setDob] = useState('');
@@ -178,6 +181,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setDob(d.dob || '');
             setGender(d.gender || '');
             setCitizenId(d.citizen_id || '');
+            setBankName(d.bank_name || '');
+            setBankAccount(d.bank_account || '');
 
             let addressPayload = d.address || '';
             try {
@@ -249,6 +254,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setAvatar('');
       setPhone('');
       setIsActive('1');
+      setBankName('');
+      setBankAccount('');
 
       setDob('');
       setGender('');
@@ -504,7 +511,9 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         dob: dob || null,
         gender: gender || null,
         citizen_id: citizenId || null,
-        address: addressPayload
+        address: addressPayload,
+        bank_name: bankName || null,
+        bank_account: bankAccount || null
       };
 
       const resAccount = await fetchAPI(action, {
@@ -532,6 +541,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           gender: gender || null,
           citizen_id: citizenId || null,
           address: addressPayload,
+          bank_name: bankName || null,
+          bank_account: bankAccount || null,
           zalo_chat_id: zaloChatId,
           overtime_mode: overtimeMode ? 1 : 0,
           leave_start: leaveStart || null,
@@ -558,10 +569,12 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   return createPortal(
     <div style={{
       position: 'fixed',
-      inset: 0,
+      top: 0,
+      bottom: 0,
+      left: 'var(--sidebar-width, 220px)',
+      right: 0,
       zIndex: 9999,
       display: 'flex',
-      justifyContent: 'flex-end',
       backgroundColor: 'rgba(0,0,0,0.5)',
       backdropFilter: 'blur(2px)'
     }} onClick={onClose}>
@@ -573,7 +586,6 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '1200px',
           height: '100%',
           backgroundColor: 'var(--color-surface)',
           boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
@@ -713,8 +725,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     backgroundColor: openSections.personal ? 'var(--color-bg-light)' : 'transparent'
                   }}
                 >
-                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    {t('THÔNG TIN CÁ NHÂN')}
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                    <User size={14} style={{ color: 'var(--color-primary)' }} /> {t('THÔNG TIN CÁ NHÂN')}
                   </span>
                   {openSections.personal ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -800,8 +812,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     backgroundColor: openSections.erp ? 'var(--color-bg-light)' : 'transparent'
                   }}
                 >
-                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    {t('THÔNG TIN NHÂN SỰ & ERP')}
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                    <Building2 size={14} style={{ color: 'var(--color-primary)' }} /> {t('THÔNG TIN NHÂN SỰ & ERP')}
                   </span>
                   {openSections.erp ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -888,8 +900,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     backgroundColor: openSections.account ? 'var(--color-bg-light)' : 'transparent'
                   }}
                 >
-                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    {t('LIÊN HỆ & TÀI KHOẢN')}
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                    <Shield size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ & TÀI KHOẢN')}
                   </span>
                   {openSections.account ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -1048,8 +1060,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     backgroundColor: openSections.bank ? 'var(--color-bg-light)' : 'transparent'
                   }}
                 >
-                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    {t('THANH TOÁN & THUẾ')}
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                    <CreditCard size={14} style={{ color: 'var(--color-primary)' }} /> {t('THANH TOÁN & THUẾ')}
                   </span>
                   {openSections.bank ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -1058,11 +1070,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                     <div className="form-group">
                       <label className="form-label">{t('Tên ngân hàng')}</label>
-                      <input className="form-input" value={taxId} onChange={e => setTaxId(e.target.value)} placeholder="Vietcombank" />
+                      <input className="form-input" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="Vietcombank" />
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Số tài khoản (STK)')}</label>
-                      <input className="form-input" value={insuranceId} onChange={e => setInsuranceId(e.target.value)} placeholder="1903xxxxxxxx" />
+                      <input className="form-input" value={bankAccount} onChange={e => setBankAccount(e.target.value)} placeholder="1903xxxxxxxx" />
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Chi nhánh ngân hàng')}</label>
@@ -1070,11 +1082,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Mã số thuế cá nhân')}</label>
-                      <input className="form-input" value={personalPhone} onChange={e => setPersonalPhone(e.target.value)} placeholder="81xxxxxx" />
+                      <input className="form-input" value={taxId} onChange={e => setTaxId(e.target.value)} placeholder="81xxxxxx" />
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Số sổ bảo hiểm xã hội (BHXH)')}</label>
-                      <input className="form-input" value={extNumber} onChange={e => setExtNumber(e.target.value)} placeholder="01xxxxxxxx" />
+                      <input className="form-input" value={insuranceId} onChange={e => setInsuranceId(e.target.value)} placeholder="01xxxxxxxx" />
                     </div>
                   </div>
                 )}
@@ -1100,8 +1112,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     backgroundColor: openSections.emergency ? 'var(--color-bg-light)' : 'transparent'
                   }}
                 >
-                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    {t('LIÊN HỆ KHẨN CẤP')}
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                    <PhoneCall size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ KHẨN CẤP')}
                   </span>
                   {openSections.emergency ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -1144,8 +1156,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     backgroundColor: openSections.schedule ? 'var(--color-bg-light)' : 'transparent'
                   }}
                 >
-                  <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    {t('TRỰC TUYẾN & LỊCH LÀM VIỆC')}
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                    <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> {t('TRỰC TUYẾN & LỊCH LÀM VIỆC')}
                   </span>
                   {openSections.schedule ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -1359,8 +1371,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       backgroundColor: openSections.documents ? 'var(--color-bg-light)' : 'transparent'
                     }}
                   >
-                    <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                      {t('HỒ SƠ & TÀI LIỆU ĐÍNH KÈM')}
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <Paperclip size={14} style={{ color: 'var(--color-primary)' }} /> {t('HỒ SƠ & TÀI LIỆU ĐÍNH KÈM')}
                     </span>
                     {openSections.documents ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
