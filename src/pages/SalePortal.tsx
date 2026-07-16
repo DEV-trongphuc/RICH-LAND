@@ -6851,8 +6851,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   {paginatedPublicLeads.map((lead) => {
                     const hasClaimed = lead.takers && lead.takers.some((t: any) => Number(t.id) === Number(displayUser?.id) || Number(t.id) === Number(displayUser?.consultant_id));
                     const isFull = lead.takers && lead.takers.length >= 2;
-                    const isAdminOrManager = ['admin', 'superadmin', 'super_admin', 'manager'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
-                    const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdminOrManager;
+                    const isAdmin = ['admin', 'superadmin', 'super_admin'].includes(String(user?.role || displayUser?.role || '').toLowerCase());
+                    const canClaim = !hasClaimed && !isFull && isClaimingLeadId === null && !isAdmin;
 
                     return (
                       <tr 
@@ -6935,27 +6935,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 e.stopPropagation();
                                 handleClaimLead(lead.id, lead.full_name || lead.name);
                               }}
-                              disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdminOrManager}
+                              disabled={isClaimingLeadId !== null || hasClaimed || isFull || isAdmin}
                               className={isFull ? "btn outline sm" : (hasClaimed ? "btn success sm" : "btn primary sm")}
                               style={{
                                 height: 32,
                                 fontSize: '0.72rem',
                                 fontWeight: 700,
                                 padding: '0 10px',
-                                background: isAdminOrManager ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D')),
-                                color: isAdminOrManager ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff')),
-                                border: isAdminOrManager ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none')),
+                                background: isAdmin ? 'rgba(0,0,0,0.04)' : (hasClaimed ? 'rgba(16,185,129,0.12)' : (isFull ? 'transparent' : '#BD1D2D')),
+                                color: isAdmin ? 'var(--color-text-muted)' : (hasClaimed ? '#10b981' : (isFull ? 'var(--color-text-muted)' : '#ffffff')),
+                                border: isAdmin ? '1px solid var(--color-border-light)' : (hasClaimed ? '1px solid rgba(16,185,129,0.2)' : (isFull ? '1px solid var(--color-border)' : 'none')),
                                 borderRadius: '16px',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: (hasClaimed || isFull || isAdminOrManager) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)',
-                                cursor: isAdminOrManager ? 'not-allowed' : 'pointer'
+                                boxShadow: (hasClaimed || isFull || isAdmin) ? 'none' : '0 4px 12px rgba(189,29,45,0.15)',
+                                cursor: isAdmin ? 'not-allowed' : 'pointer'
                               }}
                             >
                               {isClaimingLeadId === lead.id 
                                 ? t('Đang nhận...') 
-                                : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : (isAdminOrManager ? t('Chỉ dành cho Sales') : t('Nhận Data'))))}
+                                : (hasClaimed ? t('Đã nhận') : (isFull ? t('Hết lượt') : (isAdmin ? t('Chỉ dành cho Sales') : t('Nhận Data'))))}
                             </button>
                           </div>
                         </td>

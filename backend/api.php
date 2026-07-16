@@ -11501,7 +11501,7 @@ switch ($action) {
             $managerFilterDl = " AND dl.assigned_to IN ($idsList) ";
             $managerFilterLeads = " AND l.assigned_to IN ($idsList) ";
             $managerFilterReports = " AND consultant_id IN ($idsList) ";
-            $consultantFilter = " AND (email IN (SELECT email FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['user_id'] . ")) OR email = " . $conn->real_escape_string("'" . $decodedUser['email'] . "'") . ")";
+            $consultantFilter = " AND (email IN (SELECT email FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['user_id'] . ")) OR email = '" . $conn->real_escape_string($decodedUser['email']) . "')";
         }
         $dbVer = 0;
         $vStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'db_version' LIMIT 1");
