@@ -71,8 +71,8 @@ export const SIDEBAR_GROUPS: SidebarGroup[] = [
     items: [
       { name: 'Tài khoản cá nhân', href: '/account', icon: User, hideForRoles: ['admin', 'superadmin', 'super_admin', 'viewer', 'assistant', 'manager'] },
       { name: 'Chi nhánh', href: '/consultants?tab=branches', icon: Building2, hideForRoles: ['manager', 'assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Team', href: '/consultants?tab=teams', icon: Users, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
-      { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
+      { name: 'Team', href: '/consultants?tab=teams', icon: Users, hideForRoles: ['assistant', 'viewer'] },
+      { name: 'Nhân viên kinh doanh', href: '/consultants', icon: Users, hideForRoles: ['assistant', 'viewer'] },
       { name: 'Quản lý chấm công', href: '/attendance', icon: Clock, hideForRoles: ['assistant', 'sale', 'viewer', 'sales'] },
       { name: 'Chấm công', href: '/attendance', icon: Clock, hideForRoles: ['admin', 'superadmin', 'super_admin', 'manager', 'viewer'] }
     ]

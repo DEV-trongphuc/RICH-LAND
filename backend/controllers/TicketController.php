@@ -61,7 +61,7 @@ class TicketController {
         $total = (int)$cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            SELECT t.*, u.full_name as assignee_name
+            SELECT t.*, u.full_name as assignee_name, u.avatar_url as assignee_avatar
             FROM tickets t
             LEFT JOIN users u ON t.assignee_id = u.id
             WHERE $w 
@@ -88,7 +88,7 @@ class TicketController {
             respond(403, null, 'Bạn không có quyền truy cập ticket này', false);
         }
         $stmt = $this->db->prepare("
-            SELECT t.*, u.full_name as assignee_name
+            SELECT t.*, u.full_name as assignee_name, u.avatar_url as assignee_avatar
             FROM tickets t
             LEFT JOIN users u ON t.assignee_id = u.id
             WHERE t.id=? AND t.tenant_id=?

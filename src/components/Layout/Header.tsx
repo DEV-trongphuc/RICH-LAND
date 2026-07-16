@@ -1120,7 +1120,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                   <>
                     <button
                       onClick={() => {
-                        navigate('/consultants');
+                        navigate('/consultants?tab=teams');
                         setIsProfileMenuOpen(false);
                       }}
                       style={{

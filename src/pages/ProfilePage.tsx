@@ -36,7 +36,7 @@ const DAY_LABELS = {
 
 export const ProfilePage: React.FC = () => {
   const { t } = useLanguage();
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, updateUser } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -257,6 +257,7 @@ export const ProfilePage: React.FC = () => {
 
       if (res.success && res.url) {
         setProfileData(prev => ({ ...prev, avatar: res.url }));
+        updateUser({ avatar: res.url, avatar_url: res.url } as any);
         toast.success(t('Tải ảnh đại diện lên thành công!'));
       } else {
         toast.error(res.message || t('Lỗi khi tải ảnh lên'));
@@ -336,7 +337,7 @@ export const ProfilePage: React.FC = () => {
         toast.success(t('Cập nhật thông tin thành công!'));
         const token = localStorage.getItem('access_token') || localStorage.getItem('richland_token') || '';
         if (user) {
-          login(token, { ...user, name: profileData.name, avatar: profileData.avatar } as any);
+          login(token, { ...user, name: profileData.name, avatar: profileData.avatar, avatar_url: profileData.avatar } as any);
         }
         fetchConsultantProfile();
         fetchLogs();

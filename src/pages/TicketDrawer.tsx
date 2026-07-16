@@ -336,7 +336,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       <div>
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Người phụ trách</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Avatar name={formData.assignee_name} size={24} />
+                          <Avatar name={formData.assignee_name} src={formData.assignee_avatar} size={24} />
                           <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{formData.assignee_name || 'Admin'}</span>
                         </div>
                       </div>

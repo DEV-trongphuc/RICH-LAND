@@ -112,6 +112,7 @@ class ContactController {
                        ELSE comp.name 
                    END as company_name,
                    u.full_name as owner_name,
+                   u.avatar_url as owner_avatar,
                    ps.name as stage_name, ps.color as stage_color,
                    dl.received_at as distributed_at,
                    dl.status as dl_status,
@@ -314,7 +315,7 @@ class ContactController {
                         WHEN comp.deleted_at IS NOT NULL THEN CONCAT(comp.name, ' (Đã xóa)')
                         ELSE comp.name 
                     END as company_name, 
-                    u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
+                    u.full_name as owner_name, u.avatar_url as owner_avatar, ps.name as stage_name, ps.color as stage_color,
                     (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as actual_revenue,
                     (SELECT COUNT(*) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as paid_invoice_count,
                     (SELECT COALESCE(SUM(ee.amount),0) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as total_spent,
@@ -669,7 +670,7 @@ class ContactController {
                         WHEN comp.deleted_at IS NOT NULL THEN CONCAT(comp.name, ' (Đã xóa)')
                         ELSE comp.name 
                     END as company_name, 
-                    u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
+                    u.full_name as owner_name, u.avatar_url as owner_avatar, ps.name as stage_name, ps.color as stage_color,
                     (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as actual_revenue,
                     (SELECT COUNT(*) FROM invoices WHERE contact_id=c.id AND status='paid' AND deleted_at IS NULL) as paid_invoice_count,
                     (SELECT COALESCE(SUM(ee.amount),0) FROM expense_entities ee JOIN expenses e ON ee.expense_id = e.id WHERE ee.entity_type = 'contact' AND ee.entity_id = c.id AND e.status = 'approved' AND e.deleted_at IS NULL) as total_spent,

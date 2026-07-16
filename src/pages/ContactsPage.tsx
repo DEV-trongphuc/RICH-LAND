@@ -1377,7 +1377,7 @@ export const ContactsPage: React.FC = () => {
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             {c.owner_name ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <Avatar name={c.owner_name} size={32} />
+                                <Avatar name={c.owner_name} src={c.owner_avatar} size={32} />
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                   <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{c.owner_name}</span>
                                   <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>

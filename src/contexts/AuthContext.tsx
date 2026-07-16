@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return {
       ...u,
       name: u.full_name || u.name || u.username || '',
-      avatar: u.avatar_url || u.avatar || '',
+      avatar: u.avatar || u.avatar_url || '',
       role
     };
   };

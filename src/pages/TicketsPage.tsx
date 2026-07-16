@@ -296,7 +296,7 @@ export const TicketsPage: React.FC = () => {
                   <td style={{ padding: '1rem', fontWeight: 600, fontSize: '0.875rem' }}>{t.customer_name}</td>
                   <td style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Avatar name={t.assignee_name} size={24} />
+                      <Avatar name={t.assignee_name} src={t.assignee_avatar} size={24} />
                       <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t.assignee_name || 'Chưa phân công'}</span>
                     </div>
                   </td>
@@ -350,7 +350,7 @@ export const TicketsPage: React.FC = () => {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>#{t.id}</span>
-                        <Avatar name={t.assignee_name} size={20} title={t.assignee_name || 'Chưa phân công'} />
+                        <Avatar name={t.assignee_name} src={t.assignee_avatar} size={20} title={t.assignee_name || 'Chưa phân công'} />
                       </div>
                       <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem', lineHeight: 1.4 }}>{t.subject}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
