@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  X, CheckSquare, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
+  X, CheckSquare, Check, Paperclip, Link2, MessageSquare, Calendar, User, Clock, 
   Settings, AlertCircle, Trash2, Plus, Send, Share2, FileText, Globe, 
   Users, RefreshCw, Layers, CheckSquare2, Info, Receipt, Scale, ArrowUpRight, Search
 } from 'lucide-react';
@@ -670,6 +670,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     setNewSubAssignee('');
     setNewSubDeadline('');
     setNewSubPriority('medium');
+    setShowAddChecklist(false);
     toast.success(t('Đã thêm việc con'));
   };
 
@@ -1187,7 +1188,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
                           }}
                         >
-                          {t('👉 Đồng bộ tiến độ chính')}
+                          {t('Đồng bộ tiến độ chính')}
                         </button>
                       )}
                     </div>
@@ -1326,14 +1327,56 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           opacity: item.done ? 0.8 : 1
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                          <input
-                            type="checkbox"
-                            checked={!!item.done}
-                            onChange={() => handleToggleChecklist(item.id)}
-                            disabled={currentUser?.role === 'viewer'}
-                            style={{ width: '15px', height: '15px', cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer', accentColor: 'var(--color-success)' }}
-                          />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                          {/* Round & Large Custom Checkbox */}
+                          <div style={{ position: 'relative', width: 22, height: 22, flexShrink: 0 }}>
+                            <input
+                              type="checkbox"
+                              checked={!!item.done}
+                              onChange={() => handleToggleChecklist(item.id)}
+                              disabled={currentUser?.role === 'viewer'}
+                              style={{
+                                opacity: 0,
+                                position: 'absolute',
+                                width: '100%',
+                                height: '100%',
+                                cursor: currentUser?.role === 'viewer' ? 'not-allowed' : 'pointer',
+                                margin: 0,
+                                zIndex: 1
+                              }}
+                            />
+                            <motion.div
+                              animate={{
+                                backgroundColor: item.done ? 'var(--color-success)' : 'var(--color-surface)',
+                                borderColor: item.done ? 'var(--color-success)' : 'var(--color-border)',
+                                opacity: currentUser?.role === 'viewer' ? 0.6 : 1
+                              }}
+                              style={{
+                                width: 22,
+                                height: 22,
+                                border: '2px solid',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'background-color 0.2s, border-color 0.2s'
+                              }}
+                            >
+                              <AnimatePresence>
+                                {item.done && (
+                                  <motion.div
+                                    initial={{ scale: 0, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0, opacity: 0 }}
+                                    transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+                                  >
+                                    <Check size={14} color="white" strokeWidth={4} />
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.div>
+                          </div>
+
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{
                               fontSize: '0.78rem',
@@ -1341,22 +1384,33 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                               color: item.done ? 'var(--color-text-muted)' : 'var(--color-text)',
                               textDecoration: item.done ? 'line-through' : 'none'
                             }}>{item.title}</span>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                              <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
-                                {itemUser ? `${t('Giao cho')}: ${itemUser.full_name}` : t('Chưa phân công')}
-                                {item.due_date && ` • Hạn: ${new Date(item.due_date).toLocaleDateString('vi-VN')}`}
-                              </span>
-                              <span style={{
-                                fontSize: '0.625rem',
-                                fontWeight: 800,
-                                padding: '1px 5px',
-                                borderRadius: '4px',
-                                background: item.priority === 'high' ? 'rgba(239, 68, 68, 0.08)' : item.priority === 'low' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                                color: item.priority === 'high' ? 'var(--color-danger)' : item.priority === 'low' ? 'var(--color-info)' : 'var(--color-warning)',
-                                textTransform: 'uppercase'
-                              }}>
-                                {item.priority === 'high' ? t('Cao') : item.priority === 'low' ? t('Thấp') : t('Trung bình')}
-                              </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                                  {t('Giao cho')}:
+                                </span>
+                                {itemUser ? (
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    <Avatar 
+                                      src={itemUser.avatar || itemUser.avatar_url} 
+                                      name={itemUser.full_name} 
+                                      size={16} 
+                                    />
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                      {itemUser.full_name}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                                    {t('Chưa phân công')}
+                                  </span>
+                                )}
+                              </div>
+                              {item.due_date && (
+                                <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)' }}>
+                                  {` • Hạn: ${new Date(item.due_date).toLocaleDateString('vi-VN')}`}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
