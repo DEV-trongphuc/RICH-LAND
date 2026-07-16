@@ -2011,6 +2011,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   }, [drawerActivities, mockStore.activities, contact?.id, timelineFilter]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
+  const ownerUser = users.find(u => u.full_name === formData.owner_name || u.name === formData.owner_name || u.username === formData.owner_name);
+  const ownerAvatarUrl = ownerUser?.avatar_url || ownerUser?.avatar || undefined;
 
   const handleAddCustomField = () => {
     const key = customFieldKey.trim();
@@ -3285,9 +3287,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '8px', cursor: 'pointer' }}
                           onClick={(e) => showUserCard(e, formData.owner_name)}
                         >
-                          <div style={{ width: 20, height: 20, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 800 }}>
-                            {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
-                          </div>
+                          <Avatar 
+                            src={ownerAvatarUrl}
+                            name={formData.owner_name} 
+                            size={20} 
+                          />
                           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Sale phụ trách'}</span>
                         </div>
                       </div>
@@ -3349,18 +3353,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     }}>
                       {/* Row 1: Avatar, Name, Status Badge, Scoring */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div
-                          style={{
-                            background: formData.avatar_url 
-                              ? `url(${formData.avatar_url}) center/cover` 
-                              : `linear-gradient(135deg, ${formData.stage_color || 'var(--color-primary)'} 0%, ${formData.stage_color ? formData.stage_color + 'cc' : '#8a0f1b'} 100%)`,
-                            fontSize: '1.15rem', width: 48, height: 48, borderRadius: '50%',
-                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: 'var(--shadow-md)', flexShrink: 0
-                          }}
-                        >
-                          {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
-                        </div>
+                        <Avatar 
+                          src={formData.avatar_url} 
+                          name={fullName} 
+                          size={48} 
+                        />
 
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -3436,9 +3433,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '3px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '6px', cursor: 'pointer' }}
                           onClick={(e) => showUserCard(e, formData.owner_name)}
                         >
-                          <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#BD1D2D', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: 800 }}>
-                            {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
-                          </div>
+                          <Avatar 
+                            src={ownerAvatarUrl}
+                            name={formData.owner_name} 
+                            size={16} 
+                          />
                           <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#8a0f1b' }}>{formData.owner_name || 'Chưa nhận'}</span>
                         </div>
 

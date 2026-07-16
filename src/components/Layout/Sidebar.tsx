@@ -100,26 +100,6 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const [undoneTasksCount, setUndoneTasksCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
-  const [sliderStyle, setSliderStyle] = useState({ top: 0, height: 0 });
-  const navContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (navContainerRef.current) {
-        const activeElement = navContainerRef.current.querySelector('.active') as HTMLElement;
-        if (activeElement) {
-          setSliderStyle({
-            top: activeElement.offsetTop,
-            height: activeElement.offsetHeight
-          });
-        } else {
-          setSliderStyle({ top: 0, height: 0 });
-        }
-      }
-    }, 60);
-    return () => clearTimeout(timer);
-  }, [location.pathname, location.search, isCollapsed]);
-
   // Poll pending counts every 60s
   useEffect(() => {
     if (!user) return;
@@ -358,24 +338,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
 
         {/* Nav */}
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none' }}>
-          <div ref={navContainerRef} style={{ position: 'relative', padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
-
-            {/* Sliding Active Indicator */}
-            {sliderStyle.height > 0 && (
-              <div style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                width: 4,
-                height: sliderStyle.height,
-                background: 'var(--color-primary)',
-                transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), height 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: `translateY(${sliderStyle.top}px)`,
-                borderRadius: '0 2px 2px 0',
-                pointerEvents: 'none',
-                zIndex: 10
-              }} />
-            )}
+          <div style={{ position: 'relative', padding: '1rem 0', display: 'flex', flexDirection: 'column' }}>
 
             {visibleGroups.map((group, groupIdx) => (
               <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: isCollapsed ? '0.375rem' : '0.875rem' }}>
@@ -445,6 +408,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                     >
                       {() => (
                         <>
+                          {isActive && (
+                            <div style={{
+                              position: 'absolute',
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: 4,
+                              background: 'var(--color-primary)',
+                              borderRadius: '0 2px 2px 0',
+                              zIndex: 10
+                            }} />
+                          )}
                           {/* Icon Box — with badge dot when collapsed */}
                           <div style={{
                             width: 30, height: 30, borderRadius: 8,
