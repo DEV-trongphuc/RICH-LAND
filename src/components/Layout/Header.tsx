@@ -164,6 +164,23 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
     }
     setIsNotifModalOpen(false);
 
+    let contactIdFromRef: string | null = null;
+    if (notif.body && (
+      !notif.link || 
+      notif.link.includes('contact') || 
+      (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn')))
+    )) {
+      const refMatch = notif.body.match(/Contact ID:\s*(\d+)/i) || notif.body.match(/ID:\s*(\d+)/i);
+      if (refMatch) {
+        contactIdFromRef = refMatch[1];
+      }
+    }
+
+    if (contactIdFromRef) {
+      navigate(`/contacts?open_contact_id=${contactIdFromRef}`);
+      return;
+    }
+
     if (notif.link) {
       let targetLink = notif.link;
       
@@ -188,25 +205,26 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         }
       }
 
-      const contactMatch = targetLink.match(/^\/contacts\/(\d+)$/);
+      const contactMatch = targetLink.match(/^\/contacts\/(\d+)$/) || targetLink.match(/\/contacts\?(?:open_contact_id|id)=(\d+)/);
       if (contactMatch) {
         targetLink = `/contacts?open_contact_id=${contactMatch[1]}`;
-      }
-      const activityMatch = targetLink.match(/^\/activities\/(\d+)$/);
-      if (activityMatch) {
-        if (['sale', 'sales'].includes(user?.role || '')) {
-          targetLink = `/workspace?task_id=${activityMatch[1]}`;
-        } else {
-          targetLink = `/activities?id=${activityMatch[1]}`;
+      } else {
+        const activityMatch = targetLink.match(/^\/activities\/(\d+)$/);
+        if (activityMatch) {
+          if (['sale', 'sales'].includes(user?.role || '')) {
+            targetLink = `/workspace?task_id=${activityMatch[1]}`;
+          } else {
+            targetLink = `/activities?id=${activityMatch[1]}`;
+          }
         }
-      }
-      const projectMatch = targetLink.match(/^\/projects\/(\d+)$/);
-      if (projectMatch) {
-        targetLink = `/projects?id=${projectMatch[1]}`;
-      }
-      const ticketMatch = targetLink.match(/^\/tickets\/(\d+)$/);
-      if (ticketMatch) {
-        targetLink = `/support-tickets?id=${ticketMatch[1]}`;
+        const projectMatch = targetLink.match(/^\/projects\/(\d+)$/);
+        if (projectMatch) {
+          targetLink = `/projects?id=${projectMatch[1]}`;
+        }
+        const ticketMatch = targetLink.match(/^\/tickets\/(\d+)$/);
+        if (ticketMatch) {
+          targetLink = `/support-tickets?id=${ticketMatch[1]}`;
+        }
       }
       navigate(targetLink);
     }
