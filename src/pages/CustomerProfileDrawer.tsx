@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw } from 'lucide-react';
+import { X, User, Users, Phone, Mail, MapPin, Briefcase, Plus, Search, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, ChevronDown, Check, Camera, Loader2, MessageSquare, PenTool, Lightbulb, Upload, Paperclip, CreditCard, Ban, ShieldAlert, Copy, Folder, FolderPlus, ArrowRightLeft, List, LayoutGrid, RotateCcw, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
@@ -442,7 +442,9 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
         style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
         onClick={toggleExpand}
       >
-        <MessageSquare size={14} /> Bình luận {displayCount > 0 && `(${displayCount})`}
+        {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <MessageSquare size={14} />
+        Bình luận {displayCount > 0 && `(${displayCount})`}
       </button>
 
       {expanded && (
