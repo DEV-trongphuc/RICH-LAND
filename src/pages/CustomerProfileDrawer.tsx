@@ -1989,8 +1989,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       type: a.type,
       user: a.user_name || 'Hệ thống',
       time: a.created_at,
-      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : '#10b981',
-      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : <Mail size={16} />,
+      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#BD1D2D' : a.type === 'task' ? '#f59e0b' : a.type === 'system' ? '#64748b' : a.type === 'note' ? '#6366f1' : '#10b981',
+      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : a.type === 'task' ? <CheckSquare size={16} /> : a.type === 'system' ? <History size={16} /> : a.type === 'note' ? <FileText size={16} /> : <Mail size={16} />,
       note: a.body || a.note || '',
       comment_count: a.comment_count,
       expense_image_url: a.expense_image_url,
@@ -7666,12 +7666,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         ttl1_completed: formData.ttl1_completed,
                         ttl1_data: formData.ttl1_data
                       });
-                      // Log audit note with correct query params
-                      await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
-                        body: `[Chuyển trạng thái Pipeline] → ${targetLabel}: ${note}`,
-                        type: 'internal'
+                      // Log status transition in activities (Nhật ký tương tác)
+                      await api.post('/activities', {
+                        type: 'note',
+                        subject: `Chuyển trạng thái Pipeline → ${targetLabel}`,
+                        body: note || null,
+                        status: 'done',
+                        related_type: 'contact',
+                        related_id: contact.id,
+                        contact_id: contact.id,
+                        due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+                        done_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
                       });
-                      setNotes(p => [{ id: Date.now(), text: `[Chuyển trạng thái] → ${targetLabel}: ${note}`, time: new Date().toISOString(), user: 'Admin' }, ...p]);
+                      fetchData();
                       addToast(`Đã cập nhật Pipeline thành ${targetLabel}`, 'success');
                       window.dispatchEvent(new CustomEvent('contact-updated'));
                     } catch (e: any) {
