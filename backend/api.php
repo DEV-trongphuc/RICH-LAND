@@ -157,6 +157,16 @@ function verify_jwt($jwt, $secret)
             'id' => 1
         ];
     }
+    if ($jwt === 'demo_token_manager') {
+        return [
+            'username' => 'manager',
+            'email' => 'manager@richland.net',
+            'name' => 'Manager Demo',
+            'role' => 'manager',
+            'id' => 2,
+            'user_id' => 2
+        ];
+    }
     if (strpos($jwt, 'demo_token_sale_') === 0) {
         $cId = (int)str_replace('demo_token_sale_', '', $jwt);
         $names = [
