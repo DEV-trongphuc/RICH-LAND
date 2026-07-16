@@ -61,7 +61,10 @@ class TeamController
 
         $name = trim($b['name']);
         $branch = !empty($b['branch']) ? trim($b['branch']) : null;
-        $leaderId = !empty($b['leader_id']) ? (int)$b['leader_id'] : null;
+        if (empty($b['leader_id'])) {
+            respond(422, null, 'Trưởng nhóm là bắt buộc', false);
+        }
+        $leaderId = (int)$b['leader_id'];
         $description = !empty($b['description']) ? trim($b['description']) : null;
         $kpiTarget = isset($b['kpi_target']) ? (float)$b['kpi_target'] : null;
         $maxMembers = isset($b['max_members']) ? (int)$b['max_members'] : null;
@@ -172,8 +175,11 @@ class TeamController
         }
 
         if (array_key_exists('leader_id', $b)) {
+            if (empty($b['leader_id'])) {
+                respond(422, null, 'Trưởng nhóm không được để trống', false);
+            }
             $sets[] = "leader_id = ?";
-            $params[] = !empty($b['leader_id']) ? (int)$b['leader_id'] : null;
+            $params[] = (int)$b['leader_id'];
         }
 
         if (array_key_exists('description', $b)) {
