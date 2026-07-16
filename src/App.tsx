@@ -93,7 +93,7 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/consultants') {
-    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant'].includes(user?.role || '')) {
+    if (!['admin', 'superadmin', 'super_admin', 'manager', 'director', 'assistant', 'sale', 'sales'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/invoices' || currentPath === '/deposits' || currentPath === '/attendance') {
