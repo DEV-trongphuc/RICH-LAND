@@ -4797,9 +4797,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div style={{ marginBottom: '1rem', padding: '10px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', border: '1px dashed rgba(59, 130, 246, 0.3)' }}>
                                     <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-primary)', margin: '0 0 6px 0' }}>Tài liệu yêu cầu bắt buộc:</p>
                                     <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.775rem', color: 'var(--color-text-light)' }}>
-                                      {coopDefaultFiles.map((file, fIdx) => (
-                                        <li key={fIdx}>{file} (Phải có tài liệu chứa keyword <strong>UNC</strong>)</li>
-                                      ))}
+                                      {coopDefaultFiles.map((file, fIdx) => {
+                                        const cleanKeyword = file.split('.')[0].toLowerCase().trim();
+                                        return (
+                                          <li key={fIdx}>
+                                            {file} (Tên file upload phải chứa chữ <strong>{cleanKeyword.toUpperCase()}</strong>)
+                                          </li>
+                                        );
+                                      })}
                                     </ul>
                                   </div>
                                 )}
