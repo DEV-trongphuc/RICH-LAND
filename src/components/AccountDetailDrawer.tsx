@@ -974,6 +974,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           value={password} 
                           onChange={e => setPassword(e.target.value)} 
                           placeholder={account ? t('Nhập mật khẩu mới') : t('Tối thiểu 6 ký tự')}
+                          autoComplete="new-password"
                         />
                       </div>
                       <div className="form-group">
