@@ -2125,7 +2125,11 @@ try {
 
         $logMsg("Hoàn thành tự tạo các INDEX hiệu năng.", "success");
 
-        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '155') ON DUPLICATE KEY UPDATE setting_value = '155'");
+        // Initialize Zalo Group notification settings (Version 156 & 157)
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_admin_group_chat_id', '')");
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('zalo_notify_only_group', '0')");
+
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '157') ON DUPLICATE KEY UPDATE setting_value = '157'");
 
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 

@@ -81,8 +81,23 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
 
     $fromName = 'bạn'; // Zalo webhook user_send_text thường không kèm tên, dùng default
 
-    if (!empty($text) && !empty($chatId)) {
+        // Hỗ trợ loại bỏ phần @mention bot trong group chat (ví dụ: "@Bot RICH LAND /report homqua")
+        if (strpos(trim($text), '@') === 0 && strpos($text, '/') !== false) {
+            $slashPos = strpos($text, '/');
+            $text = trim(substr($text, $slashPos));
+        }
         $textLower = strtolower(trim($text));
+
+        // --- COMMAND LẤY CHAT ID ---
+        if ($textLower === '/chatid' || $textLower === '/id' || $textLower === '/info') {
+            if (!empty($botToken)) {
+                $zaloMsg = "💬 [ HỆ THỐNG RICH LAND ]\n\n"
+                    . "• Chat ID của phòng này: $chatId\n\n"
+                    . "💡 Bạn có thể dùng Chat ID này điền vào cấu hình Zalo Admin Group Chat ID trong trang Cài Đặt của hệ thống để nhận các thông báo cảnh báo, duyệt ticket và báo cáo ngày.";
+                sendZaloMessage($botToken, $chatId, $zaloMsg);
+            }
+            exit;
+        }
 
         // --- XỬ LÝ TEST COMMAND ---
         if ($textLower === 'test_data' || $textLower === 'test_data_admin' || $textLower === 'test_report') {
@@ -147,20 +162,28 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
             $adminRole = '';
             $adminName = '';
             $adminAccountId = 0;
-            $stmtCheck = $conn->prepare("SELECT id, name, role FROM accounts WHERE zalo_chat_id = ? LIMIT 1");
-            if ($stmtCheck) {
-                $stmtCheck->bind_param("s", $chatId);
-                $stmtCheck->execute();
-                $resCheck = $stmtCheck->get_result();
-                if ($resCheck && $rowCheck = $resCheck->fetch_assoc()) {
-                    $adminRole = $rowCheck['role'];
-                    if ($adminRole === 'admin' || $adminRole === 'superadmin' || $adminRole === 'assistant') {
-                        $isAdmin = true;
-                        $adminName = $rowCheck['name'] ?: 'Quản trị viên';
-                        $adminAccountId = (int) $rowCheck['id'];
+
+            $zaloAdminGroupChatId = get_system_setting($conn, 'zalo_admin_group_chat_id');
+            if (!empty($zaloAdminGroupChatId) && $chatId === $zaloAdminGroupChatId) {
+                $isAdmin = true;
+                $adminRole = 'admin';
+                $adminName = 'Group Admin';
+            } else {
+                $stmtCheck = $conn->prepare("SELECT id, name, role FROM accounts WHERE zalo_chat_id = ? LIMIT 1");
+                if ($stmtCheck) {
+                    $stmtCheck->bind_param("s", $chatId);
+                    $stmtCheck->execute();
+                    $resCheck = $stmtCheck->get_result();
+                    if ($resCheck && $rowCheck = $resCheck->fetch_assoc()) {
+                        $adminRole = $rowCheck['role'];
+                        if ($adminRole === 'admin' || $adminRole === 'superadmin' || $adminRole === 'assistant') {
+                            $isAdmin = true;
+                            $adminName = $rowCheck['name'] ?: 'Quản trị viên';
+                            $adminAccountId = (int) $rowCheck['id'];
+                        }
                     }
+                    $stmtCheck->close();
                 }
-                $stmtCheck->close();
             }
 
             if (!$isAdmin) {

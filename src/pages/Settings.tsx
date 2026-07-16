@@ -184,6 +184,8 @@ const SettingsInner = () => {
   const [zaloBotToken, setZaloBotToken] = useState('');
   const [zaloWebhookSecret, setZaloWebhookSecret] = useState('');
   const [zaloBotLink, setZaloBotLink] = useState('');
+  const [zaloAdminGroupChatId, setZaloAdminGroupChatId] = useState('');
+  const [zaloNotifyOnlyGroup, setZaloNotifyOnlyGroup] = useState(false);
   const [zaloDailyReportTime, setZaloDailyReportTime] = useState('');
   const [dailyReportAdmins, setDailyReportAdmins] = useState<number[]>([]);
 
@@ -427,6 +429,10 @@ const SettingsInner = () => {
         if (json.data.zalo_bot_token) setZaloBotToken(json.data.zalo_bot_token);
         if (json.data.zalo_webhook_secret) setZaloWebhookSecret(json.data.zalo_webhook_secret);
         if (json.data.zalo_bot_link) setZaloBotLink(json.data.zalo_bot_link);
+        if (json.data.zalo_admin_group_chat_id) setZaloAdminGroupChatId(json.data.zalo_admin_group_chat_id);
+        if (json.data.zalo_notify_only_group !== undefined) {
+          setZaloNotifyOnlyGroup(json.data.zalo_notify_only_group === '1' || json.data.zalo_notify_only_group === 1);
+        }
         if (json.data.zalo_daily_report_time) setZaloDailyReportTime(json.data.zalo_daily_report_time);
         if (json.data.daily_report_admins) {
           try {
@@ -670,6 +676,8 @@ const SettingsInner = () => {
       zalo_bot_token: zaloBotToken,
       zalo_webhook_secret: zaloWebhookSecret,
       zalo_bot_link: zaloBotLink,
+      zalo_admin_group_chat_id: zaloAdminGroupChatId,
+      zalo_notify_only_group: zaloNotifyOnlyGroup ? '1' : '0',
       zalo_daily_report_time: zaloDailyReportTime,
       daily_report_admins: dailyReportAdmins,
       zalo_weekly_report_day: zaloWeeklyReportDay,
@@ -2649,6 +2657,19 @@ function doPost(e) {
                     </p>
                   </div>
 
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>{t('Zalo Admin Group Chat ID')}</label>
+                    <input
+                      className="form-input"
+                      placeholder={t("Nhập Chat ID của Group Admin Zalo (ví dụ: group.123456...)")}
+                      value={zaloAdminGroupChatId}
+                      onChange={e => setZaloAdminGroupChatId(e.target.value)}
+                    />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                      {t('Mọi cảnh báo bộ lọc (Blacklist/Trùng), yêu cầu duyệt ticket đền bù, và báo cáo tổng kết ngày sẽ được gửi vào Group Chat này.')}
+                    </p>
+                  </div>
+
                   <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, padding: '1rem' }}>
                     <label className="form-label">{t('Link Webhook khai báo trên Zalo Bot Platform:')}</label>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -2776,61 +2797,84 @@ function doPost(e) {
                     <span style={{ display: 'inline-flex', background: '#0ea5e9', color: 'white', padding: 4, borderRadius: 6 }}><Users size={16} /></span>
                     {t('Admin nhận Báo cáo')}
                   </h3>
-                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
-                    {t('Chọn các tài khoản sẽ nhận báo cáo qua')} <strong>{t('Email')}</strong> {t('và')} <strong>{t('Zalo Bot')}</strong>. {t('Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin.')}
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {accounts.filter(a => a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1).map((admin: any) => {
-                      const isSelected = dailyReportAdmins.includes(Number(admin.id));
-                      return (
-                        <label
-                          key={admin.id}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: '0.875rem',
-                            padding: '0.875rem 1rem', borderRadius: 10, cursor: 'pointer',
-                            border: isSelected ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                            background: isSelected ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                            transition: 'all 0.15s'
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {
-                              setDailyReportAdmins(prev =>
-                                isSelected ? prev.filter(id => id !== Number(admin.id)) : [...prev, Number(admin.id)]
-                              );
+                  <div style={{ marginBottom: '1.5rem', marginTop: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 500 }}>
+                      <input
+                        type="checkbox"
+                        checked={zaloNotifyOnlyGroup}
+                        onChange={e => setZaloNotifyOnlyGroup(e.target.checked)}
+                        style={{ width: 16, height: 16, accentColor: 'var(--color-primary)' }}
+                      />
+                      <span>{t('Chỉ gửi thông báo Admin qua Group Zalo (Không gửi tin nhắn riêng lẻ cho từng Admin)')}</span>
+                    </label>
+                  </div>
+
+                  <div style={{ opacity: zaloNotifyOnlyGroup ? 0.65 : 1, transition: 'all 0.2s ease-in-out' }}>
+                    <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, color: zaloNotifyOnlyGroup ? 'var(--color-text-muted)' : 'var(--color-text)', marginBottom: '0.5rem' }}>
+                      {t('Danh sách Admin nhận báo cáo riêng lẻ')}
+                      {zaloNotifyOnlyGroup && (
+                        <span style={{ fontSize: '0.75rem', color: '#ea580c', fontWeight: 600, background: '#ffedd5', padding: '2px 8px', borderRadius: 4 }}>
+                          {t('Đang tạm khóa')}
+                        </span>
+                      )}
+                    </label>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
+                      {t('Chọn các tài khoản sẽ nhận báo cáo qua')} <strong>{t('Email')}</strong> {t('và')} <strong>{t('Zalo Bot')}</strong>. {t('Nếu không chọn, hệ thống sẽ gửi cho tất cả Admin. (Lưu ý: Nếu bật tùy chọn chỉ gửi vào Group ở trên thì cấu hình riêng lẻ này sẽ không được áp dụng).')}
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {accounts.filter(a => a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1).map((admin: any) => {
+                        const isSelected = dailyReportAdmins.includes(Number(admin.id));
+                        return (
+                          <label
+                            key={admin.id}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '0.875rem',
+                              padding: '0.875rem 1rem', borderRadius: 10,
+                              cursor: zaloNotifyOnlyGroup ? 'not-allowed' : 'pointer',
+                              border: (isSelected && !zaloNotifyOnlyGroup) ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                              background: (isSelected && !zaloNotifyOnlyGroup) ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                              transition: 'all 0.15s'
                             }}
-                            style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: 'pointer', flexShrink: 0 }}
-                          />
-                          <Avatar src={admin.avatar} name={admin.name || admin.username} size={36} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: isSelected ? 'var(--color-primary)' : 'var(--color-text)' }}>
-                              {admin.name || admin.username}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected && !zaloNotifyOnlyGroup}
+                              disabled={zaloNotifyOnlyGroup}
+                              onChange={() => {
+                                setDailyReportAdmins(prev =>
+                                  isSelected ? prev.filter(id => id !== Number(admin.id)) : [...prev, Number(admin.id)]
+                                );
+                              }}
+                              style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: zaloNotifyOnlyGroup ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                            />
+                            <Avatar src={admin.avatar} name={admin.name || admin.username} size={36} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: (isSelected && !zaloNotifyOnlyGroup) ? 'var(--color-primary)' : 'var(--color-text)' }}>
+                                {admin.name || admin.username}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                {admin.email && (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Mail size={11} /> {admin.email}
+                                  </span>
+                                )}
+                                {admin.zalo_chat_id ? (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0068ff' }}>
+                                    <MessageCircle size={11} /> {t('Zalo đã liên kết')}
+                                  </span>
+                                ) : (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
+                                    <MessageCircle size={11} /> {t('Chưa liên kết Zalo')}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                              {admin.email && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                  <Mail size={11} /> {admin.email}
-                                </span>
-                              )}
-                              {admin.zalo_chat_id ? (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#0068ff' }}>
-                                  <MessageCircle size={11} /> {t('Zalo đã liên kết')}
-                                </span>
-                              ) : (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#f59e0b' }}>
-                                  <MessageCircle size={11} /> {t('Chưa liên kết Zalo')}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, flexShrink: 0 }}>{t('Đã chọn')}</span>
-                          )}
-                        </label>
-                      );
-                    })}
+                            {isSelected && !zaloNotifyOnlyGroup && (
+                              <span style={{ background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', fontWeight: 700, padding: '2px 10px', borderRadius: 20, flexShrink: 0 }}>{t('Đã chọn')}</span>
+                            )}
+                          </label>
+                        );
+                      })}
                     {accounts.filter(a => a.role === 'admin' || a.role === 'superadmin' || Number(a.id) === 1).length === 0 && (
                       <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem' }}>{t('Chưa có tài khoản Admin nào trong hệ thống.')}</p>
                     )}
@@ -2841,6 +2885,7 @@ function doPost(e) {
                       <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0 }}>{t('Chưa chọn Admin nào — hệ thống sẽ tự động gửi cho')} <strong>{t('tất cả tài khoản Admin')}</strong>.</p>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             </div>
