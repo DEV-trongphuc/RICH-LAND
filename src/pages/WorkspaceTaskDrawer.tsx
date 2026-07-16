@@ -339,10 +339,11 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           </a>
         );
       } else if (part.startsWith('@')) {
-        const cleanMention = part.substring(1).toLowerCase().replace(/_\([^)]+\)/g, '');
+        const cleanName = (n: string) => (n || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '').replace(/\([^)]+\)/g, '');
+        const cleanMentionVal = cleanName(part.substring(1));
         const taggedUser = users.find((u: any) => {
-          const normalizedUser = (u.full_name || u.name || u.fullname || u.username || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '');
-          return normalizedUser === cleanMention;
+          const normalizedUser = cleanName(u.full_name || u.name || u.fullname || u.username);
+          return normalizedUser === cleanMentionVal;
         });
 
         const displayName = taggedUser?.full_name || taggedUser?.name || taggedUser?.fullname || taggedUser?.username || part.substring(1).replace(/_/g, ' ');

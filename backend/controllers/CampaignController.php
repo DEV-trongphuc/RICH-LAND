@@ -343,7 +343,7 @@ class CampaignController {
             FROM comments c
             JOIN users u ON c.user_id = u.id
             WHERE c.entity_type = 'campaign' AND c.entity_id = ? AND c.tenant_id = ?
-            ORDER BY c.created_at ASC
+            ORDER BY c.created_at DESC
         ");
         $stmt->execute([$campaignId, $auth['tenant_id']]);
         respond(200, $stmt->fetchAll(), 'Lấy danh sách bình luận thành công');

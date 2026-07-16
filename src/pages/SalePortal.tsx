@@ -1479,11 +1479,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </a>
         );
       } else if (part.startsWith('@')) {
-        const cleanMention = part.substring(1).toLowerCase();
+        const cleanName = (n: string) => (n || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '').replace(/\([^)]+\)/g, '');
+        const cleanMentionVal = cleanName(part.substring(1));
         // Look up user to find avatar
         const taggedUser = users.find((u: any) => {
-          const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase();
-          return normalizedUser === cleanMention;
+          const normalizedUser = cleanName(u.full_name || u.name || u.fullname || u.username);
+          return normalizedUser === cleanMentionVal;
         });
 
         const displayName = taggedUser?.full_name || part.substring(1).replace(/_/g, ' ');

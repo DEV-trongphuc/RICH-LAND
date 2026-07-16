@@ -423,7 +423,7 @@ class TicketController {
             FROM ticket_comments tc
             LEFT JOIN users u ON tc.user_id = u.id
             WHERE tc.ticket_id = ?
-            ORDER BY tc.created_at ASC
+            ORDER BY tc.created_at DESC
         ");
         $stmt->execute([$ticketId]);
         respond(200, $stmt->fetchAll());

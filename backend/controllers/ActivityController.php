@@ -853,7 +853,7 @@ class ActivityController {
             FROM activity_comments c 
             LEFT JOIN users u ON c.user_id = u.id 
             WHERE c.activity_id = ? AND c.tenant_id = ? 
-            ORDER BY c.created_at ASC
+            ORDER BY c.created_at DESC
         ");
         $stmt->execute([$id, $auth['tenant_id']]);
         
