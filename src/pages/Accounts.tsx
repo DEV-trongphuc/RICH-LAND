@@ -834,7 +834,7 @@ const AccountsInner = () => {
                     </tr>
                   ))}
                   {accounts.length === 0 && (
-                    <tr>
+                    <tr className="empty-state-row">
                       <td colSpan={6}>
                         <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                           <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
@@ -1200,7 +1200,7 @@ const AccountsInner = () => {
                     );
                   })}
                   {logs.length === 0 && (
-                    <tr>
+                    <tr className="empty-state-row">
                       <td colSpan={6}>
                         <div style={{ padding: '3rem 2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                           {t('Chưa có lịch sử hoạt động nào được ghi lại.')}

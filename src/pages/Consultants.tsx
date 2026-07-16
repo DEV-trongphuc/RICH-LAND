@@ -850,7 +850,7 @@ const ConsultantsInner = () => {
                 {loading ? (
                   [...Array(5)].map((_, i) => <TableRowSkeleton key={i} cols={isWriteAuthorized ? 6 : 5} />)
                 ) : users.length === 0 ? (
-                  <tr>
+                  <tr className="empty-state-row">
                     <td colSpan={isWriteAuthorized ? 6 : 5}>
                     <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: 'var(--shadow-sm)' }}>
@@ -1140,7 +1140,7 @@ const ConsultantsInner = () => {
                 {teamsLoading ? (
                   [...Array(3)].map((_, i) => <TableRowSkeleton key={i} cols={5} />)
                 ) : teams.length === 0 ? (
-                  <tr>
+                  <tr className="empty-state-row">
                     <td colSpan={5}>
                       <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
                         <Users size={32} color="var(--color-text-muted)" style={{ marginBottom: '1rem' }} />

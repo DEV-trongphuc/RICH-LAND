@@ -1848,8 +1848,32 @@ select:focus {
     background: #111118;
   }
 
-  .table-wrap table td.col-actions::before {
-    display: none;
+  /* Override empty state rows to center properly in mobile card views */
+  .table-wrap.mobile-card-table table tr.empty-state-row {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  .table-wrap.mobile-card-table table tr.empty-state-row td {
+    display: block !important;
+    text-align: center !important;
+    align-items: center !important;
+    border: none !important;
+    padding: 3rem 1.5rem !important;
+  }
+  .table-wrap.mobile-card-table table tr.empty-state-row td::before {
+    display: none !important;
+  }
+  .table-wrap.mobile-card-table table tr.empty-state-row td > div {
+    text-align: center !important;
+    align-items: center !important;
+    justify-content: center !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .table-wrap.mobile-card-table table tr.empty-state-row td > div * {
+    text-align: center !important;
   }
 }
 
