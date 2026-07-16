@@ -3854,8 +3854,8 @@ export default function ProjectsPage() {
                       Thêm nhanh theo Nhóm (Team):
                     </span>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ width: '280px' }}>
                       <CustomSelect
                         multiple={true}
                         searchable={true}
@@ -3930,7 +3930,14 @@ export default function ProjectsPage() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', paddingRight: '4px' }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(3, 1fr)', 
+                gap: '0.75rem', 
+                overflowY: 'auto', 
+                paddingRight: '4px',
+                maxHeight: '450px'
+              }}>
                 {sorted.length === 0 ? (
                   <div style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '2rem 0', fontSize: '0.875rem' }}>
                     Không tìm thấy nhân sự phù hợp
