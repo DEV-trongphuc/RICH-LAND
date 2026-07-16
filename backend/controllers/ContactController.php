@@ -513,6 +513,8 @@ class ContactController {
                 // Fix date string strict mode crash
                 if (in_array($f, ['birthday', 'last_contact']) && $b[$f] === '') {
                     $params[] = null;
+                } else if (in_array($f, ['stage_id', 'project_id', 'campaign_id']) && (empty($b[$f]) || $b[$f] === 0 || $b[$f] === '0' || $b[$f] === 'null')) {
+                    $params[] = null;
                 } else if ($f === 'ttl1_data' && is_array($b[$f])) {
                     $params[] = json_encode($b[$f]);
                 } else {
@@ -563,7 +565,7 @@ class ContactController {
 
         if (!$sets && !isset($b['custom_fields'])) respond(422, null, 'Không có dữ liệu để cập nhật', false);
 
-        if (array_key_exists('stage_id', $b)) {
+        if (array_key_exists('stage_id', $b) && !empty($b['stage_id']) && (int)$b['stage_id'] > 0) {
             $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
             $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
             if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);
