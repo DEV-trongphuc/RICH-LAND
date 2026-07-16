@@ -8171,6 +8171,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {/* RIGHT COLUMN: Vacation Toggle & Work Hour Settings */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
+            {profile?.role === 'sale' && (
+              <>
             {/* Vacation Status Card */}
             <div className="card" style={{
               padding: '1.5rem',
@@ -8652,8 +8654,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               )}
             </div>
+            </>
+          )}
 
-            {/* TÀI LIỆU & HỢP ĐỒNG NHÂN SỰ */}
+          {/* TÀI LIỆU & HỢP ĐỒNG NHÂN SỰ */}
             <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>

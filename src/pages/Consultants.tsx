@@ -92,7 +92,7 @@ const ConsultantsInner = () => {
   const { user } = useAuth();
   const userRole = user?.role;
   const isSale = userRole === 'sale';
-  const isWriteAuthorized = ['admin', 'superadmin', 'super_admin', 'director'].includes(userRole || '');
+  const isWriteAuthorized = ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(userRole || '');
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (document.documentElement.getAttribute('data-theme') as 'light' | 'dark') || 'light';
   });
@@ -1089,16 +1089,6 @@ const ConsultantsInner = () => {
                         <div className="row-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.25rem', opacity: 0, transition: 'opacity 0.15s' }}>
                           <button
                             onClick={() => {
-                              navigate(`/?sale_id=${u.id}`);
-                            }}
-                            className="btn ghost sm"
-                            style={{ width: 32, height: 32, padding: 0, borderRadius: 8, color: 'var(--color-success)' }}
-                            title={t("Xem giao diện Portal")}
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button
-                            onClick={() => {
                               setStatsConsultant(u);
                               setStatsDateMode('this_month');
                               setStatsStartDate('');
@@ -1410,6 +1400,30 @@ const ConsultantsInner = () => {
                     <div>
                       <h3 style={{ fontSize: '1.125rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>{activeBName}</h3>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0 0' }}>Tổng cộng {activeBTeams.length} nhóm và {activeBTotalMembers} nhân sự phân phối</p>
+                    </div>
+                  </div>
+
+                  {/* Branch Config/Setting Info Banner */}
+                  <div style={{
+                    padding: '10px 14px',
+                    background: 'var(--color-primary-light)',
+                    border: '1px solid rgba(189, 29, 45, 0.15)',
+                    borderRadius: '10px',
+                    fontSize: '0.78rem',
+                    color: 'var(--color-primary)',
+                    lineHeight: '1.45',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>💡</span>
+                    <div>
+                      <strong>Cơ chế tự động:</strong> Chi nhánh được phân loại tự động dựa trên tỉnh/thành phố trong phần <strong>Địa chỉ chi nhánh</strong> của từng Nhóm.
+                      {isWriteAuthorized ? (
+                        <span> Để đổi chi nhánh hoặc cập nhật Trưởng nhóm, bạn chỉ cần <strong>nhấp vào thẻ Nhóm bên dưới</strong> để chỉnh sửa.</span>
+                      ) : (
+                        <span> Vui lòng liên hệ Admin/Manager để cập nhật thông tin địa chỉ hoặc trưởng nhóm.</span>
+                      )}
                     </div>
                   </div>
 

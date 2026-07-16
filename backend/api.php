@@ -517,7 +517,13 @@ if (!in_array($action, $publicActions)) {
         'update_lead_fields',
         'send_lead_reminder',
         'get_consultant_stats',
-        'edit_account'
+        'edit_account',
+        'add_account',
+        'edit_consultant',
+        'add_consultant',
+        'upload_avatar',
+        'add_consultant_leave',
+        'delete_consultant_leave'
     ];
 
     if (in_array($action, $adminOnlyActions) 
