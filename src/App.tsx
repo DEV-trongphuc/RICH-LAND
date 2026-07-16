@@ -483,7 +483,7 @@ export default function App() {
     <ErrorBoundary>
       <LanguageProvider>
         <AuthProvider>
-          <Toaster position="top-right" containerStyle={{ zIndex: 999999999 }} toastOptions={{ className: 'custom-toast' }} />
+          <Toaster position="top-right" containerStyle={{ zIndex: 999999999, top: 76 }} toastOptions={{ className: 'custom-toast' }} />
           <Router>
             <Suspense fallback={<PageLoader />}>
               <Routes>
