@@ -79,6 +79,41 @@ class ProjectController {
         }
     }
 
+    private function requireProjectEditPermission(array $auth, int $projectId): void {
+        $isAuthorized = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true);
+        if (!$isAuthorized) {
+            $stmtProj = $this->db->prepare("SELECT created_by FROM projects WHERE id = ?");
+            $stmtProj->execute([$projectId]);
+            $creatorId = $stmtProj->fetchColumn();
+            if ($creatorId !== false && $creatorId !== null && (int)$creatorId === (int)$auth['user_id']) {
+                $isAuthorized = true;
+            }
+        }
+        if (!$isAuthorized) {
+            $isManagerOrLeader = ($auth['role'] === 'manager');
+            if (!$isManagerOrLeader) {
+                $stmtLeader = $this->db->prepare("SELECT 1 FROM teams WHERE leader_id = ? LIMIT 1");
+                $stmtLeader->execute([(int)$auth['user_id']]);
+                if ($stmtLeader->fetch()) {
+                    $isManagerOrLeader = true;
+                }
+            }
+
+            if ($isManagerOrLeader) {
+                $stmtRoster = $this->db->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ? LIMIT 1");
+                $stmtRoster->execute([$projectId, (int)$auth['user_id']]);
+                if ($stmtRoster->fetch()) {
+                    $isAuthorized = true;
+                }
+            }
+        }
+
+        if (!$isAuthorized) {
+            respond(403, null, 'Bạn không có quyền chỉnh sửa dự án này', false);
+        }
+        $this->requireProjectAccess($auth, $projectId);
+    }
+
     public function index(array $auth): void {
         $role = $auth['role'];
         $uid = (int)$auth['user_id'];
@@ -239,17 +274,7 @@ class ProjectController {
     }
 
     public function update(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
-        
-        $stmtProj = $this->db->prepare("SELECT created_by FROM projects WHERE id = ? AND tenant_id = ?");
-        $stmtProj->execute([$id, $auth['tenant_id']]);
-        $creatorId = $stmtProj->fetchColumn();
-        if ($creatorId !== false && $creatorId !== null) {
-            $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
-            if (!$isAdmin && (int)$creatorId !== (int)$auth['user_id']) {
-                respond(403, null, 'Chỉ Admin hoặc người tạo dự án mới được chỉnh sửa', false);
-            }
-        }
+        $this->requireProjectEditPermission($auth, $id);
 
         $b = getBody();
         $name = trim($b['name'] ?? '');
@@ -457,8 +482,7 @@ class ProjectController {
     }
 
     public function uploadDocument(array $auth, int $projectId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
-        $this->requireProjectAccess($auth, $projectId);
+        $this->requireProjectEditPermission($auth, $projectId);
         
         if (empty($_FILES['file'])) {
             respond(400, null, 'Không tìm thấy file tải lên', false);
@@ -550,8 +574,7 @@ class ProjectController {
     }
 
     public function deleteDocument(array $auth, int $projectId, int $docId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
-        $this->requireProjectAccess($auth, $projectId);
+        $this->requireProjectEditPermission($auth, $projectId);
 
         // Fetch document info
         $stmtDoc = $this->db->prepare("SELECT file_path, name FROM project_documents WHERE id = ? AND project_id = ?");
@@ -577,8 +600,7 @@ class ProjectController {
     }
 
     public function updateDocument(array $auth, int $projectId, int $docId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
-        $this->requireProjectAccess($auth, $projectId);
+        $this->requireProjectEditPermission($auth, $projectId);
 
         $b = getRequestBody();
         $name = trim($b['name'] ?? '');

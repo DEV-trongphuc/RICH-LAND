@@ -620,7 +620,21 @@ export default function ProjectsPage() {
     }
     return false;
   }, [user, teams, rosterMembers, projectRoster, isRosterModalOpen]);
-  const canEditDeleteProject = (proj: Project) => {
+  const isManagerOrLeader = React.useMemo(() => {
+    if (!user) return false;
+    return ['admin', 'superadmin', 'super_admin', 'director', 'manager'].includes(user.role) ||
+           teams.some(t => Number(t.leader_id) === Number(user.id));
+  }, [user, teams]);
+
+  const canEditProject = (proj: Project) => {
+    if (!user) return false;
+    if (isSystemAdmin || ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role)) return true;
+    const isManagerOrLeaderUser = user.role === 'manager' || teams.some(t => Number(t.leader_id) === Number(user.id));
+    if (isManagerOrLeaderUser) return true;
+    return String(proj.created_by) === String(user.id);
+  };
+
+  const canDeleteProject = (proj: Project) => {
     if (!user) return false;
     if (isSystemAdmin) return true;
     return String(proj.created_by) === String(user.id);
@@ -2649,7 +2663,7 @@ export default function ProjectsPage() {
                       <FileText size={14} />
                       Tài liệu
                     </button>
-                    {isAdmin && (
+                    {isManagerOrLeader && (
                       <>
                         <button
                           onClick={(e) => {
@@ -2661,7 +2675,7 @@ export default function ProjectsPage() {
                         >
                           <Users size={14} />
                         </button>
-                        {canEditDeleteProject(proj) && (
+                        {canEditProject(proj) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -2676,7 +2690,7 @@ export default function ProjectsPage() {
                             <Edit size={14} />
                           </button>
                         )}
-                        {canEditDeleteProject(proj) && (
+                        {canDeleteProject(proj) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
