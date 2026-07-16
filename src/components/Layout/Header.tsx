@@ -1255,6 +1255,46 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
             return { bg: 'linear-gradient(135deg, #475569, #334155)', color: '#ffffff' };
           };
 
+          const ITEM_DESC: Record<string, string> = {
+            'Dashboard': 'Biểu đồ, chỉ số doanh thu và hiệu năng kinh doanh',
+            'Bàn làm việc': 'Lịch trình cá nhân, danh sách nhiệm vụ và chấm công',
+            'Báo cáo': 'Thống kê chi tiết, doanh thu và năng suất nhân sự',
+            'Kho Databank': 'Kho lưu trữ dữ liệu tập trung (Databank)',
+            'Khách hàng': 'Quản lý thông tin khách hàng và nhật ký liên hệ',
+            'Pipeline': 'Quy trình giao dịch và phễu chuyển đổi bán hàng',
+            'Nhật ký hoạt động': 'Nhật ký cuộc gọi, email và ghi chú hoạt động',
+            'Lịch biểu & Chấm công': 'Xem lịch làm việc và đăng ký ngày phép',
+            'Kho Data': 'Xem danh sách toàn bộ data phân bổ',
+            'Quy tắc phân bổ': 'Tự động phân bổ khách hàng tiềm năng cho nhân viên',
+            'Đối soát công bằng': 'Đối soát phân chia dữ liệu khách hàng công bằng',
+            'AI Pre-screener': 'Thiết lập AI Gatekeeper đánh giá khách hàng',
+            'Ticket data lỗi': 'Báo cáo lỗi dữ liệu khách hàng',
+            'Ticket hỗ trợ': 'Gửi ticket yêu cầu IT hỗ trợ',
+            'Dự án': 'Danh sách dự án bất động sản',
+            'Giỏ hàng': 'Bảng giỏ hàng và danh mục căn hộ',
+            'Chiến dịch': 'Chiến dịch marketing và nguồn phân bổ',
+            'Tài liệu': 'Kho tài liệu mật và biểu mẫu của công ty',
+            'Công ty': 'Quản lý danh mục đối tác doanh nghiệp',
+            'Chủ đầu tư': 'Danh mục các chủ đầu tư dự án',
+            'Báo giá': 'Tạo và phê duyệt báo giá dịch vụ',
+            'Phiếu đặt cọc': 'Danh sách phiếu đặt cọc giao dịch',
+            'Phiếu hợp tác': 'Quản lý các phiếu hợp tác bán hàng',
+            'Duyệt hợp tác': 'Phê duyệt các phiếu hợp tác bán hàng',
+            'Hóa đơn': 'Danh sách thu chi và hóa đơn khách hàng',
+            'Chi phí vận hành': 'Báo cáo chi phí phát sinh theo dự án',
+            'Tài khoản cá nhân': 'Thông tin hồ sơ và đổi mật khẩu',
+            'Chi nhánh': 'Quản lý các văn phòng và chi nhánh',
+            'Team': 'Danh sách các đội nhóm kinh doanh',
+            'Nhân viên kinh doanh': 'Hồ sơ và lịch làm việc của tư vấn viên',
+            'Quản lý chấm công': 'Báo cáo check-in và xin nghỉ phép',
+            'Chấm công': 'Ghi nhận check-in và xin nghỉ phép của tôi',
+            'Cài đặt hệ thống': 'Các thông số và cấu hình chung toàn hệ thống',
+            'Quản lý tài khoản': 'Phân quyền tài khoản quản trị viên',
+            'Logic xử lý': 'Thiết lập quy định chặn, skip và check-in',
+            'Tích hợp Data': 'Cấu hình webhook và liên kết Google Sheets',
+            'CAPI': 'Cấu hình sự kiện Meta Conversion API'
+          };
+
           const visibleGroups = SIDEBAR_GROUPS.map(group => {
             const filteredItems = group.items.filter((item: any) => {
               if (item.adminOnly && !isAdmin) return false;
@@ -1271,6 +1311,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           const filteredItems = launcherSearch.trim()
             ? allVisibleItems.filter(item => 
                 item.name.toLowerCase().includes(launcherSearch.toLowerCase()) ||
+                (ITEM_DESC[item.name] && ITEM_DESC[item.name].toLowerCase().includes(launcherSearch.toLowerCase())) ||
                 item.groupTitle.toLowerCase().includes(launcherSearch.toLowerCase())
               )
             : [];
@@ -1293,6 +1334,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                       {filteredItems.map(item => {
                         const IconComponent = item.icon;
                         const colors = getItemColor(item.name);
+                        const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
                         return (
                           <div
                             key={item.name}
@@ -1329,9 +1371,14 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                             }}>
                               <IconComponent size={16} color={colors.color} strokeWidth={2} />
                             </div>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                              {t(item.name)}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {t(item.name)}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {t(desc)}
+                              </span>
+                            </div>
                           </div>
                         );
                       })}
@@ -1426,6 +1473,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                           {group.items.map(item => {
                             const IconComponent = item.icon;
                             const colors = getItemColor(item.name);
+                            const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
                             return (
                               <div
                                 key={item.name}
@@ -1462,9 +1510,14 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                 }}>
                                   <IconComponent size={16} color={colors.color} strokeWidth={2} />
                                 </div>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
-                                  {t(item.name)}
-                                </span>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {t(item.name)}
+                                  </span>
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {t(desc)}
+                                  </span>
+                                </div>
                               </div>
                             );
                           })}
