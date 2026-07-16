@@ -573,7 +573,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
-          maxWidth: '900px',
+          maxWidth: '1200px',
           height: '100%',
           backgroundColor: 'var(--color-surface)',
           boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
@@ -592,8 +592,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           backgroundColor: 'var(--color-surface)'
         }}>
           <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
-              {account ? t('Chi tiết & Cài đặt Nhân sự') : t('Thêm Tài khoản Nhân sự Mới')}
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+              {account ? t('Hồ sơ Nhân sự') : t('Thêm Nhân sự')}
             </h2>
             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
               {account ? `${t('Mã nhân viên')}: ${employeeId || '—'} · ${name}` : t('Khai báo hồ sơ làm việc và thông tin ERP mới.')}
@@ -714,7 +714,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   }}
                 >
                   <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    👤 {t('THÔNG TIN CÁ NHÂN')}
+                    {t('THÔNG TIN CÁ NHÂN')}
                   </span>
                   {openSections.personal ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -801,7 +801,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   }}
                 >
                   <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    💼 {t('THÔNG TIN NHÂN SỰ & ERP')}
+                    {t('THÔNG TIN NHÂN SỰ & ERP')}
                   </span>
                   {openSections.erp ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -889,7 +889,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   }}
                 >
                   <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    🔑 {t('LIÊN HỆ & TÀI KHOẢN')}
+                    {t('LIÊN HỆ & TÀI KHOẢN')}
                   </span>
                   {openSections.account ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -983,7 +983,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         gap: '0.75rem'
                       }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          💬 {t('Tương tác Zalo Bot')}
+                          {t('Tương tác Zalo Bot')}
                         </span>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <input
@@ -1049,7 +1049,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   }}
                 >
                   <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    💳 {t('THANH TOÁN & THUẾ')}
+                    {t('THANH TOÁN & THUẾ')}
                   </span>
                   {openSections.bank ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -1101,7 +1101,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   }}
                 >
                   <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    🚨 {t('LIÊN HỆ KHẨN CẤP')}
+                    {t('LIÊN HỆ KHẨN CẤP')}
                   </span>
                   {openSections.emergency ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -1145,7 +1145,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   }}
                 >
                   <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                    📅 {t('TRỰC TUYẾN & LỊCH LÀM VIỆC')}
+                    {t('TRỰC TUYẾN & LỊCH LÀM VIỆC')}
                   </span>
                   {openSections.schedule ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
@@ -1164,7 +1164,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>🏝️ {t('Chế độ Nghỉ phép (Vacation Mode)')}</span>
+                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Chế độ Nghỉ phép (Vacation Mode)')}</span>
                           {vacationMode && <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>{t('Đang nghỉ phép')}</span>}
                         </div>
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0', maxWidth: '580px' }}>
@@ -1192,7 +1192,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       border: '1px solid var(--color-border-light)'
                     }}>
                       <div>
-                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>🌙 {t('Đăng ký trực đêm / Tăng ca (Overtime Mode)')}</span>
+                        <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{t('Đăng ký trực đêm / Tăng ca (Overtime Mode)')}</span>
                         <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0', maxWidth: '580px' }}>
                           {role === 'sale' 
                             ? t('Kích hoạt để chuyên viên này tham gia trực đêm và nhận lead tự động ngoài giờ làm việc hành chính.')
@@ -1221,7 +1221,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
                     {/* Working Hours */}
                     <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-                      <h4 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--color-text)' }}>⏰ {t('Giờ làm việc & Lịch trình')}</h4>
+                      <h4 style={{ fontWeight: 700, fontSize: '0.875rem', marginBottom: '0.75rem', color: 'var(--color-text)' }}>{t('Giờ làm việc & Lịch trình')}</h4>
                       
                       <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', background: 'var(--color-bg-light)', padding: '4px', borderRadius: '8px', width: 'max-content' }}>
                         <button
@@ -1360,7 +1360,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     }}
                   >
                     <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-primary)' }}>
-                      📎 {t('HỒ SƠ & TÀI LIỆU ĐÍNH KÈM')}
+                      {t('HỒ SƠ & TÀI LIỆU ĐÍNH KÈM')}
                     </span>
                     {openSections.documents ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
