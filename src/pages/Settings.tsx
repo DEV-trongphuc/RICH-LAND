@@ -1111,26 +1111,60 @@ const SettingsInner = () => {
     return (
       <div>
         <label className="form-label">{t(label)}</label>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          border: '1px solid var(--color-border)', 
+          borderRadius: 'var(--radius-md)', 
+          background: 'var(--color-surface)',
+          overflow: 'hidden',
+          height: '38px',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          transition: 'border-color 0.2s, box-shadow 0.2s'
+        }}>
           <input
             type="number"
             min="1"
-            className="form-input"
             value={num}
             onChange={e => {
               const newNum = Math.max(1, parseInt(e.target.value, 10) || 1);
               onChange(`+${newNum} ${unit}`);
             }}
-            style={{ width: '80px', flexShrink: 0, textAlign: 'center' }}
+            style={{ 
+              border: 'none', 
+              outline: 'none',
+              padding: '0 12px', 
+              width: '70px', 
+              textAlign: 'center',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              color: 'var(--color-text)',
+              background: 'transparent'
+            }}
           />
+          <div style={{ width: '1px', height: '20px', background: 'var(--color-border)', flexShrink: 0 }} />
           <select
-            className="form-input"
             value={unit}
             onChange={e => {
               const newUnit = e.target.value;
               onChange(`+${num} ${newUnit}`);
             }}
-            style={{ flex: 1, cursor: 'pointer' }}
+            style={{ 
+              border: 'none', 
+              outline: 'none',
+              padding: '0 28px 0 12px', 
+              flex: 1,
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              color: 'var(--color-text-muted)',
+              cursor: 'pointer',
+              background: 'transparent',
+              appearance: 'none',
+              backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748b\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3e%3cpolyline points=\'6 9 12 15 18 9\'/%3e%3c/svg%3e")',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 10px center',
+              backgroundSize: '15px'
+            }}
           >
             <option value="hours">{t('Giờ (hours)')}</option>
             <option value="days">{t('Ngày (days)')}</option>
