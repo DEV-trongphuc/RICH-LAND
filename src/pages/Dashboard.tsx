@@ -1688,8 +1688,8 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                               </td>
                               <td style={{ padding: '8px 12px', minWidth: '150px' }}>
                                 <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'var(--color-bg)' }}>
-                                  <div style={{ width: `${acceptPct}%`, background: 'linear-gradient(90deg, #0d9488 0%, #2563eb 100%)' }} title={`Đã nhận: ${acceptPct}%`} />
-                                  <div style={{ width: `${recallPct}%`, background: '#DC2626' }} title={`Thu hồi: ${recallPct}%`} />
+                                  <div style={{ width: `${acceptPct}%`, background: 'linear-gradient(90deg, #BD1D2D 0%, #F97316 100%)' }} title={`Đã nhận: ${acceptPct}%`} />
+                                  <div style={{ width: `${recallPct}%`, background: 'var(--color-danger)' }} title={`Thu hồi: ${recallPct}%`} />
                                 </div>
                               </td>
                             </tr>

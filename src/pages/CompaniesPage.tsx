@@ -183,53 +183,55 @@ export const CompaniesPage: React.FC = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="card" style={{ marginBottom: '1rem', padding: '0.875rem 1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div className="filter-search" style={{ flex: 1, minWidth: 200 }}>
-          <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
-          <input placeholder="Tìm tên công ty, ngành nghề..." value={search} onChange={e => setSearch(e.target.value)} />
-          {search && <button onClick={() => setSearch('')}><X size={14} /></button>}
+      <div className="card" style={{ marginBottom: '1rem', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', width: '100%', alignItems: 'center' }}>
+          <div className="filter-search" style={{ flex: 1, minWidth: 0 }}>
+            <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
+            <input placeholder="Tìm tên công ty, ngành nghề..." style={{ fontSize: '0.85rem' }} value={search} onChange={e => setSearch(e.target.value)} />
+            {search && <button onClick={() => setSearch('')}><X size={14} /></button>}
+          </div>
+          
+          <div className="mobile-only" style={{ width: '130px', flexShrink: 0 }}>
+            <CustomSelect
+              value={statusFilter}
+              onChange={val => setStatusFilter(val as any)}
+              options={[
+                { value: '', label: 'Trạng thái' },
+                { value: 'active', label: 'Hoạt động' },
+                { value: 'inactive', label: 'Ngừng' },
+                { value: 'prospect', label: 'Tiềm năng' }
+              ]}
+            />
+          </div>
         </div>
 
-        {/* Mobile Status Select */}
-        <div className="mobile-only" style={{ width: '100%' }}>
-          <CustomSelect
-            value={statusFilter}
-            onChange={val => setStatusFilter(val as any)}
-            options={[
-              { value: '', label: 'Tất cả trạng thái' },
-              { value: 'active', label: 'Hoạt động' },
-              { value: 'inactive', label: 'Ngừng hoạt động' },
-              { value: 'prospect', label: 'Tiềm năng' }
-            ]}
-          />
-        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="hide-on-mobile" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {['', ...STATUSES].map(s => (
+              <button
+                key={s || 'all'}
+                onClick={() => setStatusFilter(s)}
+                className={`btn sm ${statusFilter === s ? 'primary' : 'outline'}`}
+              >
+                {s ? ST_LABEL[s] : 'Tất cả'}
+              </button>
+            ))}
+          </div>
 
-        {/* Desktop Status Buttons */}
-        <div className="hide-on-mobile" style={{ display: 'flex', gap: '0.5rem' }}>
-          {['', ...STATUSES].map(s => (
-            <button
-              key={s || 'all'}
-              onClick={() => setStatusFilter(s)}
-              className={`btn sm ${statusFilter === s ? 'primary' : 'outline'}`}
-            >
-              {s ? ST_LABEL[s] : 'Tất cả'}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ width: '1px', height: '24px', background: 'var(--color-border)' }} />
-
-        <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: '8px', padding: '2px', border: '1px solid var(--color-border)' }}>
-          <button
-            className="btn ghost sm"
-            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent' }}
-            onClick={() => setViewMode('card')} title="Dạng thẻ"
-          ><LayoutGrid size={15} /></button>
-          <button
-            className="btn ghost sm"
-            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent' }}
-            onClick={() => setViewMode('list')} title="Dạng danh sách"
-          ><List size={15} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: '8px', padding: '2px', border: '1px solid var(--color-border)' }}>
+              <button
+                className="btn ghost sm"
+                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent' }}
+                onClick={() => setViewMode('card')} title="Dạng thẻ"
+              ><LayoutGrid size={14} /></button>
+              <button
+                className="btn ghost sm"
+                style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent' }}
+                onClick={() => setViewMode('list')} title="Dạng danh sách"
+              ><List size={14} /></button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -289,39 +291,45 @@ export const CompaniesPage: React.FC = () => {
                   </div>
 
                   {/* Details Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '4px', padding: '0.5rem 0 0.5rem 0', borderTop: '1px solid var(--color-border-light)' }}>
-                    <div style={{
-                      background: 'rgba(0, 0, 0, 0.02)',
-                      border: '1px solid var(--color-border-light)',
-                      borderRadius: '8px',
-                      padding: '8px',
-                      marginTop: '4px',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '4px 8px'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
-                        <Phone size={11} style={{ opacity: 0.6 }} />
-                        <span>{co.phone || '—'}</span>
+                  {(co.phone || co.email || co.website || co.city) && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '4px', padding: '0.5rem 0 0.5rem 0', borderTop: '1px solid var(--color-border-light)' }}>
+                      <div style={{
+                        background: 'rgba(0, 0, 0, 0.02)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '8px',
+                        padding: '8px',
+                        marginTop: '4px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}>
+                        {co.phone && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
+                            <Phone size={11} style={{ opacity: 0.6 }} />
+                            <span>{co.phone}</span>
+                          </div>
+                        )}
+                        {co.email && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                            <Mail size={11} style={{ opacity: 0.6 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.email}>{co.email}</span>
+                          </div>
+                        )}
+                        {co.website && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                            <Globe size={11} style={{ opacity: 0.6 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.website}>{co.website}</span>
+                          </div>
+                        )}
+                        {co.city && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
+                            <MapPin size={11} style={{ opacity: 0.6 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.city}</span>
+                          </div>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0 }}>
-                        <Mail size={11} style={{ opacity: 0.6 }} />
-                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.email}>{co.email || '—'}</span>
-                      </div>
-                      {co.website && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0, gridColumn: 'span 2' }}>
-                          <Globe size={11} style={{ opacity: 0.6 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={co.website}>{co.website}</span>
-                        </div>
-                      )}
-                      {co.city && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: 'var(--color-text-muted)', minWidth: 0, gridColumn: 'span 2' }}>
-                          <MapPin size={11} style={{ opacity: 0.6 }} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.city}</span>
-                        </div>
-                      )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Metadata Footer */}
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', marginTop: '0.25rem' }}>

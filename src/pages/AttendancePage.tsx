@@ -1261,17 +1261,18 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
                                 padding: '2px 8px',
                                 borderRadius: '20px',
                                 backgroundColor:
-                                  row.status === 'approved' ? 'var(--color-success-light)' :
-                                  row.status === 'pending_approval' ? 'var(--color-warning-light)' :
-                                  'var(--color-danger-light)',
+                                  row.status === 'approved' 
+                                    ? (isLate ? 'rgba(16, 185, 129, 0.1)' : 'var(--color-success-light)') 
+                                    : row.status === 'pending_approval' ? 'var(--color-warning-light)' : 'var(--color-danger-light)',
                                 color:
-                                  row.status === 'approved' ? 'var(--color-success)' :
-                                  row.status === 'pending_approval' ? 'var(--color-warning)' :
-                                  'var(--color-danger)',
+                                  row.status === 'approved'
+                                    ? (isLate ? '#10b981' : 'var(--color-success)')
+                                    : row.status === 'pending_approval' ? 'var(--color-warning)' : 'var(--color-danger)',
+                                border: row.status === 'approved' && isLate ? '1px solid rgba(16, 185, 129, 0.2)' : 'none',
                               }}>
-                                {row.status === 'approved' ? t('Đúng giờ') :
-                                 row.status === 'pending_approval' ? t('Chờ duyệt') :
-                                 t('Bị từ chối')}
+                                {row.status === 'approved' 
+                                  ? (isLate ? t('Hợp lệ') : t('Đúng giờ')) 
+                                  : row.status === 'pending_approval' ? t('Chờ duyệt') : t('Bị từ chối')}
                               </span>
                             </div>
 

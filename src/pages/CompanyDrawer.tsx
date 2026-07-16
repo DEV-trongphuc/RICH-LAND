@@ -319,11 +319,27 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   </div>
                 </div>
               </div>
-              <div className={styles.headerActions}>
+              <div className={styles.headerActions} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span className={`badge ${formData?.status === 'active' ? 'success' : formData?.status === 'inactive' ? 'danger' : 'warning'}`}>
                   {formData?.status === 'active' ? 'Hoạt động' : formData?.status === 'inactive' ? 'Ngừng' : 'Tiềm năng'}
                 </span>
-                <button className={styles.closeBtn} onClick={handleClose}><X size={20} /></button>
+                <button 
+                  className="btn primary sm" 
+                  disabled={isSaving || !hasChanges}
+                  style={{ 
+                    background: 'var(--color-primary)', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 6,
+                    padding: '6px 14px',
+                    fontSize: '0.8rem',
+                    height: '32px'
+                  }}
+                  onClick={handleSave}
+                >
+                  {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+                <button className={styles.closeBtn} onClick={handleClose} style={{ marginLeft: '4px' }}><X size={20} /></button>
               </div>
             </div>
 
@@ -585,78 +601,133 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       {subContacts.map(sc => (
-                        <div key={sc.id} className="card-panel" style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem', position: 'relative', borderLeft: sc.isPrimary ? '4px solid var(--color-primary)' : '1px solid var(--color-border)' }}>
+                        <div key={sc.id} className="card-panel" style={{ 
+                          padding: '1.25rem',
+                          background: 'var(--color-surface)',
+                          border: sc.isPrimary ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                          borderRadius: '12px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                          position: 'relative',
+                          boxShadow: sc.isPrimary ? '0 4px 12px rgba(189, 29, 45, 0.05)' : 'none',
+                          transition: 'all 0.2s ease'
+                        }}>
                           {sc.isPrimary && (
-                            <span style={{ position: 'absolute', top: '-10px', left: '1rem', background: 'var(--color-primary)', color: 'white', fontSize: '0.7rem', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontWeight: 700 }}>
+                            <span style={{ 
+                              position: 'absolute', 
+                              top: '-10px', 
+                              left: '1.25rem', 
+                              background: 'var(--color-primary)', 
+                              color: 'white', 
+                              fontSize: '0.65rem', 
+                              padding: '2px 10px', 
+                              borderRadius: '10px', 
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.5px'
+                            }}>
                               Liên hệ chính
                             </span>
                           )}
-                          <div className="avatar-placeholder" style={{ background: sc.isPrimary ? 'var(--color-primary)' : 'var(--color-text-muted)', color: 'white', fontWeight: 600, width: 48, height: 48, fontSize: '1.25rem', flexShrink: 0 }}>
-                            {sc.name[0]?.toUpperCase()}
-                          </div>
                           
-                          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem', alignItems: 'center' }}>
-                            <div>
-                              <input 
-                                className="form-input" 
-                                style={{ fontWeight: 600, border: 'none', padding: '0.25rem 0.5rem', background: 'transparent', height: 'auto', fontSize: '1rem', marginBottom: '0.25rem' }} 
-                                value={sc.name} 
-                                onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, name: e.target.value} : x))} 
-                                placeholder="Họ và tên..."
-                              />
-                              <input 
-                                className="form-input text-xs" 
-                                style={{ border: 'none', padding: '0 0.5rem', background: 'transparent', height: 'auto', color: 'var(--color-text-light)' }} 
-                                value={sc.role} 
-                                onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, role: e.target.value} : x))} 
-                                placeholder="Chức vụ..."
-                              />
+                          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div className="avatar-placeholder" style={{ 
+                              background: sc.isPrimary ? 'var(--color-primary-light)' : 'var(--color-bg-light)', 
+                              color: sc.isPrimary ? 'var(--color-primary)' : 'var(--color-text-muted)', 
+                              fontWeight: 700, 
+                              width: 44, 
+                              height: 44, 
+                              fontSize: '1.1rem', 
+                              flexShrink: 0,
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              {sc.name[0]?.toUpperCase() || '?'}
                             </div>
                             
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Phone size={14} color="var(--color-text-muted)" />
-                              <input 
-                                className="form-input text-sm" 
-                                style={{ border: 'none', padding: '0.25rem', background: 'transparent', height: 'auto' }} 
-                                value={sc.phone} 
-                                onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, phone: e.target.value} : x))} 
-                                placeholder="Số điện thoại..."
-                              />
+                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Họ và tên</label>
+                                <input 
+                                  className="form-input" 
+                                  style={{ height: '36px', fontSize: '0.85rem' }} 
+                                  value={sc.name} 
+                                  onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, name: e.target.value} : x))} 
+                                  placeholder="Họ và tên..."
+                                />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Chức vụ</label>
+                                <input 
+                                  className="form-input" 
+                                  style={{ height: '36px', fontSize: '0.85rem' }} 
+                                  value={sc.role} 
+                                  onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, role: e.target.value} : x))} 
+                                  placeholder="Chức vụ..."
+                                />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Số điện thoại</label>
+                                <div style={{ position: 'relative' }}>
+                                  <Phone size={13} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
+                                  <input 
+                                    className="form-input" 
+                                    style={{ height: '36px', fontSize: '0.85rem', paddingLeft: '28px' }} 
+                                    value={sc.phone} 
+                                    onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, phone: e.target.value} : x))} 
+                                    placeholder="Số điện thoại..."
+                                  />
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Email</label>
+                                <div style={{ position: 'relative' }}>
+                                  <Mail size={13} style={{ position: 'absolute', left: '10px', top: '11px', color: 'var(--color-text-muted)' }} />
+                                  <input 
+                                    className="form-input" 
+                                    style={{ height: '36px', fontSize: '0.85rem', paddingLeft: '28px' }} 
+                                    value={sc.email} 
+                                    onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, email: e.target.value} : x))} 
+                                    placeholder="Email..."
+                                  />
+                                </div>
+                              </div>
                             </div>
                             
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Mail size={14} color="var(--color-text-muted)" />
-                              <input 
-                                className="form-input text-sm" 
-                                style={{ border: 'none', padding: '0.25rem', background: 'transparent', height: 'auto', width: '100%' }} 
-                                value={sc.email} 
-                                onChange={e => setSubContacts(subContacts.map(x => x.id === sc.id ? {...x, email: e.target.value} : x))} 
-                                placeholder="Email..."
-                              />
-                            </div>
-                          </div>
-                          
-                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                            {!sc.isPrimary && (
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', alignSelf: 'flex-end', height: '36px' }}>
+                              {!sc.isPrimary ? (
+                                <button 
+                                  type="button"
+                                  className="btn outline sm" 
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', height: '32px' }}
+                                  onClick={() => setSubContacts(subContacts.map(x => ({...x, isPrimary: x.id === sc.id})))}
+                                >
+                                  Chọn làm chính
+                                </button>
+                              ) : (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-success)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  ✓ Chính
+                                </span>
+                              )}
                               <button 
-                                className="btn outline sm" 
-                                title="Đặt làm liên hệ chính"
-                                onClick={() => setSubContacts(subContacts.map(x => ({...x, isPrimary: x.id === sc.id})))}
+                                type="button"
+                                className="btn outline danger icon-only sm" 
+                                style={{ height: '32px', width: '32px', padding: 0 }}
+                                title="Xóa liên hệ"
+                                onClick={() => {
+                                  if (sc.isPrimary) addToast('Không thể xóa liên hệ chính, vui lòng đổi liên hệ chính trước', 'error');
+                                  else {
+                                    setSubContacts(subContacts.filter(x => x.id !== sc.id));
+                                    addToast('Đã xóa liên hệ', 'info');
+                                  }
+                                }}
                               >
-                                Chọn làm chính
+                                <Trash2 size={14} />
                               </button>
-                            )}
-                            <button 
-                              className="btn-icon-bare" 
-                              style={{ color: 'var(--color-danger)' }} 
-                              title="Xóa liên hệ"
-                              onClick={() => {
-                                if (sc.isPrimary) addToast('Không thể xóa liên hệ chính, vui lòng đổi liên hệ chính trước', 'error');
-                                else setSubContacts(subContacts.filter(x => x.id !== sc.id));
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            </div>
                           </div>
                         </div>
                       ))}

@@ -78,6 +78,9 @@ try {
 try {
     $conn->query("ALTER TABLE consultants ADD COLUMN bank_account VARCHAR(100) NULL");
 } catch (Exception $e) {}
+try {
+    $conn->query("ALTER TABLE consultants ADD COLUMN overtime_mode TINYINT(1) DEFAULT 0");
+} catch (Exception $e) {}
 
 // Safe CORS origin matching
 $httpOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -379,7 +382,7 @@ if (!in_array($action, $publicActions)) {
     }
 
     $currentSaleConsultantId = 0;
-    if (isset($decodedUser['role']) && ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales')) {
+    if (isset($decodedUser['email']) && !empty($decodedUser['email'])) {
         $stmtC = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
         $stmtC->bind_param("s", $decodedUser['email']);
         $stmtC->execute();
@@ -387,6 +390,15 @@ if (!in_array($action, $publicActions)) {
         $stmtC->close();
         if ($cRow) {
             $currentSaleConsultantId = (int)$cRow['id'];
+        } else {
+            // Auto-create consultant record if missing for this company user
+            $stmtInsert = $conn->prepare("INSERT INTO consultants (name, email, status, work_start_time, work_end_time, vacation_mode, overtime_mode) VALUES (?, ?, 'active', '08:00', '17:30', 0, 0)");
+            $userName = $decodedUser['name'] ?? $decodedUser['username'] ?? 'User';
+            $stmtInsert->bind_param("ss", $userName, $decodedUser['email']);
+            if ($stmtInsert->execute()) {
+                $currentSaleConsultantId = $stmtInsert->insert_id;
+            }
+            $stmtInsert->close();
         }
     }
 
@@ -3907,7 +3919,7 @@ switch ($action) {
             $id = (int) ($input['id'] ?? 0);
 
             // If logged in as sale, override ID to their own consultant record
-            if ($decodedUser['role'] === 'sale') {
+            if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales' || empty($id) || $id === $currentSaleConsultantId) {
                 $id = $currentSaleConsultantId;
             }
 
@@ -10750,7 +10762,7 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Consultant profile not found']);
             exit;
         }
-        $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = ?");
+        $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, zalo_chat_id, overtime_mode FROM consultants WHERE id = ?");
         $stmtP->bind_param("i", $currentSaleConsultantId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
@@ -10771,19 +10783,8 @@ switch ($action) {
         $work_start_time = trim($input['work_start_time'] ?? '00:00');
         $work_end_time = trim($input['work_end_time'] ?? '23:59');
         
-        $isSale = ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales');
-        $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
         $saleFilterId = isset($input['consultant_id']) && $input['consultant_id'] !== '' ? (int) $input['consultant_id'] : null;
-        
-        if ($isSale) {
-            $targetId = $currentSaleConsultantId;
-        } else if ($isAdmin) {
-            $targetId = $saleFilterId;
-        } else {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Forbidden: Bạn không có quyền cập nhật hồ sơ tư vấn viên này.']);
-            break;
-        }
+        $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
 
         if (!$targetId) {
             echo json_encode(['success' => false, 'message' => 'Không xác định được ID tư vấn viên.']);
@@ -10817,9 +10818,11 @@ switch ($action) {
         $bank_account = !empty($input['bank_account']) ? $input['bank_account'] : null;
         $leave_start = !empty($input['leave_start']) ? $input['leave_start'] : null;
         $leave_end = !empty($input['leave_end']) ? $input['leave_end'] : null;
+        $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
+        $overtime_mode = isset($input['overtime_mode']) ? (int)$input['overtime_mode'] : 0;
 
-        $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=? WHERE id=?");
-        $stmt->bind_param("sssssssssssssi", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $targetId);
+        $stmt = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=? WHERE id=?");
+        $stmt->bind_param("ssssssssssssssii", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $targetId);
         if ($stmt->execute()) {
             echo json_encode(['success' => true]);
         } else {

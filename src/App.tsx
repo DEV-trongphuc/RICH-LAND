@@ -117,14 +117,15 @@ const AppTabs = () => {
       return <Navigate to="/" replace />;
     }
   } else if (currentPath === '/activities') {
+    const searchParams = new URLSearchParams(location.search);
+    const taskId = searchParams.get('id');
     if (['sale', 'sales'].includes(user?.role || '')) {
-      const searchParams = new URLSearchParams(location.search);
-      const taskId = searchParams.get('id');
       if (taskId) {
         return <Navigate to={`/workspace?task_id=${taskId}`} replace />;
       }
       return <Navigate to="/workspace" replace />;
     }
+    return <Navigate to="/" replace />;
   } else if (isAdminPath) {
     if (!['admin', 'superadmin', 'super_admin', 'director'].includes(user?.role || '')) {
       return <Navigate to="/" replace />;
@@ -156,7 +157,7 @@ const AppTabs = () => {
       case '/quotes':
         return <QuotesPage key="quotes" />;
       case '/activities':
-        return <ActivitiesPage key="activities" />;
+        return <Navigate to="/" replace />;
       case '/products':
         return <ProductsPage key="products" />;
       case '/invoices':

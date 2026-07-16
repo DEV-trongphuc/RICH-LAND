@@ -213,6 +213,28 @@ class ProjectController {
         $newId = $this->db->lastInsertId();
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE_PROJECT', 'project', $newId, "Tạo dự án: $name ($code)");
+
+        // Update campaigns to link to this new project
+        $campaignIdsArray = isset($b['campaign_ids_array']) && is_array($b['campaign_ids_array']) 
+            ? array_filter(array_map('intval', $b['campaign_ids_array'])) 
+            : [];
+            
+        if (empty($campaignIdsArray) && !empty($campaign_ids)) {
+            $campNames = array_filter(array_map('trim', explode(',', $campaign_ids)));
+            if (!empty($campNames)) {
+                $inClause = implode(',', array_fill(0, count($campNames), '?'));
+                $stmtC = $this->db->prepare("SELECT id FROM marketing_campaigns WHERE name IN ($inClause)");
+                $stmtC->execute($campNames);
+                $campaignIdsArray = $stmtC->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            }
+        }
+
+        if (!empty($campaignIdsArray)) {
+            $inClause = implode(',', array_fill(0, count($campaignIdsArray), '?'));
+            $stmtSet = $this->db->prepare("UPDATE marketing_campaigns SET project_id = ? WHERE id IN ($inClause)");
+            $stmtSet->execute(array_merge([$newId], $campaignIdsArray));
+        }
+
         respond(200, ['id' => $newId, 'code' => $code], 'Tạo dự án thành công');
     }
 
@@ -273,6 +295,32 @@ class ProjectController {
         $stmt->execute([$name, $code, $desc, $status, $location, $developer, $document_ids, $campaign_ids, $progress_percent, $construction_status, $legal_status, $scale_block_count, $scale_unit_count, $handover_year, $manager_ids, $folder_path, $reference_url, $id, $auth['tenant_id']]);
 
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE_PROJECT', 'project', $id, "Cập nhật dự án: $name ($code)");
+
+        // Update campaigns to link to this project
+        $campaignIdsArray = isset($b['campaign_ids_array']) && is_array($b['campaign_ids_array']) 
+            ? array_filter(array_map('intval', $b['campaign_ids_array'])) 
+            : [];
+            
+        if (empty($campaignIdsArray) && !empty($campaign_ids)) {
+            $campNames = array_filter(array_map('trim', explode(',', $campaign_ids)));
+            if (!empty($campNames)) {
+                $inClause = implode(',', array_fill(0, count($campNames), '?'));
+                $stmtC = $this->db->prepare("SELECT id FROM marketing_campaigns WHERE name IN ($inClause)");
+                $stmtC->execute($campNames);
+                $campaignIdsArray = $stmtC->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            }
+        }
+
+        // Clear previous campaigns project_id association
+        $stmtClear = $this->db->prepare("UPDATE marketing_campaigns SET project_id = NULL WHERE project_id = ?");
+        $stmtClear->execute([$id]);
+
+        if (!empty($campaignIdsArray)) {
+            $inClause = implode(',', array_fill(0, count($campaignIdsArray), '?'));
+            $stmtSet = $this->db->prepare("UPDATE marketing_campaigns SET project_id = ? WHERE id IN ($inClause)");
+            $stmtSet->execute(array_merge([$id], $campaignIdsArray));
+        }
+
         respond(200, null, 'Cập nhật dự án thành công');
     }
 

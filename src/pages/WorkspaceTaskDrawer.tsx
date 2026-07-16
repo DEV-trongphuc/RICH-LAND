@@ -1880,7 +1880,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     value={erpMeta.project_id ? String(erpMeta.project_id) : ''}
                     onChange={val => {
                       const nextProject = val ? Number(val) : null;
-                      const nextMeta = { ...erpMeta, project_id: nextProject };
+                      const nextMeta = { ...erpMeta, project_id: nextProject, campaign_id: null };
                       setErpMeta(nextMeta);
                       handleSaveMeta(nextMeta);
                     }}
@@ -1890,21 +1890,29 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Chiến dịch')}</span>
-                  <CustomSelect
-                    searchable
-                    options={[
-                      { value: '', label: t('Chọn chiến dịch...') },
-                      ...allowedCampaigns.map(c => ({ value: String(c.id), label: c.name }))
-                    ]}
-                    value={erpMeta.campaign_id ? String(erpMeta.campaign_id) : ''}
-                    onChange={val => {
-                      const nextCampaign = val ? Number(val) : null;
-                      const nextMeta = { ...erpMeta, campaign_id: nextCampaign };
-                      setErpMeta(nextMeta);
-                      handleSaveMeta(nextMeta);
-                    }}
-                    placeholder={t('Chọn chiến dịch...')}
-                  />
+                  {(() => {
+                    const filteredCamps = erpMeta.project_id
+                      ? allowedCampaigns.filter(c => Number(c.project_id) === Number(erpMeta.project_id))
+                      : [];
+                    return (
+                      <CustomSelect
+                        searchable
+                        disabled={!erpMeta.project_id}
+                        options={[
+                          { value: '', label: t('Chọn chiến dịch...') },
+                          ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
+                        ]}
+                        value={erpMeta.campaign_id ? String(erpMeta.campaign_id) : ''}
+                        onChange={val => {
+                          const nextCampaign = val ? Number(val) : null;
+                          const nextMeta = { ...erpMeta, campaign_id: nextCampaign };
+                          setErpMeta(nextMeta);
+                          handleSaveMeta(nextMeta);
+                        }}
+                        placeholder={t('Chọn chiến dịch...')}
+                      />
+                    );
+                  })()}
                 </div>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>

@@ -33,6 +33,7 @@ interface Project {
   doc_count?: number;
   document_ids?: string;
   campaign_ids?: string;
+  campaign_ids_array?: number[];
   progress_percent?: number;
   construction_status?: string;
   legal_status?: string;
@@ -175,6 +176,96 @@ export default function ProjectsPage() {
   const [editingProject, setEditingProject] = useState<Partial<Project> | null>(null);
   const [autoCode, setAutoCode] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Quick campaigns modal state
+  const [quickCampaignsModalOpen, setQuickCampaignsModalOpen] = useState(false);
+  const [quickCampaignsProject, setQuickCampaignsProject] = useState<any | null>(null);
+  const [quickCampaignsList, setQuickCampaignsList] = useState<any[]>([]);
+
+  const handleOpenQuickCampaigns = (proj: any, linkedCamps: any[]) => {
+    setQuickCampaignsProject(proj);
+    setQuickCampaignsList(linkedCamps);
+    setQuickCampaignsModalOpen(true);
+  };
+
+  const renderQuickCampaignsDrawer = () => {
+    return renderDrawer(
+      quickCampaignsModalOpen,
+      () => setQuickCampaignsModalOpen(false),
+      `Chiến dịch liên kết - ${quickCampaignsProject?.name || ''}`,
+      (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem' }}>
+          {quickCampaignsList.length === 0 ? (
+            <EmptyCard
+              icon={<Layers size={48} />}
+              title="Chưa có chiến dịch liên kết"
+              description="Không tìm thấy chiến dịch nào liên kết với dự án này."
+            />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+              {quickCampaignsList.map(camp => {
+                const docCount = parseIds(camp.document_ids).length;
+                const staffCount = parseIds(camp.user_ids).length;
+                return (
+                  <div
+                    key={camp.id}
+                    style={{
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '12px',
+                      padding: '1.25rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem', gap: '8px' }}>
+                        <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }} className="line-clamp-1">
+                          {camp.name}
+                        </h4>
+                        <span className={`badge ${camp.status === 'active' ? 'success' : 'secondary'}`} style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '100px', fontWeight: 700 }}>
+                          {camp.status === 'active' ? 'Hoạt động' : 'Tạm dừng'}
+                        </span>
+                      </div>
+                      {camp.description ? (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1rem', lineHeight: 1.4 }} className="line-clamp-2">
+                          {camp.description}
+                        </p>
+                      ) : (
+                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontStyle: 'italic', marginBottom: '1rem' }}>
+                          Không có mô tả chi tiết
+                        </p>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dotted var(--color-border-light)', paddingTop: '0.75rem', marginTop: '0.5rem', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <span><strong>{docCount}</strong> Tài liệu</span>
+                        <span>•</span>
+                        <span><strong>{staffCount}</strong> Nhân sự</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setQuickCampaignsModalOpen(false);
+                          handleOpenCampaignView(camp);
+                        }}
+                        className="btn outline sm"
+                        style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '4px' }}
+                      >
+                        Chi tiết
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ),
+      '650px'
+    );
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -865,12 +956,7 @@ export default function ProjectsPage() {
                       <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Năm bàn giao dự kiến</span>
                       <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>{editingProject?.handover_year || 2026}</span>
                     </div>
-                    <div>
-                      <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Quy mô Block &amp; Căn hộ</span>
-                      <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>
-                        {editingProject?.scale_block_count || 1} Block, {editingProject?.scale_unit_count || 100} căn hộ
-                      </span>
-                    </div>
+
                     <div>
                       <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
                       <div style={{ marginTop: '4px' }}>
@@ -2474,11 +2560,9 @@ export default function ProjectsPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '1rem', padding: '10px', background: 'var(--color-bg)', borderRadius: '8px', border: '1px solid var(--color-border-light)', fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>
                       <div>Pháp lý: <strong style={{ color: 'var(--color-text)' }}>{proj.legal_status || 'Đang hoàn thiện'}</strong></div>
                       <div>Bàn giao: <strong style={{ color: 'var(--color-text)' }}>{proj.handover_year || 2026}</strong></div>
-                      <div>Quy mô: <strong style={{ color: 'var(--color-text)' }}>{proj.scale_block_count || 1} Block</strong></div>
-                      <div>Số căn: <strong style={{ color: 'var(--color-text)' }}>{proj.scale_unit_count || 100} căn</strong></div>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', fontSize: '0.75rem', color: 'var(--color-text-light)', flexWrap: 'wrap' }}>
                       <span 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -2501,6 +2585,22 @@ export default function ProjectsPage() {
                       >
                         <FileText size={12} /> {(proj.doc_count || 0) + parseIds(proj.document_ids).length} tài liệu
                       </span>
+                      {(() => {
+                        const linkedCamps = campaigns.filter(c => c.project_id === proj.id || (proj.campaign_ids && proj.campaign_ids.split(',').map((name: string) => name.trim()).includes(c.name)));
+                        return (
+                          <span 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenQuickCampaigns(proj, linkedCamps);
+                            }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-bg)', padding: '4px 8px', borderRadius: '4px', fontWeight: 600, cursor: 'pointer' }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'var(--color-border-light)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                          >
+                            <Layers size={12} /> {linkedCamps.length} chiến dịch
+                          </span>
+                        );
+                      })()}
                     </div>
 
                   </div>
@@ -2856,12 +2956,7 @@ export default function ProjectsPage() {
                     <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Năm bàn giao dự kiến</span>
                     <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>{editingProject?.handover_year || 2026}</span>
                   </div>
-                  <div>
-                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Quy mô Block &amp; Căn hộ</span>
-                    <span style={{ color: 'var(--color-text)', fontSize: '0.875rem', fontWeight: 600, display: 'block' }}>
-                      {editingProject?.scale_block_count || 1} Block, {editingProject?.scale_unit_count || 100} căn hộ
-                    </span>
-                  </div>
+
                   <div>
                     <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontWeight: 750, display: 'block', marginBottom: '4px' }}>Đường dẫn Folder</span>
                     <div style={{ marginTop: '4px' }}>
@@ -3415,27 +3510,7 @@ export default function ProjectsPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="form-label">Quy mô: Số Block</label>
-                    <input
-                      type="number"
-                      value={editingProject?.scale_block_count ?? 1}
-                      onChange={e => setEditingProject(prev => ({ ...prev, scale_block_count: Number(e.target.value) }))}
-                      className="form-input"
-                      placeholder="ví dụ: 2"
-                    />
-                  </div>
 
-                  <div>
-                    <label className="form-label">Quy mô: Số Căn hộ</label>
-                    <input
-                      type="number"
-                      value={editingProject?.scale_unit_count ?? 100}
-                      onChange={e => setEditingProject(prev => ({ ...prev, scale_unit_count: Number(e.target.value) }))}
-                      className="form-input"
-                      placeholder="ví dụ: 500"
-                    />
-                  </div>
                 </div>
               </div>
 
@@ -3608,13 +3683,25 @@ export default function ProjectsPage() {
                   </div>
 
                   <div>
-                    <label className="form-label">Chiến dịch liên kết</label>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Chiến dịch liên kết</label>
                     <CustomSelect
                       multiple
                       searchable={true}
-                      options={campaigns.map(c => ({ value: c.name, label: c.name }))}
-                      value={parseIds(editingProject?.campaign_ids)}
-                      onChange={val => setEditingProject(prev => ({ ...prev, campaign_ids: Array.isArray(val) ? val.join(',') : String(val) }))}
+                      options={campaigns.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))}
+                      value={
+                        editingProject?.campaign_ids_array !== undefined
+                          ? editingProject.campaign_ids_array.map(String)
+                          : campaigns.filter(c => c.project_id === editingProject?.id).map(c => String(c.id))
+                      }
+                      onChange={val => {
+                        const selectedIds = Array.isArray(val) ? val.map(Number) : [];
+                        const selectedNames = campaigns.filter(c => selectedIds.includes(c.id)).map(c => c.name);
+                        setEditingProject(prev => ({
+                          ...prev,
+                          campaign_ids: selectedNames.join(','),
+                          campaign_ids_array: selectedIds
+                        }));
+                      }}
                       placeholder="Chọn chiến dịch..."
                     />
                   </div>
@@ -3756,6 +3843,8 @@ export default function ProjectsPage() {
           </div>
         )
       )}
+
+      {renderQuickCampaignsDrawer()}
 
       {/* Project Docs Drawer */}
       {renderDrawer(

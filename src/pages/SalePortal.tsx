@@ -6,7 +6,7 @@ import {
   LogOut, LogIn, Search, Filter, AlertCircle, CheckCircle2,
   XCircle, Clock, FileText,
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
-  Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
+  Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
   Camera, Video, Layers, Plus, Receipt, Building2, Users, User, UserCheck, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save
 } from 'lucide-react';
@@ -843,6 +843,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [editPersonalEmail, setEditPersonalEmail] = useState('');
   const [editHometown, setEditHometown] = useState('');
   const [editBankBranch, setEditBankBranch] = useState('');
+  const [openProfileSections, setOpenProfileSections] = useState<Record<string, boolean>>({
+    personal: true,
+    erp: true,
+    contact: true,
+    payment: true,
+    emergency: false
+  });
+
+  const toggleProfileSection = (sec: string) => {
+    setOpenProfileSections(prev => ({ ...prev, [sec]: !prev[sec] }));
+  };
 
   const [consultantDocs, setConsultantDocs] = useState<any[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
@@ -7654,11 +7665,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {/* LEFT COLUMN: Profile Card & Action Info */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-            {/* Profile Detail Settings Card */}
-            <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {/* Profile Avatar Card */}
+            <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1.5rem 0', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Settings size={20} color="var(--color-primary)" />
-                {t('THÔNG TIN CÁ NHÂN')}
+                {t('ẢNH ĐẠI DIỆN')}
               </h3>
 
               {/* Avatar Section */}
@@ -7705,19 +7716,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 )}
               </div>
 
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '1.5rem', textAlign: 'center' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
                 {t('Chấp nhận ảnh JPG, PNG, GIF, WEBP. Tối đa 5MB.')}
               </span>
+            </div>
 
-              {/* Form Input fields */}
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                
-                {/* SECTION 1: PERSONAL INFO */}
-                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Info size={14} /> {t('Thông tin cá nhân')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* SECTION 1: PERSONAL INFO */}
+            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
+              <button
+                type="button"
+                onClick={() => toggleProfileSection('personal')}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Info size={14} /> {t('Thông tin cá nhân')}
+                </h4>
+                {openProfileSections.personal ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+              </button>
+              {openProfileSections.personal && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600 }}>{t('Họ và tên')}</label>
                       <input
@@ -7822,16 +7839,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* SECTION 2: WORKPLACE & ERP */}
-                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: isMobile ? '1rem' : '1.5rem' }}>
-                  {!isMobile && (
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Layers size={14} /> {t('Thông tin nhân sự & ERP')}
-                    </h4>
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem' }}>
+            {/* SECTION 2: WORKPLACE & ERP */}
+            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
+              <button
+                type="button"
+                onClick={() => toggleProfileSection('erp')}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Layers size={14} /> {t('Thông tin nhân sự & ERP')}
+                </h4>
+                {openProfileSections.erp ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+              </button>
+              {openProfileSections.erp && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem', marginTop: '0.25rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Mã nhân viên')}</label>
@@ -7948,14 +7972,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* SECTION 3: CONTACT & ACCOUNT */}
-                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Server size={14} /> {t('Liên hệ & Tài khoản')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* SECTION 3: CONTACT & ACCOUNT */}
+            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
+              <button
+                type="button"
+                onClick={() => toggleProfileSection('contact')}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Server size={14} /> {t('Liên hệ & Tài khoản')}
+                </h4>
+                {openProfileSections.contact ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+              </button>
+              {openProfileSections.contact && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email đăng nhập')}</label>
                       <input
@@ -8007,14 +8040,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       />
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* SECTION 4: PAYMENT & TAXES */}
-                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Receipt size={14} /> {t('Thanh toán & Thuế')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* SECTION 4: PAYMENT & TAXES */}
+            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
+              <button
+                type="button"
+                onClick={() => toggleProfileSection('payment')}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Receipt size={14} /> {t('Thanh toán & Thuế')}
+                </h4>
+                {openProfileSections.payment ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+              </button>
+              {openProfileSections.payment && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên ngân hàng')}</label>
@@ -8068,17 +8110,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           onChange={(e) => setEditInsuranceId(e.target.value)}
                           placeholder="Mã số BHXH"
                         />
-                      </div>
                     </div>
                   </div>
                 </div>
+              )}
+            </div>
 
-                {/* SECTION 5: EMERGENCY CONTACT */}
-                <div style={{ paddingBottom: '0.5rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Scale size={14} /> {t('Liên hệ khẩn cấp')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* SECTION 5: EMERGENCY CONTACT */}
+            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
+              <button
+                type="button"
+                onClick={() => toggleProfileSection('emergency')}
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+              >
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Scale size={14} /> {t('Liên hệ khẩn cấp')}
+                </h4>
+                {openProfileSections.emergency ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+              </button>
+              {openProfileSections.emergency && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600 }}>{t('Người liên hệ')}</label>
@@ -8113,10 +8164,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       />
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
-          </div>
 
           {/* RIGHT COLUMN: Vacation Toggle & Work Hour Settings */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

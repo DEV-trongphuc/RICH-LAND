@@ -72,7 +72,16 @@ class CampaignController {
         $bypassRoster = (int)($_GET['bypass_roster'] ?? 0);
         $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true);
         if ($isRosterRestricted && !$bypassRoster) {
-            $where .= " AND (FIND_IN_SET(?, user_ids) OR FIND_IN_SET(?, manager_ids) OR created_by = ?)";
+            $where .= " AND (
+                FIND_IN_SET(?, user_ids) 
+                OR FIND_IN_SET(?, manager_ids) 
+                OR created_by = ?
+                OR EXISTS (SELECT 1 FROM project_roster pr WHERE pr.project_id = marketing_campaigns.project_id AND pr.user_id = ?)
+                OR EXISTS (SELECT 1 FROM projects p WHERE p.id = marketing_campaigns.project_id AND (FIND_IN_SET(?, p.manager_ids) OR p.created_by = ?))
+            )";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];

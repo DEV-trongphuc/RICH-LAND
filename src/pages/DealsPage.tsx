@@ -616,15 +616,13 @@ export const DealsPage: React.FC = () => {
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             transition: 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             transform: `translateX(${
-              pipelineView === 'contacts' ? '0px' : 
-              pipelineView === 'deals' ? '142px' : '284px'
+              pipelineView === 'contacts' ? '0px' : '142px'
             })`,
             zIndex: 1
           }} />
 
           {[
             { id: 'contacts', label: 'Khách hàng', icon: <Users size={14} /> },
-            { id: 'deals', label: 'Cơ hội', icon: <DollarSign size={14} /> },
             { id: 'companies', label: 'Doanh nghiệp', icon: <Building2 size={14} /> }
           ].map(tab => {
             const isSelected = pipelineView === tab.id;
@@ -666,7 +664,6 @@ export const DealsPage: React.FC = () => {
             onChange={val => setPipelineView(val as any)}
             options={[
               { value: 'contacts', label: 'Khách hàng' },
-              { value: 'deals', label: 'Cơ hội' },
               { value: 'companies', label: 'Doanh nghiệp' }
             ]}
           />

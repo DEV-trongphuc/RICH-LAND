@@ -15,6 +15,7 @@ export interface SelectOption {
   disabled?: boolean;
   disabledReason?: string;
   disabledType?: 'round' | 'sale';
+  faded?: boolean;
   badge?: {
     count: number;
     color?: string;
@@ -244,6 +245,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 <div
                   key={option.value}
                   className={`${styles.option} ${isSelected(option.value) ? styles.optionSelected : ''} ${option.disabled ? styles.optionDisabled : ''}`}
+                  style={{ opacity: option.faded ? 0.45 : 1 }}
                   onClick={(e) => handleSelect(option, e)}
                 >
                   <div className={styles.optionLabel}>

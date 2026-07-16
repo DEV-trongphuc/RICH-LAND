@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Key, Eye, EyeOff, Save, ShieldAlert, Mail, Activity, Clock, Settings, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,7 +11,7 @@ import { StatRowSkeleton } from './ui/Skeleton';
 
 export const ProfileModal = () => {
   const { t } = useLanguage();
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'activity'>('profile');
@@ -288,38 +288,59 @@ export const ProfileModal = () => {
 
             <div className="form-group">
               <label>{t('Tên hiển thị')}</label>
-              <div style={{ position: 'relative' }}>
-                <User size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  className="form-control"
-                  value={profileData.name}
-                  onChange={e => setProfileData({ ...profileData, name: e.target.value })}
-                  placeholder={t("Nhập tên hiển thị...")}
-                  style={{ paddingLeft: 42 }}
-                />
-              </div>
+              <input
+                type="text"
+                className="form-control"
+                value={profileData.name}
+                onChange={e => setProfileData({ ...profileData, name: e.target.value })}
+                placeholder={t("Nhập tên hiển thị...")}
+              />
             </div>
             
             <div className="form-group">
               <label>{t('Email / Username đăng nhập')}</label>
-              <div style={{ position: 'relative' }}>
-                <Mail size={18} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  className="form-control"
-                  value={profileData.email}
-                  disabled
-                  placeholder={t("Email đăng nhập...")}
-                  style={{ paddingLeft: 42, cursor: 'not-allowed', backgroundColor: 'var(--color-border-light)', color: 'var(--color-text-muted)' }}
-                />
-              </div>
+              <input
+                type="text"
+                className="form-control"
+                value={profileData.email}
+                disabled
+                placeholder={t("Email đăng nhập...")}
+                style={{ cursor: 'not-allowed', backgroundColor: 'var(--color-border-light)', color: 'var(--color-text-muted)' }}
+              />
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-              <button type="submit" className="btn primary" disabled={loading}>
-                {loading ? t('Đang xử lý...') : <><Save size={18} /> {t('Cập nhật Thông tin')}</>}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', gap: '10px' }}>
+              <button
+                type="button"
+                className="btn outline danger icon-only"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, flexShrink: 0 }}
+                onClick={() => {
+                  setIsOpen(false);
+                  logout();
+                  window.location.href = '/login';
+                }}
+                title={t('Đăng xuất')}
+              >
+                <LogOut size={16} />
               </button>
+
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="btn outline"
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', padding: '0 14px', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }}
+                  onClick={() => {
+                    setIsOpen(false);
+                    window.location.href = '/account';
+                  }}
+                >
+                  {t('Mở trang chi tiết')} →
+                </button>
+                
+                <button type="submit" className="btn primary" style={{ height: '38px', padding: '0 14px', fontSize: '0.8rem', fontWeight: 700, whiteSpace: 'nowrap' }} disabled={loading}>
+                  {loading ? t('Đang xử lý...') : <><Save size={14} style={{ marginRight: 4 }} /> {t('Cập nhật Thông tin')}</>}
+                </button>
+              </div>
             </div>
           </form>
         )}
