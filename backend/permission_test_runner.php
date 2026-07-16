@@ -86,11 +86,14 @@ try {
         $urls = [];
         if (!empty($host)) {
             $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            if (strpos($host, 'open.domation.net') !== false) {
+                $scheme = 'https';
+            }
             $urls[] = $scheme . "://" . $host . $subDir . "/api.php?action=" . urlencode($actionName) . $queryString;
         }
+        $urls[] = "https://open.domation.net/richland/api.php?action=" . urlencode($actionName) . $queryString;
         $urls[] = "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($actionName) . $queryString;
         $urls[] = "http://localhost" . $subDir . "/api.php?action=" . urlencode($actionName) . $queryString;
-        $urls[] = "https://open.domation.net/richland/api.php?action=" . urlencode($actionName) . $queryString;
         
         $lastResponse = null;
         $httpCode = 0;
