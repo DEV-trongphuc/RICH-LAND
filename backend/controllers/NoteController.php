@@ -120,6 +120,48 @@ class NoteController {
 
         $b = getBody();
         if (empty($b['body'])) respond(422, null, 'Nội dung ghi chú là bắt buộc', false);
+
+        // Defensive/Self-healing intercept: If body starts with [Chuyển trạng thái Pipeline], save it to activities instead!
+        if (str_starts_with(trim($b['body']), '[Chuyển trạng thái Pipeline]')) {
+            $bodyText = trim($b['body']);
+            $subject = "Chuyển trạng thái Pipeline";
+            $content = $bodyText;
+
+            if (preg_match('/\[Chuyển trạng thái Pipeline\]\s*→\s*([^:]+):\s*(.*)/u', $bodyText, $matches)) {
+                $subject = "Chuyển trạng thái Pipeline → " . trim($matches[1]);
+                $content = trim($matches[2]);
+            } else if (preg_match('/\[Chuyển trạng thái Pipeline\]\s*→\s*(.*)/u', $bodyText, $matches)) {
+                $subject = "Chuyển trạng thái Pipeline → " . trim($matches[1]);
+                $content = "";
+            }
+
+            $stmtAct = $this->db->prepare("
+                INSERT INTO activities (tenant_id, user_id, created_by, type, subject, body, status, priority, due_date, done_at, related_type, related_id, contact_id)
+                VALUES (?, ?, ?, 'note', ?, ?, 'done', 'medium', CURRENT_TIMESTAMP(), CURRENT_TIMESTAMP(), ?, ?, ?)
+            ");
+            $stmtAct->execute([
+                $auth['tenant_id'],
+                $auth['user_id'],
+                $auth['user_id'],
+                $subject,
+                $content ? $content : null,
+                $type,
+                $entityId,
+                $type === 'contact' ? $entityId : null
+            ]);
+
+            // Update contact last_contact
+            if ($type === 'contact') {
+                $stmtStatus = $this->db->prepare("SELECT pipeline_status FROM contacts WHERE id = ?");
+                $stmtStatus->execute([$entityId]);
+                $currStatus = $stmtStatus->fetchColumn() ?: 'chua_xac_dinh';
+                $securityExpires = $this->getSecurityExpiration($currStatus);
+                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE, security_expires_at = ? WHERE id = ?")
+                     ->execute([$securityExpires, $entityId]);
+            }
+
+            respond(201, ['id' => (int)$this->db->lastInsertId(), 'message' => 'Transition logged as activity instead of internal note']);
+        }
         
         $this->db->prepare("
             INSERT INTO notes (
