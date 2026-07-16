@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
+import api from '../api/axios';
 
 type User = {
   id?: number;
@@ -77,6 +78,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return normalized;
     });
   }, []);
+
+  React.useEffect(() => {
+    if (user?.id) {
+      const fetchLatestProfile = async () => {
+        try {
+          const res = await api.get(`/users/${user.id}`);
+          if (res.data) {
+            const data = res.data.data || res.data;
+            const latestAvatar = data.avatar_url || data.avatar;
+            const latestName = data.full_name || data.name;
+            if ((latestAvatar && latestAvatar !== user.avatar) || (latestName && latestName !== user.name)) {
+              updateUser({ avatar: latestAvatar, name: latestName });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to sync user profile on mount:", err);
+        }
+      };
+      fetchLatestProfile();
+    }
+  }, [user?.id, updateUser]);
 
   React.useEffect(() => {
     if (user) {
