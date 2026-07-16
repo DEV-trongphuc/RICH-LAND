@@ -9742,9 +9742,22 @@ switch ($action) {
 
 
     case 'get_accounts':
-        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin' && $decodedUser['role'] !== 'manager') {
-            $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE id = ?");
-            $stmt->bind_param("i", $decodedUser['id']);
+        if ($decodedUser['role'] !== 'admin' && $decodedUser['role'] !== 'superadmin' && $decodedUser['role'] !== 'super_admin' && $decodedUser['role'] !== 'manager' && $decodedUser['role'] !== 'director') {
+            // Find current user's team
+            $uStmt = $conn->prepare("SELECT team_id FROM users WHERE id = ?");
+            $uStmt->bind_param("i", $decodedUser['id']);
+            $uStmt->execute();
+            $uRow = $uStmt->get_result()->fetch_assoc();
+            $teamId = $uRow ? $uRow['team_id'] : null;
+            $uStmt->close();
+
+            if ($teamId) {
+                $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE team_id = ? OR id = ?");
+                $stmt->bind_param("ii", $teamId, $decodedUser['id']);
+            } else {
+                $stmt = $conn->prepare("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts WHERE id = ?");
+                $stmt->bind_param("i", $decodedUser['id']);
+            }
             $stmt->execute();
             $res = $stmt->get_result();
         } else {

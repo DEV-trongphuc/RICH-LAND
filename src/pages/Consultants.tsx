@@ -1038,7 +1038,7 @@ const ConsultantsInner = () => {
                           }}>
                             {t('Chưa liên kết')}
                           </span>
-                          {u.email && (
+                          {u.email && u.email.toLowerCase() !== user?.email?.toLowerCase() && (
                             zaloRemindedId === u.id ? (
                               <span style={{ fontSize: '0.7rem', padding: '2px 6px', color: '#10b981', display: 'flex', alignItems: 'center', gap: 4, fontWeight: 600 }}>
                                 <Check size={12} /> {t('Đã nhắc')}
@@ -1182,66 +1182,154 @@ const ConsultantsInner = () => {
         )}
       </div>
       ) : activeTab === 'teams' ? (
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, maxHeight: '480px', overflowY: 'auto' }}>
-            <table className="mobile-table-compact">
-              <thead>
-                <tr>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Tên Nhóm')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Chi nhánh')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Manager')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)' }}>{t('Số thành viên')}</th>
-                  <th style={{ position: 'sticky', top: 0, background: 'var(--color-bg)', zIndex: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>{t('Thao tác')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teamsLoading ? (
-                  [...Array(3)].map((_, i) => <TableRowSkeleton key={i} cols={5} />)
-                ) : teams.length === 0 ? (
-                  <tr className="empty-state-row">
-                    <td colSpan={5}>
-                      <div style={{ padding: '3rem 2rem', textAlign: 'center' }}>
-                        <Users size={32} color="var(--color-text-muted)" style={{ marginBottom: '1rem' }} />
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Chưa có Nhóm')}</h3>
-                        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8125rem' }}>{t('Nhấp thêm nhóm để bắt đầu quản lý phân cấp thành viên.')}</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : paginatedTeams.map((team) => (
-                  <tr key={team.id} className="table-row-hover" style={{ cursor: 'pointer' }} onClick={() => openEditTeamModal(team)}>
-                    <td data-label={t('Tên Nhóm')}>
-                      <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{team.name}</span>
-                    </td>
-                    <td data-label={t('Chi nhánh')} style={{ color: 'var(--color-text-muted)' }}>
-                      {team.branch || '—'}
-                    </td>
-                    <td data-label={t('Manager')} style={{ fontWeight: 500 }} onClick={e => e.stopPropagation()}>
-                      {team.leader_name || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>}
-                    </td>
-                    <td data-label={t('Số thành viên')}>
-                      <span className="badge info">{team.member_count} {t('thành viên')}</span>
-                    </td>
-                    <td data-label={t('Thao tác')} style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
-                        {isWriteAuthorized && <button className="btn sm outline" onClick={() => openEditTeamModal(team)}>{t('Sửa')}</button>}
-                        {isWriteAuthorized && (
-                          <button
-                            className="btn sm"
-                            style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none' }}
-                            onClick={() => {
-                              setDeleteTeamId(team.id);
-                              setConfirmDeleteTeamOpen(true);
-                            }}
-                          >
-                            {t('Xóa')}
-                          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', padding: '0.25rem' }}>
+            {teamsLoading ? (
+              [...Array(3)].map((_, i) => (
+                <div key={i} className="card animate-pulse" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '200px' }}>
+                  <div style={{ height: '24px', width: '60%', background: 'var(--color-border-light)', borderRadius: '4px' }} />
+                  <div style={{ height: '16px', width: '40%', background: 'var(--color-border-light)', borderRadius: '4px' }} />
+                  <div style={{ height: '40px', width: '100%', background: 'var(--color-border-light)', borderRadius: '8px', marginTop: 'auto' }} />
+                </div>
+              ))
+            ) : teams.length === 0 ? (
+              <div className="card" style={{ gridColumn: '1 / -1', padding: '4rem 2rem', textAlign: 'center' }}>
+                <Users size={48} color="var(--color-text-muted)" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--color-text)' }}>{t('Chưa có Nhóm')}</h3>
+                <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginTop: '0.5rem' }}>{t('Nhấp thêm nhóm để bắt đầu quản lý phân cấp thành viên.')}</p>
+              </div>
+            ) : paginatedTeams.map((team) => {
+                const leader = allSystemUsers.find(u => Number(u.id) === Number(team.leader_id));
+                return (
+                  <div 
+                    key={team.id} 
+                    className="card card-hover" 
+                    onClick={() => openEditTeamModal(team)}
+                    style={{ 
+                      cursor: 'pointer', 
+                      padding: '1.5rem', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '1.25rem',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                      background: 'var(--color-surface)',
+                      boxShadow: 'var(--shadow-sm)',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    {/* Top line indicator */}
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, var(--color-primary), #3b82f6)' }} />
+
+                    {/* Card Header: Title & Member Count */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)', lineHeight: 1.3 }}>{team.name}</h3>
+                        {team.branch && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Building2 size={12} /> {team.branch}
+                          </span>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span className="badge info" style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '12px', fontWeight: 700, flexShrink: 0 }}>
+                        {team.member_count} {t('nhành viên')}
+                      </span>
+                    </div>
+
+                    {/* Slogan / Description */}
+                    {team.description ? (
+                      <p style={{ 
+                        fontSize: '0.8125rem', 
+                        color: 'var(--color-text-light)', 
+                        fontStyle: 'italic', 
+                        lineHeight: 1.4,
+                        margin: 0,
+                        background: 'var(--color-bg)',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        borderLeft: '3px solid var(--color-primary)'
+                      }}>
+                        "{team.description}"
+                      </p>
+                    ) : (
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, fontStyle: 'italic' }}>
+                        {t('Chưa có mô tả nhóm / Slogan...')}
+                      </p>
+                    )}
+
+                    {/* Team Details Grid: Leader / Focus project / KPI */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '1rem', marginTop: 'auto' }}>
+                      {/* Leader info */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('Trưởng nhóm')}:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {team.leader_name ? (
+                            <>
+                              <Avatar src={leader?.avatar_url || leader?.avatar} name={team.leader_name} size={18} />
+                              <strong style={{ color: 'var(--color-text)', fontWeight: 700 }}>{team.leader_name}</strong>
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Focus project info */}
+                      {team.focus_project && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('Dự án trọng điểm')}:</span>
+                          <span className="badge success" style={{ fontWeight: 700, fontSize: '0.75rem' }}>{team.focus_project}</span>
+                        </div>
+                      )}
+
+                      {/* KPI Target */}
+                      {team.kpi_target !== null && team.kpi_target !== undefined && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('KPI doanh thu tháng')}:</span>
+                          <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(team.kpi_target)}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions (If admin) */}
+                    {isWriteAuthorized && (
+                      <div 
+                        style={{ 
+                          display: 'flex', 
+                          justifyContent: 'flex-end', 
+                          gap: '0.5rem', 
+                          borderTop: '1px solid var(--color-border-light)', 
+                          paddingTop: '1rem', 
+                          marginTop: '0.25rem' 
+                        }} 
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <button 
+                          className="btn sm outline" 
+                          onClick={() => openEditTeamModal(team)}
+                          style={{ borderRadius: '8px', fontWeight: 700 }}
+                        >
+                          {t('Sửa')}
+                        </button>
+                        <button
+                          className="btn sm"
+                          style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none', borderRadius: '8px', fontWeight: 700 }}
+                          onClick={() => {
+                            setDeleteTeamId(team.id);
+                            setConfirmDeleteTeamOpen(true);
+                          }}
+                        >
+                          {t('Xóa')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+            })}
           </div>
 
           {/* Teams Pagination */}
@@ -1253,8 +1341,8 @@ const ConsultantsInner = () => {
               alignItems: 'center', 
               justifyContent: 'space-between', 
               background: 'var(--color-surface)',
-              borderBottomLeftRadius: '16px',
-              borderBottomRightRadius: '16px'
+              borderRadius: '16px',
+              border: '1px solid var(--color-border-light)'
             }}>
               <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
                 Hiển thị <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{(teamsPage - 1) * ITEMS_PER_PAGE + 1}</span> - <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{Math.min(teamsPage * ITEMS_PER_PAGE, teams.length)}</span> trên <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{teams.length}</span>
