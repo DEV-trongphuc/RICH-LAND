@@ -584,7 +584,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         className="drawer-backdrop"
         onClick={onClose}
         style={{
-          zIndex: 9998
+          zIndex: 10500
         }}
       />
       <motion.div
@@ -593,13 +593,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         exit={{ x: '100%' }}
         transition={{ type: 'tween', duration: 0.3 }}
         onClick={e => e.stopPropagation()}
+        className="drawer-sheet"
         style={{
           position: 'fixed',
           top: 0,
           bottom: 0,
           left: 'var(--sidebar-width, 220px)',
           right: 0,
-          zIndex: 9999,
+          zIndex: 10600,
           backgroundColor: 'var(--color-surface)',
           boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.15)',
           display: 'flex',
