@@ -121,9 +121,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [bankBranch, setBankBranch] = useState('');
 
   // 4. Emergency Contact
-  const [emergencyName, setEmergencyName] = useState('');
-  const [emergencyRelation, setEmergencyRelation] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
+  interface EmergencyContact {
+    name: string;
+    relationship: string;
+    phone: string;
+  }
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([
+    { name: '', relationship: '', phone: '' }
+  ]);
 
   // 5. Schedules & Vacation
   const [vacationMode, setVacationMode] = useState(false);
@@ -199,9 +204,19 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 setWorkplace(erp.workplace || '');
                 setPersonalPhone(erp.personal_phone || '');
                 setExtNumber(erp.ext_number || '');
-                setEmergencyName(erp.emergency_contact_name || '');
-                setEmergencyRelation(erp.emergency_contact_relationship || '');
-                setEmergencyPhone(erp.emergency_contact_phone || '');
+                if (Array.isArray(erp.emergency_contacts) && erp.emergency_contacts.length > 0) {
+                  setEmergencyContacts(erp.emergency_contacts);
+                } else if (erp.emergency_contact_name || erp.emergency_contact_relationship || erp.emergency_contact_phone) {
+                  setEmergencyContacts([
+                    {
+                      name: erp.emergency_contact_name || '',
+                      relationship: erp.emergency_contact_relationship || '',
+                      phone: erp.emergency_contact_phone || ''
+                    }
+                  ]);
+                } else {
+                  setEmergencyContacts([{ name: '', relationship: '', phone: '' }]);
+                }
                 setTaxId(erp.tax_id || '');
                 setInsuranceId(erp.insurance_id || '');
                 setBrokerLicense(erp.broker_license || '');
@@ -280,10 +295,6 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setTaxId('');
       setInsuranceId('');
       setBankBranch('');
-
-      setEmergencyName('');
-      setEmergencyRelation('');
-      setEmergencyPhone('');
 
       setVacationMode(false);
       setOvertimeMode(false);
@@ -467,7 +478,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
     setIsSaving(true);
     try {
-      // 1. Pack address + ERP profile fields into JSON
+      const firstEmergency = emergencyContacts[0] || { name: '', relationship: '', phone: '' };
       const addressPayload = JSON.stringify({
         erp_profile: {
           address_text: address,
@@ -480,9 +491,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           workplace: workplace,
           personal_phone: personalPhone,
           ext_number: extNumber,
-          emergency_contact_name: emergencyName,
-          emergency_contact_relationship: emergencyRelation,
-          emergency_contact_phone: emergencyPhone,
+          emergency_contact_name: firstEmergency.name,
+          emergency_contact_relationship: firstEmergency.relationship,
+          emergency_contact_phone: firstEmergency.phone,
+          emergency_contacts: emergencyContacts,
           tax_id: taxId,
           insurance_id: insuranceId,
           broker_license: brokerLicense,
@@ -567,17 +579,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   if (!isOpen) return null;
 
   return createPortal(
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      bottom: 0,
-      left: 'var(--sidebar-width, 220px)',
-      right: 0,
-      zIndex: 9999,
-      display: 'flex',
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      backdropFilter: 'blur(2px)'
-    }} onClick={onClose}>
+    <>
+      <div
+        className="drawer-backdrop"
+        onClick={onClose}
+        style={{
+          zIndex: 9998
+        }}
+      />
       <motion.div
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
@@ -585,13 +594,16 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         transition={{ type: 'tween', duration: 0.3 }}
         onClick={e => e.stopPropagation()}
         style={{
-          width: '100%',
-          height: '100%',
+          position: 'fixed',
+          top: 0,
+          bottom: 0,
+          left: 'var(--sidebar-width, 220px)',
+          right: 0,
+          zIndex: 9999,
           backgroundColor: 'var(--color-surface)',
-          boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+          boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.15)',
           display: 'flex',
-          flexDirection: 'column',
-          position: 'relative'
+          flexDirection: 'column'
         }}
       >
         {/* Header */}
@@ -710,8 +722,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 background: 'var(--color-surface)',
                 borderRadius: '16px',
                 border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
+                boxShadow: 'var(--shadow-sm)'
               }}>
                 <div 
                   onClick={() => toggleSection('personal')}
@@ -722,7 +733,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     alignItems: 'center',
                     cursor: 'pointer',
                     borderBottom: openSections.personal ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.personal ? 'var(--color-bg-light)' : 'transparent'
+                    backgroundColor: openSections.personal ? 'var(--color-bg-light)' : 'transparent',
+                    borderTopLeftRadius: '15px',
+                    borderTopRightRadius: '15px',
+                    borderBottomLeftRadius: openSections.personal ? '0' : '15px',
+                    borderBottomRightRadius: openSections.personal ? '0' : '15px'
                   }}
                 >
                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
@@ -797,8 +812,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 background: 'var(--color-surface)',
                 borderRadius: '16px',
                 border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
+                boxShadow: 'var(--shadow-sm)'
               }}>
                 <div 
                   onClick={() => toggleSection('erp')}
@@ -809,7 +823,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     alignItems: 'center',
                     cursor: 'pointer',
                     borderBottom: openSections.erp ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.erp ? 'var(--color-bg-light)' : 'transparent'
+                    backgroundColor: openSections.erp ? 'var(--color-bg-light)' : 'transparent',
+                    borderTopLeftRadius: '15px',
+                    borderTopRightRadius: '15px',
+                    borderBottomLeftRadius: openSections.erp ? '0' : '15px',
+                    borderBottomRightRadius: openSections.erp ? '0' : '15px'
                   }}
                 >
                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
@@ -885,8 +903,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 background: 'var(--color-surface)',
                 borderRadius: '16px',
                 border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
+                boxShadow: 'var(--shadow-sm)'
               }}>
                 <div 
                   onClick={() => toggleSection('account')}
@@ -897,7 +914,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     alignItems: 'center',
                     cursor: 'pointer',
                     borderBottom: openSections.account ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.account ? 'var(--color-bg-light)' : 'transparent'
+                    backgroundColor: openSections.account ? 'var(--color-bg-light)' : 'transparent',
+                    borderTopLeftRadius: '15px',
+                    borderTopRightRadius: '15px',
+                    borderBottomLeftRadius: openSections.account ? '0' : '15px',
+                    borderBottomRightRadius: openSections.account ? '0' : '15px'
                   }}
                 >
                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
@@ -1045,8 +1066,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 background: 'var(--color-surface)',
                 borderRadius: '16px',
                 border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
+                boxShadow: 'var(--shadow-sm)'
               }}>
                 <div 
                   onClick={() => toggleSection('bank')}
@@ -1057,7 +1077,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     alignItems: 'center',
                     cursor: 'pointer',
                     borderBottom: openSections.bank ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.bank ? 'var(--color-bg-light)' : 'transparent'
+                    backgroundColor: openSections.bank ? 'var(--color-bg-light)' : 'transparent',
+                    borderTopLeftRadius: '15px',
+                    borderTopRightRadius: '15px',
+                    borderBottomLeftRadius: openSections.bank ? '0' : '15px',
+                    borderBottomRightRadius: openSections.bank ? '0' : '15px'
                   }}
                 >
                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
@@ -1097,8 +1121,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 background: 'var(--color-surface)',
                 borderRadius: '16px',
                 border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
+                boxShadow: 'var(--shadow-sm)'
               }}>
                 <div 
                   onClick={() => toggleSection('emergency')}
@@ -1109,7 +1132,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     alignItems: 'center',
                     cursor: 'pointer',
                     borderBottom: openSections.emergency ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.emergency ? 'var(--color-bg-light)' : 'transparent'
+                    backgroundColor: openSections.emergency ? 'var(--color-bg-light)' : 'transparent',
+                    borderTopLeftRadius: '15px',
+                    borderTopRightRadius: '15px',
+                    borderBottomLeftRadius: openSections.emergency ? '0' : '15px',
+                    borderBottomRightRadius: openSections.emergency ? '0' : '15px'
                   }}
                 >
                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
@@ -1119,19 +1146,99 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </div>
 
                 {openSections.emergency && (
-                  <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">{t('Tên người liên hệ khẩn cấp')}</label>
-                      <input className="form-input" value={emergencyName} onChange={e => setEmergencyName(e.target.value)} placeholder={t('Tên người thân')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Mối quan hệ')}</label>
-                      <input className="form-input" value={emergencyRelation} onChange={e => setEmergencyRelation(e.target.value)} placeholder={t('Bố/Mẹ/Vợ/Chồng')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Số điện thoại khẩn cấp')}</label>
-                      <input className="form-input" value={emergencyPhone} onChange={e => setEmergencyPhone(e.target.value)} placeholder="09xxxxxxx" />
-                    </div>
+                  <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {emergencyContacts.map((contact, index) => (
+                      <div key={index} style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '1rem',
+                        padding: '1rem',
+                        background: 'var(--color-bg-light)',
+                        border: '1px solid var(--color-border-light)',
+                        borderRadius: '12px',
+                        alignItems: 'flex-end'
+                      }}>
+                        <div className="form-group" style={{ margin: 0, flex: '1 1 200px' }}>
+                          <label className="form-label">{t('Tên người liên hệ khẩn cấp')}</label>
+                          <input 
+                            className="form-input" 
+                            value={contact.name} 
+                            onChange={e => {
+                              const list = [...emergencyContacts];
+                              list[index].name = e.target.value;
+                              setEmergencyContacts(list);
+                            }} 
+                            placeholder={t('Tên người thân')} 
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0, flex: '1 1 200px' }}>
+                          <label className="form-label">{t('Mối quan hệ')}</label>
+                          <input 
+                            className="form-input" 
+                            value={contact.relationship} 
+                            onChange={e => {
+                              const list = [...emergencyContacts];
+                              list[index].relationship = e.target.value;
+                              setEmergencyContacts(list);
+                            }} 
+                            placeholder={t('Bố/Mẹ/Vợ/Chồng')} 
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0, flex: '1 1 200px' }}>
+                          <label className="form-label">{t('Số điện thoại khẩn cấp')}</label>
+                          <input 
+                            className="form-input" 
+                            value={contact.phone} 
+                            onChange={e => {
+                              const list = [...emergencyContacts];
+                              list[index].phone = e.target.value;
+                              setEmergencyContacts(list);
+                            }} 
+                            placeholder="09xxxxxxx" 
+                          />
+                        </div>
+                        {emergencyContacts.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const list = emergencyContacts.filter((_, i) => i !== index);
+                              setEmergencyContacts(list);
+                            }}
+                            className="btn outline sm"
+                            style={{
+                              padding: '10px',
+                              borderRadius: '8px',
+                              color: 'var(--color-danger)',
+                              borderColor: 'rgba(239, 68, 68, 0.2)',
+                              minWidth: 'auto',
+                              height: '42px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setEmergencyContacts([...emergencyContacts, { name: '', relationship: '', phone: '' }])}
+                      className="btn outline sm"
+                      style={{
+                        alignSelf: 'flex-start',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.75rem',
+                        padding: '6px 12px',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <Plus size={14} /> {t('Thêm liên hệ khẩn cấp')}
+                    </button>
                   </div>
                 )}
               </div>
@@ -1141,8 +1248,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 background: 'var(--color-surface)',
                 borderRadius: '16px',
                 border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
+                boxShadow: 'var(--shadow-sm)'
               }}>
                 <div 
                   onClick={() => toggleSection('schedule')}
@@ -1153,7 +1259,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     alignItems: 'center',
                     cursor: 'pointer',
                     borderBottom: openSections.schedule ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.schedule ? 'var(--color-bg-light)' : 'transparent'
+                    backgroundColor: openSections.schedule ? 'var(--color-bg-light)' : 'transparent',
+                    borderTopLeftRadius: '15px',
+                    borderTopRightRadius: '15px',
+                    borderBottomLeftRadius: openSections.schedule ? '0' : '15px',
+                    borderBottomRightRadius: openSections.schedule ? '0' : '15px'
                   }}
                 >
                   <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
@@ -1356,8 +1466,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   background: 'var(--color-surface)',
                   borderRadius: '16px',
                   border: '1px solid var(--color-border)',
-                  boxShadow: 'var(--shadow-sm)',
-                  overflow: 'hidden'
+                  boxShadow: 'var(--shadow-sm)'
                 }}>
                   <div 
                     onClick={() => toggleSection('documents')}
@@ -1368,7 +1477,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       alignItems: 'center',
                       cursor: 'pointer',
                       borderBottom: openSections.documents ? '1px solid var(--color-border)' : 'none',
-                      backgroundColor: openSections.documents ? 'var(--color-bg-light)' : 'transparent'
+                      backgroundColor: openSections.documents ? 'var(--color-bg-light)' : 'transparent',
+                      borderTopLeftRadius: '15px',
+                      borderTopRightRadius: '15px',
+                      borderBottomLeftRadius: openSections.documents ? '0' : '15px',
+                      borderBottomRightRadius: openSections.documents ? '0' : '15px'
                     }}
                   >
                     <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
@@ -1502,7 +1615,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
           )}
         </div>
       </motion.div>
-    </div>,
+    </>,
     document.body
   );
 };
