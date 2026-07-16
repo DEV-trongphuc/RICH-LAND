@@ -44,9 +44,16 @@ class ParallelHelper {
                 $stmtDelActs = $db->prepare("DELETE FROM activities WHERE related_type = 'contact' AND related_id = ?");
                 $stmtDelActs->execute([$otherId]);
 
-                // Log in distribution_logs that the other contact was terminated
-                $stmtLog = $db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
-                $stmtLog->execute([$otherId, $otherOwnerId, null, 'parallel_terminated', 'Hệ thống tự động chấm dứt chăm sóc song song do tư vấn viên khác đã chốt cọc/hợp tác trước.']);
+                // Update matching lead record and log in distribution_logs if lead exists
+                $stmtCheckLead = $db->prepare("SELECT id FROM leads WHERE id = ?");
+                $stmtCheckLead->execute([$otherId]);
+                if ($stmtCheckLead->fetchColumn()) {
+                    $stmtDelLead = $db->prepare("UPDATE leads SET assigned_to = NULL, status = 'parallel_terminated' WHERE id = ?");
+                    $stmtDelLead->execute([$otherId]);
+
+                    $stmtLog = $db->prepare("INSERT INTO distribution_logs (lead_id, assigned_to, round_id, status, message) VALUES (?, ?, ?, ?, ?)");
+                    $stmtLog->execute([$otherId, $otherOwnerId, null, 'parallel_terminated', 'Hệ thống tự động chấm dứt chăm sóc song song do tư vấn viên khác đã chốt cọc/hợp tác trước.']);
+                }
             }
         }
     }
