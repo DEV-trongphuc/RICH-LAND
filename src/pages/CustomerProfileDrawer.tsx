@@ -5196,10 +5196,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 border: '1px solid var(--color-border-light)', 
                                 boxShadow: 'var(--shadow-sm)', 
                                 transition: 'all 0.2s', 
-                                cursor: ev.type === 'task' ? 'pointer' : 'default' 
+                                cursor: ['call', 'email', 'meeting', 'task'].includes(ev.type) ? 'pointer' : 'default' 
                               }}
-                              onMouseEnter={e => { if (ev.type === 'task') e.currentTarget.style.borderColor = ev.color; }}
-                              onMouseLeave={e => { if (ev.type === 'task') e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
+                              onMouseEnter={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = ev.color; }}
+                              onMouseLeave={e => { if (['call', 'email', 'meeting', 'task'].includes(ev.type)) e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
                             >
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.375rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <div>
@@ -5315,7 +5315,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 );
                               })()}
-                              {ev.type === 'task' && (
+                              {['call', 'email', 'meeting', 'task'].includes(ev.type) && (
                                 <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} />
                               )}
                             </div>
