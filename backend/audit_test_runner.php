@@ -29,13 +29,19 @@ try {
     $callApi = function(string $resource, string $method, array $body = [], string $token = '') {
         $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
         $uri = $_SERVER['REQUEST_URI'] ?? '';
-        $subDir = (strpos($uri, '/richland/') !== false) ? '/richland' : '';
+        $subDir = (strpos($uri, '/richland/') !== false || strpos(__DIR__, 'richland') !== false) ? '/richland' : '';
         
-        $urls = [
-            "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($resource),
-            "http://localhost" . $subDir . "/api.php?action=" . urlencode($resource),
-            "https://open.domation.net/richland/api.php?action=" . urlencode($resource)
-        ];
+        $urls = [];
+        if (!empty($host)) {
+            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            if (strpos($host, 'open.domation.net') !== false) {
+                $scheme = 'https';
+            }
+            $urls[] = $scheme . "://" . $host . $subDir . "/api.php?action=" . urlencode($resource);
+        }
+        $urls[] = "https://open.domation.net/richland/api.php?action=" . urlencode($resource);
+        $urls[] = "http://127.0.0.1" . $subDir . "/api.php?action=" . urlencode($resource);
+        $urls[] = "http://localhost" . $subDir . "/api.php?action=" . urlencode($resource);
         
         $lastErr = '';
         foreach ($urls as $url) {
@@ -62,9 +68,10 @@ try {
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
             
-            if ($response !== false && $httpCode >= 200 && $httpCode < 500) {
+            if ($response !== false) {
                 $decoded = json_decode($response, true);
                 if ($decoded) return $decoded;
+                return ['success' => false, 'message' => 'Non-JSON response', 'raw' => $response, 'http_status_code' => $httpCode];
             }
             $lastErr = "URL: $url, Code: $httpCode, Err: $err, Resp: " . substr($response, 0, 150);
         }
