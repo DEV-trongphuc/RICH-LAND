@@ -1603,14 +1603,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           
           let description = '';
           if (a.body) {
-            const bodyTrimmed = a.body.trim();
-            if (bodyTrimmed.startsWith('{"erp_task"')) {
+            let currentBody = a.body.trim();
+            let wasParsed = false;
+            while (currentBody.startsWith('{"erp_task"') || currentBody.startsWith('{"erp_task":')) {
               try {
-                const parsed = JSON.parse(bodyTrimmed);
-                description = parsed.erp_task?.description || '';
+                const parsed = JSON.parse(currentBody);
+                wasParsed = true;
+                if (typeof parsed.erp_task?.description === 'string') {
+                  currentBody = parsed.erp_task.description.trim();
+                } else {
+                  break;
+                }
               } catch (e) {
-                description = a.body;
+                break;
               }
+            }
+            if (wasParsed) {
+              description = currentBody;
             } else {
               description = a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim();
             }
@@ -5462,15 +5471,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 const hasLink = !!linkMatch || !!ev.expense_image_url;
                                 const linkUrl = linkMatch ? linkMatch[1].trim() : (ev.expense_image_url || '');
                                 let displayNoteText = linkMatch ? ev.note.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : (ev.note || '');
-                                if (displayNoteText.trim().startsWith('{"erp_task"')) {
-                                  try {
-                                    const parsed = JSON.parse(displayNoteText);
-                                    displayNoteText = parsed.erp_task?.description || '';
-                                  } catch (e) {}
-                                }
+                                let currentBody = displayNoteText.trim();
+                                 let wasParsed = false;
+                                 while (currentBody.startsWith('{"erp_task"') || currentBody.startsWith('{"erp_task":')) {
+                                   try {
+                                     const parsed = JSON.parse(currentBody);
+                                     wasParsed = true;
+                                     if (typeof parsed.erp_task?.description === 'string') {
+                                       currentBody = parsed.erp_task.description.trim();
+                                     } else {
+                                       break;
+                                     }
+                                   } catch (e) {
+                                     break;
+                                   }
+                                 }
+                                 if (wasParsed) {
+                                   displayNoteText = currentBody;
+                                 }
 
-                                return (
-                                  <div style={{ padding: '0.5rem 0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', border: '1px solid var(--color-border-light)' }}>
+                                 const hasContent = displayNoteText.trim() !== '' || 
+                                                    linkUrl.trim() !== '' || 
+                                                    (ev.type === 'call' && !!(ev as any).metadata?.recording_url) || 
+                                                    (ev.type === 'email' && !!(ev as any).metadata?.email_subject) || 
+                                                    (ev.type === 'meeting' && !!(ev as any).metadata?.zoom_link) || 
+                                                    !!ev.edit_history;
+
+                                 if (!hasContent) return null;
+
+                                 return (
+                                   <div style={{ padding: '0.5rem 0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', border: '1px solid var(--color-border-light)' }}>
                                     {displayNoteText && (
                                       <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</p>
                                     )}

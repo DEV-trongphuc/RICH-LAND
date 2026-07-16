@@ -232,12 +232,27 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         team_id: normalizedTask.related_type === 'team' ? normalizedTask.related_id : null
       };
 
-      if (normalizedTask.body && normalizedTask.body.trim().startsWith('{"erp_task":')) {
-        try {
-          const parsed = JSON.parse(normalizedTask.body);
-          parsedMeta = { ...parsedMeta, ...parsed.erp_task };
-        } catch (e) {
+      if (normalizedTask.body) {
+        let currentBody = normalizedTask.body.trim();
+        let wasParsed = false;
+        while (currentBody.startsWith('{"erp_task"') || currentBody.startsWith('{"erp_task":')) {
+          try {
+            const parsed = JSON.parse(currentBody);
+            parsedMeta = { ...parsedMeta, ...parsed.erp_task };
+            wasParsed = true;
+            if (typeof parsed.erp_task?.description === 'string') {
+              currentBody = parsed.erp_task.description.trim();
+            } else {
+              break;
+            }
+          } catch (e) {
+            break;
+          }
+        }
+        if (!wasParsed) {
           parsedMeta.description = normalizedTask.body;
+        } else {
+          parsedMeta.description = currentBody;
         }
       }
 
@@ -496,7 +511,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
         : null;
 
       // Sync description
-      const finalDesc = erpMeta.description || formData.body || '';
+      const finalDesc = erpMeta.description || '';
       const updatedErpMeta = {
         ...erpMeta,
         description: finalDesc
