@@ -52,7 +52,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { t, language } = useLanguage();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebar_collapsed');
-    return saved ? JSON.parse(saved) : false;
+    return saved ? JSON.parse(saved) : true;
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
