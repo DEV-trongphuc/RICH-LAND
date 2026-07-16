@@ -7,6 +7,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
+import { AccountDetailDrawer } from '../components/AccountDetailDrawer';
 import { compressToWebP } from '../utils/imageCompress';
 import { TableRowSkeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -113,6 +114,7 @@ const ConsultantsInner = () => {
   }, []);
 
   const [users, setUsers] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [allSystemUsers, setAllSystemUsers] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -657,12 +659,22 @@ const ConsultantsInner = () => {
   const leaveCount = users.filter(u => u.status === 'leave').length;
   const inactiveCount = users.filter(u => u.status === 'inactive').length;
 
+  const filteredUsers = React.useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return users;
+    return users.filter(u => 
+      (u.name && u.name.toLowerCase().includes(query)) ||
+      (u.email && u.email.toLowerCase().includes(query)) ||
+      (u.phone && u.phone.toLowerCase().includes(query))
+    );
+  }, [users, searchQuery]);
+
   const paginatedUsers = React.useMemo(() => {
     const startIndex = (consultantsPage - 1) * ITEMS_PER_PAGE;
-    return users.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-  }, [users, consultantsPage, ITEMS_PER_PAGE]);
+    return filteredUsers.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredUsers, consultantsPage, ITEMS_PER_PAGE]);
 
-  const consultantsTotalPages = Math.ceil(users.length / ITEMS_PER_PAGE);
+  const consultantsTotalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
 
   const paginatedTeams = React.useMemo(() => {
     const startIndex = (teamsPage - 1) * ITEMS_PER_PAGE;
@@ -834,6 +846,62 @@ const ConsultantsInner = () => {
       {/* Main Content Area */}
       {activeTab === 'consultants' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
+          <div style={{
+            padding: '1.25rem 1.5rem',
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'var(--color-surface)',
+            gap: '1rem',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ position: 'relative', width: '100%', maxWidth: '360px' }}>
+              <input
+                type="text"
+                placeholder={t('Tìm kiếm tên, email, điện thoại...')}
+                value={searchQuery}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  setConsultantsPage(1);
+                }}
+                className="form-input"
+                style={{
+                  paddingLeft: '12px',
+                  borderRadius: '10px',
+                  fontSize: '0.875rem',
+                  width: '100%'
+                }}
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setConsultantsPage(1);
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--color-text-muted)',
+                    cursor: 'pointer',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+              {t('Tổng số')}: <strong style={{ color: 'var(--color-text)' }}>{filteredUsers.length}</strong> / {users.length} {t('tư vấn viên')}
+            </div>
+          </div>
           <div className="table-wrap mobile-card-table custom-scrollbar" style={{ border: 'none', borderRadius: 0, maxHeight: '480px', overflowY: 'auto' }}>
             <table className="mobile-table-compact">
               <thead>
@@ -1390,484 +1458,13 @@ const ConsultantsInner = () => {
       )}
       </div>
 
-      {/* MODAL */}
-      {modalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="overlay-backdrop" onClick={() => setModalOpen(false)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', zIndex: 1100 }}>
-          <div
-            className="card"
-            style={{ width: '100%', maxWidth: 960, maxHeight: '92vh', display: 'flex', flexDirection: 'column', animation: 'modalSpring 0.4s cubic-bezier(0.34, 1.18, 0.64, 1) both', margin: 'auto', overflow: 'hidden' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>
-                {editingUser ? t('Cập nhật Tư vấn viên') : t('Thêm Tư vấn viên mới')}
-              </h3>
-              <button type="button" onClick={() => setModalOpen(false)} style={{ color: 'var(--color-text-muted)', padding: 4, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')} onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                <X size={20} />
-              </button>
-            </div>
+      <AccountDetailDrawer
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        account={editingUser}
+        onSaveSuccess={fetchUsers}
+      />
 
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '1.5rem', overflowY: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', alignItems: 'start' }}>
-
-                  {/* Cột 1: Thông tin cơ bản & Trạng thái hoạt động */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    
-                    {/* Avatar Upload */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                      <div style={{ position: 'relative' }}>
-                        <Avatar src={formData.avatar} name={formData.name || 'Sale'} size={64} />
-                        {isUploadingAvatar && (
-                          <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                            <RefreshCw size={16} className="spin" />
-                          </div>
-                        )}
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                          {t('Ảnh đại diện TVV')}
-                        </label>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="btn outline sm"
-                            style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', background: 'var(--color-surface)' }}
-                            disabled={isUploadingAvatar}
-                          >
-                            {t('Tải ảnh lên')}
-                          </button>
-                          {formData.avatar && (
-                            <button
-                              type="button"
-                              onClick={() => setFormData({ ...formData, avatar: '' })}
-                              className="btn outline sm"
-                              style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto', color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)', background: 'var(--color-surface)' }}
-                            >
-                              {t('Xóa ảnh')}
-                            </button>
-                          )}
-                        </div>
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleAvatarUpload}
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                        />
-                        <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-                          {t('Định dạng JPG, PNG, WEBP (tối đa 5MB)')}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><User size={14} /> {t('Họ và Tên')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input
-                        className="form-input"
-                        placeholder={t('VD: Nguyễn Văn A')}
-                        value={formData.name}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        required
-                        autoFocus
-                      />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Phone size={14} /> {t('Số điện thoại')}</label>
-                        <input
-                          className="form-input"
-                          placeholder={t('VD: 0912345678')}
-                          value={formData.phone}
-                          onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Mail size={14} /> {t('Email')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                        <input
-                          type="email"
-                          className="form-input"
-                          placeholder="VD: email@domain.com"
-                          value={formData.email}
-                          onChange={e => setFormData({ ...formData, email: e.target.value })}
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Users size={14} /> {t('Nhóm (Team)')}</label>
-                      <CustomSelect
-                        options={[
-                          { value: '', label: `-- ${t('Không thuộc nhóm nào')} --` },
-                          ...teams.map(team => ({ value: String(team.id), label: `${team.name} (${team.branch || t('Không có chi nhánh')})` }))
-                        ]}
-                        value={String(formData.team_id || '')}
-                        onChange={val => setFormData({ ...formData, team_id: String(val) })}
-                        placeholder={t('Chọn nhóm...')}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Shield size={14} /> {t('Trạng thái hoạt động')}</label>
-                      <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, status: 'active' })}
-                          style={{
-                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'active' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: formData.status === 'active' ? 'var(--color-success)' : 'var(--color-text-muted)',
-                            boxShadow: formData.status === 'active' ? 'var(--shadow-sm)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                        >{t('Đang nhận Data')}</button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, status: 'leave' })}
-                          style={{
-                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'leave' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: formData.status === 'leave' ? 'var(--color-warning)' : 'var(--color-text-muted)',
-                            boxShadow: formData.status === 'leave' ? 'var(--shadow-sm)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                        >{t('Nghỉ phép')}</button>
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, status: 'inactive' })}
-                          style={{
-                            flex: 1, padding: '0.5rem 0.25rem', borderRadius: 'var(--radius-md)', fontWeight: 600, fontSize: '0.75rem',
-                            background: formData.status === 'inactive' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                            color: formData.status === 'inactive' ? 'var(--color-danger)' : 'var(--color-text-muted)',
-                            boxShadow: formData.status === 'inactive' ? 'var(--shadow-sm)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                        >{t('Ngừng HĐ')}</button>
-                      </div>
-                    </div>
-
-                    {formData.status === 'leave' && (
-                      <div className="responsive-grid-1-1" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', background: 'var(--color-warning-light)', padding: '0.75rem', borderRadius: 12, border: '1px solid var(--color-border)', animation: 'slideUp 0.15s ease-out' }}>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>{t('Từ ngày')}</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
-                            value={formData.leave_start}
-                            onChange={e => setFormData({ ...formData, leave_start: e.target.value })}
-                          />
-                        </div>
-                        <div>
-                          <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: 4 }}>{t('Đến ngày')}</label>
-                          <input
-                            type="date"
-                            className="form-input"
-                            style={{ padding: '6px 10px', fontSize: '0.8125rem' }}
-                            value={formData.leave_end}
-                            onChange={e => setFormData({ ...formData, leave_end: e.target.value })}
-                          />
-                        </div>
-                        <p style={{ gridColumn: 'span 2', fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.3' }}>
-                          {t('Lưu ý: Trong thời gian nghỉ phép, Sale sẽ tạm ngưng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ được tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale này.')}
-                        </p>
-                      </div>
-                    )}
-
-                    {editingUser && formData.status === 'active' && (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)', padding: '0.75rem 1rem', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-                        <div style={{ flex: 1, paddingRight: '0.5rem' }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Nhận data')}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2, lineHeight: '1.3' }}>
-                            {t('Khi tắt (nghỉ nhanh): Dừng nhận khách hàng mới. Khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho Sale.')}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                          <ToggleSwitch
-                            checked={!Boolean(Number(editingUser.vacation_mode))}
-                            onChange={async () => {
-                              await handleToggleVacation(editingUser.id);
-                              setEditingUser((prev: any) => prev ? { ...prev, vacation_mode: 1 - Number(prev.vacation_mode) } : null);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {editingUser && formData.zalo_chat_id && (
-                      <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 12, border: '1px solid var(--color-border-light)' }}>
-                        <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                          <Send size={14} color="var(--color-primary)" /> {t('Tương tác nhanh với Sale')}
-                        </label>
-                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: 8 }}>
-                          <button
-                            type="button"
-                            onClick={() => { setQuickMessageTarget(editingUser); setQuickMessageOpen(true); }}
-                            className="btn outline"
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'var(--color-surface)' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-bg)' : '#e5f0ff' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
-                          >
-                            <MessageCircle size={14} /> {t('Nhắn tin nhanh')}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => confirmUnlinkZalo(editingUser.id)}
-                            className="btn outline"
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.75rem', padding: '8px 12px', height: 'auto', borderColor: 'var(--color-warning)', color: 'var(--color-warning)', background: 'var(--color-surface)' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = theme === 'dark' ? 'rgba(245, 158, 11, 0.15)' : 'var(--color-warning-light)' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = theme === 'dark' ? 'var(--color-surface)' : 'white' }}
-                          >
-                            <Link2Off size={14} /> {t('Hủy kết nối Zalo')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="form-group" style={{ padding: '0.75rem 1rem', background: 'var(--color-info-light)', borderRadius: 12, border: '1px solid var(--color-border)' }}>
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme === 'dark' ? '#60a5fa' : '#0068ff', fontSize: '0.8125rem' }}>
-                        <img src="https://stc-zpl.zdn.vn/favicon.ico" alt="Zalo" style={{ width: 14, height: 14, borderRadius: '2px' }} /> {t('Zalo Chat ID (Tự động cấp)')} <span style={{ color: 'var(--color-text-muted)', fontWeight: 400, fontSize: '0.75rem' }}>{t('(chỉ có thể hủy liên kết)')}</span>
-                      </label>
-                      <input
-                        className="form-input"
-                        placeholder={t('Chưa liên kết Zalo')}
-                        value={formData.zalo_chat_id}
-                        disabled
-                        style={{ fontSize: '0.8125rem', padding: '6px 10px', cursor: 'not-allowed', backgroundColor: 'var(--color-border-light)' }}
-                      />
-                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 6, lineHeight: '1.3' }}>
-                        {t('Hệ thống tự điền khi Sale xác thực Zalo. Admin có thể hủy liên kết nếu cần.')}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Cột 2: Thông tin cá nhân, Tài chính & Lịch làm việc */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    
-                    {/* Demographic Fields */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">{t('Ngày sinh')}</label>
-                        <input
-                          type="date"
-                          className="form-input"
-                          value={formData.dob}
-                          onChange={e => setFormData({ ...formData, dob: e.target.value })}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('Giới tính')}</label>
-                        <CustomSelect
-                          options={[
-                            { value: '', label: `-- ${t('Chọn giới tính')} --` },
-                            { value: 'male', label: t('Nam') },
-                            { value: 'female', label: t('Nữ') },
-                            { value: 'other', label: t('Khác') }
-                          ]}
-                          value={formData.gender}
-                          onChange={val => setFormData({ ...formData, gender: String(val) })}
-                          placeholder={t('Chọn giới tính...')}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label">{t('Số CMND/CCCD')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="VD: 037092XXXXXX"
-                        value={formData.citizen_id}
-                        onChange={e => setFormData({ ...formData, citizen_id: e.target.value })}
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <AddressSelect
-                        label={t('Địa chỉ thường trú')}
-                        value={formData.address}
-                        onChange={val => setFormData({ ...formData, address: val })}
-                      />
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">{t('Tên ngân hàng')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          placeholder="VD: Vietcombank"
-                          value={formData.bank_name}
-                          onChange={e => setFormData({ ...formData, bank_name: e.target.value })}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('Số tài khoản')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          placeholder="VD: 101298XXXX"
-                          value={formData.bank_account}
-                          onChange={e => setFormData({ ...formData, bank_account: e.target.value })}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Clock size={14} /> {t('Giờ làm việc của Sale')}
-                      </label>
-
-                      {/* Segmented Control for Schedule Mode */}
-                      <div style={{ display: 'flex', background: 'var(--color-border-light)', padding: '4px', borderRadius: '12px', gap: '4px', marginBottom: '0.75rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => setScheduleMode('daily')}
-                          style={{
-                            flex: 1, padding: '6px 12px', borderRadius: '10px', fontWeight: 700, fontSize: '0.75rem',
-                            background: scheduleMode === 'daily' ? 'var(--color-surface)' : 'transparent',
-                            color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                            boxShadow: scheduleMode === 'daily' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                          className={scheduleMode === 'daily' ? '' : 'hover-lift'}
-                        >{t('Cố định hàng ngày')}</button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setScheduleMode('custom');
-                            if (!formData.work_schedule) {
-                              setFormData(prev => ({ ...prev, work_schedule: DEFAULT_SCHEDULE }));
-                            }
-                          }}
-                          style={{
-                            flex: 1, padding: '6px 12px', borderRadius: '10px', fontWeight: 700, fontSize: '0.75rem',
-                            background: scheduleMode === 'custom' ? 'var(--color-surface)' : 'transparent',
-                            color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-light)',
-                            boxShadow: scheduleMode === 'custom' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                            transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                          }}
-                          className={scheduleMode === 'custom' ? '' : 'hover-lift'}
-                        >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
-                      </div>
-
-                      {scheduleMode === 'daily' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input
-                              type="checkbox"
-                              id="work_24h"
-                              checked={(formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)}
-                              onChange={e => {
-                                if (e.target.checked) {
-                                  setFormData({ ...formData, work_start_time: '00:00', work_end_time: '23:59', work_schedule: null });
-                                } else {
-                                  setFormData({ ...formData, work_start_time: '08:00', work_end_time: '22:00', work_schedule: null });
-                                }
-                              }}
-                              style={{ width: 16, height: 16, cursor: 'pointer' }}
-                            />
-                            <label htmlFor="work_24h" style={{ fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text)' }}>
-                              {t('Hoạt động 24/24 (Mặc định)')}
-                            </label>
-                          </div>
-
-                          {!((formData.work_start_time === '00:00' && formData.work_end_time === '23:59') || (!formData.work_start_time && !formData.work_end_time)) && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 4, animation: 'slideUp 0.15s ease-out' }}>
-                              <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>{t('Từ')}</label>
-                                <input
-                                  type="time"
-                                  className="form-input"
-                                  style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
-                                  value={formData.work_start_time}
-                                  onChange={e => setFormData({ ...formData, work_start_time: e.target.value })}
-                                />
-                              </div>
-                              <div style={{ alignSelf: 'flex-end', paddingBottom: 10, color: 'var(--color-text-muted)' }}>-</div>
-                              <div style={{ flex: 1 }}>
-                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: 4 }}>{t('Đến')}</label>
-                                <input
-                                  type="time"
-                                  className="form-input"
-                                  style={{ padding: '6px 10px', fontSize: '0.875rem', width: '100%' }}
-                                  value={formData.work_end_time}
-                                  onChange={e => setFormData({ ...formData, work_end_time: e.target.value })}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        // Weekly Schedule Custom Configuration
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--color-bg)', padding: '12px', borderRadius: 12, maxHeight: '180px', overflowY: 'auto' }}>
-                          {Object.entries(dayNames).map(([dayKey, dayLabel]) => {
-                            const schedule = formData.work_schedule || DEFAULT_SCHEDULE;
-                            const dayConfig = schedule[dayKey] || { active: true, start: '08:00', end: '17:30' };
-
-                            return (
-                              <div key={dayKey} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '6px 0', borderBottom: theme === 'dark' ? '1px solid var(--color-border)' : '1px solid var(--color-border-light)' }}>
-                                <div style={{ width: '60px', fontWeight: 600, fontSize: '0.75rem' }}>
-                                  {t(dayLabel)}
-                                </div>
-
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <ToggleSwitch
-                                    checked={dayConfig.active}
-                                    onChange={checked => handleDayChange(dayKey, 'active', checked)}
-                                    small
-                                  />
-                                  <span style={{ fontSize: '0.7rem', fontWeight: 600, minWidth: '24px', color: dayConfig.active ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
-                                    {dayConfig.active ? t('Bật') : t('Nghỉ')}
-                                  </span>
-                                </div>
-
-                                {dayConfig.active && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', animation: 'slideUp 0.1s ease-out' }}>
-                                    <input
-                                      type="time"
-                                      value={dayConfig.start}
-                                      onChange={e => handleDayChange(dayKey, 'start', e.target.value)}
-                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                                    />
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>-</span>
-                                    <input
-                                      type="time"
-                                      value={dayConfig.end}
-                                      onChange={e => handleDayChange(dayKey, 'end', e.target.value)}
-                                      style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: 4, border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 6, lineHeight: '1.3' }}>
-                        {t('Ngoài ca làm việc, data sẽ được hệ thống tạm giữ lại và tự động bàn giao khi Sale bắt đầu ca kế tiếp.')}
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-                <button type="button" className="btn outline" onClick={() => setModalOpen(false)}>{t('Hủy bỏ')}</button>
-                <button type="submit" className="btn primary" disabled={isSaving}>
-                  {isSaving ? t('Đang lưu...') : (editingUser ? t('Cập nhật') : t('Thêm mới'))}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>, document.body
-      )}
 
       {/* Inline style for modal animation */}
       <style>{`

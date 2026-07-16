@@ -2466,9 +2466,9 @@ switch ($action) {
         }
 
         $vacationMode = 0;
-        $targetVacationSaleId = $isSale ? $saleId : $saleFilterId;
-        if ($targetVacationSaleId !== null) {
-            $stmtV = $conn->prepare("SELECT vacation_mode FROM consultants WHERE id = ?");
+        $targetVacationSaleId = $saleId;
+        if ($targetVacationSaleId > 0) {
+            $stmtV = $conn->prepare("SELECT vacation_mode FROM users WHERE id = ?");
             $stmtV->bind_param("i", $targetVacationSaleId);
             $stmtV->execute();
             $resV = $stmtV->get_result();
@@ -2479,9 +2479,9 @@ switch ($action) {
         }
 
         $consultantProfile = null;
-        $profileSaleId = $isSale ? $saleId : $saleFilterId;
-        if ($profileSaleId !== null) {
-            $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account FROM consultants WHERE id = ?");
+        $profileSaleId = $saleId;
+        if ($profileSaleId > 0) {
+            $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account FROM users WHERE id = ?");
             $stmtP->bind_param("i", $profileSaleId);
             $stmtP->execute();
             $consultantProfile = $stmtP->get_result()->fetch_assoc();

@@ -549,6 +549,7 @@ export const SettingsPage: React.FC = () => {
                   placeholder={editUser ? 'Để trống nếu không đổi' : 'Tối thiểu 6 ký tự'}
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
+                  autoComplete="new-password"
                 />
                 <Shield size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
               </div>

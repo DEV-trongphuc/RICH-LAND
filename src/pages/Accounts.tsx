@@ -651,6 +651,7 @@ const AccountsInner = () => {
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   placeholder={t('Để trống nếu không muốn đổi')}
+                  autoComplete="new-password"
                 />
               </div>
             </div>

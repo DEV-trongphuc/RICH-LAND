@@ -1379,6 +1379,7 @@ const SettingsInner = () => {
                     value={geminiApiKey}
                     onChange={e => setGeminiApiKey(e.target.value)}
                     placeholder={t("Nhập API Key của Google Gemini (AIzaSy...)")}
+                    autoComplete="new-password"
                     style={{
                       padding: '10px 12px',
                       border: '1px solid var(--color-border)',
