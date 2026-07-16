@@ -2685,8 +2685,8 @@ try {
 
     // Delete other consultants from round_consultants so only Sale and Sale 2 are tested
     $db->prepare("DELETE FROM round_consultants WHERE round_id = ? AND consultant_id NOT IN (?, ?)")->execute([$roundId, $saleUserId, $sale2UserId]);
-    $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, is_active) VALUES (?, ?, 2, 1) ON DUPLICATE KEY UPDATE receive_ratio = 2, skip_count = 0, current_turn_remaining = 0, compensation_count = 0, is_active = 1")->execute([$roundId, $saleUserId]);
-    $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, is_active) VALUES (?, ?, 1, 1) ON DUPLICATE KEY UPDATE receive_ratio = 1, skip_count = 0, current_turn_remaining = 0, compensation_count = 0, is_active = 1")->execute([$roundId, $sale2UserId]);
+    $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, is_active) VALUES (?, ?, 1, 1) ON DUPLICATE KEY UPDATE receive_ratio = 1, skip_count = 0, current_turn_remaining = 0, compensation_count = 0, is_active = 1")->execute([$roundId, $saleUserId]);
+    $db->prepare("INSERT INTO round_consultants (round_id, consultant_id, receive_ratio, is_active) VALUES (?, ?, 2, 1) ON DUPLICATE KEY UPDATE receive_ratio = 2, skip_count = 0, current_turn_remaining = 0, compensation_count = 0, is_active = 1")->execute([$roundId, $sale2UserId]);
 
     // Ensure last_assigned_consultant_id is set to Sale 2 so Sale is evaluated first
     $db->prepare("UPDATE distribution_rounds SET last_assigned_consultant_id = ? WHERE id = ?")->execute([$sale2UserId, $roundId]);
