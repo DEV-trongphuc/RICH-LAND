@@ -3503,7 +3503,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               )}
                             </button>
                           ))}
-                          {group.title === 'Nghiệp vụ & Hỗ trợ' && (
+                          {group.title === 'Nghiệp vụ & Hỗ trợ' && !['ca_nhan', 'cold_call', 'gioi_thieu'].includes(formData.source || contact?.source) && (
                             <button
                               className={styles.sidebarTabBtn}
                               onClick={() => {
@@ -7746,24 +7746,26 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <button className="btn-icon sm" onClick={() => setShowTicketModal(false)}><X size={18} /></button>
               </div>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: ticketForm.subject === 'Báo lỗi data' ? '1fr' : '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Tiêu đề hỗ trợ *</label>
-                    <input className="form-input" placeholder="Tóm tắt yêu cầu/lỗi..." value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} autoFocus />
+                    <input className="form-input" placeholder="Tóm tắt yêu cầu/lỗi..." value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} disabled={ticketForm.subject === 'Báo lỗi data'} autoFocus />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Độ ưu tiên</label>
-                    <CustomSelect
-                      options={[
-                        { value: 'low', label: 'Thấp' },
-                        { value: 'medium', label: 'Trung bình' },
-                        { value: 'high', label: 'Cao' },
-                        { value: 'urgent', label: 'Khẩn cấp' }
-                      ]}
-                      value={ticketForm.priority}
-                      onChange={val => setTicketForm({ ...ticketForm, priority: val.toString() })}
-                    />
-                  </div>
+                  {ticketForm.subject !== 'Báo lỗi data' && (
+                    <div className="form-group">
+                      <label className="form-label">Độ ưu tiên</label>
+                      <CustomSelect
+                        options={[
+                          { value: 'low', label: 'Thấp' },
+                          { value: 'medium', label: 'Trung bình' },
+                          { value: 'high', label: 'Cao' },
+                          { value: 'urgent', label: 'Khẩn cấp' }
+                        ]}
+                        value={ticketForm.priority}
+                        onChange={val => setTicketForm({ ...ticketForm, priority: val.toString() })}
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Mô tả chi tiết</label>

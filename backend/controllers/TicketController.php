@@ -143,6 +143,30 @@ class TicketController {
             $validContacts = $sC->fetchAll(PDO::FETCH_COLUMN);
         }
 
+        // Báo lỗi data business rule check
+        if ($data['subject'] === 'Báo lỗi data' && !empty($validContacts)) {
+            $contactId = (int)$validContacts[0];
+            $stmtC = $this->db->prepare("SELECT source FROM contacts WHERE id = ? AND tenant_id = ?");
+            $stmtC->execute([$contactId, $auth['tenant_id']]);
+            $contactRow = $stmtC->fetch(PDO::FETCH_ASSOC);
+            if ($contactRow) {
+                $src = $contactRow['source'];
+                // Self-entered sources
+                if (in_array($src, ['ca_nhan', 'cold_call', 'gioi_thieu'], true)) {
+                    respond(400, null, 'Chỉ duy nhất data được chia mới được báo bù. Khách tự khai thác / tự nhập không được báo bù.', false);
+                }
+                
+                // Databank claimed: check latest distribution log
+                $stmtLogs = $this->db->prepare("SELECT status FROM distribution_logs WHERE lead_id = ? ORDER BY id DESC LIMIT 1");
+                $stmtLogs->execute([$contactId]);
+                $lastLogStatus = $stmtLogs->fetchColumn();
+                
+                if (!$lastLogStatus || !in_array($lastLogStatus, ['assigned', 'compensation', 'rule_6_month', 'fallback', 'pending_work_hours', 'success'], true)) {
+                    respond(400, null, 'Chỉ duy nhất data được chia từ chiến dịch marketing mới được báo bù. Data từ Databank không được báo bù.', false);
+                }
+            }
+        }
+
         // Verify related_users
         $validUsers = [];
         if (!empty($data['related_users']) && is_array($data['related_users'])) {
