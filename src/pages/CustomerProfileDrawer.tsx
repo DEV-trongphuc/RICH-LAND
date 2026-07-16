@@ -1793,6 +1793,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   }, [contact, prevContactId, initialTab]);
 
   useEffect(() => {
+    if (formData.campaign_id && !formData.project_id && allowedCampaigns.length > 0) {
+      const camp = allowedCampaigns.find(c => Number(c.id) === Number(formData.campaign_id));
+      if (camp && camp.project_id) {
+        setFormData((prev: any) => ({
+          ...prev,
+          project_id: Number(camp.project_id)
+        }));
+      }
+    }
+  }, [allowedCampaigns, formData.campaign_id, formData.project_id]);
+
+  useEffect(() => {
     if (isOpen) {
       api.get('/users?all=1').then(r => {
         const d = r.data.data;
@@ -3926,7 +3938,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               onChange={val => {
                                 const selectedId = val ? Number(val) : null;
                                 let nextCampaignId = formData.campaign_id;
-                                if (selectedId && nextCampaignId) {
+                                if (!selectedId) {
+                                  nextCampaignId = null;
+                                } else if (nextCampaignId) {
                                   const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
                                   if (campObj && Number(campObj.project_id) !== selectedId) {
                                     nextCampaignId = null;

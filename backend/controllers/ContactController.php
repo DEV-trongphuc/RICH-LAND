@@ -472,6 +472,18 @@ class ContactController {
             }
         }
 
+        // Resolve project_id from campaign_id if project_id is empty/0 but campaign_id is set
+        $reqProjectId = array_key_exists('project_id', $b) ? (int)$b['project_id'] : null;
+        $reqCampaignId = array_key_exists('campaign_id', $b) ? (int)$b['campaign_id'] : null;
+        if ($reqCampaignId > 0 && (!$reqProjectId || $reqProjectId === 0)) {
+            $stmtCampProj = $this->db->prepare("SELECT project_id FROM marketing_campaigns WHERE id = ?");
+            $stmtCampProj->execute([$reqCampaignId]);
+            $campProjId = $stmtCampProj->fetchColumn();
+            if ($campProjId) {
+                $b['project_id'] = (int)$campProjId;
+            }
+        }
+
         $fields = [
             'company_id','project_id','owner_id','first_name','last_name','email','phone',
             'mobile','job_title','department','source','status','notes',
