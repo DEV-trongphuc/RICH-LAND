@@ -99,7 +99,9 @@ class CloudFileController {
         $b = getBody();
         $category = $_POST['category'] ?? $b['category'] ?? 'general';
         if (in_array($auth['role'], ['sales', 'sale'], true) && strpos($category, 'consultant_') === 0) {
-            respond(403, null, 'Bạn không có quyền tải lên tài liệu nhân sự (consultant_*)', false);
+            if ($category !== 'consultant_' . $auth['user_id']) {
+                respond(403, null, 'Bạn không có quyền tải lên tài liệu nhân sự của người khác (consultant_*)', false);
+            }
         }
 
         if (empty($_FILES['file'])) respond(422, null, 'Vui lòng chọn tệp tin để tải lên', false);
@@ -175,7 +177,10 @@ class CloudFileController {
             if ((int)$file['uploaded_by'] !== (int)$auth['user_id']) {
                 respond(403, null, 'Bạn không có quyền sửa thông tin tệp tin của người khác', false);
             }
-            if (strpos($category, 'consultant_') === 0 || ($file['category'] && strpos($file['category'], 'consultant_') === 0)) {
+            if (
+                (strpos($category, 'consultant_') === 0 && $category !== 'consultant_' . $auth['user_id']) || 
+                ($file['category'] && strpos($file['category'], 'consultant_') === 0 && $file['category'] !== 'consultant_' . $auth['user_id'])
+            ) {
                 respond(403, null, 'Bạn không có quyền cập nhật tài liệu nhân sự (consultant_*)', false);
             }
         }
@@ -206,7 +211,7 @@ class CloudFileController {
             if ((int)$file['uploaded_by'] !== (int)$auth['user_id']) {
                 respond(403, null, 'Bạn không có quyền xóa tệp tin của người khác', false);
             }
-            if (strpos($file['category'], 'consultant_') === 0) {
+            if (strpos($file['category'], 'consultant_') === 0 && $file['category'] !== 'consultant_' . $auth['user_id']) {
                 respond(403, null, 'Bạn không có quyền xóa tài liệu nhân sự (consultant_*)', false);
             }
         }

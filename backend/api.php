@@ -429,15 +429,15 @@ if (!in_array($action, $publicActions)) {
     }
 
     $superAdminOnlyActions = [
-        'add_account',
-        'edit_account',
-        'delete_account',
-        'check_delete_account',
         'resend_confirm_email',
         'resend_zalo_verify_account'
     ];
 
     $adminOnlyActions = [
+        'add_account',
+        'edit_account',
+        'delete_account',
+        'check_delete_account',
         'get_accounts',
         'get_admin_logs',
         'save_settings',
@@ -516,7 +516,8 @@ if (!in_array($action, $publicActions)) {
         'block_lead',
         'update_lead_fields',
         'send_lead_reminder',
-        'get_consultant_stats'
+        'get_consultant_stats',
+        'edit_account'
     ];
 
     if (in_array($action, $adminOnlyActions) 
@@ -10613,7 +10614,31 @@ switch ($action) {
             $isTargetSelf = $id === (int)$decodedUser['id'];
             $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
 
-            if (!$isAdmin && !$isTargetSelf) {
+            // Fetch target user's current role
+            $exRes = $conn->query("SELECT role, is_active, username FROM accounts WHERE id = " . $id);
+            $exRow = $exRes ? $exRes->fetch_assoc() : null;
+            $targetRole = $exRow ? $exRow['role'] : '';
+
+            // If target is superadmin, only superadmin can edit
+            if (($targetRole === 'superadmin' || $targetRole === 'super_admin') && $decodedUser['role'] !== 'superadmin') {
+                echo json_encode(['success' => false, 'message' => 'Chỉ Super Admin mới có quyền chỉnh sửa tài khoản Super Admin khác']);
+                break;
+            }
+
+            $isManagerOfTarget = false;
+            if ($decodedUser['role'] === 'manager') {
+                $tRes = $conn->query("SELECT team_id FROM users WHERE id = " . $id);
+                $tRow = $tRes ? $tRes->fetch_assoc() : null;
+                $targetTeamId = $tRow ? $tRow['team_id'] : null;
+                if ($targetTeamId) {
+                    $lRes = $conn->query("SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['id'] . " AND id = " . (int)$targetTeamId);
+                    if ($lRes && $lRes->num_rows > 0) {
+                        $isManagerOfTarget = true;
+                    }
+                }
+            }
+
+            if (!$isAdmin && !$isTargetSelf && !$isManagerOfTarget) {
                 echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa tài khoản này']);
                 break;
             }
@@ -10624,9 +10649,11 @@ switch ($action) {
             $role = $input['role'] ?? 'viewer';
             
             if (!$isAdmin) {
-                $exRes = $conn->query("SELECT role FROM accounts WHERE id = " . $id);
-                $exRow = $exRes ? $exRes->fetch_assoc() : null;
                 $role = $exRow ? $exRow['role'] : 'viewer';
+                $is_active = $exRow ? (int)$exRow['is_active'] : 1;
+                $username = $exRow ? $exRow['username'] : '';
+            } else {
+                $is_active = isset($input['is_active']) ? (int)$input['is_active'] : 1;
             }
 
             $email = trim($input['email'] ?? '');
@@ -10642,7 +10669,6 @@ switch ($action) {
             $address = !empty($input['address']) ? trim($input['address']) : null;
             $bank_name = !empty($input['bank_name']) ? trim($input['bank_name']) : null;
             $bank_account = !empty($input['bank_account']) ? trim($input['bank_account']) : null;
-            $is_active = isset($input['is_active']) ? (int)$input['is_active'] : 1;
 
             // FEATURE: Email bắt buộc cho tất cả tài khoản không phải Super Admin (id=1)
             if ($id !== 1) {
@@ -10758,12 +10784,38 @@ switch ($action) {
         break;
 
     case 'consultant-profile':
-        if (!$currentSaleConsultantId) {
+        $saleFilterId = isset($_GET['consultant_id']) && $_GET['consultant_id'] !== '' ? (int) $_GET['consultant_id'] : null;
+        $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
+
+        if (!$targetId) {
             echo json_encode(['success' => false, 'message' => 'Consultant profile not found']);
             exit;
         }
+
+        // Check permission
+        $isSelf = (int)$targetId === (int)$decodedUser['id'];
+        $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
+        
+        $isManagerOfTarget = false;
+        if ($decodedUser['role'] === 'manager') {
+            $tRes = $conn->query("SELECT team_id FROM users WHERE id = " . $targetId);
+            $tRow = $tRes ? $tRes->fetch_assoc() : null;
+            $targetTeamId = $tRow ? $tRow['team_id'] : null;
+            if ($targetTeamId) {
+                $lRes = $conn->query("SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['id'] . " AND id = " . (int)$targetTeamId);
+                if ($lRes && $lRes->num_rows > 0) {
+                    $isManagerOfTarget = true;
+                }
+            }
+        }
+
+        if (!$isAdmin && !$isSelf && !$isManagerOfTarget) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xem hồ sơ này']);
+            exit;
+        }
+
         $stmtP = $conn->prepare("SELECT id, name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, zalo_chat_id, overtime_mode FROM consultants WHERE id = ?");
-        $stmtP->bind_param("i", $currentSaleConsultantId);
+        $stmtP->bind_param("i", $targetId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
         if ($consultantProfile) {
@@ -10788,6 +10840,28 @@ switch ($action) {
 
         if (!$targetId) {
             echo json_encode(['success' => false, 'message' => 'Không xác định được ID tư vấn viên.']);
+            break;
+        }
+
+        // Check permission
+        $isSelf = (int)$targetId === (int)$decodedUser['id'];
+        $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
+        
+        $isManagerOfTarget = false;
+        if ($decodedUser['role'] === 'manager') {
+            $tRes = $conn->query("SELECT team_id FROM users WHERE id = " . $targetId);
+            $tRow = $tRes ? $tRes->fetch_assoc() : null;
+            $targetTeamId = $tRow ? $tRow['team_id'] : null;
+            if ($targetTeamId) {
+                $lRes = $conn->query("SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['id'] . " AND id = " . (int)$targetTeamId);
+                if ($lRes && $lRes->num_rows > 0) {
+                    $isManagerOfTarget = true;
+                }
+            }
+        }
+
+        if (!$isAdmin && !$isSelf && !$isManagerOfTarget) {
+            echo json_encode(['success' => false, 'message' => 'Bạn không có quyền chỉnh sửa hồ sơ này']);
             break;
         }
 
