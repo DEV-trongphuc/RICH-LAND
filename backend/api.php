@@ -621,7 +621,7 @@ function logAdminAction($conn, $accountId, $action, $details = [])
 
 function isManagerOfConsultant($conn, $managerUserId, $consultantId) {
     if (!$consultantId) return false;
-    $stmt = $conn->prepare("SELECT u.id FROM users u JOIN teams t ON u.team_id = t.id WHERE t.leader_id = ? AND u.id = ?");
+    $stmt = $conn->prepare("SELECT u.id FROM users u JOIN teams t ON u.team_id = t.id JOIN consultants c ON u.email = c.email WHERE t.leader_id = ? AND c.id = ?");
     if (!$stmt) return false;
     $stmt->bind_param("ii", $managerUserId, $consultantId);
     $stmt->execute();
@@ -2471,11 +2471,22 @@ switch ($action) {
             }
         }
 
+        $targetUserId = null;
+        if ($saleId > 0) {
+            $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+            $stmtUId->bind_param("i", $saleId);
+            $stmtUId->execute();
+            $uRow = $stmtUId->get_result()->fetch_assoc();
+            $stmtUId->close();
+            if ($uRow) {
+                $targetUserId = (int)$uRow['id'];
+            }
+        }
+
         $vacationMode = 0;
-        $targetVacationSaleId = $saleId;
-        if ($targetVacationSaleId > 0) {
+        if ($targetUserId > 0) {
             $stmtV = $conn->prepare("SELECT vacation_mode FROM users WHERE id = ?");
-            $stmtV->bind_param("i", $targetVacationSaleId);
+            $stmtV->bind_param("i", $targetUserId);
             $stmtV->execute();
             $resV = $stmtV->get_result();
             if ($rowV = $resV->fetch_assoc()) {
@@ -2485,10 +2496,9 @@ switch ($action) {
         }
 
         $consultantProfile = null;
-        $profileSaleId = $saleId;
-        if ($profileSaleId > 0) {
+        if ($targetUserId > 0) {
             $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account FROM users WHERE id = ?");
-            $stmtP->bind_param("i", $profileSaleId);
+            $stmtP->bind_param("i", $targetUserId);
             $stmtP->execute();
             $consultantProfile = $stmtP->get_result()->fetch_assoc();
             if ($consultantProfile) {
@@ -3296,7 +3306,8 @@ switch ($action) {
             echo json_encode(['success' => false, 'message' => 'Unauthorized']);
             break;
         }
-        $userId = (int)$decodedUser['id'];
+        $isSale = $decodedUser['role'] === 'sale';
+        $userId = $isSale ? $currentSaleConsultantId : (int)$decodedUser['id'];
         $currentHour = (int)date('H');
         $shiftDate = ($currentHour < 6) ? date('Y-m-d', strtotime('-1 day')) : date('Y-m-d');
 
@@ -3456,11 +3467,21 @@ switch ($action) {
             $nextStart = $recalcRes ? $recalcRes['start_date'] : null;
             $nextEnd = $recalcRes ? $recalcRes['end_date'] : null;
 
-            // Sync to users table
-            $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE id = ?");
-            $upStmt->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
-            $upStmt->execute();
-            $upStmt->close();
+            // Sync to users table by email
+            $stmtEmail = $conn->prepare("SELECT email FROM consultants WHERE id = ? LIMIT 1");
+            $stmtEmail->bind_param("i", $targetConsultantId);
+            $emailRes = null;
+            if ($stmtEmail->execute()) {
+                $emailRes = $stmtEmail->get_result()->fetch_assoc();
+            }
+            $stmtEmail->close();
+
+            if ($emailRes && !empty($emailRes['email'])) {
+                $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE email = ?");
+                $upStmt->bind_param("sss", $nextStart, $nextEnd, $emailRes['email']);
+                $upStmt->execute();
+                $upStmt->close();
+            }
 
             // Sync to consultants table (needed by lead assignment system)
             $upStmtC = $conn->prepare("UPDATE consultants SET leave_start = ?, leave_end = ? WHERE id = ?");
@@ -3543,11 +3564,21 @@ switch ($action) {
             $nextStart = $recalcRes ? $recalcRes['start_date'] : null;
             $nextEnd = $recalcRes ? $recalcRes['end_date'] : null;
 
-            // Sync to users table
-            $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE id = ?");
-            $upStmt->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
-            $upStmt->execute();
-            $upStmt->close();
+            // Sync to users table by email
+            $stmtEmail = $conn->prepare("SELECT email FROM consultants WHERE id = ? LIMIT 1");
+            $stmtEmail->bind_param("i", $targetConsultantId);
+            $emailRes = null;
+            if ($stmtEmail->execute()) {
+                $emailRes = $stmtEmail->get_result()->fetch_assoc();
+            }
+            $stmtEmail->close();
+
+            if ($emailRes && !empty($emailRes['email'])) {
+                $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE email = ?");
+                $upStmt->bind_param("sss", $nextStart, $nextEnd, $emailRes['email']);
+                $upStmt->execute();
+                $upStmt->close();
+            }
 
             // Sync to consultants table (needed by lead assignment system)
             $upStmtC = $conn->prepare("UPDATE consultants SET leave_start = ?, leave_end = ? WHERE id = ?");
@@ -3962,6 +3993,12 @@ switch ($action) {
             $stmtUp->bind_param("ii", $newVacationMode, $id);
             $stmtUp->execute();
             $stmtUp->close();
+
+            // Sync to users table by email
+            $stmtUserUp = $conn->prepare("UPDATE users SET vacation_mode = ? WHERE email = (SELECT email FROM consultants WHERE id = ? LIMIT 1)");
+            $stmtUserUp->bind_param("ii", $newVacationMode, $id);
+            $stmtUserUp->execute();
+            $stmtUserUp->close();
 
             if ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin') {
                 logAdminAction($conn, $decodedUser['id'], 'TOGGLE_CONSULTANT_VACATION', ['id' => $id, 'name' => $row['name'], 'vacation_mode' => $newVacationMode]);
@@ -10798,13 +10835,25 @@ switch ($action) {
             exit;
         }
 
+        $targetUserId = null;
+        $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+        $stmtUId->bind_param("i", $targetId);
+        $stmtUId->execute();
+        $uRow = $stmtUId->get_result()->fetch_assoc();
+        $stmtUId->close();
+        if ($uRow) {
+            $targetUserId = (int)$uRow['id'];
+        } else {
+            $targetUserId = $targetId;
+        }
+
         // Check permission
-        $isSelf = (int)$targetId === (int)$decodedUser['id'];
+        $isSelf = (int)$targetUserId === (int)$decodedUser['id'];
         $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
         
         $isManagerOfTarget = false;
         if ($decodedUser['role'] === 'manager') {
-            $tRes = $conn->query("SELECT team_id FROM users WHERE id = " . $targetId);
+            $tRes = $conn->query("SELECT team_id FROM users WHERE id = " . $targetUserId);
             $tRow = $tRes ? $tRes->fetch_assoc() : null;
             $targetTeamId = $tRow ? $tRow['team_id'] : null;
             if ($targetTeamId) {
@@ -10821,7 +10870,7 @@ switch ($action) {
         }
 
         $stmtP = $conn->prepare("SELECT id, full_name AS name, email, status, leave_start, leave_end, work_start_time, work_end_time, work_schedule, avatar_url AS avatar, vacation_mode, dob, gender, citizen_id, address, bank_name, bank_account, zalo_chat_id, overtime_mode FROM users WHERE id = ?");
-        $stmtP->bind_param("i", $targetId);
+        $stmtP->bind_param("i", $targetUserId);
         $stmtP->execute();
         $consultantProfile = $stmtP->get_result()->fetch_assoc();
         if ($consultantProfile) {
@@ -10844,18 +10893,25 @@ switch ($action) {
         $saleFilterId = isset($input['consultant_id']) && $input['consultant_id'] !== '' ? (int) $input['consultant_id'] : null;
         $targetId = $saleFilterId !== null ? $saleFilterId : $currentSaleConsultantId;
 
-        if (!$targetId) {
-            echo json_encode(['success' => false, 'message' => 'Không xác định được ID tư vấn viên.']);
-            break;
+        $targetUserId = null;
+        $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+        $stmtUId->bind_param("i", $targetId);
+        $stmtUId->execute();
+        $uRow = $stmtUId->get_result()->fetch_assoc();
+        $stmtUId->close();
+        if ($uRow) {
+            $targetUserId = (int)$uRow['id'];
+        } else {
+            $targetUserId = $targetId;
         }
 
         // Check permission
-        $isSelf = (int)$targetId === (int)$decodedUser['id'];
+        $isSelf = (int)$targetUserId === (int)$decodedUser['id'];
         $isAdmin = $decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin' || $decodedUser['role'] === 'super_admin';
         
         $isManagerOfTarget = false;
         if ($decodedUser['role'] === 'manager') {
-            $tRes = $conn->query("SELECT team_id FROM users WHERE id = " . $targetId);
+            $tRes = $conn->query("SELECT team_id FROM users WHERE id = " . $targetUserId);
             $tRow = $tRes ? $tRes->fetch_assoc() : null;
             $targetTeamId = $tRow ? $tRow['team_id'] : null;
             if ($targetTeamId) {
@@ -10901,14 +10957,23 @@ switch ($action) {
         $zalo_chat_id = !empty($input['zalo_chat_id']) ? trim($input['zalo_chat_id']) : null;
         $overtime_mode = isset($input['overtime_mode']) ? (int)$input['overtime_mode'] : 0;
 
+        // 1. Update users table
         $stmt = $conn->prepare("UPDATE users SET full_name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar_url=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=? WHERE id=?");
-        $stmt->bind_param("ssssssssssssssii", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $targetId);
-        if ($stmt->execute()) {
+        $stmt->bind_param("ssssssssssssssii", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $targetUserId);
+        $success = $stmt->execute();
+        $stmt->close();
+
+        // 2. Update consultants table
+        $stmtC = $conn->prepare("UPDATE consultants SET name=?, work_start_time=?, work_end_time=?, work_schedule=?, avatar=?, dob=?, gender=?, citizen_id=?, address=?, bank_name=?, bank_account=?, leave_start=?, leave_end=?, zalo_chat_id=?, overtime_mode=? WHERE id=?");
+        $stmtC->bind_param("ssssssssssssssii", $name, $work_start_time, $work_end_time, $work_schedule, $avatar, $dob, $gender, $citizen_id, $address, $bank_name, $bank_account, $leave_start, $leave_end, $zalo_chat_id, $overtime_mode, $targetId);
+        $successC = $stmtC->execute();
+        $stmtC->close();
+
+        if ($success && $successC) {
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật cấu hình cá nhân.']);
         }
-        $stmt->close();
         break;
 
     case 'get_my_activity_logs':
