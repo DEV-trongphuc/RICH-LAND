@@ -655,6 +655,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
     const updatedMeta = { ...erpMeta, checklist: newChecklist };
     handleSaveMeta(updatedMeta);
 
+    if (newItem.assignee_id) {
+      const current = getParticipantIds(formData.participant_ids);
+      if (!current.includes(String(newItem.assignee_id))) {
+        const next = [...current, String(newItem.assignee_id)];
+        const nextString = next.join(',');
+        setFormData((prev: any) => ({ ...prev, participant_ids: nextString }));
+        handleUpdateField('participant_ids', nextString);
+      }
+    }
+
     // Reset input
     setNewSubTitle('');
     setNewSubAssignee('');
@@ -727,11 +737,12 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
     try {
       const res = await api.post('/upload', fd);
-      if (res.data && res.data.success && res.data.url) {
+      const fileUrl = res.data?.data?.url || res.data?.url;
+      if (res.data && res.data.success && fileUrl) {
         // Add to resources links
         const newResource = {
           label: file.name,
-          url: res.data.url,
+          url: fileUrl,
           is_file: true
         };
         const newLinks = [...(erpMeta.links || []), newResource];
@@ -759,8 +770,9 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
     try {
       const res = await api.post('/upload', fd);
-      if (res.data && res.data.success && res.data.url) {
-        setCommentAttachments(prev => [...prev, { name: file.name, url: res.data.url }]);
+      const fileUrl = res.data?.data?.url || res.data?.url;
+      if (res.data && res.data.success && fileUrl) {
+        setCommentAttachments(prev => [...prev, { name: file.name, url: fileUrl }]);
         toast.success(t('Tải lên đính kèm thành công!'));
       }
     } catch (err: any) {
@@ -888,10 +900,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const approverOptions = users;
 
-  const filteredUsersForParticipants = users.filter(u => {
-    return (u.full_name || '').toLowerCase().includes(participantsSearch.toLowerCase()) ||
-           (u.role || '').toLowerCase().includes(participantsSearch.toLowerCase());
-  });
+  const filteredUsersForParticipants = users
+    .filter(u => {
+      return (u.full_name || '').toLowerCase().includes(participantsSearch.toLowerCase()) ||
+             (u.role || '').toLowerCase().includes(participantsSearch.toLowerCase());
+    })
+    .sort((a, b) => {
+      const aChecked = participantIds.includes(Number(a.id)) ? 1 : 0;
+      const bChecked = participantIds.includes(Number(b.id)) ? 1 : 0;
+      return bChecked - aChecked;
+    });
 
   const currentHash = (() => {
     const cleanObj = (obj: any) => {
@@ -970,8 +988,20 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: erpMeta.internal_type === 'announcement' ? 'rgba(163, 20, 34, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                color: erpMeta.internal_type === 'announcement' ? 'var(--color-primary)' : 'var(--color-success)',
+                background: erpMeta.internal_type === 'announcement'
+                  ? 'rgba(163, 20, 34, 0.08)'
+                  : (formData.priority === 'high'
+                      ? 'rgba(239, 68, 68, 0.08)'
+                      : (formData.priority === 'low'
+                          ? 'rgba(59, 130, 246, 0.08)'
+                          : 'rgba(245, 158, 11, 0.08)')),
+                color: erpMeta.internal_type === 'announcement'
+                  ? 'var(--color-primary)'
+                  : (formData.priority === 'high'
+                      ? 'var(--color-danger)'
+                      : (formData.priority === 'low'
+                          ? 'var(--color-info)'
+                          : 'var(--color-warning)')),
                 flexShrink: 0
               }}>
                 {erpMeta.internal_type === 'announcement' ? <AlertCircle size={20} /> : <CheckSquare2 size={20} />}
@@ -990,6 +1020,16 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   textTransform: 'uppercase',
                   flexShrink: 0
                 }}>#{formData.id}</span>
+                <span className={`badge ${formData.priority === 'high' ? 'danger' : formData.priority === 'low' ? 'info' : 'warning'}`} style={{
+                  fontSize: '0.6rem',
+                  fontWeight: 800,
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  textTransform: 'uppercase',
+                  flexShrink: 0
+                }}>
+                  {formData.priority === 'high' ? t('Khẩn cấp') : formData.priority === 'low' ? t('Thấp') : t('Trung bình')}
+                </span>
               </h3>
               {!isMobileOrTablet && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
@@ -1102,7 +1142,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   type="button"
                   className="btn outline sm"
                   onClick={() => setShowAddChecklist(!showAddChecklist)}
-                  style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+                  style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-border)', color: 'var(--color-text-light)' }}
                 >
                   <Plus size={12} />
                   {t('Thêm mục')}
@@ -1284,14 +1324,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     type="button"
                     className="btn outline sm"
                     onClick={() => setShowAddLink(!showAddLink)}
-                    style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-border)', color: 'var(--color-text-light)' }}
                   >
                     <Link2 size={12} />
                     {t('Thêm link')}
                   </button>
                   <label
                     className="btn outline sm hover-lift"
-                    style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', margin: 0 }}
+                    style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', margin: 0, borderColor: 'var(--color-border)', color: 'var(--color-text-light)' }}
                   >
                     {uploadingFile ? <RefreshCw className="spin" size={12} /> : <Plus size={12} />}
                     {t('Tải tệp lên')}
@@ -1862,9 +1902,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         return next;
                       });
                     }}
-                    onBlur={() => {
-                      handleUpdateField('progress', formData.progress);
-                    }}
                     style={{
                       width: '45px',
                       height: '24px',
@@ -1897,12 +1934,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     }
                     return next;
                   });
-                }}
-                onMouseUp={() => {
-                  handleUpdateField('progress', formData.progress);
-                }}
-                onTouchEnd={() => {
-                  handleUpdateField('progress', formData.progress);
                 }}
                 className="progress-slider"
                 style={{

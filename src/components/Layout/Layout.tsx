@@ -14,6 +14,7 @@ import { fetchAPI } from '../../utils/api';
 import { useUIStore } from '../../store/uiStore';
 import { POSModal } from '../ui/POSModal';
 import { AlertToast } from '../ui/AlertToast';
+import { StatRowSkeleton } from '../ui/Skeleton';
 import { 
   Ticket as TicketIcon, 
   Activity, 
@@ -1385,9 +1386,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               {/* Logs Content list */}
               <div style={{ flex: 1, overflowY: 'auto', paddingRight: 4 }}>
                 {isNotifLogsLoading ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12 }}>
-                    <RefreshCw size={32} className="spin" style={{ color: 'var(--color-primary)' }} />
-                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải log thông báo...')}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '1rem' }}>
+                    <StatRowSkeleton />
+                    <StatRowSkeleton />
+                    <StatRowSkeleton />
+                    <StatRowSkeleton />
                   </div>
                 ) : notifLogs.length > 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

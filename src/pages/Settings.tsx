@@ -10,7 +10,7 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI } from '../utils/api';
 import toast from 'react-hot-toast';
-import { CardSkeleton, TableSkeleton } from '../components/ui/Skeleton';
+import { CardSkeleton, TableSkeleton, Skeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import * as XLSX from 'xlsx';
 
@@ -2317,11 +2317,16 @@ const SettingsInner = () => {
                             </thead>
                             <tbody>
                               {loadingHistory ? (
-                                <tr>
-                                  <td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                                    {t('Đang tải lịch sử nhập...')}
-                                  </td>
-                                </tr>
+                                Array.from({ length: 4 }).map((_, i) => (
+                                  <tr key={i} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="40px" height={14} /></td>
+                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="120px" height={14} /></td>
+                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="90px" height={14} /></td>
+                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="100px" height={14} /></td>
+                                    <td style={{ padding: '1rem 0.5rem' }}><Skeleton width="140px" height={14} /></td>
+                                    <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}><Skeleton width="24px" height={24} borderRadius="50%" style={{ margin: '0 auto' }} /></td>
+                                  </tr>
+                                ))
                               ) : paginatedHistory.length > 0 ? (
                                 paginatedHistory.map((item, idx) => {
                                   const globalIdx = (historyPage - 1) * historyPageSize + idx + 1;

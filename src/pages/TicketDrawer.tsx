@@ -7,6 +7,7 @@ import { useUIStore } from '../store/uiStore';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../api/axios';
 import { createPortal } from 'react-dom';
+import { StatRowSkeleton } from '../components/ui/Skeleton';
 import styles from './EntityDrawer.module.css'; 
 
 interface Props {
@@ -200,7 +201,11 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: isMobile ? 'none' : '1px solid var(--color-border)', borderBottom: isMobile ? '1px dashed var(--color-border)' : 'none' }}>
                 <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {loading ? (
-                    <div style={{ textAlign: 'center', padding: '2rem' }}>Đang tải ghi chú...</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <StatRowSkeleton />
+                      <StatRowSkeleton />
+                      <StatRowSkeleton />
+                    </div>
                   ) : comments.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '16px', border: '1px dashed var(--color-border)' }}>
                       <MessageSquare size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />

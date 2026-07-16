@@ -29,7 +29,6 @@ class ActivityController {
                     if ($checkRoster->fetch()) {
                         return true;
                     }
-                    return false;
                 } else if ($activity['related_type'] === 'campaign') {
                     $checkRoster = $this->db->prepare('
                         SELECT id FROM marketing_campaigns WHERE id=? AND tenant_id=? AND (FIND_IN_SET(?, user_ids) OR FIND_IN_SET(?, manager_ids) OR created_by = ?)
@@ -40,7 +39,6 @@ class ActivityController {
                     if ($checkRoster->fetch()) {
                         return true;
                     }
-                    return false;
                 }
             }
         }

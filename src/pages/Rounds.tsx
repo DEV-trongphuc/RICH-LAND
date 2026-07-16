@@ -7,7 +7,7 @@ import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { fetchAPI, getDefaultDateFilter } from '../utils/api';
 import toast from 'react-hot-toast';
-import { RoundCardSkeleton } from '../components/ui/Skeleton';
+import { RoundCardSkeleton, StatRowSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -1670,8 +1670,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             ) : activeTab === 'reports' ? (
               <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar subtab-enter-active">
                 {loadingReports ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Đang tải dữ liệu báo cáo...")}</div>
-                ) : reports.length === 0 ? (
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                     <StatRowSkeleton />
+                     <StatRowSkeleton />
+                     <StatRowSkeleton />
+                   </div>
+                 ) : reports.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 12 }}>
                     <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />
                     <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.25rem' }}>{t("Chưa có báo cáo lỗi nào")}</p>
@@ -1835,7 +1839,11 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
             ) : (
               <div style={{ padding: '1.25rem', flex: 1, overflowY: 'auto' }} className="custom-scrollbar subtab-enter-active">
                 {loadingActiveLogs ? (
-                  <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>{t("Đang tải dữ liệu log...")}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <StatRowSkeleton />
+                    <StatRowSkeleton />
+                    <StatRowSkeleton />
+                  </div>
                 ) : activeLogs.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', borderRadius: 12 }}>
                     <AlertCircle size={48} style={{ margin: '0 auto 1rem', opacity: 0.2 }} />

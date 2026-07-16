@@ -3,6 +3,7 @@ import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Link2, Save, Check, X, AlertCircle, RefreshCw, Code, CheckCircle, Info, ShieldAlert, ArrowRight } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface CapiLog {
   id: number;
@@ -201,7 +202,30 @@ export default function CapiPage() {
               Nhật ký sự kiện gửi đi (CAPI Logs)
             </h3>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải nhật ký...</div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', minWidth: 650, textAlign: 'left', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: 700 }}>
+                      <th style={{ padding: '0.5rem 0', textAlign: 'left' }}>Sự kiện</th>
+                      <th style={{ padding: '0.5rem 0', textAlign: 'left' }}>Khách hàng</th>
+                      <th style={{ padding: '0.5rem 0', textAlign: 'center' }}>Mã HTTP</th>
+                      <th style={{ padding: '0.5rem 0', textAlign: 'center' }}>Payload</th>
+                      <th style={{ padding: '0.5rem 0', textAlign: 'right' }}>Múi giờ gửi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                        <td style={{ padding: '0.75rem 0' }}><Skeleton width="60%" height={12} /></td>
+                        <td style={{ padding: '0.75rem 0' }}><Skeleton width="80%" height={12} /></td>
+                        <td style={{ padding: '0.75rem 0', textAlign: 'center' }}><Skeleton width="40px" height={16} style={{ margin: '0 auto' }} /></td>
+                        <td style={{ padding: '0.75rem 0', textAlign: 'center' }}><Skeleton width="30px" height={16} style={{ margin: '0 auto' }} /></td>
+                        <td style={{ padding: '0.75rem 0', textAlign: 'right' }}><Skeleton width="50%" height={12} style={{ marginLeft: 'auto' }} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : logs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)', border: '1px dashed var(--color-border)', borderRadius: '8px' }}>
                 Chưa có sự kiện nào được bắn về Meta

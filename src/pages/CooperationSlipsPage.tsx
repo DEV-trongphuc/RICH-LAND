@@ -11,6 +11,7 @@ import { useUIStore } from '../store/uiStore';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import { CopyButton } from '../components/ui/CopyButton';
+import { CardSkeleton } from '../components/ui/Skeleton';
 
 interface CooperationSlip {
   id: number;
@@ -760,7 +761,11 @@ export default function CooperationSlipsPage() {
 
       {/* List */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách phiếu hợp tác...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <CardSkeleton height={140} />
+          <CardSkeleton height={140} />
+          <CardSkeleton height={140} />
+        </div>
       ) : filteredSlips.length === 0 ? (
         <div className="card" style={{ padding: '4rem 2rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <FileText size={48} style={{ color: 'var(--color-text-muted)', marginBottom: '1rem' }} />

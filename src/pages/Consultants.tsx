@@ -8,7 +8,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
-import { TableRowSkeleton } from '../components/ui/Skeleton';
+import { TableRowSkeleton, KpiCardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { AddressSelect } from '../components/ui/AddressSelect';
@@ -2010,9 +2010,14 @@ const ConsultantsInner = () => {
             {/* Content Area */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
               {statsLoading && !statsData ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', gap: '1rem' }}>
-                  <RefreshCw size={32} className="spin" color="var(--color-primary)" />
-                  <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải báo cáo...')}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                    <KpiCardSkeleton />
+                  </div>
+                  <ChartSkeleton height={260} />
                 </div>
               ) : !statsData ? (
                 <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>

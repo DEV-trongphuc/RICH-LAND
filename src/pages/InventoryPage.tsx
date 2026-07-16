@@ -10,6 +10,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import { PurchaseOrdersTab } from '../components/PurchaseOrdersTab';
 import api from '../api/axios';
+import { useLanguage } from '../contexts/LanguageContext';
+import { EmptyCard } from '../components/ui/EmptyCard';
+import { Avatar } from '../components/ui/Avatar';
+import { TableSkeleton, CardSkeleton } from '../components/ui/Skeleton';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/Pagination';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -593,10 +597,15 @@ export default function InventoryPage() {
 
       {/* Content */}
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', color: 'var(--color-text-muted)' }}>
-          <div className="spinner" style={{ marginBottom: '1rem' }} />
-          <p style={{ fontSize: '0.875rem' }}>Đang tải dữ liệu kho...</p>
-        </div>
+        activeTab === 'history' || viewMode === 'list' ? (
+          <TableSkeleton rows={6} cols={6} />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            <CardSkeleton height={200} />
+            <CardSkeleton height={200} />
+            <CardSkeleton height={200} />
+          </div>
+        )
       ) : activeTab === 'history' ? (
         <div className="card anim-fade-up" style={{ overflow: 'hidden' }}>
           <div className="flex items-center justify-between" style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>

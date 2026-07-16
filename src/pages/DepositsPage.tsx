@@ -9,6 +9,7 @@ import { CreditCard, Plus, Check, X, Upload, AlertCircle, Trash2, Calendar, File
 import { useLanguage } from '../contexts/LanguageContext';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
+import { TableSkeleton } from '../components/ui/Skeleton';
 
 interface Deposit {
   id: number;
@@ -381,7 +382,7 @@ export default function DepositsPage() {
 
       {/* List */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--color-text-muted)' }}>Đang tải danh sách đặt cọc...</div>
+        <TableSkeleton rows={5} cols={5} />
       ) : filteredDepositsList.length === 0 ? (
         <EmptyCard
           icon={<CreditCard />}

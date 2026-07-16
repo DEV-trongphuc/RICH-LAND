@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, CheckCheck, X, Info, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Skeleton } from './Skeleton';
 import api from '../../api/axios';
 import { DEV_MODE } from '../../config/env';
 import { useMockStore } from '../../store/mockStore';
@@ -153,7 +154,17 @@ export const NotificationsDropdown: React.FC = () => {
             {/* List */}
             <div style={{ maxHeight: 380, overflowY: 'auto' }}>
               {loading && notifications.length === 0 && (
-                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Đang tải...</div>
+                <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {Array.from({ length: 3 }).map((_, idx) => (
+                    <div key={idx} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '4px 0' }}>
+                      <Skeleton width={28} height={28} borderRadius="50%" />
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <Skeleton width="85%" height={12} />
+                        <Skeleton width="50%" height={9} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
               {!loading && notifications.length === 0 && (
                 <div style={{ padding: '2.5rem 1rem', textAlign: 'center' }}>

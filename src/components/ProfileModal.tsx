@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { CustomModal } from './ui/CustomModal';
 import { Avatar } from './ui/Avatar';
 import toast from 'react-hot-toast';
+import { StatRowSkeleton } from './ui/Skeleton';
 
 export const ProfileModal = () => {
   const { t } = useLanguage();
@@ -392,8 +393,10 @@ export const ProfileModal = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px' }}>
               {loadingLogs ? (
-                <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
-                  {t('Đang tải lịch sử hoạt động...')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
+                  <StatRowSkeleton />
                 </div>
               ) : activityLogs.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>

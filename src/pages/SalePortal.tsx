@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, UserCheck, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -33,7 +33,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Pagination } from '../components/ui/Pagination';
-import { TableSkeleton, StatRowSkeleton, CalendarSkeleton } from '../components/ui/Skeleton';
+import { TableSkeleton, StatRowSkeleton, CalendarSkeleton, CardSkeleton } from '../components/ui/Skeleton';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { FairShareAudit } from './FairShareAudit';
 import { InvoicesPage } from './InvoicesPage';
@@ -498,6 +498,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     let list = wsTasks;
     const targetUserId = wsUserId ? Number(wsUserId) : Number(currentUser?.id);
 
+    // Filter by Priority
+    if (wsPriority && wsPriority !== 'all') {
+      list = list.filter(task => task.priority === wsPriority);
+    }
+
+    // Filter by Status
+    if (wsStatus && wsStatus !== 'all') {
+      list = list.filter(task => task.status === wsStatus);
+    }
+
+    // Filter by Date Preset
+    if (wsDatePreset && wsDatePreset !== 'all') {
+      const { start, end } = getPresetDates(wsDatePreset);
+      if (wsDatePreset === 'overdue') {
+        list = list.filter(task => {
+          if (task.status === 'done') return false;
+          if (!task.due_date) return false;
+          return task.due_date.slice(0, 10) <= end;
+        });
+      } else {
+        list = list.filter(task => {
+          if (!task.due_date) return false;
+          const dt = task.due_date.slice(0, 10);
+          if (start && dt < start) return false;
+          if (end && dt > end) return false;
+          return true;
+        });
+      }
+    }
+
     // Filter by main subtabs
     if (wsSubTab === 'customer') {
       list = list.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type));
@@ -568,7 +598,60 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         campaignName.includes(searchVal)
       );
     });
-  }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser, wsUserId]);
+  }, [wsTasks, wsSearch, wsTaskFilter, wsSubTab, wsTeamSubFilter, currentUser, wsUserId, wsPriority, wsStatus, wsDatePreset]);
+
+  const workspaceStats = useMemo(() => {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const todayTime = now.getTime();
+    
+    let tabTasks = wsTasks;
+    if (wsSubTab === 'customer') {
+      tabTasks = tabTasks.filter(task => task.related_type && ['contact', 'deal', 'company'].includes(task.related_type));
+    } else if (wsSubTab === 'personal') {
+      tabTasks = tabTasks.filter(task => task.tags?.split(',').map((t: string) => t.trim()).includes('personal_task'));
+    } else if (wsSubTab === 'team') {
+      tabTasks = tabTasks.filter(task => {
+        const isClientRelated = task.related_type && ['contact', 'deal', 'company'].includes(task.related_type);
+        const tagsList = task.tags ? task.tags.split(',').map((t: string) => t.trim()) : [];
+        const isPersonal = tagsList.includes('personal_task');
+        return !isClientRelated && !isPersonal;
+      });
+    }
+
+    let overdue = 0;
+    let dueToday = 0;
+    let upcoming = 0;
+    let pendingApproval = 0;
+
+    tabTasks.forEach(task => {
+      // Pending approval
+      if (Number(task.require_approval) === 1 && task.approval_status === 'pending' && Number(task.approver_id) === Number(currentUser?.id)) {
+        pendingApproval++;
+      }
+
+      if (task.status === 'done') return;
+
+      if (task.due_date) {
+        const dt = task.due_date.slice(0, 10);
+        if (dt === todayStr) {
+          dueToday++;
+        } else if (dt < todayStr) {
+          overdue++;
+        } else {
+          const taskDate = new Date(dt);
+          taskDate.setHours(0, 0, 0, 0);
+          const diffDays = (taskDate.getTime() - todayTime) / (1000 * 60 * 60 * 24);
+          if (diffDays > 0 && diffDays <= 3) {
+            upcoming++;
+          }
+        }
+      }
+    });
+
+    return { overdue, dueToday, upcoming, pendingApproval };
+  }, [wsTasks, wsSubTab, currentUser]);
 
   const paginatedWsTasks = useMemo(() => {
     const startIndex = (wsTasksPage - 1) * wsTasksPageSize;
@@ -1211,13 +1294,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (wsRelatedType) {
         url += `&related_type=${wsRelatedType}`;
       }
-      if (wsPriority) url += `&priority=${wsPriority}`;
-      if (wsStatus) url += `&status=${wsStatus}`;
       
-      const { start, end } = getPresetDates(wsDatePreset);
-
-      if (start) url += `&start_date=${start}`;
-      if (end) url += `&end_date=${end}`;
       if (wsSubTab === 'personal') {
         const targetUid = wsUserId || currentUser?.id;
         if (targetUid) url += `&user_id=${targetUid}`;
@@ -1225,6 +1302,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         if (wsTeamId && wsTeamId !== 'all_teams_bypass') url += `&team_id=${wsTeamId}`;
         if (wsUserId) url += `&user_id=${wsUserId}`;
       }
+
+      const { start, end } = getPresetDates(wsDatePreset);
 
       const res = await api.get(url);
       if (res.data && res.data.data) {
@@ -2670,7 +2749,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 contact_avatar: task.contact_avatar,
                 related_type: task.related_type,
                 related_id: task.related_id,
-                body: task.body
+                body: task.body,
+                created_by: task.created_by,
+                created_by_name: task.created_by_name,
+                created_by_avatar: task.created_by_avatar
               };
               setChecklist(parsed.checklist);
               setSelectedTaskForDetails(parsedTask);
@@ -3609,6 +3691,190 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </motion.div>
         )}
 
+        {/* Statistics Cards Row */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+          gap: '1rem',
+          marginBottom: '1.25rem'
+        }}>
+          {/* Card 1: Overdue */}
+          <div 
+            onClick={() => {
+              setWsDatePreset('overdue');
+              setWsStatus('planned');
+              setWsTaskFilter('all');
+            }}
+            style={{
+              padding: '1.25rem',
+              borderRadius: '12px',
+              border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
+              background: wsDatePreset === 'overdue' ? 'var(--color-danger-light)' : 'var(--color-surface)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all var(--transition-fluid)'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('Quá hạn')}
+              </span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', lineHeight: 1 }}>
+                {workspaceStats.overdue}
+              </span>
+            </div>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(239, 68, 68, 0.08)',
+              color: 'var(--color-danger)',
+              flexShrink: 0
+            }}>
+              <Clock size={20} />
+            </div>
+          </div>
+
+          {/* Card 2: Due today */}
+          <div 
+            onClick={() => {
+              setWsDatePreset('today');
+              setWsStatus('planned');
+              setWsTaskFilter('all');
+            }}
+            style={{
+              padding: '1.25rem',
+              borderRadius: '12px',
+              border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border-light)',
+              background: wsDatePreset === 'today' ? 'var(--color-warning-light)' : 'var(--color-surface)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all var(--transition-fluid)'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('Đến hạn')}
+              </span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', lineHeight: 1 }}>
+                {workspaceStats.dueToday}
+              </span>
+            </div>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(245, 158, 11, 0.08)',
+              color: 'var(--color-warning)',
+              flexShrink: 0
+            }}>
+              <Calendar size={20} />
+            </div>
+          </div>
+
+          {/* Card 3: Upcoming */}
+          <div 
+            onClick={() => {
+              setWsDatePreset('tomorrow');
+              setWsStatus('planned');
+              setWsTaskFilter('all');
+            }}
+            style={{
+              padding: '1.25rem',
+              borderRadius: '12px',
+              border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border-light)',
+              background: wsDatePreset === 'tomorrow' ? 'var(--color-info-light)' : 'var(--color-surface)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all var(--transition-fluid)'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('Sắp đến hạn')}
+              </span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-info)', lineHeight: 1 }}>
+                {workspaceStats.upcoming}
+              </span>
+            </div>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(59, 130, 246, 0.08)',
+              color: 'var(--color-info)',
+              flexShrink: 0
+            }}>
+              <ArrowUpRight size={20} />
+            </div>
+          </div>
+
+          {/* Card 4: Waiting for my approval */}
+          <div 
+            onClick={() => {
+              setWsTaskFilter('approve_by_me');
+              setWsStatus('all');
+              setWsDatePreset('all');
+            }}
+            style={{
+              padding: '1.25rem',
+              borderRadius: '12px',
+              border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border-light)',
+              background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.04)' : 'var(--color-surface)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              boxShadow: 'var(--shadow-sm)',
+              transition: 'all var(--transition-fluid)'
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {t('Chờ tôi duyệt')}
+              </span>
+              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6', lineHeight: 1 }}>
+                {workspaceStats.pendingApproval}
+              </span>
+            </div>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(139, 92, 246, 0.08)',
+              color: '#8b5cf6',
+              flexShrink: 0
+            }}>
+              <UserCheck size={20} />
+            </div>
+          </div>
+        </div>
+
         <div style={{
           background: 'var(--color-surface)',
           border: '1px solid var(--color-border-light)',
@@ -4243,11 +4509,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             )}
 
             {wsViewMode !== 'focus' && loadingWsTasks ? (
-          <div style={{ padding: '3rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)' }}>
-            <RefreshCw className="spin" size={24} style={{ color: 'var(--color-primary)', marginBottom: 8 }} />
-            <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Đang tải danh sách công việc...</div>
-          </div>
-        ) : wsViewMode !== 'focus' && filteredWsTasks.length === 0 ? (
+              wsViewMode === 'kanban' ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
+                  {[1, 2, 3].map((col) => (
+                    <div key={col} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-bg)', padding: '1rem', borderRadius: '12px' }}>
+                      <CardSkeleton height={140} />
+                      <CardSkeleton height={140} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <CardSkeleton key={i} height={150} />
+                  ))}
+                </div>
+              )
+            ) : wsViewMode !== 'focus' && filteredWsTasks.length === 0 ? (
           <div style={{ padding: '4rem 2rem', textAlign: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', color: 'var(--color-text-muted)' }}>
             <CheckSquare size={36} style={{ opacity: 0.3, marginBottom: '0.75rem' }} />
             <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>Không tìm thấy công việc nào phù hợp với bộ lọc.</p>
@@ -4329,7 +4607,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       contact_avatar: task.contact_avatar,
                       related_type: task.related_type,
                       related_id: task.related_id,
-                      body: task.body
+                      body: task.body,
+                      created_by: task.created_by,
+                      created_by_name: task.created_by_name,
+                      created_by_avatar: task.created_by_avatar
                     };
                     setChecklist(parsed.checklist);
                     setSelectedTaskForDetails(parsedTask);
@@ -4647,7 +4928,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                                 contact_avatar: task.contact_avatar,
                                 related_type: task.related_type,
                                 related_id: task.related_id,
-                                body: task.body
+                                body: task.body,
+                                created_by: task.created_by,
+                                created_by_name: task.created_by_name,
+                                created_by_avatar: task.created_by_avatar
                               };
                               setChecklist(parsed.checklist);
                               setSelectedTaskForDetails(parsedTask);
@@ -5061,7 +5345,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           contact_avatar: task.contact_avatar,
                           related_type: task.related_type,
                           related_id: task.related_id,
-                          body: task.body
+                          body: task.body,
+                          created_by: task.created_by,
+                          created_by_name: task.created_by_name,
+                          created_by_avatar: task.created_by_avatar
                         };
                         setChecklist(parsed.checklist);
                         setSelectedTaskForDetails(parsedTask);
