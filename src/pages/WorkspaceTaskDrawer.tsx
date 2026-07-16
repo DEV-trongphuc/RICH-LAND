@@ -1913,7 +1913,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                     value={erpMeta.project_id ? String(erpMeta.project_id) : ''}
                     onChange={val => {
                       const nextProject = val ? Number(val) : null;
-                      const nextMeta = { ...erpMeta, project_id: nextProject, campaign_id: null };
+                      let nextCampaign = erpMeta.campaign_id;
+                      if (nextProject && nextCampaign) {
+                        const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
+                        if (campObj && Number(campObj.project_id) !== nextProject) {
+                          nextCampaign = null;
+                        }
+                      }
+                      const nextMeta = { ...erpMeta, project_id: nextProject, campaign_id: nextCampaign };
                       setErpMeta(nextMeta);
                       handleSaveMeta(nextMeta);
                     }}
@@ -1926,11 +1933,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                   {(() => {
                     const filteredCamps = erpMeta.project_id
                       ? allowedCampaigns.filter(c => Number(c.project_id) === Number(erpMeta.project_id))
-                      : [];
+                      : allowedCampaigns;
                     return (
                       <CustomSelect
                         searchable
-                        disabled={!erpMeta.project_id}
                         options={[
                           { value: '', label: t('Chọn chiến dịch...') },
                           ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
@@ -1938,7 +1944,14 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                         value={erpMeta.campaign_id ? String(erpMeta.campaign_id) : ''}
                         onChange={val => {
                           const nextCampaign = val ? Number(val) : null;
-                          const nextMeta = { ...erpMeta, campaign_id: nextCampaign };
+                          let nextProject = erpMeta.project_id;
+                          if (nextCampaign) {
+                            const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
+                            if (campObj && campObj.project_id) {
+                              nextProject = Number(campObj.project_id);
+                            }
+                          }
+                          const nextMeta = { ...erpMeta, campaign_id: nextCampaign, project_id: nextProject };
                           setErpMeta(nextMeta);
                           handleSaveMeta(nextMeta);
                         }}

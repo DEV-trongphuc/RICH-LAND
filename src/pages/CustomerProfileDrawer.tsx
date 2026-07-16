@@ -1526,7 +1526,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (tabToLoad === 'info') {
         try {
           if (projectsList.length === 0) {
-            const projectsRes = await api.get('/projects?bypass_roster=1');
+            const role = currentUser?.role;
+            const bypassProj = role === 'sale' ? '' : '?bypass_roster=1';
+            const projectsRes = await api.get(`/projects${bypassProj}`);
             setProjectsList(projectsRes.data.data || projectsRes.data || []);
           }
         } catch (err) {}
@@ -3887,6 +3889,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div className="form-group">
                             <label className="form-label">Công ty (Liên kết)</label>
                             <CustomSelect
+                              searchable
                               options={[
                                 { value: '', label: '— Không chọn —' },
                                 ...companiesList.map(c => ({ value: String(c.id), label: c.name }))
@@ -3906,6 +3909,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div className="form-group">
                             <label className="form-label">Dự án Quan tâm (Liên kết)</label>
                             <CustomSelect
+                              searchable
                               options={[
                                 { value: '', label: '— Không chọn —' },
                                 ...projectsList.map(p => ({ value: String(p.id), label: p.name }))
