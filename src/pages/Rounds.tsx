@@ -132,6 +132,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isActioning, setIsActioning] = useState<number | null>(null);
+  const [projects, setProjects] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     round_name: '',
     is_active: 1,
@@ -141,7 +142,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     ratios: {} as Record<string, number>,
     data_per_turns: {} as Record<string, number>,
     compensations: {} as Record<string, number>,
-    is_fallback: false
+    is_fallback: false,
+    project_id: null as number | null
   });
 
   const [searchUser, setSearchUser] = useState('');
@@ -224,6 +226,15 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
     }
   };
 
+  const fetchProjects = async () => {
+    try {
+      const json = await fetchAPI('projects');
+      if (json.success) setProjects(json.data || []);
+    } catch (e: any) {
+      console.error(t('Không thể tải dự án:'), e.message);
+    }
+  };
+
   useEffect(() => {
     if (isActive) {
       setRoundsPage(1);
@@ -234,6 +245,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
   useEffect(() => {
     fetchConsultants();
     fetchAccounts();
+    fetchProjects();
   }, []);
 
   useEffect(() => {
@@ -267,7 +279,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
   const openAddModal = () => {
     setEditingRound(null);
-    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false });
+    setFormData({ round_name: '', is_active: 1, cc_emails: '', selected_users: [], starting_consultant_id: null, ratios: {}, data_per_turns: {}, compensations: {}, is_fallback: false, project_id: null });
     setSelectedAdmins([]);
     setEnableExternalCc(false);
     setExternalCcEmails('');
@@ -324,7 +336,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
       ratios: r.ratios || {},
       data_per_turns: r.data_per_turns || {},
       compensations: r.compensations || {},
-      is_fallback: !!r.is_fallback
+      is_fallback: !!r.is_fallback,
+      project_id: r.project_id ? Number(r.project_id) : null
     });
 
     // Parse cc_emails into selected admins and external emails
@@ -782,6 +795,11 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       <div>
                         <h3 style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           {r.round_name}
+                          {r.project_name && (
+                            <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                              {r.project_name}
+                            </span>
+                          )}
                           {r.is_fallback && (
                             <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                               {t("Mặc định")}
@@ -1018,6 +1036,11 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 <div style={{ flex: 1, minWidth: 200 }}>
                   <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {r.round_name}
+                    {r.project_name && (
+                      <span className="badge success" style={{ fontSize: '0.65rem', padding: '2px 6px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                        {r.project_name}
+                      </span>
+                    )}
                     {r.is_fallback && (
                       <span className="badge danger" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
                         {t("Mặc định")}
@@ -1292,6 +1315,21 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                             required
                             autoFocus
                           />
+                        </div>
+
+                        <div className="form-group">
+                          <label className="form-label">{t("Thuộc Dự Án")}</label>
+                          <select
+                            className="form-input"
+                            style={{ width: '100%' }}
+                            value={formData.project_id || ''}
+                            onChange={e => setFormData({ ...formData, project_id: e.target.value ? Number(e.target.value) : null })}
+                          >
+                            <option value="">-- {t("Chọn Dự án (Không bắt buộc)")} --</option>
+                            {projects.map(proj => (
+                              <option key={proj.id} value={proj.id}>{proj.name}</option>
+                            ))}
+                          </select>
                         </div>
 
                         <div className="form-group">

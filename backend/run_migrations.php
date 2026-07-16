@@ -1948,6 +1948,13 @@ try {
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '3')");
     $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '10')");
 
+    // Self-healing check: ensure distribution_rounds has project_id column
+    $chkRndProj = $conn->query("SHOW COLUMNS FROM `distribution_rounds` LIKE 'project_id'");
+    if ($chkRndProj && $chkRndProj->num_rows === 0) {
+        $conn->query("ALTER TABLE `distribution_rounds` ADD COLUMN `project_id` INT DEFAULT NULL");
+        $logMsg("Đã bổ sung cột project_id vào bảng distribution_rounds", "success");
+    }
+
     // Self-healing check: ensure quyen_truy_cap table exists
     $conn->query("
         CREATE TABLE IF NOT EXISTS `quyen_truy_cap` (

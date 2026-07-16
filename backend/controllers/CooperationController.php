@@ -550,7 +550,7 @@ class CooperationController {
         requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
 
         $stmtSlip = $this->db->prepare("
-            SELECT cs.*, c.tenant_id 
+            SELECT cs.*, c.tenant_id, c.project_id
             FROM cooperation_slips cs
             JOIN contacts c ON cs.contact_id = c.id
             WHERE cs.id = ? AND c.tenant_id = ?
@@ -560,6 +560,26 @@ class CooperationController {
 
         if (!$slip) {
             respond(404, null, 'Phiếu hợp tác không tồn tại', false);
+        }
+
+        // Restriction: Only GĐKD Toàn sàn (director role and not in project manager_ids) or Admin can approve.
+        // Deny regular team managers and GĐKD Dự án (who is the manager of the associated project).
+        $isAdminOrSuper = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
+        if (!$isAdminOrSuper) {
+            if ($auth['role'] === 'manager') {
+                respond(403, null, 'Bạn không có quyền phê duyệt phiếu hợp tác (Quyền duyệt thuộc về GĐKD Toàn sàn/Admin)', false);
+            }
+            if ($auth['role'] === 'director' && $slip['project_id']) {
+                $stmtProj = $this->db->prepare("SELECT manager_ids FROM projects WHERE id = ?");
+                $stmtProj->execute([$slip['project_id']]);
+                $mgrIds = $stmtProj->fetchColumn();
+                if (!empty($mgrIds)) {
+                    $mIds = array_filter(array_map('intval', explode(',', $mgrIds)));
+                    if (in_array((int)$auth['user_id'], $mIds, true)) {
+                        respond(403, null, 'GĐKD Dự án chỉ được theo dõi phiếu, không có quyền duyệt cuối', false);
+                    }
+                }
+            }
         }
 
         if (!$this->checkSlipAccess($auth, $id)) {

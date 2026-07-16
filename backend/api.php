@@ -4566,13 +4566,43 @@ switch ($action) {
         break;
 
     case 'get_rounds':
-        $res = $conn->query("SELECT r.*, 
+        $isManager = (isset($decodedUser['role']) && $decodedUser['role'] === 'manager');
+        $isDirector = (isset($decodedUser['role']) && $decodedUser['role'] === 'director');
+        $isProjManager = false;
+        $projIds = [];
+        if ($isManager || $isDirector) {
+            $pRes = $conn->query("SELECT id, manager_ids FROM projects");
+            if ($pRes) {
+                while ($pRow = $pRes->fetch_assoc()) {
+                    if (!empty($pRow['manager_ids'])) {
+                        $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                        if (in_array((int)$decodedUser['user_id'], $mIds, true)) {
+                            $projIds[] = (int)$pRow['id'];
+                            $isProjManager = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        $roundFilter = "";
+        if ($isProjManager) {
+            if (!empty($projIds)) {
+                $roundFilter = " WHERE r.project_id IN (" . implode(',', $projIds) . ") ";
+            } else {
+                $roundFilter = " WHERE 1=0 ";
+            }
+        }
+
+        $res = $conn->query("SELECT r.*, p.name as project_name,
                                     GROUP_CONCAT(c.name ORDER BY c.id ASC) as consultants, 
                                     GROUP_CONCAT(c.id ORDER BY c.id ASC) as consultant_ids,
                                     (SELECT c2.name FROM consultants c2 WHERE c2.id = r.last_assigned_consultant_id) as last_assigned_name
                                FROM distribution_rounds r 
+                               LEFT JOIN projects p ON r.project_id = p.id
                                LEFT JOIN round_consultants rc ON r.id = rc.round_id
                                LEFT JOIN consultants c ON rc.consultant_id = c.id AND c.status = 'active'
+                               $roundFilter
                                GROUP BY r.id");
         $fbRoundId = 0;
         $fbTypeStmt = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'fallback_type' LIMIT 1");
@@ -4789,8 +4819,9 @@ switch ($action) {
                 }
             }
 
-            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("sisi", $name, $status, $cc, $last_assigned);
+            $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
+            $stmt = $conn->prepare("INSERT INTO distribution_rounds (round_name, is_active, cc_emails, last_assigned_consultant_id, project_id) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("sisii", $name, $status, $cc, $last_assigned, $project_id);
             $stmt->execute();
             $roundId = $conn->insert_id;
             $stmt->close();
@@ -4836,6 +4867,43 @@ switch ($action) {
         try {
             $input = json_decode(file_get_contents('php://input'), true);
             $id = (int) ($input['id'] ?? 0);
+            
+            // Check write access for GĐKD Dự án vs GĐKD Toàn sàn
+            $userId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+            $userRole = $decodedUser['role'] ?? '';
+            $isAdminOrSuper = in_array($userRole, ['admin', 'superadmin', 'super_admin'], true);
+            if (!$isAdminOrSuper) {
+                $isProjManager = false;
+                $projIds = [];
+                $pRes = $conn->query("SELECT id, manager_ids FROM projects");
+                if ($pRes) {
+                    while ($pRow = $pRes->fetch_assoc()) {
+                        if (!empty($pRow['manager_ids'])) {
+                            $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                            if (in_array((int)$userId, $mIds, true)) {
+                                $projIds[] = (int)$pRow['id'];
+                                $isProjManager = true;
+                            }
+                        }
+                    }
+                }
+                
+                if ($userRole === 'director' && !$isProjManager) {
+                    // GĐKD Toàn sàn has global access
+                } else if ($isProjManager) {
+                    $stmtCheckProj = $conn->prepare("SELECT project_id FROM distribution_rounds WHERE id = ?");
+                    $stmtCheckProj->bind_param("i", $id);
+                    $stmtCheckProj->execute();
+                    $rProjId = $stmtCheckProj->get_result()->fetch_column();
+                    $stmtCheckProj->close();
+                    if (!$rProjId || !in_array((int)$rProjId, $projIds, true)) {
+                        throw new Exception("Bạn không có quyền chỉnh sửa Vòng phân bổ thuộc dự án khác.");
+                    }
+                } else {
+                    throw new Exception("Bạn không có quyền chỉnh sửa Vòng phân bổ.");
+                }
+            }
+
             $name = $input['round_name'] ?? '';
             $cc = $input['cc_emails'] ?? '';
             $status = $input['is_active'] ?? 1;
@@ -4876,12 +4944,13 @@ switch ($action) {
                 }
             }
 
+            $project_id = isset($input['project_id']) && $input['project_id'] !== '' ? (int)$input['project_id'] : null;
             if ($starting_consultant_id) {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=? WHERE id=?");
-                $stmt->bind_param("sisii", $name, $status, $cc, $last_assigned, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, last_assigned_consultant_id=?, project_id=? WHERE id=?");
+                $stmt->bind_param("sisiii", $name, $status, $cc, $last_assigned, $project_id, $id);
             } else {
-                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=? WHERE id=?");
-                $stmt->bind_param("sisi", $name, $status, $cc, $id);
+                $stmt = $conn->prepare("UPDATE distribution_rounds SET round_name=?, is_active=?, cc_emails=?, project_id=? WHERE id=?");
+                $stmt->bind_param("sisii", $name, $status, $cc, $project_id, $id);
             }
             $stmt->execute();
             $stmt->close();
@@ -7458,6 +7527,47 @@ switch ($action) {
         $conds = [];
         $params = [];
         $types = "";
+        $commonConds = [];
+
+        // Scoping for GĐKD Dự án
+        $isManager = (isset($decodedUser['role']) && $decodedUser['role'] === 'manager');
+        $isDirector = (isset($decodedUser['role']) && $decodedUser['role'] === 'director');
+        $isProjManager = false;
+        $projIds = [];
+        if ($isManager || $isDirector) {
+            $pRes = $conn->query("SELECT id, manager_ids FROM projects");
+            if ($pRes) {
+                while ($pRow = $pRes->fetch_assoc()) {
+                    if (!empty($pRow['manager_ids'])) {
+                        $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                        if (in_array((int)$decodedUser['user_id'], $mIds, true)) {
+                            $projIds[] = (int)$pRow['id'];
+                            $isProjManager = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($isProjManager) {
+            $campIds = [];
+            if (!empty($projIds)) {
+                $projIdsStr = implode(',', $projIds);
+                $cRes = $conn->query("SELECT id FROM marketing_campaigns WHERE project_id IN ($projIdsStr)");
+                if ($cRes) {
+                    while ($cRow = $cRes->fetch_assoc()) {
+                        $campIds[] = (int)$cRow['id'];
+                    }
+                }
+            }
+            if (!empty($campIds)) {
+                $conds[] = "l.campaign_id IN (" . implode(',', $campIds) . ")";
+                $commonConds[] = "l.campaign_id IN (" . implode(',', $campIds) . ")";
+            } else {
+                $conds[] = "1=0";
+                $commonConds[] = "1=0";
+            }
+        }
 
         // Filter by queue status, rejected substandard, or approved substandard leads
         if ($status === 'rejected') {
@@ -7520,6 +7630,13 @@ switch ($action) {
 
         // Query 1: Get counts for all tabs under current search and date filters
         $commonConds = [];
+        if ($isProjManager) {
+            if (!empty($campIds)) {
+                $commonConds[] = "l.campaign_id IN (" . implode(',', $campIds) . ")";
+            } else {
+                $commonConds[] = "1=0";
+            }
+        }
         $commonParams = [];
         $commonTypes = "";
         if ($search !== '') {
@@ -11470,7 +11587,26 @@ switch ($action) {
     case 'get_dashboard_stats':
         $date = $_GET['date'] ?? 'Hôm nay';
         
-        $isManager = (isset($decodedUser['role']) && $decodedUser['role'] === 'manager');
+        $userId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+        $userRole = $decodedUser['role'] ?? '';
+        $isDirector = ($userRole === 'director');
+        $isManager = ($userRole === 'manager');
+        
+        $isProjManager = false;
+        $projIds = [];
+        $pRes = $conn->query("SELECT id, manager_ids FROM projects");
+        if ($pRes) {
+            while ($pRow = $pRes->fetch_assoc()) {
+                if (!empty($pRow['manager_ids'])) {
+                    $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                    if (in_array((int)$userId, $mIds, true)) {
+                        $projIds[] = (int)$pRow['id'];
+                        $isProjManager = true;
+                    }
+                }
+            }
+        }
+
         $managerUserIds = [];
         $managerFilter = "";
         $managerFilterDl = "";
@@ -11478,7 +11614,48 @@ switch ($action) {
         $managerFilterReports = "";
         $consultantFilter = "";
         
-        if ($isManager) {
+        if ($isProjManager) {
+            $campIds = [];
+            if (!empty($projIds)) {
+                $projIdsStr = implode(',', $projIds);
+                $cRes = $conn->query("SELECT id FROM marketing_campaigns WHERE project_id IN ($projIdsStr)");
+                if ($cRes) {
+                    while ($cRow = $cRes->fetch_assoc()) {
+                        $campIds[] = (int)$cRow['id'];
+                    }
+                }
+            }
+            
+            $rosterUserIds = [];
+            if (!empty($projIds)) {
+                $projIdsStr = implode(',', $projIds);
+                $rRes = $conn->query("SELECT user_id FROM project_roster WHERE project_id IN ($projIdsStr)");
+                if ($rRes) {
+                    while ($rRow = $rRes->fetch_assoc()) {
+                        $rosterUserIds[] = (int)$rRow['user_id'];
+                    }
+                }
+            }
+            $rosterUserIds[] = $userId;
+            $idsList = implode(',', array_unique($rosterUserIds));
+            
+            $managerFilter = " AND assigned_to IN ($idsList) ";
+            $managerFilterDl = " AND dl.assigned_to IN ($idsList) ";
+            $managerFilterLeads = " AND l.assigned_to IN ($idsList) ";
+            $managerFilterReports = " AND consultant_id IN ($idsList) ";
+            $consultantFilter = " AND (email IN (SELECT email FROM users WHERE id IN ($idsList))) ";
+            
+            if (!empty($campIds)) {
+                $campIdsStr = implode(',', $campIds);
+                $managerFilter .= " AND campaign_id IN ($campIdsStr) ";
+                $managerFilterDl .= " AND dl.lead_id IN (SELECT id FROM leads WHERE campaign_id IN ($campIdsStr)) ";
+                $managerFilterLeads .= " AND l.campaign_id IN ($campIdsStr) ";
+            } else {
+                $managerFilter .= " AND 1=0 ";
+                $managerFilterDl .= " AND 1=0 ";
+                $managerFilterLeads .= " AND 1=0 ";
+            }
+        } else if ($isManager) {
             $mgrTeamRes = $conn->query("SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['user_id']);
             $mgrTeamIds = [];
             if ($mgrTeamRes) {
@@ -13086,7 +13263,51 @@ switch ($action) {
         $lead_id = $log_data['lead_id'];
         $old_consultant_id = $log_data['old_consultant_id'] ? (int) $log_data['old_consultant_id'] : null;
 
-        if ($decodedUser['role'] === 'manager') {
+        $userId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
+        $userRole = $decodedUser['role'] ?? '';
+        
+        $isProjManager = false;
+        $projIds = [];
+        $pRes = $conn->query("SELECT id, manager_ids FROM projects");
+        if ($pRes) {
+            while ($pRow = $pRes->fetch_assoc()) {
+                if (!empty($pRow['manager_ids'])) {
+                    $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                    if (in_array((int)$userId, $mIds, true)) {
+                        $projIds[] = (int)$pRow['id'];
+                        $isProjManager = true;
+                    }
+                }
+            }
+        }
+
+        if ($isProjManager) {
+            // Find project_id of the lead
+            $leadProjectId = null;
+            $stmtP = $conn->prepare("SELECT project_id FROM marketing_campaigns WHERE id = (SELECT campaign_id FROM leads WHERE id = ?)");
+            $stmtP->bind_param("i", $lead_id);
+            $stmtP->execute();
+            $leadProjectId = $stmtP->get_result()->fetch_column();
+            $stmtP->close();
+            
+            if (!$leadProjectId || !in_array((int)$leadProjectId, $projIds, true)) {
+                echo json_encode(['success' => false, 'message' => 'Bạn không có quyền quản lý lead thuộc dự án khác']);
+                $stmt->close();
+                break;
+            }
+            
+            // Check if new consultant is in roster for this project
+            $stmtR = $conn->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ?");
+            $stmtR->bind_param("ii", $leadProjectId, $new_consultant_id);
+            $stmtR->execute();
+            $inRoster = $stmtR->get_result()->fetch_row();
+            $stmtR->close();
+            if (!$inRoster) {
+                echo json_encode(['success' => false, 'message' => 'Tư vấn viên mới không thuộc roster của dự án này']);
+                $stmt->close();
+                break;
+            }
+        } else if ($userRole === 'manager') {
             $currentUserId = (int)($decodedUser['user_id'] ?? $decodedUser['id'] ?? 0);
             if (!isManagerOfConsultant($conn, $currentUserId, $old_consultant_id)) {
                 echo json_encode(['success' => false, 'message' => 'Bạn không có quyền quản lý khách hàng của tư vấn viên này']);

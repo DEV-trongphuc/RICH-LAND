@@ -56,14 +56,25 @@ class ProjectController {
     }
 
     private function requireProjectAccess(array $auth, int $projectId): void {
-        $stmtProj = $this->db->prepare("SELECT tenant_id FROM projects WHERE id = ?");
+        $stmtProj = $this->db->prepare("SELECT tenant_id, created_by, manager_ids FROM projects WHERE id = ?");
         $stmtProj->execute([$projectId]);
-        $projTenantId = $stmtProj->fetchColumn();
-        if ($projTenantId === false) {
+        $proj = $stmtProj->fetch(PDO::FETCH_ASSOC);
+        if (!$proj) {
             respond(404, null, 'Dự án không tồn tại', false);
         }
-        if ((int)$projTenantId !== (int)$auth['tenant_id']) {
+        if ((int)$proj['tenant_id'] !== (int)$auth['tenant_id']) {
             respond(403, null, 'Bạn không có quyền truy cập dự án này', false);
+        }
+
+        // Bypass if project creator or project manager (GĐKD Dự án)
+        if ($proj['created_by'] && (int)$proj['created_by'] === (int)$auth['user_id']) {
+            return;
+        }
+        if (!empty($proj['manager_ids'])) {
+            $mIds = array_filter(array_map('intval', explode(',', $proj['manager_ids'])));
+            if (in_array((int)$auth['user_id'], $mIds, true)) {
+                return;
+            }
         }
 
         $isRosterRestricted = in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true);
@@ -80,15 +91,23 @@ class ProjectController {
     }
 
     private function requireProjectEditPermission(array $auth, int $projectId): void {
+        $stmtProj = $this->db->prepare("SELECT created_by, manager_ids FROM projects WHERE id = ?");
+        $stmtProj->execute([$projectId]);
+        $proj = $stmtProj->fetch(PDO::FETCH_ASSOC);
+        
         $isAuthorized = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true);
-        if (!$isAuthorized) {
-            $stmtProj = $this->db->prepare("SELECT created_by FROM projects WHERE id = ?");
-            $stmtProj->execute([$projectId]);
-            $creatorId = $stmtProj->fetchColumn();
-            if ($creatorId !== false && $creatorId !== null && (int)$creatorId === (int)$auth['user_id']) {
+        if ($proj) {
+            if ($proj['created_by'] && (int)$proj['created_by'] === (int)$auth['user_id']) {
                 $isAuthorized = true;
             }
+            if (!empty($proj['manager_ids'])) {
+                $mIds = array_filter(array_map('intval', explode(',', $proj['manager_ids'])));
+                if (in_array((int)$auth['user_id'], $mIds, true)) {
+                    $isAuthorized = true;
+                }
+            }
         }
+
         if (!$isAuthorized) {
             $isManagerOrLeader = ($auth['role'] === 'manager');
             if (!$isManagerOrLeader) {

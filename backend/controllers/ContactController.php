@@ -48,8 +48,29 @@ class ContactController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
-        // Role-based visibility: Sale can only see their own contacts OR cooperating ones
-        if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+        // GĐKD Dự án scoping vs general manager/sale scoping
+        $isProjManager = false;
+        $projIds = [];
+        $stmtP = $this->db->prepare("SELECT id, manager_ids FROM projects");
+        $stmtP->execute();
+        $projs = $stmtP->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($projs as $pRow) {
+            if (!empty($pRow['manager_ids'])) {
+                $mIds = array_filter(array_map('intval', explode(',', $pRow['manager_ids'])));
+                if (in_array((int)$auth['user_id'], $mIds, true)) {
+                    $projIds[] = (int)$pRow['id'];
+                    $isProjManager = true;
+                }
+            }
+        }
+
+        if ($isProjManager) {
+            if (!empty($projIds)) {
+                $where[] = 'c.project_id IN (' . implode(',', $projIds) . ')';
+            } else {
+                $where[] = '1=0';
+            }
+        } else if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
             $where[] = '(c.owner_id = ? OR c.id IN (
                 SELECT contact_id FROM cooperation_slips 
                 WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE \'{}\' END), JSON_QUOTE(CAST(? AS CHAR)))
@@ -423,7 +444,7 @@ class ContactController {
         $newStatus = $b['pipeline_status'] ?? null;
 
         if ($newStatus === 'not_lead') {
-            if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
+            if (in_array($auth['role'], ['sale', 'sales', 'manager', 'director'], true)) {
                 $stmtProp = $this->db->prepare("
                     UPDATE contacts 
                     SET not_lead_proposed = 1, 
