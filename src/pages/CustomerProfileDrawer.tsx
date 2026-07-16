@@ -5412,7 +5412,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 );
                               })()}
-                              {['call', 'email', 'meeting', 'task'].includes(ev.type) && (
+                              {['call', 'email', 'meeting', 'task', 'note'].includes(ev.type) && (
                                 <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} />
                               )}
                             </div>
