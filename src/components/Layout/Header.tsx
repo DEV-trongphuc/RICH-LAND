@@ -1186,7 +1186,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       title={t("Menu điều hướng nhanh")}
       width="1160px"
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
         {/* Search Input inside App Launcher */}
         <div style={{ 
           display: 'flex', 
@@ -1194,29 +1194,35 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           gap: '12px', 
           background: 'var(--color-bg-light)', 
           border: '1px solid var(--color-border)', 
-          borderRadius: '12px', 
-          padding: '10px 16px',
-          flexShrink: 0
+          borderRadius: '9999px', 
+          padding: '8px 20px',
+          height: '44px',
+          flexShrink: 0,
+          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
+          transition: 'all 0.2s',
+          maxWidth: '600px',
+          margin: '0 auto 1rem auto',
+          width: '100%'
         }}>
           <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
           <input
             type="text"
             value={launcherSearch}
             onChange={(e) => setLauncherSearch(e.target.value)}
-            placeholder={t("Tìm kiếm nhanh chức năng, cài đặt...")}
+            placeholder={t("Tìm kiếm nhanh chức năng...")}
             style={{
               flex: 1,
               border: 'none',
               background: 'transparent',
               outline: 'none',
               color: 'var(--color-text)',
-              fontSize: '0.9375rem'
+              fontSize: '0.9rem'
             }}
           />
           {launcherSearch && (
             <button 
               onClick={() => setLauncherSearch('')}
-              style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}
+              style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600, border: 'none', background: 'transparent', cursor: 'pointer' }}
             >
               {t("Xóa")}
             </button>
@@ -1226,48 +1232,27 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         {(() => {
           const role = user?.role as string;
           const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
-          
-          const ITEM_DESC: Record<string, string> = {
-            'Dashboard': 'Tổng quan số liệu kinh doanh & phễu chia lead',
-            'Báo cáo': 'Báo cáo chi tiết cuộc gọi, tags và hiệu suất',
-            'Khách hàng': 'Quản lý thông tin liên hệ và lịch sử KHTN',
-            'Kho Data': 'Danh sách lead công khai chờ khai thác (Databank)',
-            'Pipeline': 'Quản lý các thương vụ và trạng thái cơ hội',
-            'Quy tắc phân bổ': 'Cấu hình roster, lịch trực và thứ tự chia lead',
-            'Đối soát công bằng': 'Đối soát số lượng lead nhận và pending compensation',
-            'AI Pre-screener': 'Trạng thái lead chờ duyệt và chấm điểm AI',
-            'Ticket data lỗi': 'Báo cáo lỗi trùng lắp hoặc sai thông tin khách hàng',
-            'Dự án': 'Xem danh sách và roster các dự án phân phối',
-            'Chiến dịch': 'Chiến dịch marketing và nguồn phân bổ',
-            'Tài liệu': 'Kho tài liệu mật và biểu mẫu của công ty',
-            'Chi nhánh': 'Quản lý các văn phòng và chi nhánh',
-            'Team': 'Danh sách các đội nhóm kinh doanh',
-            'Nhân viên kinh doanh': 'Hồ sơ và lịch làm việc của tư vấn viên',
-            'Quản lý chấm công': 'Báo cáo check-in và xin nghỉ phép',
-            'Công ty': 'Quản lý danh mục đối tác doanh nghiệp',
-            'Chủ đầu tư': 'Danh mục các chủ đầu tư dự án',
-            'Giỏ hàng': 'Bảng giỏ hàng và danh mục căn hộ',
-            'Hóa đơn': 'Danh sách thu chi và hóa đơn khách hàng',
-            'Báo giá': 'Tạo và phê duyệt báo giá dịch vụ',
-            'Chi phí vận hành': 'Báo cáo chi phí phát sinh theo dự án',
-            'Tích hợp Data': 'Cấu hình webhook và liên kết Google Sheets',
-            'Vòng đời khách hàng': 'Cài đặt trạng thái và chu kỳ chăm sóc',
-            'Logic xử lý': 'Thiết lập quy định chặn, skip và check-in',
-            'CAPI': 'Cấu hình sự kiện Meta Conversion API',
-            'Quản lý tài khoản': 'Phân quyền tài khoản quản trị viên',
-            'Phân quyền': 'Quản lý vai trò và phân quyền chi tiết',
-            'Cài đặt hệ thống': 'Các thông số và cấu hình chung toàn hệ thống'
-          };
 
-          const CATEGORY_ICONS: Record<string, any> = {
-            'TỔNG QUAN': LayoutDashboard,
-            'KHÁCH HÀNG': Users,
-            'DỰ ÁN': Building2,
-            'NHÂN SỰ': Clock,
-            'ĐỐI TÁC': Truck,
-            'SẢN PHẨM': Boxes,
-            'TÀI CHÍNH': Receipt,
-            'CÀI ĐẶT HỆ THỐNG': Settings
+          const getItemColor = (itemName: string) => {
+            const lowercase = itemName.toLowerCase();
+            if (lowercase.includes('dashboard')) return { bg: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: '#ffffff' };
+            if (lowercase.includes('bàn làm việc') || lowercase.includes('chấm công') || lowercase.includes('hoạt động')) return { bg: 'linear-gradient(135deg, #10b981, #047857)', color: '#ffffff' };
+            if (lowercase.includes('báo cáo') || lowercase.includes('thống kê')) return { bg: 'linear-gradient(135deg, #6366f1, #4338ca)', color: '#ffffff' };
+            if (lowercase.includes('databank') || lowercase.includes('kho data')) return { bg: 'linear-gradient(135deg, #f59e0b, #b45309)', color: '#ffffff' };
+            if (lowercase.includes('khách hàng') || lowercase.includes('contacts')) return { bg: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: '#ffffff' };
+            if (lowercase.includes('pipeline') || lowercase.includes('chi phí')) return { bg: 'linear-gradient(135deg, #f43f5e, #be123c)', color: '#ffffff' };
+            if (lowercase.includes('phân bổ') || lowercase.includes('chiến dịch')) return { bg: 'linear-gradient(135deg, #ff7a00, #d05300)', color: '#ffffff' };
+            if (lowercase.includes('đối soát') || lowercase.includes('phân quyền')) return { bg: 'linear-gradient(135deg, #ec4899, #be185d)', color: '#ffffff' };
+            if (lowercase.includes('ai') || lowercase.includes('gatekeeper')) return { bg: 'linear-gradient(135deg, #14b8a6, #0f766e)', color: '#ffffff' };
+            if (lowercase.includes('ticket')) return { bg: 'linear-gradient(135deg, #0ea5e9, #0369a1)', color: '#ffffff' };
+            if (lowercase.includes('dự án') || lowercase.includes('công ty')) return { bg: 'linear-gradient(135deg, #64748b, #475569)', color: '#ffffff' };
+            if (lowercase.includes('giỏ hàng') || lowercase.includes('sản phẩm')) return { bg: 'linear-gradient(135deg, #a855f7, #7e22ce)', color: '#ffffff' };
+            if (lowercase.includes('tài liệu')) return { bg: 'linear-gradient(135deg, #eab308, #a16207)', color: '#ffffff' };
+            if (lowercase.includes('chủ đầu tư')) return { bg: 'linear-gradient(135deg, #84cc16, #4d7c0f)', color: '#ffffff' };
+            if (lowercase.includes('báo giá') || lowercase.includes('hóa đơn')) return { bg: 'linear-gradient(135deg, #10b981, #059669)', color: '#ffffff' };
+            if (lowercase.includes('đặt cọc') || lowercase.includes('hợp tác')) return { bg: 'linear-gradient(135deg, #6366f1, #4f46e5)', color: '#ffffff' };
+            if (lowercase.includes('chi nhánh') || lowercase.includes('team') || lowercase.includes('nhân viên')) return { bg: 'linear-gradient(135deg, #8b5cf6, #5b21b6)', color: '#ffffff' };
+            return { bg: 'linear-gradient(135deg, #475569, #334155)', color: '#ffffff' };
           };
 
           const visibleGroups = SIDEBAR_GROUPS.map(group => {
@@ -1279,18 +1264,21 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
             return { ...group, items: filteredItems };
           }).filter(group => group.items.length > 0);
 
-          // Flatten and filter items for global search
           const allVisibleItems = visibleGroups.flatMap(g => 
             g.items.map(item => ({ ...item, groupTitle: g.title }))
           );
-          
+
           const filteredItems = launcherSearch.trim()
             ? allVisibleItems.filter(item => 
                 item.name.toLowerCase().includes(launcherSearch.toLowerCase()) ||
-                (ITEM_DESC[item.name] && ITEM_DESC[item.name].toLowerCase().includes(launcherSearch.toLowerCase())) ||
                 item.groupTitle.toLowerCase().includes(launcherSearch.toLowerCase())
               )
             : [];
+
+          const recentTargets = ['Dashboard', 'Bàn làm việc', 'Báo cáo', 'Khách hàng', 'Pipeline', 'Giỏ hàng'];
+          const recentItems = recentTargets
+            .map(name => allVisibleItems.find(item => item.name === name))
+            .filter(Boolean);
 
           return (
             <div style={{ paddingRight: '4px' }}>
@@ -1300,10 +1288,10 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                     {t("Kết quả tìm kiếm")} ({filteredItems.length})
                   </h5>
                   {filteredItems.length > 0 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.875rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px 24px' }}>
                       {filteredItems.map(item => {
                         const IconComponent = item.icon;
-                        const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
+                        const colors = getItemColor(item.name);
                         return (
                           <div
                             key={item.name}
@@ -1315,34 +1303,35 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                               display: 'flex',
                               alignItems: 'center',
                               gap: '12px',
-                              padding: '12px 14px',
-                              background: 'var(--color-bg)',
-                              border: '1px solid var(--color-border)',
-                              borderRadius: '10px',
+                              padding: '8px 12px',
+                              borderRadius: '8px',
                               cursor: 'pointer',
                               transition: 'all 0.2s ease-in-out',
-                              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
                             }}
+                            className="hover-lift"
                             onMouseEnter={e => {
-                              e.currentTarget.style.borderColor = 'var(--color-primary)';
-                              e.currentTarget.style.transform = 'translateY(-2px)';
-                              const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
-                              if (iconContainer) iconContainer.style.color = 'var(--color-primary)';
+                              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.03)';
                             }}
                             onMouseLeave={e => {
-                              e.currentTarget.style.borderColor = 'var(--color-border)';
-                              e.currentTarget.style.transform = 'none';
-                                const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
-                                if (iconContainer) iconContainer.style.color = 'var(--color-text-muted)';
+                              e.currentTarget.style.background = 'transparent';
                             }}
                           >
-                            <div className="app-icon-container" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'color 0.2s' }}>
-                              <IconComponent size={18} strokeWidth={1.75} />
+                            <div style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background: colors.bg,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                            }}>
+                              <IconComponent size={16} color={colors.color} strokeWidth={2} />
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                              <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.2 }}>{t(item.name)}</span>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{t(desc)}</span>
-                            </div>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {t(item.name)}
+                            </span>
                           </div>
                         );
                       })}
@@ -1354,20 +1343,21 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                   )}
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                  {visibleGroups.map(group => (
-                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, whiteSpace: 'nowrap' }}>
-                          {t(group.title)}
-                        </h4>
-                        <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
-                      </div>
-                      
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.875rem' }}>
-                        {group.items.map(item => {
-                          const IconComponent = item.icon;
-                          const desc = ITEM_DESC[item.name] || 'Xem chi tiết thông tin';
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                  {/* Gần đây (Recent items) */}
+                  {recentItems.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {t('Gần đây')}
+                      </span>
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                        gap: '12px'
+                      }}>
+                        {recentItems.map(item => {
+                          const colors = getItemColor(item.name);
+                          const Icon = item.icon;
                           return (
                             <div
                               key={item.name}
@@ -1377,42 +1367,105 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                               }}
                               style={{
                                 display: 'flex',
+                                flexDirection: 'column',
                                 alignItems: 'center',
-                                gap: '12px',
-                                padding: '12px 14px',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                padding: '16px 12px',
                                 background: 'var(--color-bg)',
-                                border: '1px solid var(--color-border)',
-                                borderRadius: '10px',
+                                border: '1px solid var(--color-border-light)',
+                                borderRadius: '16px',
                                 cursor: 'pointer',
-                                transition: 'all 0.2s ease-in-out',
-                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+                                textAlign: 'center',
+                                boxShadow: 'var(--shadow-sm)',
+                                transition: 'all 0.2s ease-in-out'
                               }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
-                                if (iconContainer) iconContainer.style.color = 'var(--color-primary)';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.borderColor = 'var(--color-border)';
-                                e.currentTarget.style.transform = 'none';
-                                const iconContainer = e.currentTarget.querySelector('.app-icon-container') as HTMLElement;
-                                if (iconContainer) iconContainer.style.color = 'var(--color-text-muted)';
-                              }}
+                              className="hover-lift"
                             >
-                              <div className="app-icon-container" style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', flexShrink: 0, transition: 'color 0.2s' }}>
-                                <IconComponent size={18} strokeWidth={1.75} />
+                              <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '14px',
+                                background: colors.bg,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
+                              }}>
+                                <Icon size={24} color={colors.color} strokeWidth={2} />
                               </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.2 }}>{t(item.name)}</span>
-                                <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3 }}>{t(desc)}</span>
-                              </div>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>
+                                {t(item.name)}
+                              </span>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  ))}
+                  )}
+
+                  {/* Categories */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                    {visibleGroups.map(group => (
+                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, whiteSpace: 'nowrap' }}>
+                            {t(group.title)}
+                          </h4>
+                          <div style={{ flex: 1, height: '1px', background: 'var(--color-border-light)' }} />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px 24px' }}>
+                          {group.items.map(item => {
+                            const IconComponent = item.icon;
+                            const colors = getItemColor(item.name);
+                            return (
+                              <div
+                                key={item.name}
+                                onClick={() => {
+                                  navigate(item.href);
+                                  setIsAppLauncherOpen(false);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease-in-out',
+                                }}
+                                className="hover-lift"
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.03)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.background = 'transparent';
+                                }}
+                              >
+                                <div style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  background: colors.bg,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0,
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                                }}>
+                                  <IconComponent size={16} color={colors.color} strokeWidth={2} />
+                                </div>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {t(item.name)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
