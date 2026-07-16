@@ -453,6 +453,15 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
     return () => window.removeEventListener('keydown', handleSearchKeyDown);
   }, []);
 
+  // Listen to open-quick-menu event from sidebar logo click
+  useEffect(() => {
+    const handleOpenQuickMenu = () => {
+      setIsAppLauncherOpen(true);
+    };
+    window.addEventListener('open-quick-menu', handleOpenQuickMenu);
+    return () => window.removeEventListener('open-quick-menu', handleOpenQuickMenu);
+  }, []);
+
   // Search logic for Lead Data with 200ms debounce
   useEffect(() => {
     if (!searchQuery.trim()) {

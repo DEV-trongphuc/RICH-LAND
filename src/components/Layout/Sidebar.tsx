@@ -220,17 +220,30 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
         }}
       >
         {/* Logo Area */}
-        <div style={{
-          height: 72,
-          display: 'flex',
-          alignItems: 'center',
-          padding: isCollapsed ? '12px 0 0 0' : '12px 1rem 0 1rem',
-          gap: '0.75rem',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          flexShrink: 0,
-          justifyContent: isCollapsed ? 'center' : 'flex-start',
-          overflow: 'hidden'
-        }}>
+        <div 
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent('open-quick-menu'));
+          }}
+          style={{
+            height: 72,
+            display: 'flex',
+            alignItems: 'center',
+            padding: isCollapsed ? '12px 0 0 0' : '12px 1rem 0 1rem',
+            gap: '0.75rem',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            flexShrink: 0,
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            overflow: 'hidden',
+            cursor: 'pointer',
+            transition: 'background-color 0.2s ease'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
           {/* Logo Icon */}
           <div style={{
             width: 36, height: 36, borderRadius: '50%',
