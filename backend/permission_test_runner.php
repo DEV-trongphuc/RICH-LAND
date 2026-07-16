@@ -74,7 +74,7 @@ try {
     $callApi = function(string $resource, string $method, array $body = [], string $token = '') {
         $host = $_SERVER['HTTP_HOST'] ?? 'open.domation.net';
         $uri = $_SERVER['REQUEST_URI'] ?? '';
-        $subDir = (strpos($uri, '/richland/') !== false) ? '/richland' : '';
+        $subDir = (strpos($uri, '/richland/') !== false || strpos(__DIR__, 'richland') !== false) ? '/richland' : '';
         
         $parts = explode('&', $resource);
         $actionName = array_shift($parts);
