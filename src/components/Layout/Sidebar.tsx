@@ -352,9 +352,9 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', zIndex: 200, border: '1px solid var(--color-border)',
             boxShadow: '0 2px 8px rgba(0,0,0,0.15)', transition: 'all 0.2s',
-            opacity: isHovered || isCollapsed ? 1 : 0,
-            visibility: isHovered || isCollapsed ? 'visible' : 'hidden',
-            pointerEvents: isHovered || isCollapsed ? 'auto' : 'none'
+            opacity: isHovered ? 1 : 0,
+            visibility: isHovered ? 'visible' : 'hidden',
+            pointerEvents: isHovered ? 'auto' : 'none'
           }}
         >
           <ChevronLeft size={14} style={{ transform: isCollapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />

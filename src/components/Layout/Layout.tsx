@@ -50,7 +50,10 @@ import toast from 'react-hot-toast';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { t, language } = useLanguage();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebar_collapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   const { showPOS, setShowPOS } = useUIStore();
@@ -442,7 +445,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     const handleFocusMode = (e: Event) => {
       const customEvent = e as CustomEvent;
       if (customEvent.detail) {
-        setIsSidebarCollapsed(!!customEvent.detail.isFocusMode);
+        if (customEvent.detail.isFocusMode) {
+          setIsSidebarCollapsed(true);
+        } else {
+          const saved = localStorage.getItem('sidebar_collapsed');
+          setIsSidebarCollapsed(saved ? JSON.parse(saved) : false);
+        }
       }
     };
     window.addEventListener('focus-mode-toggle', handleFocusMode);
@@ -619,7 +627,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       `}</style>
       <Sidebar 
         isCollapsed={isSidebarCollapsed} 
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+        onToggleCollapse={() => {
+          setIsSidebarCollapsed(prev => {
+            const newVal = !prev;
+            localStorage.setItem('sidebar_collapsed', JSON.stringify(newVal));
+            return newVal;
+          });
+        }} 
         isMobileOpen={isMobileSidebarOpen}
         onMobileClose={() => setIsMobileSidebarOpen(false)}
       />
