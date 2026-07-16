@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
 import { withRouterFreezer } from '../components/RouterFreezer';
-import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck } from 'lucide-react';
+import { Mail, Settings2, Save, Send, Server, Database, Activity, ChevronDown, ChevronUp, Zap, Shield, MessageCircle, RefreshCw, Settings as SettingsIcon, BarChart2, Clock, Calendar, Users, CheckCircle, Plus, Trash2, Edit2, FileSpreadsheet, Upload, Download, X, Search, UserCheck, FileText } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
 import { CustomModal } from '../components/ui/CustomModal';
@@ -3271,41 +3271,7 @@ function doPost(e) {
                     </div>
                   </div>
 
-                  {/* Nhóm 5: Cấu hình Hợp tác & Hoa hồng */}
-                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
-                      <Users size={15} style={{ color: 'var(--color-primary)' }} />
-                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Cấu hình Phân chia Hợp tác & Hoa hồng')}</h4>
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                      <div>
-                        <label className="form-label">{t('Trạng thái KHTN được phép tạo phiếu')}</label>
-                         <input
-                          type="text"
-                          className="form-input"
-                          value={coopEligibleStatuses}
-                          disabled
-                          style={{ backgroundColor: 'var(--color-bg-secondary)', cursor: 'not-allowed', opacity: 0.7 }}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Được cấu hình bằng Checkbox tại phần "Cấu hình Vòng đời & Trạng thái Khách hàng" bên dưới.')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Danh mục tài liệu đính kèm yêu cầu')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={coopDefaultFiles}
-                          onChange={e => setCoopDefaultFiles(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Các tên tài liệu cách nhau bằng dấu phẩy (ví dụ: UNC.png,CMND.png).')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -3933,6 +3899,31 @@ function doPost(e) {
                   >
                     <Plus size={14} /> {t('Thêm bước trạng thái mới')}
                   </button>
+
+                  {/* Cấu hình tài liệu hợp tác tích hợp */}
+                  <div style={{ 
+                    marginTop: '2rem', 
+                    paddingTop: '1.5rem', 
+                    borderTop: '1px solid var(--color-border)', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: '0.75rem' 
+                  }}>
+                    <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <FileText size={16} style={{ color: 'var(--color-primary)' }} />
+                      {t('Danh mục tài liệu yêu cầu khi hợp tác')}
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={coopDefaultFiles}
+                      onChange={e => setCoopDefaultFiles(e.target.value)}
+                      placeholder={t("Ví dụ: UNC, CMND, GPKD")}
+                    />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                      {t('Tên các loại tài liệu cần thiết để phê duyệt phiếu hợp tác (phân cách bằng dấu phẩy).')}
+                    </span>
+                  </div>
                 </div>
               </div>
 
