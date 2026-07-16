@@ -873,14 +873,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     id: impersonatedSale.user_id ? Number(impersonatedSale.user_id) : user?.id
   } : user;
 
-  const targetConsultantId = displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
+  const targetConsultantId = data.consultant_profile?.id || displayUser?.consultant_id || null;
 
   const fetchConsultantDocs = async () => {
     if (!targetConsultantId) return;
     try {
       const res = await api.get(`/cloud-files?category=consultant_${targetConsultantId}&limit=1000`);
-      if (res.data && res.data.items) {
-        setConsultantDocs(res.data.items);
+      if (res.data && res.data.data && res.data.data.items) {
+        setConsultantDocs(res.data.data.items);
       }
     } catch (err) {
       console.error("Error fetching consultant documents:", err);
