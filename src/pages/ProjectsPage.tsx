@@ -52,6 +52,7 @@ interface RosterMember {
   email: string;
   role: string;
   is_assigned: number;
+  avatar_url?: string;
 }
 
 interface ProjectDoc {
@@ -604,6 +605,7 @@ export default function ProjectsPage() {
 
   const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'director', 'assistant'].includes(user.role);
   const isSystemAdmin = user && ['admin', 'superadmin', 'super_admin'].includes(user.role);
+  const canEditRoster = user && ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user.role);
   const canEditDeleteProject = (proj: Project) => {
     if (!user) return false;
     if (isSystemAdmin) return true;
@@ -3777,7 +3779,7 @@ export default function ProjectsPage() {
                     return (
                       <div
                         key={member.id}
-                        onClick={() => handleToggleRoster(member.id)}
+                        onClick={() => canEditRoster && handleToggleRoster(member.id)}
                         style={{
                           display: 'flex',
                           justifyContent: 'space-between',
@@ -3786,12 +3788,12 @@ export default function ProjectsPage() {
                           borderRadius: 'var(--radius-lg)',
                           border: member.is_assigned ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
                           background: member.is_assigned ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                          cursor: 'pointer',
+                          cursor: canEditRoster ? 'pointer' : 'default',
                           transition: 'all 0.15s ease'
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <Avatar name={member.full_name} size={36} />
+                          <Avatar src={member.avatar_url} name={member.full_name} size={36} />
                           <div>
                             <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
                             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
@@ -3824,22 +3826,35 @@ export default function ProjectsPage() {
         '650px',
         (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <button 
-              type="button" 
-              className="btn secondary sm" 
-              style={{ borderRadius: '100px', fontWeight: 700 }} 
-              onClick={() => setIsRosterModalOpen(false)}
-            >
-              Hủy
-            </button>
-            <button 
-              type="button" 
-              className="btn primary sm" 
-              style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none' }} 
-              onClick={handleSaveRoster}
-            >
-              Lưu thay đổi
-            </button>
+            {canEditRoster ? (
+              <>
+                <button 
+                  type="button" 
+                  className="btn secondary sm" 
+                  style={{ borderRadius: '100px', fontWeight: 700 }} 
+                  onClick={() => setIsRosterModalOpen(false)}
+                >
+                  Hủy
+                </button>
+                <button 
+                  type="button" 
+                  className="btn primary sm" 
+                  style={{ borderRadius: '100px', fontWeight: 700, background: 'var(--color-primary)', border: 'none' }} 
+                  onClick={handleSaveRoster}
+                >
+                  Lưu thay đổi
+                </button>
+              </>
+            ) : (
+              <button 
+                type="button" 
+                className="btn secondary sm" 
+                style={{ borderRadius: '100px', fontWeight: 700 }} 
+                onClick={() => setIsRosterModalOpen(false)}
+              >
+                Đóng
+              </button>
+            )}
           </div>
         )
       )}

@@ -1183,7 +1183,7 @@ const ConsultantsInner = () => {
       </div>
       ) : activeTab === 'teams' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem', padding: '0.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1.5rem', padding: '0.25rem' }}>
             {teamsLoading ? (
               [...Array(3)].map((_, i) => (
                 <div key={i} className="card animate-pulse" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '200px' }}>
@@ -1247,18 +1247,20 @@ const ConsultantsInner = () => {
                     </div>
 
                     {/* Slogan / Description */}
-                    <div style={{ 
-                      fontSize: '0.8125rem', 
-                      color: 'var(--color-text-light)', 
-                      fontStyle: 'italic', 
-                      background: 'var(--color-bg)',
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      borderLeft: '3px solid var(--color-primary)',
-                      lineHeight: 1.4
-                    }}>
-                      {team.description ? `"${team.description}"` : `"${t('Đội ngũ tư vấn Richland chuyên nghiệp, phục vụ tận tâm')}"`}
-                    </div>
+                    {team.description && (
+                      <div style={{ 
+                        fontSize: '0.8125rem', 
+                        color: 'var(--color-text-light)', 
+                        fontStyle: 'italic', 
+                        background: 'var(--color-bg)',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        borderLeft: '3px solid var(--color-primary)',
+                        lineHeight: 1.4
+                      }}>
+                        "{team.description}"
+                      </div>
+                    )}
 
                     {/* Details Panel */}
                     <div style={{ 
