@@ -425,6 +425,39 @@ class CooperationController {
             respond(403, null, 'Bạn không nằm trong danh sách phân chia hoa hồng của phiếu này', false);
         }
 
+        // Backend check for mandatory files before allowing signature
+        $coopSettingStmt = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'coop_default_files' LIMIT 1");
+        $coopDefaultFilesSetting = $coopSettingStmt ? $coopSettingStmt->fetchColumn() : null;
+        if ($coopDefaultFilesSetting) {
+            $requiredFiles = array_filter(array_map('trim', explode(',', $coopDefaultFilesSetting)));
+            if (!empty($requiredFiles)) {
+                $attachments = array_filter(array_map('trim', explode(',', $slip['attachment_url'] ?? '')));
+                foreach ($requiredFiles as $requiredFile) {
+                    $cleanKeyword = strtolower(explode('.', $requiredFile)[0]);
+                    if (empty($cleanKeyword)) continue;
+                    
+                    $hasFile = false;
+                    foreach ($attachments as $attachment) {
+                        $filename = strtolower(basename($attachment));
+                        if ($cleanKeyword === 'unc' || $cleanKeyword === 'uy nhiem chi' || $cleanKeyword === 'ủy nhiệm chi') {
+                            if (strpos($filename, 'unc') !== false || strpos($filename, 'uy nhiem chi') !== false || strpos($filename, 'ủy nhiệm chi') !== false) {
+                                $hasFile = true;
+                                break;
+                            }
+                        } else {
+                            if (strpos($filename, $cleanKeyword) !== false) {
+                                $hasFile = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!$hasFile) {
+                        respond(400, null, "Vui lòng upload tài liệu $requiredFile trước khi ký xác nhận!", false);
+                    }
+                }
+            }
+        }
+
         $signatures = json_decode($slip['signatures_json'], true) ?: [];
         $body = getBody();
         

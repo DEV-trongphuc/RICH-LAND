@@ -33,17 +33,19 @@ if (!defined('BYPASS_CRON_LOCK')) {
 }
 // --- END PREVENT CONCURRENT EXECUTION ---
 
-// Auto-recover any sheet connections stuck in 'syncing' status from a previous crashed run (older than 10 minutes)
-$conn->query("UPDATE sheet_connections SET sync_status = 'idle' WHERE sync_status = 'syncing' AND (last_sync_at IS NULL OR last_sync_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
+if (!defined('DIAG_TOKEN')) {
+    // Auto-recover any sheet connections stuck in 'syncing' status from a previous crashed run (older than 10 minutes)
+    $conn->query("UPDATE sheet_connections SET sync_status = 'idle' WHERE sync_status = 'syncing' AND (last_sync_at IS NULL OR last_sync_at <= DATE_SUB(NOW(), INTERVAL 10 MINUTE))");
 
-// Ensure sheet_sync_records table exists
-$conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
-    connection_id INT,
-    row_hash VARCHAR(64),
-    synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (connection_id, row_hash),
-    FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE
-)");
+    // Ensure sheet_sync_records table exists
+    $conn->query("CREATE TABLE IF NOT EXISTS sheet_sync_records (
+        connection_id INT,
+        row_hash VARCHAR(64),
+        synced_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (connection_id, row_hash),
+        FOREIGN KEY (connection_id) REFERENCES sheet_connections(id) ON DELETE CASCADE
+    )");
+}
 
 // Helper for routing
 require_once __DIR__ . '/webhook_logic.php'; // We will extract routing logic into a separate file or just redefine them if not too complex. But better to extract.
@@ -2347,68 +2349,70 @@ function checkCheckInSlaEscalation($conn) {
 
 logSync("Cronjob finished.");
 
-// --- Chạy giải phóng lead hết hạn bảo mật ra Kho chung ---
-try {
-    releaseExpiredLeadsToKho($conn);
-} catch (Exception $e) {
-    logSync("Error running releaseExpiredLeadsToKho: " . $e->getMessage());
-}
+if (!defined('DIAG_TOKEN')) {
+    // --- Chạy giải phóng lead hết hạn bảo mật ra Kho chung ---
+    try {
+        releaseExpiredLeadsToKho($conn);
+    } catch (Exception $e) {
+        logSync("Error running releaseExpiredLeadsToKho: " . $e->getMessage());
+    }
 
-// --- Chạy kiểm tra cảnh báo SLA duyệt đi trễ ---
-try {
-    checkCheckInSlaEscalation($conn);
-} catch (Exception $e) {
-    logSync("Error running checkCheckInSlaEscalation: " . $e->getMessage());
-}
+    // --- Chạy kiểm tra cảnh báo SLA duyệt đi trễ ---
+    try {
+        checkCheckInSlaEscalation($conn);
+    } catch (Exception $e) {
+        logSync("Error running checkCheckInSlaEscalation: " . $e->getMessage());
+    }
 
-// --- Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---
-try {
-    assignParallelLeads($conn);
-} catch (Exception $e) {
-    logSync("Error running assignParallelLeads: " . $e->getMessage());
-}
+    // --- Chạy phân bổ song song ở trạng thái Chưa Xác Định quá 3 giờ ---
+    try {
+        assignParallelLeads($conn);
+    } catch (Exception $e) {
+        logSync("Error running assignParallelLeads: " . $e->getMessage());
+    }
 
-// --- Chạy Báo cáo Ngày nếu đã đến giờ ---
-require_once __DIR__ . '/cron_daily_report.php';
-runDailyReportCron($conn);
+    // --- Chạy Báo cáo Ngày nếu đã đến giờ ---
+    require_once __DIR__ . '/cron_daily_report.php';
+    runDailyReportCron($conn);
 
-// --- Chạy Báo cáo Tuần nếu đã đến giờ ---
-require_once __DIR__ . '/cron_weekly_report.php';
-runWeeklyReportCron($conn);
+    // --- Chạy Báo cáo Tuần nếu đã đến giờ ---
+    require_once __DIR__ . '/cron_weekly_report.php';
+    runWeeklyReportCron($conn);
 
-// --- Chạy Báo cáo Tháng nếu đã đến giờ ---
-try {
-    require_once __DIR__ . '/cron_monthly_report.php';
-    runMonthlyReportCron($conn);
-} catch (Exception $monthlyEx) {
-    logSync("Error running monthly report from cron_sync: " . $monthlyEx->getMessage());
-}
+    // --- Chạy Báo cáo Tháng nếu đã đến giờ ---
+    try {
+        require_once __DIR__ . '/cron_monthly_report.php';
+        runMonthlyReportCron($conn);
+    } catch (Exception $monthlyEx) {
+        logSync("Error running monthly report from cron_sync: " . $monthlyEx->getMessage());
+    }
 
-// --- Chạy hàng đợi đồng bộ 2 chiều (Sync Queue Worker) ---
-try {
-    require_once __DIR__ . '/cron_queue_worker.php';
-    processSyncQueue($conn);
-} catch (Exception $queueEx) {
-    logSync("Error running sync queue from cron_sync: " . $queueEx->getMessage());
-}
+    // --- Chạy hàng đợi đồng bộ 2 chiều (Sync Queue Worker) ---
+    try {
+        require_once __DIR__ . '/cron_queue_worker.php';
+        processSyncQueue($conn);
+    } catch (Exception $queueEx) {
+        logSync("Error running sync queue from cron_sync: " . $queueEx->getMessage());
+    }
 
-// --- Chạy tiến trình AI Pre-screener ---
-try {
-    require_once __DIR__ . '/cron_ai_worker.php';
-    runAIScreenerWorker($conn);
-} catch (Exception $aiEx) {
-    logSync("Error running AI worker from cron_sync: " . $aiEx->getMessage());
-}
+    // --- Chạy tiến trình AI Pre-screener ---
+    try {
+        require_once __DIR__ . '/cron_ai_worker.php';
+        runAIScreenerWorker($conn);
+    } catch (Exception $aiEx) {
+        logSync("Error running AI worker from cron_sync: " . $aiEx->getMessage());
+    }
 
-// --- Chạy sinh công việc lặp lại định kỳ (Recurring Tasks Cron) ---
-try {
-    require_once __DIR__ . '/cron_recurring_tasks.php';
-    runRecurringTasksCron($conn);
-} catch (Exception $recurrenceEx) {
-    logSync("Error running recurring tasks cron: " . $recurrenceEx->getMessage());
-}
+    // --- Chạy sinh công việc lặp lại định kỳ (Recurring Tasks Cron) ---
+    try {
+        require_once __DIR__ . '/cron_recurring_tasks.php';
+        runRecurringTasksCron($conn);
+    } catch (Exception $recurrenceEx) {
+        logSync("Error running recurring tasks cron: " . $recurrenceEx->getMessage());
+    }
 
-if (php_sapi_name() === 'cli') {
-    $conn->close();
+    if (php_sapi_name() === 'cli') {
+        $conn->close();
+    }
 }
 
