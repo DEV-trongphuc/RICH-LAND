@@ -21,4 +21,19 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Write-Host "=== DEPLOYMENT AND MIGRATIONS COMPLETED SUCCESSFULLY ===" -ForegroundColor Green
+# 3. Commit and push changes to Git
+Write-Host "3. Staging and pushing changes to Git repository..." -ForegroundColor Yellow
+git add .
+$gitChanges = git status --porcelain
+if ($gitChanges) {
+    git commit -m "deploy: automated deployment and push"
+    git push origin main
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "ERROR: Failed to push to Git repository." -ForegroundColor Red
+        exit $LASTEXITCODE
+    }
+} else {
+    Write-Host "No pending local changes to push to Git." -ForegroundColor Gray
+}
+
+Write-Host "=== DEPLOYMENT, MIGRATIONS & GIT PUSH COMPLETED SUCCESSFULLY ===" -ForegroundColor Green
