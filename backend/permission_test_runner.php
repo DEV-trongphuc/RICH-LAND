@@ -126,7 +126,7 @@ try {
                     $decoded['http_status_code'] = $httpCode;
                     return $decoded;
                 }
-                $lastResponse = $response;
+                return ['success' => false, 'message' => 'Non-JSON response', 'raw' => $response, 'http_status_code' => $httpCode];
             }
         }
         return ['success' => false, 'message' => 'Curl call failed', 'raw' => $lastResponse, 'http_status_code' => $httpCode];
