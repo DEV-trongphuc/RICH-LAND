@@ -315,7 +315,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
     if (!account?.id) return;
     setLoadingDocs(true);
     try {
-      const res = await fetchAPI(`cloud_files?category=consultant_${account.id}&limit=100`);
+      const res = await fetchAPI(`cloud-files?category=consultant_${account.id}&limit=100`);
       if (res.success && res.data) {
         setDocuments(res.data.items || []);
       }
@@ -343,7 +343,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       fd.append('visibility', 'shared');
       fd.append('name', file.name);
 
-      const res = await fetchAPI('cloud_files', {
+      const res = await fetchAPI('cloud-files', {
         method: 'POST',
         body: fd
       });
@@ -366,7 +366,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
     if (!window.confirm(t('Bạn có chắc chắn muốn xóa tài liệu này không?'))) return;
 
     try {
-      const res = await fetchAPI(`cloud_files?id=${docId}`, {
+      const res = await fetchAPI(`cloud-files/${docId}`, {
         method: 'DELETE'
       });
       if (res.success) {
@@ -624,23 +624,45 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
               {account ? `${t('Mã nhân viên')}: ${employeeId || '—'} · ${name}` : t('Khai báo hồ sơ làm việc và thông tin ERP mới.')}
             </p>
           </div>
-          <button 
-            onClick={onClose}
-            style={{
-              padding: '6px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: 'transparent',
-              color: 'var(--color-text-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-            className="hover-bg-muted"
-          >
-            <X size={20} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {!loading && (
+              <button 
+                type="submit"
+                form="account-detail-form"
+                disabled={isSaving}
+                className="btn primary sm"
+                style={{
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.8125rem',
+                  padding: '8px 16px',
+                  fontWeight: 600
+                }}
+              >
+                {isSaving ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                {isSaving ? t('Đang lưu...') : t('Lưu Hồ sơ Nhân sự')}
+              </button>
+            )}
+            <button 
+              onClick={onClose}
+              style={{
+                padding: '6px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              className="hover-bg-muted"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         {/* Content Panel */}
@@ -651,7 +673,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
               <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải dữ liệu hồ sơ...')}</span>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {/* Avatar upload card */}
               <div style={{
                 background: 'var(--color-bg-light)',
@@ -1526,9 +1548,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                           padding: '2.5rem 1rem',
                           border: '2px dashed var(--color-border-light)',
                           borderRadius: '12px',
-                          color: 'var(--color-text-muted)'
+                          color: 'var(--color-text-muted)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
                         }}>
-                          <FileText size={32} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
+                          <FileText size={32} style={{ opacity: 0.5 }} />
                           <span style={{ fontSize: '0.8125rem' }}>{t('Chưa có hồ sơ tài liệu đính kèm.')}</span>
                         </div>
                       ) : (
@@ -1582,36 +1609,6 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </div>
               )}
 
-              {/* Bottom Sticky Action Buttons */}
-              <div style={{
-                position: 'sticky',
-                bottom: '-1.5rem',
-                backgroundColor: 'var(--color-surface)',
-                borderTop: '1px solid var(--color-border)',
-                padding: '1rem 0 1.5rem',
-                marginTop: '1rem',
-                display: 'flex',
-                gap: '1rem',
-                zIndex: 10
-              }}>
-                <button 
-                  type="button" 
-                  onClick={onClose} 
-                  className="btn ghost" 
-                  style={{ flex: 1, borderRadius: '10px' }}
-                >
-                  {t('Hủy')}
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn primary" 
-                  disabled={isSaving} 
-                  style={{ flex: 1, borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  {isSaving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                  {isSaving ? t('Đang lưu...') : t('Lưu Hồ sơ Nhân sự')}
-                </button>
-              </div>
             </form>
           )}
         </div>
