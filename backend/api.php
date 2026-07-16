@@ -15091,7 +15091,7 @@ switch ($action) {
             $stmtLead->execute();
             $lRow = $stmtLead->get_result()->fetch_assoc();
             $stmtLead->close();
-            $leadId = $lRow ? $lRow['id'] : 0;
+            $leadId = $lRow ? (int)$lRow['id'] : null;
 
             if ($leadId > 0) {
                 $stmtLeadClaim = $conn->prepare("UPDATE leads SET assigned_to = ?, last_assigned_at = NOW() WHERE id = ?");
