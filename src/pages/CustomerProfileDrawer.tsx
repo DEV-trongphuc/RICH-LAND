@@ -3907,6 +3907,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             />
                           </div>
                           <div className="form-group">
+                            <label className="form-label">Phòng ban</label>
+                            <input className="form-input" placeholder="ví dụ: Kinh doanh" value={formData.department || ''} onChange={e => {
+                              const val = e.target.value;
+                              setFormData((prev: any) => ({ ...prev, department: val }));
+                            }} />
+                          </div>
+                          <div className="form-group">
                             <label className="form-label">Dự án Quan tâm (Liên kết)</label>
                             <CustomSelect
                               searchable
@@ -3917,19 +3924,53 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               value={String(formData.project_id || '')}
                               onChange={val => {
                                 const selectedId = val ? Number(val) : null;
+                                let nextCampaignId = formData.campaign_id;
+                                if (selectedId && nextCampaignId) {
+                                  const campObj = allowedCampaigns.find(c => Number(c.id) === Number(nextCampaignId));
+                                  if (campObj && Number(campObj.project_id) !== selectedId) {
+                                    nextCampaignId = null;
+                                  }
+                                }
                                 setFormData((prev: any) => ({
                                   ...prev,
-                                  project_id: selectedId
+                                  project_id: selectedId,
+                                  campaign_id: nextCampaignId
                                 }));
                               }}
                             />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Phòng ban</label>
-                            <input className="form-input" placeholder="ví dụ: Kinh doanh" value={formData.department || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, department: val }));
-                            }} />
+                            <label className="form-label">Chiến dịch Quan tâm (Liên kết)</label>
+                            {(() => {
+                              const filteredCamps = formData.project_id
+                                ? allowedCampaigns.filter(c => Number(c.project_id) === Number(formData.project_id))
+                                : allowedCampaigns;
+                              return (
+                                <CustomSelect
+                                  searchable
+                                  options={[
+                                    { value: '', label: '— Không chọn —' },
+                                    ...filteredCamps.map(c => ({ value: String(c.id), label: c.name, faded: c.status !== 'active' }))
+                                  ]}
+                                  value={formData.campaign_id ? String(formData.campaign_id) : ''}
+                                  onChange={val => {
+                                    const nextCampaign = val ? Number(val) : null;
+                                    let nextProjectId = formData.project_id;
+                                    if (nextCampaign) {
+                                      const campObj = allowedCampaigns.find(c => Number(c.id) === nextCampaign);
+                                      if (campObj && campObj.project_id) {
+                                        nextProjectId = Number(campObj.project_id);
+                                      }
+                                    }
+                                    setFormData((prev: any) => ({
+                                      ...prev,
+                                      campaign_id: nextCampaign,
+                                      project_id: nextProjectId
+                                    }));
+                                  }}
+                                />
+                              );
+                            })()}
                           </div>
                         </div>
 

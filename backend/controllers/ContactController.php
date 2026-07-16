@@ -14,6 +14,9 @@ class ContactController {
         try {
             $this->db->exec("ALTER TABLE contacts ADD COLUMN not_lead_proposed_at TIMESTAMP NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE contacts ADD COLUMN campaign_id INT(11) NULL");
+        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {
@@ -474,7 +477,7 @@ class ContactController {
             'expected_revenue','win_probability','last_contact','stage_id',
             'pipeline_status', 'ttl1_completed', 'ttl1_data',
             'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
-            'temperature', 'suggested_temperature'
+            'temperature', 'suggested_temperature', 'campaign_id'
         ];
         $sets = []; $params = [];
         
