@@ -607,7 +607,19 @@ export default function ProjectsPage() {
 
   const isAdmin = user && ['admin', 'superadmin', 'super_admin', 'director', 'assistant'].includes(user.role);
   const isSystemAdmin = user && ['admin', 'superadmin', 'super_admin'].includes(user.role);
-  const canEditRoster = user && ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(user.role);
+  const canEditRoster = React.useMemo(() => {
+    if (!user) return false;
+    if (['admin', 'superadmin', 'super_admin', 'director'].includes(user.role)) return true;
+    
+    const isManagerOrLeader = user.role === 'manager' || teams.some(t => Number(t.leader_id) === Number(user.id));
+    if (isManagerOrLeader) {
+      if (isRosterModalOpen && rosterMembers.length > 0) {
+        return rosterMembers.some(m => Number(m.id) === Number(user.id) && m.is_assigned === 1);
+      }
+      return projectRoster.some((m: any) => Number(m.id) === Number(user.id));
+    }
+    return false;
+  }, [user, teams, rosterMembers, projectRoster, isRosterModalOpen]);
   const canEditDeleteProject = (proj: Project) => {
     if (!user) return false;
     if (isSystemAdmin) return true;
@@ -3594,14 +3606,14 @@ export default function ProjectsPage() {
                     <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
                       Đội ngũ nhân sự phụ trách (Roster)
                     </span>
-                    {editingProject?.id && (
+                     {editingProject?.id && (
                       <button
                         type="button"
                         className="btn-link"
                         onClick={() => handleOpenRoster(editingProject.id)}
                         style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700 }}
                       >
-                        Cấu hình Roster
+                        {canEditRoster ? 'Cấu hình Roster' : 'Xem Roster'}
                       </button>
                     )}
                   </div>

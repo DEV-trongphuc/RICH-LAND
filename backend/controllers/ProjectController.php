@@ -361,7 +361,29 @@ class ProjectController {
     }
 
     public function updateRoster(array $auth, int $projectId): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        $isAuthorized = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true);
+        if (!$isAuthorized) {
+            $isManagerOrLeader = ($auth['role'] === 'manager');
+            if (!$isManagerOrLeader) {
+                $stmtLeader = $this->db->prepare("SELECT 1 FROM teams WHERE leader_id = ? LIMIT 1");
+                $stmtLeader->execute([(int)$auth['user_id']]);
+                if ($stmtLeader->fetch()) {
+                    $isManagerOrLeader = true;
+                }
+            }
+
+            if ($isManagerOrLeader) {
+                $stmtRoster = $this->db->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ? LIMIT 1");
+                $stmtRoster->execute([$projectId, (int)$auth['user_id']]);
+                if ($stmtRoster->fetch()) {
+                    $isAuthorized = true;
+                }
+            }
+        }
+
+        if (!$isAuthorized) {
+            respond(403, null, 'Quyền truy cập bị từ chối', false);
+        }
         $this->requireProjectAccess($auth, $projectId);
         $b = getBody();
         $userIds = $b['user_ids'] ?? []; // Array of user IDs to include in roster
