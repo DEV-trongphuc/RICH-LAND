@@ -1216,7 +1216,7 @@ export const DealsPage: React.FC = () => {
                              <span>{item.updated_at ? item.updated_at.substring(0,10) : (item.created_at?.substring(0,10) || '')}</span>
                            </div>
                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }} title={item.owner_name || 'Sale phụ trách'}>
-                             <Avatar name={item.owner_name} size={16} />
+                             <Avatar name={item.owner_name} src={item.owner_avatar} size={16} />
                              <span>{item.owner_name?.split(' ').pop() || 'Sale'}</span>
                             </div>
                          </div>

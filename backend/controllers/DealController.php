@@ -197,7 +197,7 @@ class DealController {
         $sql = "
             SELECT d.*, ps.name as stage_name, ps.color as stage_color, ps.is_won, ps.is_lost,
                    CONCAT(c.first_name,' ',c.last_name) as contact_name,
-                   comp.name as company_name, u.full_name as owner_name
+                   comp.name as company_name, u.full_name as owner_name, u.avatar_url as owner_avatar
             FROM deals d
             LEFT JOIN pipeline_stages ps ON d.stage_id=ps.id
             LEFT JOIN contacts c ON d.contact_id=c.id
