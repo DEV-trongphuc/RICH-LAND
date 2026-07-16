@@ -7589,28 +7589,48 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         {/* Sticky Header block */}
         <div style={{
           position: 'sticky',
-          top: '-1.5rem',
+          top: isMobile ? '-1.25rem' : '-1.5rem',
           zIndex: 100,
           background: 'var(--color-bg)',
-          padding: '1.5rem 0 1rem 0',
+          padding: isMobile ? '1rem 0 0.75rem 0' : '1.5rem 0 1rem 0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           borderBottom: '1px solid var(--color-border)',
-          margin: '-1.5rem 0 1.5rem 0'
+          margin: isMobile ? '-1.25rem 0 1rem 0' : '-1.5rem 0 1.5rem 0',
+          gap: '12px'
         }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', margin: 0 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
+            <h2 style={{ 
+              fontSize: isMobile ? '1.1rem' : '1.5rem', 
+              fontWeight: 800, 
+              color: 'var(--color-text)', 
+              margin: 0,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
               {t('QUẢN LÝ TÀI KHOẢN')}
             </h2>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
-              {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
-            </p>
+            {!isMobile && (
+              <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', margin: 0 }}>
+                {t('Cấu hình thông tin cá nhân, ảnh đại diện và thời gian trực nhận lead tự động.')}
+              </p>
+            )}
           </div>
 
           <button
             className="btn primary"
-            style={{ height: '38px', padding: '0 1.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
+            style={{ 
+              height: isMobile ? '32px' : '38px', 
+              padding: isMobile ? '0 0.75rem' : '0 1.5rem', 
+              borderRadius: '8px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              flexShrink: 0,
+              fontSize: isMobile ? '0.78rem' : '0.875rem'
+            }}
             onClick={handleSaveProfile}
             disabled={savingProfile || isUploadingAvatar}
           >
@@ -7622,7 +7642,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             ) : (
               <>
                 <Save size={14} />
-                {t('Lưu thiết lập')}
+                {t(isMobile ? 'Lưu' : 'Lưu thiết lập')}
               </>
             )}
           </button>
@@ -7737,42 +7757,45 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Số CMND/CCCD')}</label>
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Số CMND/CCCD')}</label>
                       <input
                         type="text"
                         className="form-input"
                         value={editCitizenId}
                         onChange={(e) => setEditCitizenId(e.target.value)}
                         placeholder={t('Nhập số CMND hoặc CCCD')}
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                       />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Quê quán / Quê hương')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Quê quán / Quê hương')}</label>
                         <input
                           type="text"
                           className="form-input"
                           value={editHometown}
                           onChange={(e) => setEditHometown(e.target.value)}
                           placeholder={t('VD: Hà Nội, Việt Nam')}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Quốc tịch')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Quốc tịch')}</label>
                         <input
                           type="text"
                           className="form-input"
                           value={editNationality}
                           onChange={(e) => setEditNationality(e.target.value)}
                           placeholder={t('VD: Việt Nam')}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Tình trạng hôn nhân')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Tình trạng hôn nhân')}</label>
                         <CustomSelect
                           options={[
                             { value: '', label: `-- ${t('Chọn tình trạng')} --` },
@@ -7787,13 +7810,14 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Email cá nhân')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Email cá nhân')}</label>
                         <input
                           type="email"
                           className="form-input"
                           value={editPersonalEmail}
                           onChange={(e) => setEditPersonalEmail(e.target.value)}
                           placeholder={t('VD: email@gmail.com')}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                     </div>
@@ -7801,48 +7825,52 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
 
                 {/* SECTION 2: WORKPLACE & ERP */}
-                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Layers size={14} /> {t('Thông tin nhân sự & ERP')}
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ borderBottom: '1px solid var(--color-border-light)', paddingBottom: isMobile ? '1rem' : '1.5rem' }}>
+                  {!isMobile && (
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Layers size={14} /> {t('Thông tin nhân sự & ERP')}
+                    </h4>
+                  )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Mã nhân viên')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Mã nhân viên')}</label>
                         <input
                           type="text"
                           className="form-input"
                           value={editEmployeeId}
                           onChange={(e) => setEditEmployeeId(e.target.value)}
                           placeholder="VD: RL-2026-089"
-                          style={{ fontWeight: 600, color: 'var(--color-primary)' }}
+                          style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Bộ phận / Phòng ban')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Bộ phận / Phòng ban')}</label>
                         <input
                           type="text"
                           className="form-input"
                           value={editDepartment}
                           onChange={(e) => setEditDepartment(e.target.value)}
                           placeholder="VD: Phòng Kinh doanh 1"
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Chức danh / Vị trí')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Chức danh / Vị trí')}</label>
                         <input
                           type="text"
                           className="form-input"
                           value={editJobTitle}
                           onChange={(e) => setEditJobTitle(e.target.value)}
                           placeholder="VD: Chuyên viên Tư vấn"
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Loại hợp đồng')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Loại hợp đồng')}</label>
                         <CustomSelect
                           options={[
                             { value: 'official', label: t('Chính thức') },
@@ -7858,24 +7886,26 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày vào làm')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Ngày vào làm')}</label>
                         <input
                           type="date"
                           className="form-input"
                           value={editDateJoined}
                           onChange={(e) => setEditDateJoined(e.target.value)}
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Người quản lý trực tiếp')}</label>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Người quản lý trực tiếp')}</label>
                         <input
                           type="text"
                           className="form-input"
                           value={editDirectManager}
                           onChange={(e) => setEditDirectManager(e.target.value)}
                           placeholder="Họ tên người quản lý"
+                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
                     </div>
@@ -8092,22 +8122,60 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
             {/* Vacation Status Card */}
-            <div className="card" style={{ padding: '1.5rem', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Clock3 size={20} color="var(--color-primary)" />
+            <div className="card" style={{
+              padding: '1.5rem',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              transition: 'all 0.3s ease'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'rgba(189, 29, 45, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Clock3 size={20} color="#BD1D2D" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
                     {t('TRẠNG THÁI NHẬN DATA')}
                   </h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
                     {t('Khi kích hoạt: Nhận khách hàng mới theo vòng chia. Khi tắt (Nghỉ/Tạm ngưng): Dừng nhận khách hàng mới, nhưng khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho bạn chăm sóc.')}
                   </p>
                 </div>
+              </div>
 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--color-bg-alt)',
+                padding: '10px 14px',
+                borderRadius: '12px',
+                border: '1px solid var(--color-border-light)'
+              }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
+                  {t('Trạng thái hiện tại:')}
+                </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{
-                    fontSize: '0.9rem', fontWeight: 800,
-                    color: !portalVacationMode && !onLeave ? 'var(--color-success)' : 'var(--color-warning)'
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: !portalVacationMode && !onLeave ? 'var(--color-success)' : 'var(--color-warning)',
+                    background: !portalVacationMode && !onLeave ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                    padding: '3px 8px',
+                    borderRadius: '6px'
                   }}>
                     {!portalVacationMode && !onLeave ? t('Sẵn sàng') :
                       onLeave ? t('Nghỉ phép') : t('Tạm ngưng')}
@@ -8131,32 +8199,70 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
               {onLeave && (
                 <div style={{
-                  background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '12px 16px',
-                  borderRadius: '10px', border: '1px solid currentColor', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8
+                  background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
+                  borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
                 }}>
-                  <AlertTriangle size={16} />
+                  <AlertTriangle size={15} />
                   <span>{t('Bạn hiện đang trong thời gian nghỉ phép. Hệ thống tự động khóa chế độ nhận data cho đến khi kết thúc kỳ nghỉ.')}</span>
                 </div>
               )}
             </div>
 
             {/* Night Shift Registration Card */}
-            <div className="card" style={{ padding: '1.5rem', background: 'var(--color-surface)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <ShieldAlert size={18} color="var(--color-primary)" />
+            <div className="card" style={{
+              padding: '1.5rem',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              transition: 'all 0.3s ease'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'rgba(245, 158, 11, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <ShieldAlert size={20} color="var(--color-warning)" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
                     {t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)')}
                   </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
                     {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
                   </p>
                 </div>
+              </div>
 
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--color-bg-alt)',
+                padding: '10px 14px',
+                borderRadius: '12px',
+                border: '1px solid var(--color-border-light)'
+              }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
+                  {t('Đăng ký trực hôm nay:')}
+                </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{
-                    fontSize: '0.875rem', fontWeight: 700,
-                    color: nightShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)'
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: nightShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)',
+                    background: nightShiftRegistered ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)',
+                    padding: '3px 8px',
+                    borderRadius: '6px'
                   }}>
                     {nightShiftRegistered ? t('Đã đăng ký trực') : t('Chưa đăng ký')}
                   </span>
@@ -8174,7 +8280,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               {!nightShiftCanToggle && (
                 <div style={{
                   background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
-                  borderRadius: '8px', border: '1px solid currentColor', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 8
+                  borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
                 }}>
                   <Info size={14} />
                   <span>{t('Đã quá 18:00. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.')}</span>
@@ -8183,11 +8289,39 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
 
             {/* Leave (Nghỉ phép) registration card */}
-            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <AlertTriangle size={18} color="var(--color-warning)" />
-                {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
-              </h3>
+            <div className="card" style={{
+              padding: '1.5rem',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border-light)',
+              borderRadius: '16px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              transition: 'all 0.3s ease'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Calendar size={20} color="var(--color-primary)" />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                    {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                    {t('Đăng ký nghỉ phép tạm thời để tạm dừng nhận data phân bổ tự động.')}
+                  </p>
+                </div>
+              </div>
 
               {onLeave && (
                 <div style={{
@@ -8198,23 +8332,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 </div>
               )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Từ ngày')}</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.25rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Từ ngày')}</label>
                   <input
                     type="date"
                     className="form-input"
                     value={editLeaveStart}
                     onChange={(e) => setEditLeaveStart(e.target.value)}
+                    style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Đến ngày')}</label>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Đến ngày')}</label>
                   <input
                     type="date"
                     className="form-input"
                     value={editLeaveEnd}
                     onChange={(e) => setEditLeaveEnd(e.target.value)}
+                    style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
                   />
                 </div>
               </div>
@@ -8222,13 +8358,25 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               <button
                 type="button"
                 className="btn primary"
-                style={{ width: '100%', marginTop: '0.25rem', height: '40px' }}
+                style={{
+                  width: '100%',
+                  marginTop: '0.5rem',
+                  height: '38px',
+                  borderRadius: '10px',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  boxShadow: '0 4px 12px rgba(189, 29, 45, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
                 onClick={handleAddLeave}
                 disabled={savingLeave}
               >
                 {savingLeave ? (
                   <>
-                    <RefreshCw size={18} className="spin" style={{ marginRight: 6 }} />
+                    <RefreshCw size={14} className="spin" />
                     {t('Đang đăng ký...')}
                   </>
                 ) : (
@@ -8237,8 +8385,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               </button>
 
               {/* Lịch sử đăng ký nghỉ phép */}
-              <div style={{ marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{t('LỊCH SỬ NGHỈ PHÉP')}</span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>
                     ({leaveHistory.length})
@@ -8630,8 +8778,157 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   return (
     <div style={embedMode ? { width: '100%' } : { height: '100vh', width: '100vw', background: 'var(--color-bg)', display: 'flex', overflow: 'hidden' }}>
 
-      {/* Mobile Sidebar overlay */}
-      {!embedMode && isMobileSidebarOpen && (
+      {/* Mobile Modal Menu */}
+      {!embedMode && isMobile && isMobileSidebarOpen && createPortal(
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 11000,
+          background: 'rgba(22, 29, 49, 0.96)',
+          backdropFilter: 'blur(16px)',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '1.5rem',
+          color: '#dadada',
+          overflowY: 'auto'
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px solid rgba(192, 132, 252, 0.8)'
+              }}>
+                <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} alt="logo" />
+              </div>
+              <span style={{ fontSize: '1.25rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em' }}>RICH LAND</span>
+            </div>
+            <button 
+              onClick={() => setIsMobileSidebarOpen(false)}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.1)', border: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'white', cursor: 'pointer'
+              }}
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Menu Groups */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
+            {(() => {
+              const PORTAL_SIDEBAR_GROUPS = [
+                {
+                  title: 'TỔNG QUAN',
+                  items: [
+                    { name: 'Tổng quan', key: 'dashboard', icon: LayoutDashboard },
+                    { name: 'Bàn làm việc', key: 'workspace', icon: CheckSquare },
+                    { name: 'Kho Databank', key: 'databank', icon: Layers }
+                  ]
+                },
+                {
+                  title: 'KHÁCH HÀNG',
+                  items: [
+                    { name: 'Nhật ký Data', key: 'data', icon: Database },
+                    { name: 'Khách hàng CRM', key: 'crm-contacts', icon: Users, route: '/contacts' },
+                    { name: 'Lịch biểu', key: 'calendar', icon: Calendar },
+                    { name: 'Đối soát công bằng', key: 'fair-share', icon: Scale },
+                    { name: 'Ticket Lỗi Data', key: 'tickets', icon: Ticket, badgeCount: data.stats.tickets_pending },
+                    { name: 'Ticket Hỗ Trợ', key: 'support-tickets', icon: LifeBuoy, route: '/support-tickets' }
+                  ]
+                },
+                {
+                  title: 'DỰ ÁN',
+                  items: [
+                    { name: 'Dự án', key: 'projects', icon: Building2 },
+                    { name: 'Tài liệu', key: 'files', icon: FileText }
+                  ]
+                },
+                {
+                  title: 'NHÂN SỰ',
+                  items: [
+                    { name: 'Tư vấn viên', key: 'consultants', icon: Users }
+                  ]
+                },
+                {
+                  title: 'TÀI CHÍNH',
+                  items: [
+                    { name: 'Hóa đơn', key: 'invoices', icon: Receipt },
+                    { name: 'Phiếu hợp tác', key: 'cooperation-slips', icon: Scale, route: '/cooperation-slips' }
+                  ]
+                },
+                {
+                  title: 'CÀI ĐẶT TÀI KHOẢN',
+                  items: [
+                    { name: 'Quản lý tài khoản', key: 'schedule', icon: Settings }
+                  ]
+                }
+              ];
+
+              return PORTAL_SIDEBAR_GROUPS.map((group, groupIdx) => (
+                <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em' }}>{t(group.title)}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.6rem' }}>
+                    {group.items.map(({ name, key, icon: Icon, badgeCount, route }) => {
+                      const isActive = activeTab === key;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            if (route) {
+                              navigate(route);
+                            } else {
+                              setActiveTab(key as any);
+                            }
+                            setIsMobileSidebarOpen(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '0.75rem',
+                            background: isActive ? 'var(--color-primary)' : 'rgba(255,255,255,0.06)',
+                            border: '1px solid rgba(255,255,255,0.08)',
+                            borderRadius: '12px',
+                            color: 'white',
+                            fontSize: '0.8125rem',
+                            fontWeight: isActive ? 700 : 500,
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all 0.15s ease',
+                            position: 'relative'
+                          }}
+                        >
+                          <Icon size={16} color="white" />
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t(name)}</span>
+                          {badgeCount !== undefined && badgeCount > 0 && (
+                            <span style={{
+                              padding: '2px 6px',
+                              borderRadius: '10px',
+                              background: '#ef4444',
+                              color: 'white',
+                              fontSize: '0.6rem',
+                              fontWeight: 700
+                            }}>{badgeCount}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Mobile Sidebar overlay - hidden on mobile due to the modal menu, kept for non-mobile fallback if needed */}
+      {!embedMode && !isMobile && isMobileSidebarOpen && (
         <div
           className="responsive-sidebar-overlay"
           onClick={() => setIsMobileSidebarOpen(false)}
@@ -8646,7 +8943,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           width: isCollapsed ? 72 : 260,
           background: 'var(--sidebar-bg, #161d31)',
           color: '#dadada',
-          display: 'flex',
+          display: isMobile ? 'none' : 'flex',
           flexDirection: 'column',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           flexShrink: 0,

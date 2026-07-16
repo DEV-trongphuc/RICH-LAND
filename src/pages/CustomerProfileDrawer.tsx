@@ -1374,11 +1374,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
     
     if (ev.type !== 'task') {
-      const rawAct = drawerActivities.find((x: any) => x.id === ev.id);
-      if (rawAct) {
-        setEditingActivity(rawAct);
-        setShowActivityModal(true);
-      }
+      // Non-task items (notes, system alerts) should not trigger modal edit when clicking their body.
       return;
     }
     
@@ -3536,6 +3532,38 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               )}
                             </button>
                           ))}
+                          {group.title === 'Nghiệp vụ & Hỗ trợ' && (
+                            <button
+                              className={styles.sidebarTabBtn}
+                              onClick={() => {
+                                setTicketForm({
+                                  subject: 'Báo lỗi data',
+                                  priority: 'medium',
+                                  description: ''
+                                });
+                                setShowTicketModal(true);
+                              }}
+                              style={isMobileOrTablet ? {} : {
+                                padding: '11px 0.875rem',
+                                fontSize: '0.85rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                width: '100%',
+                                border: 'none',
+                                background: 'transparent',
+                                borderRadius: '6px',
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                transition: 'all 0.15s ease',
+                                marginTop: '0.15rem'
+                              }}
+                            >
+                              <ShieldAlert size={16} style={{ color: '#ef4444' }} />
+                              <span>Báo lỗi data</span>
+                            </button>
+                          )}
                           {group.title === 'Nghiệp vụ & Hỗ trợ' && isOwnerOrAdmin && (
                             <button
                               className={styles.sidebarTabBtn}
@@ -3797,8 +3825,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <CustomSelect
                               options={[
                                 { value: '', label: '— Chưa chọn —' },
-                                { value: 'male', label: 'Nam (Nam)' },
-                                { value: 'female', label: 'Nữ (Nữ)' },
+                                { value: 'male', label: 'Nam' },
+                                { value: 'female', label: 'Nữ' },
                                 { value: 'other', label: 'Khác' }
                               ]}
                               value={formData.gender || ''}
@@ -5118,11 +5146,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             {/* Step Content */}
                             <div
                               onClick={() => handleTimelineItemClick(ev)}
-                              style={{ flex: 1, padding: '1rem', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', cursor: 'pointer' }}
-                              onMouseEnter={e => { e.currentTarget.style.borderColor = ev.color; }}
-                              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
+                              style={{ 
+                                flex: 1, 
+                                padding: '0.75rem 1rem', 
+                                background: 'var(--color-surface)', 
+                                borderRadius: 'var(--radius-lg)', 
+                                border: '1px solid var(--color-border-light)', 
+                                boxShadow: 'var(--shadow-sm)', 
+                                transition: 'all 0.2s', 
+                                cursor: ev.type === 'task' ? 'pointer' : 'default' 
+                              }}
+                              onMouseEnter={e => { if (ev.type === 'task') e.currentTarget.style.borderColor = ev.color; }}
+                              onMouseLeave={e => { if (ev.type === 'task') e.currentTarget.style.borderColor = 'var(--color-border-light)'; }}
                             >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.375rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                 <div>
                                   <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{ev.title}</h4>
                                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -5177,9 +5214,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 }
 
                                 return (
-                                  <div style={{ padding: '0.875rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', marginTop: '0.5rem', border: '1px solid var(--color-border-light)' }}>
+                                  <div style={{ padding: '0.5rem 0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', border: '1px solid var(--color-border-light)' }}>
                                     {displayNoteText && (
-                                      <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>{formatNote(displayNoteText)}</p>
+                                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', lineHeight: 1.5, margin: 0 }}>{formatNote(displayNoteText)}</p>
                                     )}
 
                                     {linkUrl && (
@@ -5236,7 +5273,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   </div>
                                 );
                               })()}
-                              <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} />
+                              {ev.type === 'task' && (
+                                <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} users={users} />
+                              )}
                             </div>
                           </motion.div>
                         ))}

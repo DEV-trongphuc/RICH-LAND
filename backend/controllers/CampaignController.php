@@ -40,6 +40,12 @@ class CampaignController {
             try {
                 $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
             } catch (Exception $e) {}
+            try {
+                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN created_by INT DEFAULT NULL");
+            } catch (Exception $e) {}
+            try {
+                $this->db->exec("ALTER TABLE marketing_campaigns ADD COLUMN reference_url VARCHAR(500) DEFAULT NULL");
+            } catch (Exception $e) {}
 
             // Delete mock campaigns if they exist to keep only production/user data
             $this->db->exec("
@@ -119,10 +125,10 @@ class CampaignController {
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
 
         $stmt = $this->db->prepare("
-            INSERT INTO marketing_campaigns (tenant_id, name, description, status, start_date, end_date, project_ids, user_ids, manager_ids, document_ids, folder_path, reference_url) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO marketing_campaigns (tenant_id, name, description, status, start_date, end_date, project_ids, user_ids, manager_ids, document_ids, folder_path, reference_url, created_by) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->execute([$tenantId, $name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url]);
+        $stmt->execute([$tenantId, $name, $description, $status, $start_date, $end_date, $project_ids, $user_ids, $manager_ids, $document_ids, $folder_path, $reference_url, $userId]);
         $newId = (int)$this->db->lastInsertId();
 
         $this->propagateCampaignRoster($project_ids, $user_ids);

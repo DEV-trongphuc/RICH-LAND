@@ -612,6 +612,152 @@ function isManagerOfConsultant($conn, $managerUserId, $consultantId) {
     return $isManaged;
 }
 
+function notifyLeaveChange($conn, $consultantId, $startDate, $endDate, $type = 'ADD') {
+    // 1. Get consultant name & team leader info
+    $stmtC = $conn->prepare("
+        SELECT c.name as sale_name, c.team_id, t.leader_id 
+        FROM consultants c 
+        LEFT JOIN teams t ON c.team_id = t.id 
+        WHERE c.id = ?
+    ");
+    if (!$stmtC) return;
+    $stmtC->bind_param("i", $consultantId);
+    $stmtC->execute();
+    $cRow = $stmtC->get_result()->fetch_assoc();
+    $stmtC->close();
+    if (!$cRow) return;
+
+    $saleName = $cRow['sale_name'];
+    $leaderId = $cRow['leader_id'] ? (int)$cRow['leader_id'] : null;
+
+    // 2. Fetch Zalo Bot token
+    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+    if (empty($botToken)) return;
+
+    // 3. Collect target chat IDs: all admins + team leader (if any)
+    require_once __DIR__ . '/zalo_bot.php';
+    $allAdmins = getTicketNotifyAdmins($conn);
+    $notifyChatIds = [];
+    foreach ($allAdmins as $adm) {
+        if (!empty($adm['zalo_chat_id'])) {
+            $notifyChatIds[] = $adm['zalo_chat_id'];
+        }
+    }
+
+    if ($leaderId) {
+        $stmtL = $conn->prepare("SELECT zalo_chat_id FROM users WHERE id = ?");
+        if ($stmtL) {
+            $stmtL->bind_param("i", $leaderId);
+            $stmtL->execute();
+            $lRow = $stmtL->get_result()->fetch_assoc();
+            $stmtL->close();
+            if ($lRow && !empty($lRow['zalo_chat_id']) && !in_array($lRow['zalo_chat_id'], $notifyChatIds)) {
+                $notifyChatIds[] = $lRow['zalo_chat_id'];
+            }
+        }
+    }
+
+    if (empty($notifyChatIds)) return;
+
+    // 4. Construct message
+    $formattedStart = date('d/m/Y', strtotime($startDate));
+    $formattedEnd = date('d/m/Y', strtotime($endDate));
+    $timeStr = date('Y-m-d H:i:s');
+
+    if ($type === 'ADD') {
+        $zaloMsg = "⚠️ [ ĐĂNG KÝ NGHỈ PHÉP ]\n\n"
+            . "Tư vấn viên $saleName vừa đăng ký nghỉ phép:\n"
+            . "  • Thời gian: Từ $formattedStart đến $formattedEnd\n"
+            . "  • Ghi nhận lúc: $timeStr\n\n"
+            . "Hệ thống sẽ tạm thời không chia data mới cho TVV này trong thời gian nghỉ phép.";
+    } else {
+        $zaloMsg = "ℹ️ [ HỦY NGHỈ PHÉP ]\n\n"
+            . "Tư vấn viên $saleName vừa hủy đăng ký nghỉ phép:\n"
+            . "  • Thời gian: Từ $formattedStart đến $formattedEnd\n"
+            . "  • Thực hiện lúc: $timeStr\n\n"
+            . "Chế độ chia data sẽ hoạt động bình thường theo lịch làm việc.";
+    }
+
+    try {
+        sendZaloMessageToMultiple($botToken, $notifyChatIds, $zaloMsg, false);
+    } catch (Exception $e) {
+        error_log("Error sending leave Zalo notification: " . $e->getMessage());
+    }
+}
+
+function notifyNightShiftChange($conn, $userId, $shiftDate, $register = true) {
+    // 1. Get user name & team leader info
+    $stmtC = $conn->prepare("
+        SELECT c.name as sale_name, c.team_id, t.leader_id 
+        FROM consultants c 
+        LEFT JOIN teams t ON c.team_id = t.id 
+        WHERE c.id = ?
+    ");
+    if (!$stmtC) return;
+    $stmtC->bind_param("i", $userId);
+    $stmtC->execute();
+    $cRow = $stmtC->get_result()->fetch_assoc();
+    $stmtC->close();
+    if (!$cRow) return;
+
+    $saleName = $cRow['sale_name'];
+    $leaderId = $cRow['leader_id'] ? (int)$cRow['leader_id'] : null;
+
+    // 2. Fetch Zalo Bot token
+    $stmtToken = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key = 'zalo_bot_token' LIMIT 1");
+    $botToken = $stmtToken->fetch_assoc()['setting_value'] ?? '';
+    if (empty($botToken)) return;
+
+    // 3. Collect target chat IDs: all admins + team leader (if any)
+    require_once __DIR__ . '/zalo_bot.php';
+    $allAdmins = getTicketNotifyAdmins($conn);
+    $notifyChatIds = [];
+    foreach ($allAdmins as $adm) {
+        if (!empty($adm['zalo_chat_id'])) {
+            $notifyChatIds[] = $adm['zalo_chat_id'];
+        }
+    }
+
+    if ($leaderId) {
+        $stmtL = $conn->prepare("SELECT zalo_chat_id FROM users WHERE id = ?");
+        if ($stmtL) {
+            $stmtL->bind_param("i", $leaderId);
+            $stmtL->execute();
+            $lRow = $stmtL->get_result()->fetch_assoc();
+            $stmtL->close();
+            if ($lRow && !empty($lRow['zalo_chat_id']) && !in_array($lRow['zalo_chat_id'], $notifyChatIds)) {
+                $notifyChatIds[] = $lRow['zalo_chat_id'];
+            }
+        }
+    }
+
+    if (empty($notifyChatIds)) return;
+
+    // 4. Construct message
+    $formattedDate = date('d/m/Y', strtotime($shiftDate));
+    $timeStr = date('Y-m-d H:i:s');
+
+    if ($register) {
+        $zaloMsg = "🌙 [ ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
+            . "Tư vấn viên $saleName vừa ĐĂNG KÝ trực ca đêm:\n"
+            . "  • Ngày trực: $formattedDate (18h-6h)\n"
+            . "  • Ghi nhận lúc: $timeStr\n\n"
+            . "Hệ thống sẽ tự động điều phối lead mới phát sinh vào ca đêm cho TVV này.";
+    } else {
+        $zaloMsg = "🌙 [ HỦY ĐĂNG KÝ TRỰC ĐÊM ]\n\n"
+            . "Tư vấn viên $saleName vừa HỦY đăng ký trực ca đêm:\n"
+            . "  • Ngày trực: $formattedDate (18h-6h)\n"
+            . "  • Thực hiện lúc: $timeStr";
+    }
+
+    try {
+        sendZaloMessageToMultiple($botToken, $notifyChatIds, $zaloMsg, false);
+    } catch (Exception $e) {
+        error_log("Error sending night shift Zalo notification: " . $e->getMessage());
+    }
+}
+
 function isManagerOfLead($conn, $managerUserId, $leadId) {
     if (!$leadId) return false;
     $stmt = $conn->prepare("SELECT l.id FROM leads l JOIN users u ON l.assigned_to = u.id JOIN teams t ON u.team_id = t.id WHERE t.leader_id = ? AND l.id = ?");
@@ -3159,7 +3305,8 @@ switch ($action) {
             break;
         }
 
-        $userId = (int)$decodedUser['id'];
+        $isSale = $decodedUser['role'] === 'sale';
+        $userId = $isSale ? $currentSaleConsultantId : (int)$decodedUser['id'];
         $shiftDate = date('Y-m-d');
         $b = json_decode(file_get_contents('php://input'), true);
         $register = isset($b['register']) ? (bool)$b['register'] : true;
@@ -3173,6 +3320,7 @@ switch ($action) {
                 'user_id' => $userId,
                 'shift_date' => $shiftDate
             ]));
+            notifyNightShiftChange($conn, $userId, $shiftDate, true);
             echo json_encode(['success' => true, 'message' => 'Đăng ký trực đêm thành công.']);
         } else {
             $stmt = $conn->prepare("DELETE FROM night_shift_registrations WHERE user_id = ? AND shift_date = ?");
@@ -3183,6 +3331,7 @@ switch ($action) {
                 'user_id' => $userId,
                 'shift_date' => $shiftDate
             ]));
+            notifyNightShiftChange($conn, $userId, $shiftDate, false);
             echo json_encode(['success' => true, 'message' => 'Hủy đăng ký trực đêm thành công.']);
         }
         break;
@@ -3245,7 +3394,7 @@ switch ($action) {
         
         $targetConsultantId = null;
         if ($isSale) {
-            $targetConsultantId = (int)$decodedUser['id'];
+            $targetConsultantId = $currentSaleConsultantId;
         } else if (($isAdmin || $isManager) && isset($input['consultant_id'])) {
             $targetConsultantId = (int)$input['consultant_id'];
             if ($isManager) {
@@ -3256,7 +3405,7 @@ switch ($action) {
                 }
             }
         } else {
-            $targetConsultantId = (int)$decodedUser['id'];
+            $targetConsultantId = $currentSaleConsultantId;
         }
 
         if (!$targetConsultantId) {
@@ -3288,16 +3437,26 @@ switch ($action) {
             $nextStart = $recalcRes ? $recalcRes['start_date'] : null;
             $nextEnd = $recalcRes ? $recalcRes['end_date'] : null;
 
+            // Sync to users table
             $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE id = ?");
             $upStmt->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
             $upStmt->execute();
             $upStmt->close();
+
+            // Sync to consultants table (needed by lead assignment system)
+            $upStmtC = $conn->prepare("UPDATE consultants SET leave_start = ?, leave_end = ? WHERE id = ?");
+            $upStmtC->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
+            $upStmtC->execute();
+            $upStmtC->close();
 
             logAdminAction($conn, $decodedUser['id'], 'ADD_CONSULTANT_LEAVE', json_encode([
                 'consultant_id' => $targetConsultantId,
                 'start_date' => $startDate,
                 'end_date' => $endDate
             ]));
+
+            notifyLeaveChange($conn, $targetConsultantId, $startDate, $endDate, 'ADD');
+
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi đăng ký nghỉ phép.']);
@@ -3322,8 +3481,8 @@ switch ($action) {
         $isAdmin = ($decodedUser['role'] === 'admin' || $decodedUser['role'] === 'superadmin');
         $isManager = ($decodedUser['role'] === 'manager');
 
-        // First find the consultant_id of this leave to authorize and recalculate
-        $stmt = $conn->prepare("SELECT consultant_id FROM consultant_leaves WHERE id = ?");
+        // First find the consultant_id and dates of this leave to authorize, notify and recalculate
+        $stmt = $conn->prepare("SELECT consultant_id, start_date, end_date FROM consultant_leaves WHERE id = ?");
         $stmt->bind_param("i", $leaveId);
         $stmt->execute();
         $leaveRow = $stmt->get_result()->fetch_assoc();
@@ -3335,6 +3494,8 @@ switch ($action) {
         }
 
         $targetConsultantId = (int)$leaveRow['consultant_id'];
+        $startDate = $leaveRow['start_date'];
+        $endDate = $leaveRow['end_date'];
 
         if ($isSale && $targetConsultantId !== $currentSaleConsultantId) {
             echo json_encode(['success' => false, 'message' => 'Bạn không có quyền xóa đăng ký nghỉ phép của người khác.']);
@@ -3363,15 +3524,27 @@ switch ($action) {
             $nextStart = $recalcRes ? $recalcRes['start_date'] : null;
             $nextEnd = $recalcRes ? $recalcRes['end_date'] : null;
 
+            // Sync to users table
             $upStmt = $conn->prepare("UPDATE users SET leave_start = ?, leave_end = ? WHERE id = ?");
             $upStmt->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
             $upStmt->execute();
             $upStmt->close();
 
+            // Sync to consultants table (needed by lead assignment system)
+            $upStmtC = $conn->prepare("UPDATE consultants SET leave_start = ?, leave_end = ? WHERE id = ?");
+            $upStmtC->bind_param("ssi", $nextStart, $nextEnd, $targetConsultantId);
+            $upStmtC->execute();
+            $upStmtC->close();
+
             logAdminAction($conn, $decodedUser['id'], 'DELETE_CONSULTANT_LEAVE', json_encode([
                 'id' => $leaveId,
-                'consultant_id' => $targetConsultantId
+                'consultant_id' => $targetConsultantId,
+                'start_date' => $startDate,
+                'end_date' => $endDate
             ]));
+
+            notifyLeaveChange($conn, $targetConsultantId, $startDate, $endDate, 'DELETE');
+
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi xóa đăng ký nghỉ phép.']);

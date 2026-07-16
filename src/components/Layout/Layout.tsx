@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { Sidebar } from './Sidebar';
+import { Sidebar, SIDEBAR_GROUPS } from './Sidebar';
 import { Header } from './Header';
 import { QuickAddLeadModal } from '../QuickAddLeadModal';
 import { ProfileModal } from '../ProfileModal';
@@ -55,12 +56,47 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     return saved ? JSON.parse(saved) : true;
   });
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   const { showPOS, setShowPOS } = useUIStore();
   
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const visibleGroups = SIDEBAR_GROUPS.map(group => {
+    let items = [...group.items];
+    if (group.title === 'TỔNG QUAN' && user?.role === 'sale') {
+      items = [
+        { name: 'Tổng quan', href: '/', icon: Home, end: true },
+        { name: 'Bàn làm việc', href: '/workspace', icon: CheckSquare, badgeKey: 'workspaceTasks' },
+        { name: 'Kho Databank', href: '/databank', icon: Database, hideForRoles: ['viewer'] }
+      ];
+    }
+    const filteredItems = items.filter((item: any) => {
+      const role = user?.role as string;
+      const isAdmin = role === 'admin' || role === 'superadmin' || role === 'super_admin';
+      const isManagerOrAdmin = isAdmin || role === 'manager' || role === 'director';
+
+      if (item.adminOnly && !isManagerOrAdmin) {
+        return false;
+      }
+      if (item.hideForRoles && item.hideForRoles.includes(role)) {
+        return false;
+      }
+      return true;
+    });
+    return { ...group, items: filteredItems };
+  }).filter(group => group.items.length > 0);
   const [pendingTicketsCount, setPendingTicketsCount] = useState<number>(0);
   const [heldLeadsCount, setHeldLeadsCount] = useState<number>(0);
   const [pendingCheckInsCount, setPendingCheckInsCount] = useState<number>(0);
@@ -625,18 +661,106 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           }
         }
       `}</style>
-      <Sidebar 
-        isCollapsed={isSidebarCollapsed} 
-        onToggleCollapse={() => {
-          setIsSidebarCollapsed(prev => {
-            const newVal = !prev;
-            localStorage.setItem('sidebar_collapsed', JSON.stringify(newVal));
-            return newVal;
-          });
-        }} 
-        isMobileOpen={isMobileSidebarOpen}
-        onMobileClose={() => setIsMobileSidebarOpen(false)}
-      />
+      {/* Mobile Modal Menu */}
+      {isMobile && isMobileSidebarOpen && createPortal(
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 11000,
+          background: 'rgba(22, 29, 49, 0.96)',
+          backdropFilter: 'blur(16px)',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '1.5rem',
+          color: '#dadada',
+          overflowY: 'auto'
+        }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px solid rgba(192, 132, 252, 0.8)'
+              }}>
+                <img src="/LOGO.jpg" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} alt="logo" />
+              </div>
+              <span style={{ fontSize: '1.25rem', fontWeight: 900, color: 'white', letterSpacing: '-0.02em' }}>RICH LAND</span>
+            </div>
+            <button 
+              onClick={() => setIsMobileSidebarOpen(false)}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'rgba(255,255,255,0.1)', border: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'white', cursor: 'pointer'
+              }}
+            >
+              <XCircle size={20} />
+            </button>
+          </div>
+
+          {/* Menu Groups */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
+            {visibleGroups.map((group, groupIdx) => (
+              <div key={groupIdx} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.08em' }}>{t(group.title)}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.6rem' }}>
+                  {group.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = location.pathname === item.href;
+                    return (
+                      <button
+                        key={item.name}
+                        onClick={() => {
+                          navigate(item.href);
+                          setIsMobileSidebarOpen(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '0.75rem',
+                          background: isActive ? 'var(--color-primary)' : 'rgba(255,255,255,0.06)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          borderRadius: '12px',
+                          color: 'white',
+                          fontSize: '0.8125rem',
+                          fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.15s ease',
+                          position: 'relative'
+                        }}
+                      >
+                        <Icon size={16} color="white" />
+                        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t(item.name)}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {!isMobile && (
+        <Sidebar 
+          isCollapsed={isSidebarCollapsed} 
+          onToggleCollapse={() => {
+            setIsSidebarCollapsed(prev => {
+              const newVal = !prev;
+              localStorage.setItem('sidebar_collapsed', JSON.stringify(newVal));
+              return newVal;
+            });
+          }} 
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileClose={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
         <Header 
           onActivityFeedClick={() => setIsActivityFeedOpen(true)}

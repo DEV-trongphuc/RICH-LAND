@@ -534,7 +534,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
         {/* Mobile menu trigger */}
         <button 
-          onClick={onMenuClick}
+          onClick={() => setIsAppLauncherOpen(true)}
           style={{
             width: 36,
             height: 36,
@@ -1399,17 +1399,17 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                   )}
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1rem' : '1.75rem' }}>
                   {/* Gần đây (Recent items) */}
                   {recentItems.length > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '1.5rem' }}>
-                      <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderBottom: '1px solid var(--color-border-light)', paddingBottom: isMobile ? '1rem' : '1.5rem' }}>
+                      <span style={{ fontSize: isMobile ? '0.72rem' : '0.8125rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         {t('Gần đây')}
                       </span>
                       <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                        gap: '16px'
+                        gridTemplateColumns: isMobile ? 'repeat(3, 1fr)' : 'repeat(auto-fill, minmax(140px, 1fr))',
+                        gap: isMobile ? '8px' : '16px'
                       }}>
                         {recentItems.map(item => {
                           const colors = getItemColor(item.name);
@@ -1426,8 +1426,8 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '12px',
-                                padding: '20px 16px',
+                                gap: isMobile ? '6px' : '12px',
+                                padding: isMobile ? '12px 8px' : '20px 16px',
                                 background: 'var(--color-bg)',
                                 border: '1px solid var(--color-border-light)',
                                 borderRadius: '18px',
@@ -1446,8 +1446,8 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                               }}
                             >
                               <div style={{
-                                width: '56px',
-                                height: '56px',
+                                width: isMobile ? '40px' : '56px',
+                                height: isMobile ? '40px' : '56px',
                                 borderRadius: '16px',
                                 background: colors.bg,
                                 display: 'flex',
@@ -1455,9 +1455,9 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                 justifyContent: 'center',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
                               }}>
-                                <Icon size={28} color={colors.color} strokeWidth={2} />
+                                <Icon size={isMobile ? 20 : 28} color={colors.color} strokeWidth={2} />
                               </div>
-                              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>
+                              <span style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>
                                 {t(item.name)}
                               </span>
                             </div>
@@ -1468,17 +1468,17 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                   )}
 
                   {/* Categories */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1.25rem' : '2rem' }}>
                     {visibleGroups.map(group => (
-                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, whiteSpace: 'nowrap' }}>
+                          <h4 style={{ fontSize: isMobile ? '0.6875rem' : '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0, whiteSpace: 'nowrap' }}>
                             {t(group.title)}
                           </h4>
                           <div style={{ flex: 1, height: '1px', background: 'var(--color-border-light)' }} />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '12px 24px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(300px, 1fr))', gap: isMobile ? '6px' : '12px 24px' }}>
                           {group.items.map(item => {
                             const IconComponent = item.icon;
                             const colors = getItemColor(item.name);
@@ -1494,7 +1494,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '12px',
-                                  padding: '8px 12px',
+                                  padding: isMobile ? '6px 8px' : '8px 12px',
                                   borderRadius: '8px',
                                   cursor: 'pointer',
                                   transition: 'all 0.2s ease-in-out',
@@ -1507,8 +1507,8 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                 }}
                               >
                                 <div style={{
-                                  width: '32px',
-                                  height: '32px',
+                                  width: isMobile ? '28px' : '32px',
+                                  height: isMobile ? '28px' : '32px',
                                   borderRadius: '50%',
                                   background: colors.bg,
                                   display: 'flex',
@@ -1517,15 +1517,17 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                   flexShrink: 0,
                                   boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
                                 }}>
-                                  <IconComponent size={16} color={colors.color} strokeWidth={2} />
+                                  <IconComponent size={isMobile ? 14 : 16} color={colors.color} strokeWidth={2} />
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
-                                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  <span style={{ fontSize: isMobile ? '0.8rem' : '0.85rem', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {t(item.name)}
                                   </span>
-                                  <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {t(desc)}
-                                  </span>
+                                  {!isMobile && (
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {t(desc)}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1704,36 +1706,47 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       </CustomModal>
 
       {user?.role === 'sale' && (!headerCheckIn || headerCheckIn.status === 'rejected') && (
-        <button
-          onClick={() => {
-            localStorage.setItem('trigger_checkin', '1');
-            window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
-          }}
-          style={{
-            position: 'fixed',
-            bottom: 88,
-            right: 24,
-            width: 52,
-            height: 52,
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-            color: 'white',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: '0 10px 25px rgba(239, 68, 68, 0.4)',
-            zIndex: 90,
-            transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            outline: 'none'
-          }}
-          title={t('Chấm công ngay')}
-          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          <Fingerprint size={24} />
-        </button>
+        <>
+          <style>{`
+            @media (max-width: 768px) {
+              .floating-checkin-btn {
+                bottom: 144px !important;
+                right: 16px !important;
+              }
+            }
+          `}</style>
+          <button
+            className="floating-checkin-btn"
+            onClick={() => {
+              localStorage.setItem('trigger_checkin', '1');
+              window.dispatchEvent(new CustomEvent('trigger-checkin-modal'));
+            }}
+            style={{
+              position: 'fixed',
+              bottom: 88,
+              right: 24,
+              width: 52,
+              height: 52,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              color: 'white',
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: '0 10px 25px rgba(239, 68, 68, 0.4)',
+              zIndex: 90,
+              transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              outline: 'none'
+            }}
+            title={t('Chấm công ngay')}
+            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <Fingerprint size={24} />
+          </button>
+        </>
       )}
 
       {/* Notifications Modal */}

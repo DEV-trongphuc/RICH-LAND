@@ -508,7 +508,7 @@ Bạn có thể gõ rõ từ khóa hoặc click vào các gợi ý bên dưới 
           .chatbot-parent.is-closed {
             left: auto !important;
             right: 16px !important;
-            bottom: 16px !important;
+            bottom: 80px !important;
             width: 52px !important;
             height: 52px !important;
           }

@@ -26,7 +26,8 @@ export const ToggleSwitch = ({ checked, onChange, small = false }: ToggleSwitchP
         position: 'relative',
         display: 'flex',
         justifyContent: checked ? 'flex-end' : 'flex-start',
-        border: '1px solid rgba(0,0,0,0.04)'
+        border: '1px solid rgba(0,0,0,0.04)',
+        cursor: 'pointer'
       }}
       transition={{ duration: 0.2 }}
     >
