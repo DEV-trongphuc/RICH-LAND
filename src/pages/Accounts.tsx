@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw, Loader2 } from 'lucide-react';
+import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Check, RefreshCw, History, ChevronLeft, ChevronRight, Camera, RotateCcw, Loader2 } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -760,21 +760,10 @@ const AccountsInner = () => {
                   }}
                   className="form-input"
                   style={{
-                    paddingLeft: '2.5rem',
+                    paddingLeft: '12px',
                     borderRadius: '10px',
                     fontSize: '0.875rem',
                     width: '100%'
-                  }}
-                />
-                <Search 
-                  size={16} 
-                  style={{
-                    position: 'absolute',
-                    left: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--color-text-muted)',
-                    pointerEvents: 'none'
                   }}
                 />
                 {searchQuery && (
