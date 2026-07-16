@@ -140,17 +140,6 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
         }
         // --- KẾT THÚC TEST COMMAND ---
 
-        // --- XỬ LÝ COMMAND LẤY ID CHAT (PUBLIC) ---
-        if ($textLower === '/id' || $textLower === '/get_id' || $textLower === '/myid') {
-            if (!empty($botToken)) {
-                $reply = "📌 [ THÔNG TIN CUỘC TRÒ CHUYỆN ]\n\n"
-                    . "• ID của bạn/nhóm này là: $chatId\n"
-                    . "• Hãy sử dụng ID này cấu hình Zalo Chat ID trên CRM để nhận báo cáo hoặc thông báo.";
-                sendZaloMessage($botToken, $chatId, $reply);
-            }
-            exit;
-        }
-
         // --- XỬ LÝ COMMANDS BÁO CÁO NHANH (ADMIN ONLY) ---
         if (strpos($textLower, '/tools') === 0 || strpos($textLower, '/report') === 0 || strpos($textLower, '/ticket') === 0 || strpos($textLower, '/sales') === 0 || strpos($textLower, '/accept') === 0 || strpos($textLower, '/reject') === 0 || strpos($textLower, '/round') === 0 || strpos($textLower, '/check') === 0 || strpos($textLower, '/week') === 0 || strpos($textLower, '/duyet') === 0 || strpos($textLower, '/tuchoi') === 0) {
             // Kiểm tra phân quyền Admin

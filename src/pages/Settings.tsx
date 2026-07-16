@@ -1086,6 +1086,47 @@ const SettingsInner = () => {
     toast.success(t("Đã xuất file kết quả lọc trùng thành công!"));
   };
 
+  const getTabStyle = (tab: string) => ({
+    padding: '8px 18px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '0.85rem',
+    fontWeight: 600,
+    background: 'transparent',
+    color: activeTab === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    border: 'none',
+    flexShrink: 0,
+    position: 'relative' as const,
+    outline: 'none',
+    boxShadow: 'none',
+    userSelect: 'none' as const
+  });
+
+  const renderActiveIndicator = (tab: string) => {
+    if (activeTab !== tab) return null;
+    return (
+      <motion.div 
+        layoutId="activeSettingsTabIndicator"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'var(--color-surface)',
+          borderRadius: '8px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+          zIndex: 1
+        }}
+        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+      />
+    );
+  };
+
   return (
     <div style={{ animation: 'fadeIn 0.3s' }}>
       <div className="page-header settings-page-header" style={{
@@ -1145,189 +1186,60 @@ const SettingsInner = () => {
       <div 
         style={{ 
           display: 'flex', 
-          background: 'var(--color-border-light)', 
+          background: 'var(--color-bg-secondary)', 
           border: '1px solid var(--color-border)',
-          borderRadius: '8px', 
-          padding: '2px', 
+          borderRadius: '12px', 
+          padding: '4px', 
           alignSelf: 'flex-start', 
           marginBottom: '1.5rem', 
           width: 'fit-content', 
-          gap: '2px', 
-          flexWrap: 'wrap' 
+          gap: '4px', 
+          flexWrap: 'nowrap',
+          maxWidth: '100%',
+          overflowX: 'auto',
+          scrollbarWidth: 'none',
+          WebkitOverflowScrolling: 'touch'
         }} 
-        className="hide-on-mobile"
+        className="hide-on-mobile no-scrollbar"
       >
-        <button
-          onClick={() => setActiveTab('processing')}
-          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'processing' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
-        >
-          {activeTab === 'processing' && (
-            <motion.div 
-              layoutId="activeSettingsTabIndicator"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                zIndex: 1
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            />
-          )}
+        <button onClick={() => setActiveTab('processing')} style={getTabStyle('processing')}>
+          {renderActiveIndicator('processing')}
           <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <SettingsIcon size={16} /> {t('Cấu hình Xử lý')}
           </span>
         </button>
-        <button
-          onClick={() => setActiveTab('communications')}
-          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'communications' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
-        >
-          {activeTab === 'communications' && (
-            <motion.div 
-              layoutId="activeSettingsTabIndicator"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                zIndex: 1
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            />
-          )}
+        <button onClick={() => setActiveTab('communications')} style={getTabStyle('communications')}>
+          {renderActiveIndicator('communications')}
           <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Send size={16} /> {t('Cấu hình Gửi tin & Email')}
           </span>
         </button>
-        <button
-          onClick={() => setActiveTab('report')}
-          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'report' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
-        >
-          {activeTab === 'report' && (
-            <motion.div 
-              layoutId="activeSettingsTabIndicator"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                zIndex: 1
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            />
-          )}
+        <button onClick={() => setActiveTab('report')} style={getTabStyle('report')}>
+          {renderActiveIndicator('report')}
           <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <BarChart2 size={16} /> {t('Báo cáo')}
           </span>
         </button>
-        <button
-          onClick={() => setActiveTab('duplicate_check')}
-          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'duplicate_check' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
-        >
-          {activeTab === 'duplicate_check' && (
-            <motion.div 
-              layoutId="activeSettingsTabIndicator"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                zIndex: 1
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            />
-          )}
+        <button onClick={() => setActiveTab('duplicate_check')} style={getTabStyle('duplicate_check')}>
+          {renderActiveIndicator('duplicate_check')}
           <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <FileSpreadsheet size={16} /> {t('Ánh xạ dữ liệu cũ')}
           </span>
         </button>
-        <button
-          onClick={() => setActiveTab('ai')}
-          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'ai' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
-        >
-          {activeTab === 'ai' && (
-            <motion.div 
-              layoutId="activeSettingsTabIndicator"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                zIndex: 1
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            />
-          )}
+        <button onClick={() => setActiveTab('ai')} style={getTabStyle('ai')}>
+          {renderActiveIndicator('ai')}
           <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Zap size={16} /> {t('Cấu hình Trợ lý AI')}
           </span>
         </button>
-        <button
-          onClick={() => setActiveTab('workflow')}
-          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'workflow' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
-        >
-          {activeTab === 'workflow' && (
-            <motion.div 
-              layoutId="activeSettingsTabIndicator"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                zIndex: 1
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            />
-          )}
+        <button onClick={() => setActiveTab('workflow')} style={getTabStyle('workflow')}>
+          {renderActiveIndicator('workflow')}
           <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Activity size={16} /> {t('Mẫu Quy trình')}
           </span>
         </button>
-        <button
-          onClick={() => setActiveTab('database')}
-          style={{ padding: '6px 16px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: activeTab === 'database' ? 'var(--color-text)' : 'var(--color-text-light)', cursor: 'pointer', transition: 'color 0.2s', border: 'none', flexShrink: 0, position: 'relative', outline: 'none', boxShadow: 'none' }}
-        >
-          {activeTab === 'database' && (
-            <motion.div 
-              layoutId="activeSettingsTabIndicator"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'var(--color-surface)',
-                borderRadius: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                zIndex: 1
-              }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-            />
-          )}
+        <button onClick={() => setActiveTab('database')} style={getTabStyle('database')}>
+          {renderActiveIndicator('database')}
           <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Database size={16} /> {t('Bảo trì Database')}
           </span>
@@ -3342,14 +3254,15 @@ function doPost(e) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
                       <div>
                         <label className="form-label">{t('Trạng thái KHTN được phép tạo phiếu')}</label>
-                        <input
+                         <input
                           type="text"
                           className="form-input"
                           value={coopEligibleStatuses}
-                          onChange={e => setCoopEligibleStatuses(e.target.value)}
+                          disabled
+                          style={{ backgroundColor: 'var(--color-bg-secondary)', cursor: 'not-allowed', opacity: 0.7 }}
                         />
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Các slugs trạng thái cách nhau bằng dấu phẩy (ví dụ: booking,da_gap,dat_coc).')}
+                          {t('Được cấu hình bằng Checkbox tại phần "Cấu hình Vòng đời & Trạng thái Khách hàng" bên dưới.')}
                         </span>
                       </div>
                       <div>
@@ -3896,6 +3809,30 @@ function doPost(e) {
                               }}>
                                 {isDuplicate ? `${t('Mã trùng:')} ${status}` : `key: ${status}`}
                               </span>
+                              
+                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', cursor: 'pointer', userSelect: 'none', marginLeft: '12px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean).includes(status)}
+                                  onChange={e => {
+                                    const currentList = coopEligibleStatuses.split(',').map((s: string) => s.trim()).filter(Boolean);
+                                    let newList;
+                                    if (e.target.checked) {
+                                      if (!currentList.includes(status)) {
+                                        currentList.push(status);
+                                      }
+                                      newList = currentList;
+                                    } else {
+                                      newList = currentList.filter(s => s !== status);
+                                    }
+                                    setCoopEligibleStatuses(newList.join(','));
+                                  }}
+                                  style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--color-primary)' }}
+                                />
+                                <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                                  {t('Cho phép hợp tác')}
+                                </span>
+                              </label>
                             </div>
                           </div>
 
