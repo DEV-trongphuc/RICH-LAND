@@ -428,24 +428,33 @@ class CampaignController {
         
         $campaignIdStr = (string)$campaignId;
         
-        // Count total leads in leads table
+        // Count total leads in leads table + manually linked contacts
         $stmtLeads = $this->db->prepare("
-            SELECT COUNT(*) 
-            FROM leads 
-            WHERE (campaign_id = ? OR campaign_name = ?)
+            SELECT (
+                SELECT COUNT(*) 
+                FROM leads 
+                WHERE (campaign_id = ? OR campaign_name = ?)
+            ) + (
+                SELECT COUNT(*) 
+                FROM contacts 
+                WHERE campaign_id = ? 
+                  AND (person_id IS NULL OR person_id NOT IN (
+                      SELECT person_id FROM leads WHERE (campaign_id = ? OR campaign_name = ?) AND person_id IS NOT NULL
+                  ))
+            )
         ");
-        $stmtLeads->execute([$campaignIdStr, $campName]);
+        $stmtLeads->execute([$campaignIdStr, $campName, $campaignId, $campaignIdStr, $campName]);
         $totalLeads = (int)$stmtLeads->fetchColumn();
         
         // Converted leads (leads that have a contact record)
         $stmtConverted = $this->db->prepare("
             SELECT COUNT(DISTINCT c.id) 
             FROM contacts c
-            JOIN leads l ON c.person_id = l.person_id
-            WHERE (l.campaign_id = ? OR l.campaign_name = ?)
+            LEFT JOIN leads l ON c.person_id = l.person_id
+            WHERE (l.campaign_id = ? OR l.campaign_name = ? OR c.campaign_id = ?)
               AND c.deleted_at IS NULL
         ");
-        $stmtConverted->execute([$campaignIdStr, $campName]);
+        $stmtConverted->execute([$campaignIdStr, $campName, $campaignId]);
         $convertedLeads = (int)$stmtConverted->fetchColumn();
         
         // Conversion rate
@@ -455,12 +464,12 @@ class CampaignController {
         $stmtWon = $this->db->prepare("
             SELECT COUNT(DISTINCT c.id) 
             FROM contacts c
-            JOIN leads l ON c.person_id = l.person_id
-            WHERE (l.campaign_id = ? OR l.campaign_name = ?)
+            LEFT JOIN leads l ON c.person_id = l.person_id
+            WHERE (l.campaign_id = ? OR l.campaign_name = ? OR c.campaign_id = ?)
               AND c.pipeline_status = 'dong_deal'
               AND c.deleted_at IS NULL
         ");
-        $stmtWon->execute([$campaignIdStr, $campName]);
+        $stmtWon->execute([$campaignIdStr, $campName, $campaignId]);
         $wonDeals = (int)$stmtWon->fetchColumn();
         
         // Actual revenue from paid invoices of contacts from this campaign
@@ -468,13 +477,13 @@ class CampaignController {
             SELECT COALESCE(SUM(inv.total), 0)
             FROM invoices inv
             JOIN contacts c ON inv.contact_id = c.id
-            JOIN leads l ON c.person_id = l.person_id
-            WHERE (l.campaign_id = ? OR l.campaign_name = ?)
+            LEFT JOIN leads l ON c.person_id = l.person_id
+            WHERE (l.campaign_id = ? OR l.campaign_name = ? OR c.campaign_id = ?)
               AND inv.status = 'paid'
               AND inv.deleted_at IS NULL
               AND c.deleted_at IS NULL
         ");
-        $stmtRev->execute([$campaignIdStr, $campName]);
+        $stmtRev->execute([$campaignIdStr, $campName, $campaignId]);
         $actualRevenue = (float)$stmtRev->fetchColumn();
         
         // Audit changelog trail: last 15 actions

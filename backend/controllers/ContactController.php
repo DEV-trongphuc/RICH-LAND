@@ -31,6 +31,7 @@ class ContactController {
         $stage   = $_GET['stage_id'] ?? '';
         $companyId = $_GET['company_id'] ?? '';
         $projectId = $_GET['project_id'] ?? '';
+        $campaignId = $_GET['campaign_id'] ?? '';
         $tag     = $_GET['tag'] ?? '';
         $from    = $_GET['from'] ?? '';
         $to      = $_GET['to'] ?? '';
@@ -80,6 +81,7 @@ class ContactController {
         if ($stage)  { $where[] = 'c.stage_id = ?'; $params[] = (int)$stage; }
         if ($companyId) { $where[] = 'c.company_id = ?'; $params[] = (int)$companyId; }
         if ($projectId !== '') { $where[] = 'c.project_id = ?'; $params[] = (int)$projectId; }
+        if ($campaignId !== '') { $where[] = 'c.campaign_id = ?'; $params[] = (int)$campaignId; }
         if ($tag !== '') { $where[] = 'c.tags LIKE ?'; $params[] = '%"' . $tag . '"%'; }
         
         if ($from !== '') {

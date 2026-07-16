@@ -233,6 +233,8 @@ export const ContactsPage: React.FC = () => {
   const [filterSource, setFilterSource] = useState('');
   const [filterOwnerId, setFilterOwnerId] = useState('');
   const [filterProjectId, setFilterProjectId] = useState('');
+  const [filterCampaignId, setFilterCampaignId] = useState('');
+  const [campaigns, setCampaigns] = useState<any[]>([]);
   const [filterTag, setFilterTag] = useState('');
   const [dateFilterType, setDateFilterType] = useState<'range' | 'before' | 'after'>('range');
   const [filterFromDate, setFilterFromDate] = useState('');
@@ -264,6 +266,7 @@ export const ContactsPage: React.FC = () => {
     source: '',
     ownerId: '',
     projectId: '',
+    campaignId: '',
     tag: '',
     dateField: 'created_at' as 'created_at' | 'updated_at' | 'last_contact',
     dateType: 'range' as 'range' | 'before' | 'after',
@@ -460,6 +463,7 @@ export const ContactsPage: React.FC = () => {
       if (activeFilters.source) params.source = activeFilters.source;
       if (activeFilters.ownerId) params.owner_id = activeFilters.ownerId;
       if (activeFilters.projectId) params.project_id = activeFilters.projectId;
+      if (activeFilters.campaignId) params.campaign_id = activeFilters.campaignId;
       if (activeFilters.tag) params.tag = activeFilters.tag;
 
       if (activeFilters.dateActive) {
@@ -546,6 +550,7 @@ export const ContactsPage: React.FC = () => {
       try {
         const projPromise = api.get('/projects?bypass_roster=1').catch(() => null);
         const stagePromise = api.get('/pipeline-stages').catch(() => null);
+        const campaignPromise = api.get('/marketing-campaigns').catch(() => null);
         
         let teamsRes: any = null;
         let usersRes: any = null;
@@ -554,7 +559,7 @@ export const ContactsPage: React.FC = () => {
           teamsRes = await api.get('/teams').catch(() => null);
         }
         
-        const [projRes, stageRes] = await Promise.all([projPromise, stagePromise]);
+        const [projRes, stageRes, campaignRes] = await Promise.all([projPromise, stagePromise, campaignPromise]);
         
         if (projRes) {
           const d = projRes.data.data;
@@ -563,6 +568,10 @@ export const ContactsPage: React.FC = () => {
         if (stageRes) {
           const d = stageRes.data.data;
           setPipelineStages(Array.isArray(d) ? d : (d?.items || []));
+        }
+        if (campaignRes) {
+          const d = campaignRes.data.data;
+          setCampaigns(Array.isArray(d) ? d : (d?.items || []));
         }
         
         let loadedTeams: any[] = [];
@@ -611,6 +620,7 @@ export const ContactsPage: React.FC = () => {
       source: filterSource,
       ownerId: filterOwnerId,
       projectId: filterProjectId,
+      campaignId: filterCampaignId,
       tag: filterTag.trim(),
       dateField: filterDateField as any,
       dateType: dateFilterType,
@@ -627,6 +637,7 @@ export const ContactsPage: React.FC = () => {
     setFilterSource('');
     setFilterOwnerId('');
     setFilterProjectId('');
+    setFilterCampaignId('');
     setFilterTag('');
     setFilterDateField('created_at');
     setDateFilterType('range');
@@ -640,6 +651,7 @@ export const ContactsPage: React.FC = () => {
       source: '',
       ownerId: '',
       projectId: '',
+      campaignId: '',
       tag: '',
       dateField: 'created_at',
       dateType: 'range',
@@ -709,6 +721,7 @@ export const ContactsPage: React.FC = () => {
     if (activeFilters.source) params.set('source', activeFilters.source);
     if (activeFilters.ownerId) params.set('owner_id', activeFilters.ownerId);
     if (activeFilters.projectId) params.set('project_id', activeFilters.projectId);
+    if (activeFilters.campaignId) params.set('campaign_id', activeFilters.campaignId);
     if (activeFilters.tag) params.set('tag', activeFilters.tag);
     if (activeFilters.dateActive) {
       params.set('date_field', activeFilters.dateField);
@@ -1015,13 +1028,50 @@ export const ContactsPage: React.FC = () => {
                     <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Dự án giao dịch</label>
                     <CustomSelect
                       value={filterProjectId}
-                      onChange={v => setFilterProjectId(v)}
+                      onChange={v => {
+                        setFilterProjectId(v);
+                        if (v && filterCampaignId) {
+                          const camp = campaigns.find(c => String(c.id) === String(filterCampaignId));
+                          if (camp && String(camp.project_id) !== String(v)) {
+                            setFilterCampaignId('');
+                          }
+                        }
+                      }}
                       options={[
                         { value: '', label: 'Tất cả dự án' },
                         ...projects.map(p => ({ value: String(p.id), label: p.name }))
                       ]}
                       searchable
                     />
+                  </div>
+
+                  {/* Chiến dịch */}
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '4px', display: 'block' }}>Chiến dịch</label>
+                    {(() => {
+                      const filteredCamps = filterProjectId
+                        ? campaigns.filter(c => Number(c.project_id) === Number(filterProjectId))
+                        : campaigns;
+                      return (
+                        <CustomSelect
+                          value={filterCampaignId}
+                          onChange={v => {
+                            setFilterCampaignId(v);
+                            if (v) {
+                              const camp = campaigns.find(c => String(c.id) === String(v));
+                              if (camp && camp.project_id) {
+                                setFilterProjectId(String(camp.project_id));
+                              }
+                            }
+                          }}
+                          options={[
+                            { value: '', label: 'Tất cả chiến dịch' },
+                            ...filteredCamps.map(c => ({ value: String(c.id), label: c.name }))
+                          ]}
+                          searchable
+                        />
+                      );
+                    })()}
                   </div>
 
                   {/* Nguồn */}
