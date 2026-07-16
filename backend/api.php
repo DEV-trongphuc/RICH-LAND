@@ -79,7 +79,7 @@ try {
     $conn->query("ALTER TABLE consultants ADD COLUMN bank_account VARCHAR(100) NULL");
 } catch (Exception $e) {}
 try {
-    $conn->query("ALTER TABLE consultants ADD COLUMN overtime_mode TINYINT(1) DEFAULT 0");
+    $conn->query("ALTER TABLE users ADD COLUMN overtime_mode TINYINT(1) DEFAULT 0");
 } catch (Exception $e) {}
 
 // Safe CORS origin matching
