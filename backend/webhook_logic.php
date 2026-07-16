@@ -1644,6 +1644,22 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
  */
 function checkConsultantGates($conn, $consultantId, $lead = null)
 {
+    // Resolve user ID via email mapping to query tables that use user_id instead of consultant_id
+    $targetUserId = null;
+    $stmtUId = $conn->prepare("SELECT u.id FROM users u JOIN consultants c ON u.email = c.email WHERE c.id = ? LIMIT 1");
+    if ($stmtUId) {
+        $stmtUId->bind_param("i", $consultantId);
+        $stmtUId->execute();
+        $uRow = $stmtUId->get_result()->fetch_assoc();
+        $stmtUId->close();
+        if ($uRow) {
+            $targetUserId = (int)$uRow['id'];
+        }
+    }
+    if (!$targetUserId) {
+        $targetUserId = $consultantId;
+    }
+
     // GATE 1: Roster chiến dịch (Project Roster)
     if ($lead) {
         $matchedProjectId = null;
@@ -1668,7 +1684,11 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         if (!$matchedProjectId) {
             $stmtProj = $conn->query("SELECT id, code, name FROM projects WHERE status = 'active'");
             if ($stmtProj) {
+                $pRowList = [];
                 while ($p = $stmtProj->fetch_assoc()) {
+                    $pRowList[] = $p;
+                }
+                foreach ($pRowList as $p) {
                     $code = strtolower($p['code'] ?? '');
                     $pName = strtolower($p['name'] ?? '');
                     
@@ -1688,7 +1708,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
         
         if ($matchedProjectId) {
             $stmtR = $conn->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ?");
-            $stmtR->bind_param("ii", $matchedProjectId, $consultantId);
+            $stmtR->bind_param("ii", $matchedProjectId, $targetUserId);
             $stmtR->execute();
             $inRoster = $stmtR->get_result()->fetch_assoc();
             $stmtR->close();
@@ -1703,7 +1723,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
     if ($dayOfWeek >= 1 && $dayOfWeek <= 6) { // Mon-Sat
         $todayStr = date('Y-m-d');
         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
-        $stmtCheck->bind_param("is", $consultantId, $todayStr);
+        $stmtCheck->bind_param("is", $targetUserId, $todayStr);
         $stmtCheck->execute();
         $hasCheckIn = $stmtCheck->get_result()->fetch_assoc();
         $stmtCheck->close();
@@ -1724,7 +1744,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
 
         // Đảm bảo phải có selfie check-in được duyệt trong ngày Chủ Nhật
         $stmtCheck = $conn->prepare("SELECT 1 FROM check_ins WHERE user_id = ? AND check_in_date = ? AND status = 'approved'");
-        $stmtCheck->bind_param("is", $consultantId, $todayStr);
+        $stmtCheck->bind_param("is", $targetUserId, $todayStr);
         $stmtCheck->execute();
         $hasCheckIn = $stmtCheck->get_result()->fetch_assoc();
         $stmtCheck->close();
@@ -1735,7 +1755,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
 
     // GATE 3: Nút Sẵn sàng (vacation_mode / status)
     $stmtUser = $conn->prepare("SELECT vacation_mode, status FROM users WHERE id = ?");
-    $stmtUser->bind_param("i", $consultantId);
+    $stmtUser->bind_param("i", $targetUserId);
     $stmtUser->execute();
     $u = $stmtUser->get_result()->fetch_assoc();
     $stmtUser->close();
@@ -1780,7 +1800,7 @@ function checkConsultantGates($conn, $consultantId, $lead = null)
               )
           )
     ");
-    $stmtKhtn->bind_param("i", $consultantId);
+    $stmtKhtn->bind_param("i", $targetUserId);
     $stmtKhtn->execute();
     $khtnCnt = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
     $stmtKhtn->close();
