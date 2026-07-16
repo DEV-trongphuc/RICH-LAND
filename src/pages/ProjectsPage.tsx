@@ -3963,7 +3963,12 @@ export default function ProjectsPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <Avatar src={member.avatar_url} name={member.full_name} size={36} />
                           <div>
-                            <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>{member.full_name}</h4>
+                            <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                              {member.full_name}
+                              <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-muted)', marginLeft: '4px' }}>
+                                ({member.role === 'sales' || member.role === 'sale' ? 'Sale' : member.role === 'manager' ? 'Manager' : member.role === 'director' ? 'Director' : member.role})
+                              </span>
+                            </h4>
                             <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{member.email}</p>
                           </div>
                         </div>
