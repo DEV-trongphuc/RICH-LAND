@@ -8171,7 +8171,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {/* RIGHT COLUMN: Vacation Toggle & Work Hour Settings */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-            {profile?.role === 'sale' && (
+            {effectiveRole === 'sale' && (
               <>
             {/* Vacation Status Card */}
             <div className="card" style={{
