@@ -88,6 +88,25 @@ class TeamController
                 $assignStmt = $this->db->prepare("UPDATE users SET team_id = ? WHERE id IN ($inQuery)");
                 $assignStmt->execute(array_merge([$newId], array_map('intval', $b['member_ids'])));
             }
+
+            // Sync to consultants
+            $syncStmt = $this->db->prepare("UPDATE consultants c JOIN users u ON c.email = u.email SET c.team_id = u.team_id");
+            $syncStmt->execute();
+
+            // Send notifications to newly added members
+            if (!empty($b['member_ids'])) {
+                $editorName = $auth['full_name'] ?? 'Quản trị viên';
+                foreach ($b['member_ids'] as $addedUid) {
+                    $stmtNotif = $this->db->prepare("
+                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                        VALUES (?, ?, ?, ?, 'team_assignment', ?)
+                    ");
+                    $title = "Bạn đã được thêm vào nhóm mới";
+                    $body = "Bạn đã được thêm vào nhóm \"$name\" bởi $editorName.";
+                    $link = "/consultants?tab=teams";
+                    $stmtNotif->execute([(int)$addedUid, $auth['tenant_id'], $title, $body, $link]);
+                }
+            }
         }
 
         // Log activity
@@ -98,7 +117,7 @@ class TeamController
 
     public function show(array $auth, int $id): void
     {
-        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true)) {
+        if (!in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'sale', 'sales'], true)) {
             respond(403, null, 'Quyền quản trị là bắt buộc', false);
         }
 
@@ -192,6 +211,13 @@ class TeamController
 
         // Sync members
         if (isset($b['member_ids']) && is_array($b['member_ids'])) {
+            // Fetch old member ids to find newly added members
+            $oldMemberStmt = $this->db->prepare("SELECT id FROM users WHERE team_id = ?");
+            $oldMemberStmt->execute([$id]);
+            $oldMemberIds = $oldMemberStmt->fetchAll(PDO::FETCH_COLUMN);
+            $newMemberIds = array_map('intval', $b['member_ids']);
+            $addedMemberIds = array_diff($newMemberIds, $oldMemberIds);
+
             $clearStmt = $this->db->prepare("UPDATE users SET team_id = NULL WHERE team_id = ?");
             $clearStmt->execute([$id]);
 
@@ -199,6 +225,29 @@ class TeamController
                 $inQuery = implode(',', array_fill(0, count($b['member_ids']), '?'));
                 $assignStmt = $this->db->prepare("UPDATE users SET team_id = ? WHERE id IN ($inQuery)");
                 $assignStmt->execute(array_merge([$id], array_map('intval', $b['member_ids'])));
+            }
+
+            // Sync to consultants
+            $syncStmt = $this->db->prepare("UPDATE consultants c JOIN users u ON c.email = u.email SET c.team_id = u.team_id");
+            $syncStmt->execute();
+
+            // Send notifications to newly added members
+            if (!empty($addedMemberIds)) {
+                $editorName = $auth['full_name'] ?? 'Quản trị viên';
+                $teamNameStmt = $this->db->prepare("SELECT name FROM teams WHERE id = ?");
+                $teamNameStmt->execute([$id]);
+                $teamName = $teamNameStmt->fetchColumn() ?: 'Nhóm mới';
+
+                foreach ($addedMemberIds as $addedUid) {
+                    $stmtNotif = $this->db->prepare("
+                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                        VALUES (?, ?, ?, ?, 'team_assignment', ?)
+                    ");
+                    $title = "Bạn đã được thêm vào nhóm mới";
+                    $body = "Bạn đã được thêm vào nhóm \"$teamName\" bởi $editorName.";
+                    $link = "/consultants?tab=teams";
+                    $stmtNotif->execute([$addedUid, $auth['tenant_id'], $title, $body, $link]);
+                }
             }
         }
 
@@ -219,6 +268,10 @@ class TeamController
             // Set team_id to NULL for all consultants in this team
             $upStmt = $this->db->prepare("UPDATE consultants SET team_id = NULL WHERE team_id = ?");
             $upStmt->execute([$id]);
+
+            // Set team_id to NULL for all users in this team
+            $upStmtUser = $this->db->prepare("UPDATE users SET team_id = NULL WHERE team_id = ?");
+            $upStmtUser->execute([$id]);
 
             // Delete team
             $delStmt = $this->db->prepare("DELETE FROM teams WHERE id = ?");

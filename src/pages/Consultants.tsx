@@ -148,7 +148,7 @@ const ConsultantsInner = () => {
 
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const showAllTabs = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(userRole || '');
+  const showAllTabs = ['admin', 'superadmin', 'super_admin', 'manager', 'director', 'sale', 'sales'].includes(userRole || '');
   const activeTabRaw = queryParams.get('tab') || 'consultants';
   const activeTab = showAllTabs ? activeTabRaw : 'consultants';
 
@@ -1208,7 +1208,7 @@ const ConsultantsInner = () => {
                     </td>
                   </tr>
                 ) : paginatedTeams.map((team) => (
-                  <tr key={team.id} className={isWriteAuthorized ? "table-row-hover" : ""} style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }} onClick={() => isWriteAuthorized && openEditTeamModal(team)}>
+                  <tr key={team.id} className="table-row-hover" style={{ cursor: 'pointer' }} onClick={() => openEditTeamModal(team)}>
                     <td data-label={t('Tên Nhóm')}>
                       <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{team.name}</span>
                     </td>
@@ -2013,7 +2013,7 @@ const ConsultantsInner = () => {
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <h3 style={{ fontSize: '1.125rem', fontWeight: 700 }}>
-                {editingTeam ? t('Cập nhật Nhóm (Team)') : t('Thêm Nhóm mới')}
+                {editingTeam ? (isWriteAuthorized ? t('Cập nhật Nhóm (Team)') : t('Chi tiết Nhóm (Team)')) : t('Thêm Nhóm mới')}
               </h3>
               <button type="button" onClick={() => setTeamModalOpen(false)} style={{ color: 'var(--color-text-muted)', padding: 4, background: 'transparent', border: 'none', cursor: 'pointer' }}>
                 <X size={20} />
@@ -2035,6 +2035,7 @@ const ConsultantsInner = () => {
                         onChange={e => setTeamFormData({ ...teamFormData, name: e.target.value })}
                         required
                         autoFocus
+                        disabled={!isWriteAuthorized}
                       />
                     </div>
 
@@ -2049,12 +2050,14 @@ const ConsultantsInner = () => {
                           placeholder={t("Tìm kiếm và chọn Manager...")}
                           value={searchLeader}
                           onChange={e => {
+                            if (!isWriteAuthorized) return;
                             setSearchLeader(e.target.value);
                             setShowLeaderDropdown(true);
                           }}
-                          onFocus={() => setShowLeaderDropdown(true)}
+                          onFocus={() => isWriteAuthorized && setShowLeaderDropdown(true)}
+                          disabled={!isWriteAuthorized}
                         />
-                        {teamFormData.leader_id && (
+                        {isWriteAuthorized && teamFormData.leader_id && (
                           <button
                             type="button"
                             onClick={() => {
@@ -2139,6 +2142,7 @@ const ConsultantsInner = () => {
                           placeholder="VD: 100000000"
                           value={teamFormData.kpi_target}
                           onChange={e => setTeamFormData({ ...teamFormData, kpi_target: e.target.value })}
+                          disabled={!isWriteAuthorized}
                         />
                       </div>
                       <div className="form-group">
@@ -2149,6 +2153,7 @@ const ConsultantsInner = () => {
                           placeholder="VD: 10"
                           value={teamFormData.max_members}
                           onChange={e => setTeamFormData({ ...teamFormData, max_members: e.target.value })}
+                          disabled={!isWriteAuthorized}
                         />
                       </div>
                     </div>
@@ -2162,6 +2167,7 @@ const ConsultantsInner = () => {
                         value={teamFormData.description}
                         onChange={e => setTeamFormData({ ...teamFormData, description: e.target.value })}
                         style={{ resize: 'vertical' }}
+                        disabled={!isWriteAuthorized}
                       />
                     </div>
                   </div>
@@ -2173,6 +2179,7 @@ const ConsultantsInner = () => {
                         label={t('Địa chỉ chi nhánh')}
                         value={teamFormData.branch}
                         onChange={val => setTeamFormData({ ...teamFormData, branch: val })}
+                        disabled={!isWriteAuthorized}
                       />
                     </div>
 
@@ -2199,13 +2206,15 @@ const ConsultantsInner = () => {
                               }}
                             >
                               {projName}
-                              <button 
-                                type="button" 
-                                onClick={() => setTeamFormData({ ...teamFormData, focus_projects: teamFormData.focus_projects.filter(p => p !== projName) })}
-                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center' }}
-                              >
-                                <X size={12} />
-                              </button>
+                              {isWriteAuthorized && (
+                                <button 
+                                  type="button" 
+                                  onClick={() => setTeamFormData({ ...teamFormData, focus_projects: teamFormData.focus_projects.filter(p => p !== projName) })}
+                                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center' }}
+                                >
+                                  <X size={12} />
+                                </button>
+                              )}
                             </span>
                           ))}
                         </div>
@@ -2231,6 +2240,7 @@ const ConsultantsInner = () => {
                               <div
                                 key={p.id}
                                 onClick={() => {
+                                  if (!isWriteAuthorized) return;
                                   const current = [...teamFormData.focus_projects];
                                   if (isChecked) {
                                     setTeamFormData({ ...teamFormData, focus_projects: current.filter(name => name !== p.name) });
@@ -2243,19 +2253,20 @@ const ConsultantsInner = () => {
                                   alignItems: 'center',
                                   gap: '0.5rem',
                                   padding: '0.375rem 0.5rem',
-                                  cursor: 'pointer',
+                                  cursor: isWriteAuthorized ? 'pointer' : 'default',
                                   borderRadius: '4px',
                                   fontSize: '0.8125rem',
                                   background: isChecked ? 'var(--color-primary-light)' : 'transparent'
                                 }}
-                                onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = 'var(--color-surface)'; }}
-                                onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                                onMouseEnter={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'var(--color-surface)'; }}
+                                onMouseLeave={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'transparent'; }}
                               >
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={() => {}} // handled by click parent
-                                  style={{ cursor: 'pointer' }}
+                                  style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
+                                  disabled={!isWriteAuthorized}
                                 />
                                 <span style={{ color: 'var(--color-text)', fontWeight: isChecked ? 600 : 400 }}>{p.name}</span>
                               </div>
@@ -2308,13 +2319,15 @@ const ConsultantsInner = () => {
                               >
                                 <Avatar src={member.avatar_url || member.avatar} name={mName} size={16} />
                                 <span style={{ fontWeight: 600, color: 'var(--color-text)', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mName}</span>
-                                <button 
-                                  type="button" 
-                                  onClick={() => setTeamFormData({ ...teamFormData, member_ids: teamFormData.member_ids.filter(mid => mid !== id) })}
-                                  style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', color: 'var(--color-text-muted)' }}
-                                >
-                                  <X size={12} />
-                                </button>
+                                {isWriteAuthorized && (
+                                  <button 
+                                    type="button" 
+                                    onClick={() => setTeamFormData({ ...teamFormData, member_ids: teamFormData.member_ids.filter(mid => mid !== id) })}
+                                    style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', color: 'var(--color-text-muted)' }}
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                )}
                               </div>
                             );
                           })}
@@ -2326,7 +2339,7 @@ const ConsultantsInner = () => {
                         <input
                           className="form-input sm"
                           style={{ height: '32px', fontSize: '0.8125rem', width: '100%', paddingRight: '2rem' }}
-                          placeholder={t('Tìm kiếm TVV để thêm vào nhóm...')}
+                          placeholder={t('Tìm kiếm TVV để xem/thêm vào nhóm...')}
                           value={memberSearch}
                           onChange={e => setMemberSearch(e.target.value)}
                         />
@@ -2373,6 +2386,7 @@ const ConsultantsInner = () => {
                               <div
                                 key={sale.id}
                                 onClick={() => {
+                                  if (!isWriteAuthorized) return;
                                   const currentIds = [...teamFormData.member_ids];
                                   if (isChecked) {
                                     setTeamFormData({ ...teamFormData, member_ids: currentIds.filter(id => id !== String(sale.id)) });
@@ -2386,18 +2400,19 @@ const ConsultantsInner = () => {
                                   gap: '0.75rem',
                                   padding: '0.5rem 0.75rem',
                                   borderBottom: '1px solid var(--color-border-light)',
-                                  cursor: 'pointer',
+                                  cursor: isWriteAuthorized ? 'pointer' : 'default',
                                   transition: 'background 0.1s',
                                   background: isChecked ? 'var(--color-primary-light)' : 'transparent'
                                 }}
-                                onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = 'var(--color-surface)'; }}
-                                onMouseLeave={e => { if (!isChecked) e.currentTarget.style.background = 'transparent'; }}
+                                onMouseEnter={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'var(--color-surface)'; }}
+                                onMouseLeave={e => { if (!isChecked && isWriteAuthorized) e.currentTarget.style.background = 'transparent'; }}
                               >
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={() => {}} // handled by outer div click
-                                  style={{ cursor: 'pointer' }}
+                                  style={{ cursor: isWriteAuthorized ? 'pointer' : 'default' }}
+                                  disabled={!isWriteAuthorized}
                                 />
                                 <Avatar src={sale.avatar_url || sale.avatar} name={sale.full_name || sale.name || ''} size={24} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -2438,9 +2453,15 @@ const ConsultantsInner = () => {
 
               <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
                 <button type="button" className="btn outline" onClick={() => setTeamModalOpen(false)}>{t('Hủy')}</button>
-                <button type="submit" className="btn primary" disabled={isSaving}>
-                  {isSaving ? t('Đang lưu...') : t('Lưu lại')}
-                </button>
+                {isWriteAuthorized ? (
+                  <button type="submit" className="btn primary" disabled={isSaving}>
+                    {isSaving ? t('Đang lưu...') : t('Lưu lại')}
+                  </button>
+                ) : (
+                  <button type="button" className="btn primary" onClick={() => setTeamModalOpen(false)}>
+                    {t('Đóng')}
+                  </button>
+                )}
               </div>
             </form>
           </div>
