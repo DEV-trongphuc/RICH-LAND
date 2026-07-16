@@ -5,7 +5,7 @@ import {
   X, Camera, ChevronDown, ChevronUp, Save, Trash2, Download, 
   Paperclip, Loader2, Eye, EyeOff, User, Shield, Info, Send, 
   Link2Off, RefreshCw, KeyRound, Building2, Calendar, Clock, Plus, FileText,
-  CreditCard, PhoneCall, Lock
+  CreditCard, PhoneCall, Lock, Search, Check
 } from 'lucide-react';
 import { fetchAPI } from '../utils/api';
 import { compressToWebP } from '../utils/imageCompress';
@@ -40,6 +40,69 @@ const DAY_LABELS: Record<string, string> = {
   "5": "Thứ 6",
   "6": "Thứ 7",
   "7": "Chủ Nhật"
+};
+
+const getDefaultPermissionsForRole = (role: string) => {
+  const normRole = (role || '').toLowerCase();
+  if (normRole === 'admin' || normRole === 'superadmin' || normRole === 'super_admin') {
+    return {
+      leads: { read: 'all', write: 'all', delete: 'all' },
+      deals: { read: 'all', write: 'all', delete: 'all' },
+      cooperation: { read: 'all', write: 'all', delete: 'all' },
+      quotes: { read: 'all', write: 'all', delete: 'all' },
+      projects: { read: 'all', write: 'all', delete: 'all' },
+      settings: { read: 'all', write: 'all', delete: 'all' }
+    };
+  }
+  if (normRole === 'director') {
+    return {
+      leads: { read: 'all', write: 'all', delete: 'none' },
+      deals: { read: 'all', write: 'all', delete: 'all' },
+      cooperation: { read: 'all', write: 'all', delete: 'all' },
+      quotes: { read: 'all', write: 'all', delete: 'all' },
+      projects: { read: 'all', write: 'all', delete: 'none' },
+      settings: { read: 'none', write: 'none', delete: 'none' }
+    };
+  }
+  if (normRole === 'manager') {
+    return {
+      leads: { read: 'team', write: 'team', delete: 'none' },
+      deals: { read: 'team', write: 'team', delete: 'none' },
+      cooperation: { read: 'team', write: 'own', delete: 'none' },
+      quotes: { read: 'team', write: 'team', delete: 'none' },
+      projects: { read: 'all', write: 'none', delete: 'none' },
+      settings: { read: 'none', write: 'none', delete: 'none' }
+    };
+  }
+  if (normRole === 'assistant') {
+    return {
+      leads: { read: 'all', write: 'all', delete: 'none' },
+      deals: { read: 'all', write: 'all', delete: 'all' },
+      cooperation: { read: 'all', write: 'all', delete: 'none' },
+      quotes: { read: 'all', write: 'all', delete: 'none' },
+      projects: { read: 'all', write: 'all', delete: 'none' },
+      settings: { read: 'all', write: 'all', delete: 'none' }
+    };
+  }
+  if (normRole === 'sale' || normRole === 'sales') {
+    return {
+      leads: { read: 'own', write: 'own', delete: 'none' },
+      deals: { read: 'own', write: 'own', delete: 'none' },
+      cooperation: { read: 'own', write: 'own', delete: 'none' },
+      quotes: { read: 'own', write: 'own', delete: 'none' },
+      projects: { read: 'all', write: 'none', delete: 'none' },
+      settings: { read: 'none', write: 'none', delete: 'none' }
+    };
+  }
+  // Default to viewer
+  return {
+    leads: { read: 'all', write: 'none', delete: 'none' },
+    deals: { read: 'all', write: 'none', delete: 'none' },
+    cooperation: { read: 'all', write: 'none', delete: 'none' },
+    quotes: { read: 'all', write: 'none', delete: 'none' },
+    projects: { read: 'all', write: 'none', delete: 'none' },
+    settings: { read: 'none', write: 'none', delete: 'none' }
+  };
 };
 
 export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account, onSaveSuccess }) => {
@@ -151,6 +214,8 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
   const [permissionsJson, setPermissionsJson] = useState<any>({});
   const [managerTeams, setManagerTeams] = useState<number[]>([]);
   const [allTeams, setAllTeams] = useState<any[]>([]);
+  const [teamSearchQuery, setTeamSearchQuery] = useState('');
+  const [activeDropdown, setActiveDropdown] = useState<{ key: string; action: string } | null>(null);
 
   // Zalo Bot Helpers
   const [quickMsgText, setQuickMsgText] = useState('');
@@ -209,9 +274,17 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
             setBankAccount(d.bank_account || '');
             setManagerTeams(d.manager_teams || []);
             try {
-              setPermissionsJson(d.permissions_json ? JSON.parse(d.permissions_json) : {});
+              const defaultPerms = getDefaultPermissionsForRole(d.role || account?.role || '');
+              const parsed = d.permissions_json ? JSON.parse(d.permissions_json) : {};
+              const merged = { ...defaultPerms };
+              Object.keys(parsed).forEach(k => {
+                if (parsed[k]) {
+                  merged[k] = { ...(merged[k] || {}), ...parsed[k] };
+                }
+              });
+              setPermissionsJson(merged);
             } catch {
-              setPermissionsJson({});
+              setPermissionsJson(getDefaultPermissionsForRole(d.role || account?.role || ''));
             }
 
             let addressPayload = d.address || '';
@@ -329,13 +402,31 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       setWorkEndTime('17:30');
       setScheduleMode('daily');
       setWorkSchedule(DEFAULT_SCHEDULE);
-      setPermissionsJson({});
+      setPermissionsJson(getDefaultPermissionsForRole('sale'));
       setManagerTeams([]);
 
       setDocuments([]);
       setLoading(false);
     }
   }, [isOpen, account]);
+
+  useEffect(() => {
+    if (!isPermissionModalOpen) {
+      setActiveDropdown(null);
+      setTeamSearchQuery('');
+      return;
+    }
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.custom-permission-select-container')) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isPermissionModalOpen]);
 
   // Documents Management
   const fetchDocuments = async () => {
@@ -1063,7 +1154,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                                 { value: 'viewer', label: t('Viewer (Chỉ xem Data)') }
                               ]}
                               value={role}
-                              onChange={val => setRole(val.toString())}
+                              onChange={val => {
+                                const newRole = val.toString();
+                                setRole(newRole);
+                                setPermissionsJson(getDefaultPermissionsForRole(newRole));
+                              }}
                               width="100%"
                             />
                           </div>
@@ -1695,7 +1790,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 borderRadius: '24px',
                 border: '1px solid var(--color-border)',
                 boxShadow: 'var(--shadow-xl)',
-                width: '720px',
+                width: '1000px',
                 maxWidth: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -1752,95 +1847,162 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
               {/* Modal Content */}
               <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
                 
-                {/* 1. TEAM LEADERSHIP */}
+                {/* 1. DETAILED MODULE PERMISSIONS */}
                 <div>
                   <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    1. Nhóm quản lý (Manager Team Control)
-                  </h4>
-                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
-                    Chọn các nhóm/phòng ban mà nhân viên này trực tiếp quản lý, chỉ đạo (áp dụng cho vai trò Trưởng nhóm/Manager).
-                  </p>
-                  
-                  {allTeams.length === 0 ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', borderRadius: '12px', color: 'var(--color-text-light)' }}>
-                      Chưa có nhóm nào trên hệ thống
-                    </div>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-                      {allTeams.map((team: any) => {
-                        const isChecked = managerTeams.includes(team.id);
-                        return (
-                          <label
-                            key={team.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px',
-                              padding: '10px 12px',
-                              background: isChecked ? 'var(--color-primary-light)' : 'var(--color-bg-light)',
-                              border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                              borderRadius: '12px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              fontSize: '0.8125rem',
-                              fontWeight: 600,
-                              color: isChecked ? 'var(--color-primary)' : 'var(--color-text)'
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setManagerTeams([...managerTeams, team.id]);
-                                } else {
-                                  setManagerTeams(managerTeams.filter(id => id !== team.id));
-                                }
-                              }}
-                              style={{
-                                accentColor: 'var(--color-primary)',
-                                width: '15px',
-                                height: '15px',
-                                cursor: 'pointer'
-                              }}
-                            />
-                            <div style={{ minWidth: 0, flex: 1 }}>
-                              <p style={{ margin: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</p>
-                              {team.leader_name && (
-                                <span style={{ fontSize: '0.6875rem', color: isChecked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
-                                  Trưởng nhóm: {team.leader_name}
-                                </span>
-                              )}
-                            </div>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-
-                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border-light)', margin: 0 }} />
-
-                {/* 2. DETAILED MODULE PERMISSIONS */}
-                <div>
-                  <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    2. Quyền thao tác các Modules (Module Permissions)
+                    1. Quyền thao tác các Modules (Module Permissions)
                   </h4>
                   <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
                     Cấu hình sâu quyền hạn của người dùng đối với các mục dữ liệu trong hệ thống.
                   </p>
 
-                  <div style={{ overflowX: 'auto', border: '1px solid var(--color-border)', borderRadius: '14px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8125rem' }}>
+                  {/* Preset Options */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                    padding: '10px 14px',
+                    background: 'var(--color-bg-light)',
+                    borderRadius: '12px',
+                    flexWrap: 'wrap'
+                  }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      Chọn nhanh mẫu (Presets):
+                    </span>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {[
+                        { 
+                          label: 'Chỉ Xem (Viewer)', 
+                          role: 'viewer',
+                          data: {
+                            leads: { read: 'all', write: 'none', delete: 'none' },
+                            deals: { read: 'all', write: 'none', delete: 'none' },
+                            cooperation: { read: 'all', write: 'none', delete: 'none' },
+                            quotes: { read: 'all', write: 'none', delete: 'none' },
+                            projects: { read: 'all', write: 'none', delete: 'none' },
+                            settings: { read: 'none', write: 'none', delete: 'none' }
+                          }
+                        },
+                        { 
+                          label: 'Nhân Viên (Sales)', 
+                          role: 'sales',
+                          data: {
+                            leads: { read: 'own', write: 'own', delete: 'none' },
+                            deals: { read: 'own', write: 'own', delete: 'none' },
+                            cooperation: { read: 'own', write: 'own', delete: 'none' },
+                            quotes: { read: 'own', write: 'own', delete: 'none' },
+                            projects: { read: 'all', write: 'none', delete: 'none' },
+                            settings: { read: 'none', write: 'none', delete: 'none' }
+                          }
+                        },
+                        { 
+                          label: 'Trưởng Nhóm (Manager)', 
+                          role: 'manager',
+                          data: {
+                            leads: { read: 'team', write: 'team', delete: 'none' },
+                            deals: { read: 'team', write: 'team', delete: 'none' },
+                            cooperation: { read: 'team', write: 'own', delete: 'none' },
+                            quotes: { read: 'team', write: 'team', delete: 'none' },
+                            projects: { read: 'all', write: 'none', delete: 'none' },
+                            settings: { read: 'none', write: 'none', delete: 'none' }
+                          }
+                        },
+                        { 
+                          label: 'Giám Đốc (Director)', 
+                          role: 'director',
+                          data: {
+                            leads: { read: 'all', write: 'all', delete: 'none' },
+                            deals: { read: 'all', write: 'all', delete: 'all' },
+                            cooperation: { read: 'all', write: 'all', delete: 'all' },
+                            quotes: { read: 'all', write: 'all', delete: 'all' },
+                            projects: { read: 'all', write: 'all', delete: 'none' },
+                            settings: { read: 'none', write: 'none', delete: 'none' }
+                          }
+                        },
+                        { 
+                          label: 'Quản Trị (Admin)', 
+                          role: 'admin',
+                          data: {
+                            leads: { read: 'all', write: 'all', delete: 'all' },
+                            deals: { read: 'all', write: 'all', delete: 'all' },
+                            cooperation: { read: 'all', write: 'all', delete: 'all' },
+                            quotes: { read: 'all', write: 'all', delete: 'all' },
+                            projects: { read: 'all', write: 'all', delete: 'all' },
+                            settings: { read: 'all', write: 'all', delete: 'all' }
+                          }
+                        }
+                      ].map((preset) => (
+                        <button
+                          key={preset.role}
+                          type="button"
+                          onClick={() => {
+                            setPermissionsJson(preset.data);
+                            toast.success(`Đã áp dụng cấu hình nhanh cho vai trò: ${preset.label}`);
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--color-border)',
+                            background: 'var(--color-surface)',
+                            color: 'var(--color-text)',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-primary)';
+                            e.currentTarget.style.color = 'var(--color-primary)';
+                          }}
+                          onMouseLeave={e => {
+                            e.currentTarget.style.borderColor = 'var(--color-border)';
+                            e.currentTarget.style.color = 'var(--color-text)';
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ border: '1px solid var(--color-border)', borderRadius: '14px', overflow: 'visible' }}>
+                    <style dangerouslySetInnerHTML={{ __html: `
+                      .no-hover-table tbody tr:hover,
+                      .no-hover-table tbody tr:hover td {
+                        background: var(--color-surface) !important;
+                        background-color: var(--color-surface) !important;
+                      }
+                      .no-hover-table tbody tr td:first-child::before {
+                        display: none !important;
+                      }
+                    ` }} />
+                    <table className="no-hover-table" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, overflow: 'visible', textAlign: 'left', fontSize: '0.8125rem' }}>
                       <thead>
                         <tr style={{ background: 'var(--color-bg-light)', borderBottom: '1px solid var(--color-border)' }}>
-                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Module</th>
-                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Xem (Read)</th>
-                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Sửa (Write)</th>
-                          <th style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>Xóa (Delete)</th>
+                          <th rowSpan={2} style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)', width: '22%', verticalAlign: 'middle', borderRight: '1px solid var(--color-border-light)' }}>Module</th>
+                          <th colSpan={3} style={{ padding: '8px 14px', fontWeight: 700, color: 'var(--color-text)', textAlign: 'center', borderRight: '1px solid var(--color-border-light)' }}>Xem (Read)</th>
+                          <th colSpan={3} style={{ padding: '8px 14px', fontWeight: 700, color: 'var(--color-text)', textAlign: 'center', borderRight: '1px solid var(--color-border-light)' }}>Sửa (Write)</th>
+                          <th colSpan={3} style={{ padding: '8px 14px', fontWeight: 700, color: 'var(--color-text)', textAlign: 'center' }}>Xóa (Delete)</th>
+                        </tr>
+                        <tr style={{ background: 'var(--color-bg-light)', borderBottom: '1px solid var(--color-border)' }}>
+                          {/* Xem */}
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '8.5%' }}>C.Nhân</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '8.5%' }}>Nhóm</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '9%', borderRight: '1px solid var(--color-border-light)' }}>T.Bộ</th>
+                          
+                          {/* Sửa */}
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '8.5%' }}>C.Nhân</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '8.5%' }}>Nhóm</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '9%', borderRight: '1px solid var(--color-border-light)' }}>T.Bộ</th>
+                          
+                          {/* Xóa */}
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '8.5%' }}>C.Nhân</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '8.5%' }}>Nhóm</th>
+                          <th style={{ padding: '6px 4px', fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.7rem', textAlign: 'center', width: '9%' }}>T.Bộ</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody style={{ overflow: 'visible' }}>
                         {[
                           { key: 'leads', label: 'Khách hàng (Leads/Contacts)' },
                           { key: 'deals', label: 'Đặt cọc & Hợp đồng (Deals/Deposits)' },
@@ -1862,43 +2024,225 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             }));
                           };
 
-                          const renderSelect = (action: 'read' | 'write' | 'delete') => (
-                            <select
-                              value={getVal(action)}
-                              onChange={(e) => setVal(action, e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: '6px 8px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--color-border)',
-                                background: 'var(--color-surface)',
-                                color: 'var(--color-text)',
-                                fontSize: '0.75rem',
-                                fontWeight: 600,
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <option value="none">Không có quyền</option>
-                              <option value="own">Cá nhân (Own)</option>
-                              <option value="team">Nhóm (Team)</option>
-                              <option value="all">Toàn bộ (All)</option>
-                            </select>
-                          );
+                          const renderCheckbox = (action: 'read' | 'write' | 'delete', scope: 'own' | 'team' | 'all') => {
+                            const val = getVal(action);
+                            const isChecked = val === scope;
+                            return (
+                              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '36px' }}>
+                                <label style={{
+                                  position: 'relative',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '5px',
+                                  border: `2px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                  background: isChecked ? 'var(--color-primary)' : 'transparent',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s'
+                                }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      setVal(action, e.target.checked ? scope : 'none');
+                                    }}
+                                    style={{
+                                      position: 'absolute',
+                                      opacity: 0,
+                                      width: 0,
+                                      height: 0,
+                                      cursor: 'pointer'
+                                    }}
+                                  />
+                                  {isChecked && (
+                                    <Check size={11} color="white" strokeWidth={3} />
+                                  )}
+                                </label>
+                              </div>
+                            );
+                          };
 
                           return (
-                            <tr key={mod.key} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                              <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)' }}>
+                            <tr key={mod.key} style={{ overflow: 'visible' }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 700, color: 'var(--color-text)', borderBottom: '1px solid var(--color-border-light)', borderRight: '1px solid var(--color-border-light)', overflow: 'visible' }}>
                                 {mod.label}
                               </td>
-                              <td style={{ padding: '8px 10px' }}>{renderSelect('read')}</td>
-                              <td style={{ padding: '8px 10px' }}>{renderSelect('write')}</td>
-                              <td style={{ padding: '8px 10px' }}>{renderSelect('delete')}</td>
+                              
+                              {/* Xem (Read) - 3 columns */}
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('read', 'own')}
+                              </td>
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('read', 'team')}
+                              </td>
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', borderRight: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('read', 'all')}
+                              </td>
+                              
+                              {/* Sửa (Write) - 3 columns */}
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('write', 'own')}
+                              </td>
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('write', 'team')}
+                              </td>
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', borderRight: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('write', 'all')}
+                              </td>
+                              
+                              {/* Xóa (Delete) - 3 columns */}
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('delete', 'own')}
+                              </td>
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('delete', 'team')}
+                              </td>
+                              <td style={{ padding: '8px 4px', borderBottom: '1px solid var(--color-border-light)', overflow: 'visible' }}>
+                                {renderCheckbox('delete', 'all')}
+                              </td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
                   </div>
+                </div>
+
+                <hr style={{ border: 'none', borderTop: '1px solid var(--color-border-light)', margin: 0 }} />
+
+                {/* 2. TEAM LEADERSHIP */}
+                <div>
+                  <h4 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    2. Nhóm quản lý (Manager Team Control)
+                  </h4>
+                  <p style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginBottom: '12px' }}>
+                    Chọn các nhóm/phòng ban mà nhân viên này trực tiếp quản lý, chỉ đạo (áp dụng cho vai trò Trưởng nhóm/Manager).
+                  </p>
+
+                  {/* Team Search Box */}
+                  <div style={{ position: 'relative', marginBottom: '16px', maxWidth: '320px' }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Tìm kiếm nhóm..."
+                      value={teamSearchQuery}
+                      onChange={e => setTeamSearchQuery(e.target.value)}
+                      style={{
+                        paddingLeft: '2.25rem',
+                        height: '36px',
+                        fontSize: '0.8125rem',
+                        borderRadius: '10px',
+                        borderColor: 'var(--color-border)'
+                      }}
+                    />
+                    <Search 
+                      size={14} 
+                      style={{ 
+                        position: 'absolute', 
+                        left: '12px', 
+                        top: '50%', 
+                        transform: 'translateY(-50%)', 
+                        color: 'var(--color-text-muted)',
+                        pointerEvents: 'none'
+                      }} 
+                    />
+                    {teamSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setTeamSearchQuery('')}
+                        style={{
+                          position: 'absolute',
+                          right: '10px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          color: 'var(--color-text-light)',
+                          padding: '2px'
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  
+                  {allTeams.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', borderRadius: '12px', color: 'var(--color-text-light)' }}>
+                      Chưa có nhóm nào trên hệ thống
+                    </div>
+                  ) : (
+                    (() => {
+                      const filteredTeams = allTeams.filter((team: any) => {
+                        const q = teamSearchQuery.trim().toLowerCase();
+                        if (!q) return true;
+                        return (team.name || '').toLowerCase().includes(q) || (team.leader_name || '').toLowerCase().includes(q);
+                      });
+
+                      if (filteredTeams.length === 0) {
+                        return (
+                          <div style={{ padding: '1rem', textAlign: 'center', background: 'var(--color-bg-light)', borderRadius: '12px', color: 'var(--color-text-light)', fontSize: '0.8125rem' }}>
+                            Không tìm thấy nhóm phù hợp
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
+                          {filteredTeams.map((team: any) => {
+                            const isChecked = managerTeams.includes(team.id);
+                            return (
+                              <label
+                                key={team.id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '10px 12px',
+                                  background: isChecked ? 'var(--color-primary-light)' : 'var(--color-bg-light)',
+                                  border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                  borderRadius: '12px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                  fontSize: '0.8125rem',
+                                  fontWeight: 600,
+                                  color: isChecked ? 'var(--color-primary)' : 'var(--color-text)'
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setManagerTeams([...managerTeams, team.id]);
+                                    } else {
+                                      setManagerTeams(managerTeams.filter(id => id !== team.id));
+                                    }
+                                  }}
+                                  style={{
+                                    accentColor: 'var(--color-primary)',
+                                    width: '15px',
+                                    height: '15px',
+                                    cursor: 'pointer'
+                                  }}
+                                />
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <p style={{ margin: 0, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</p>
+                                  {team.leader_name && (
+                                    <span style={{ fontSize: '0.6875rem', color: isChecked ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                                      Trưởng nhóm: {team.leader_name}
+                                    </span>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()
+                  )}
                 </div>
 
               </div>

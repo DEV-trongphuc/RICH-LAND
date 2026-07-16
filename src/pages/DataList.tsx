@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useUIStore } from '../store/uiStore';
+import { getModulePermissionScope, hasPermission } from '../store/authStore';
 
 import { withRouterFreezer } from '../components/RouterFreezer';
 import { CalendarSkeleton, TableSkeleton, KpiCardSkeleton, CardSkeleton, ChartSkeleton } from '../components/ui/Skeleton';
@@ -636,6 +637,20 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const canSeeFullInfo = useMemo(() => {
     if (!selectedLead) return false;
+    const scope = getModulePermissionScope(user, 'leads', 'read');
+    if (scope === 'all') return true;
+    if (scope === 'team') {
+      const userTeamId = (user as any).team_id || (user as any).consultant_profile?.team_id;
+      if (userTeamId && Number((selectedLead as any).team_id) === Number(userTeamId)) return true;
+    }
+    if (scope === 'own') {
+      return (
+        (selectedLead.takers && selectedLead.takers.some((t: any) => Number(t.id) === Number(user?.id) || Number(t.id) === Number(user?.consultant_id))) ||
+        Number(selectedLead.assigned_to) === Number(user?.consultant_id) ||
+        Number(selectedLead.assigned_to) === Number(user?.id)
+      );
+    }
+    if (scope === 'none') return false;
     return (
       user?.role === 'admin' ||
       user?.role === 'superadmin' ||

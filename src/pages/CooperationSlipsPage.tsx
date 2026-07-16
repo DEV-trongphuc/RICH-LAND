@@ -12,6 +12,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import { CopyButton } from '../components/ui/CopyButton';
 import { CardSkeleton } from '../components/ui/Skeleton';
+import { getModulePermissionScope } from '../store/authStore';
 
 interface CooperationSlip {
   id: number;
@@ -258,10 +259,38 @@ export default function CooperationSlipsPage() {
     }));
   };
 
-  const isManager = ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(String(user?.role).toLowerCase());
+  const writeScope = React.useMemo(() => {
+    return getModulePermissionScope(user, 'cooperation', 'write');
+  }, [user]);
+
+  const readScope = React.useMemo(() => {
+    return getModulePermissionScope(user, 'cooperation', 'read');
+  }, [user]);
+
+  const isManager = React.useMemo(() => {
+    if (writeScope === 'all' || writeScope === 'team') return true;
+    return ['admin', 'superadmin', 'super_admin', 'manager', 'director'].includes(String(user?.role).toLowerCase());
+  }, [user, writeScope]);
+
+  const isApprover = React.useMemo(() => {
+    if (writeScope === 'all') return true;
+    return ['admin', 'superadmin', 'super_admin', 'director'].includes(String(user?.role).toLowerCase());
+  }, [user, writeScope]);
 
   const filteredSlips = React.useMemo(() => {
     return slips.filter(slip => {
+      // 0. Permission Matrix Read Scope
+      if (readScope === 'none') return false;
+      if (readScope === 'own') {
+        const isShareholder = slip.shareholders?.some((s: any) => String(s.user_id) === String(user?.id)) || String(slip.created_by) === String(user?.id);
+        if (!isShareholder) return false;
+      }
+      if (readScope === 'team') {
+        const userTeamId = (user as any)?.team_id || (user as any)?.consultant_profile?.team_id;
+        const isShareholder = slip.shareholders?.some((s: any) => String(s.user_id) === String(user?.id)) || String(slip.created_by) === String(user?.id);
+        const isSameTeam = userTeamId && Number((slip as any).team_id) === Number(userTeamId);
+        if (!isShareholder && !isSameTeam) return false;
+      }
       // 1. Search Query (Customer name, phone, project, unit code)
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
@@ -294,7 +323,7 @@ export default function CooperationSlipsPage() {
 
         if (statusFilter === 'pending_me') {
           const needsMySignature = isShareholder && isPendingSignatures && !hasSigned;
-          const needsMyManagerApproval = isManager && slip.status === 'pending_manager_approval';
+          const needsMyManagerApproval = isApprover && slip.status === 'pending_manager_approval';
           if (!needsMySignature && !needsMyManagerApproval) return false;
         } else if (statusFilter === 'pending_signatures') {
           if (!isPendingSignatures) return false;
@@ -309,7 +338,7 @@ export default function CooperationSlipsPage() {
 
       return true;
     });
-  }, [slips, searchQuery, filterSale, dateRange, statusFilter, user?.id, isManager]);
+  }, [slips, searchQuery, filterSale, dateRange, statusFilter, user?.id, isManager, isApprover, readScope]);
 
   const paginatedSlips = React.useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -354,7 +383,7 @@ export default function CooperationSlipsPage() {
       const isPendingSignatures = (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && !allSigned;
 
       const needsMySignature = isShareholder && isPendingSignatures && !hasSigned;
-      const needsMyManagerApproval = isManager && slip.status === 'pending_manager_approval';
+      const needsMyManagerApproval = isApprover && slip.status === 'pending_manager_approval';
 
       if (needsMySignature || needsMyManagerApproval) {
         pendingMe++;
@@ -380,7 +409,7 @@ export default function CooperationSlipsPage() {
       approved,
       rejected
     };
-  }, [slips, searchQuery, filterSale, dateRange, user?.id, isManager]);
+  }, [slips, searchQuery, filterSale, dateRange, user?.id, isManager, isApprover]);
 
   const handleDeleteSlip = async (slipId: number) => {
     setCustomConfirm({
@@ -907,7 +936,7 @@ export default function CooperationSlipsPage() {
                       </span>
                       
                       {/* Delete icon */}
-                      {(isManager || (String(slip.created_by) === String(user?.id) && (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures'))) && (
+                      {(isApprover || (String(slip.created_by) === String(user?.id) && (slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures'))) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteSlip(slip.id); }}
                           className="btn sm outline text-danger"
@@ -963,7 +992,7 @@ export default function CooperationSlipsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
                       
                       {/* Sign / Update buttons */}
-                      {(slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (String(slip.created_by) === String(user?.id) || isManager) && (
+                      {(slip.status === 'pending_signatures' || slip.status === 'approved_pending_signatures') && (String(slip.created_by) === String(user?.id) || isApprover) && (
                         <button
                           onClick={() => handleOpenUpdateShares(slip)}
                           style={{
@@ -1033,7 +1062,7 @@ export default function CooperationSlipsPage() {
 
                       {/* Request change if already approved or pending manager approval */}
                       {(slip.status === 'approved' || slip.status === 'pending_manager_approval') && 
-                       (isManager || isShareholder || String(slip.created_by) === String(user?.id)) && (
+                       (isApprover || isShareholder || String(slip.created_by) === String(user?.id)) && (
                         <button
                           onClick={() => handleOpenUpdateShares(slip)}
                           style={{
@@ -1052,12 +1081,12 @@ export default function CooperationSlipsPage() {
                             transition: 'all 0.2s'
                           }}
                         >
-                          {isManager ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
+                          {isApprover ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
                         </button>
                       )}
 
                       {/* Manager Approval actions */}
-                      {isManager && slip.status === 'pending_manager_approval' && (
+                      {isApprover && slip.status === 'pending_manager_approval' && (
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button
                             onClick={() => handleApproveSlip(slip)}
@@ -1214,7 +1243,7 @@ export default function CooperationSlipsPage() {
                                   </a>
                                 </div>
                               </div>
-                              {isManager && (
+                              {isApprover && (
                                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginLeft: '12px' }}>
                                   <button 
                                     className="btn sm outline"
@@ -1234,7 +1263,7 @@ export default function CooperationSlipsPage() {
                               )}
                             </div>
                           ))}
-                          {isManager && (
+                          {isApprover && (
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                               <input
                                 type="file"
@@ -1258,7 +1287,7 @@ export default function CooperationSlipsPage() {
                           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '8px' }}>
                             Chưa có tài liệu đính kèm cho phiếu hợp tác này.
                           </p>
-                          {isManager && (
+                          {isApprover && (
                             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                               <input
                                 type="file"

@@ -4,6 +4,7 @@ import { Shield, Plus, Edit3, Trash2, KeyRound, UserCog, Send, X, Link2Off, Chec
 import { CustomModal } from '../components/ui/CustomModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { Avatar } from '../components/ui/Avatar';
 import { fetchAPI } from '../utils/api';
 import { AccountDetailDrawer } from '../components/AccountDetailDrawer';
@@ -345,7 +346,13 @@ const AccountsInner = () => {
         body: JSON.stringify(payload)
       });
       if (json.success) {
-        toast.success(editingAccount ? t('Cập nhật thành công!') : t('Thêm mới thành công!'));
+        const roleLabel = getRoleLabelText(formData.role);
+        const activeLabel = formData.is_active === '1' ? t('Đang hoạt động') : t('Đang tạm khóa');
+        toast.success(
+          editingAccount 
+            ? `${t('Cập nhật thành công!')} ${t('Vai trò')}: ${roleLabel} (${activeLabel})` 
+            : `${t('Thêm mới thành công!')} ${t('Vai trò')}: ${roleLabel} (${activeLabel})`
+        );
         fetchAccounts();
         setModalOpen(false);
       } else {
@@ -462,6 +469,16 @@ const AccountsInner = () => {
     if (role === 'assistant') return <span style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Assistant</span>;
     if (role === 'sale' || role === 'sales') return <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Sales</span>;
     return <span style={{ background: 'rgba(100, 116, 139, 0.1)', color: '#64748b', padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 700 }}>Viewer</span>;
+  };
+
+  const getRoleLabelText = (role: string) => {
+    if (role === 'superadmin' || role === 'super_admin') return 'Super Admin';
+    if (role === 'admin') return 'Admin';
+    if (role === 'director') return 'Director';
+    if (role === 'manager') return 'Manager';
+    if (role === 'assistant') return 'Assistant';
+    if (role === 'sale' || role === 'sales') return 'Sales';
+    return t('Chỉ xem');
   };
 
   const LOGS_PER_PAGE = 50;
@@ -653,6 +670,43 @@ const AccountsInner = () => {
                   placeholder={t('Để trống nếu không muốn đổi')}
                   autoComplete="new-password"
                 />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+              <div>
+                <label className="form-label">{t('Vai trò (Role)')}</label>
+                <CustomSelect
+                  options={[
+                    { value: 'admin', label: t('Quản trị viên (Admin)') },
+                    { value: 'director', label: t('Giám đốc kinh doanh (Director)') },
+                    { value: 'manager', label: t('Trưởng phòng / Trưởng nhóm (Manager)') },
+                    { value: 'assistant', label: t('Trợ lý (Assistant)') },
+                    { value: 'sale', label: t('Sale / Nhân viên (Sales)') },
+                    { value: 'viewer', label: t('Chỉ xem dữ liệu (Viewer)') }
+                  ]}
+                  value={formData.role}
+                  onChange={val => setFormData({ ...formData, role: val.toString() })}
+                  disabled={editingAccount?.id === user?.id}
+                  width="100%"
+                  direction="up"
+                />
+                {editingAccount?.id === user?.id && (
+                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>{t('Bạn không thể thay đổi vai trò của chính mình.')}</p>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', paddingTop: '1.25rem' }}>
+                <CustomCheckbox
+                  checked={formData.is_active === '1'}
+                  onChange={() => setFormData({ ...formData, is_active: formData.is_active === '1' ? '0' : '1' })}
+                  label={t('Kích hoạt tài khoản')}
+                  disabled={editingAccount?.id === user?.id}
+                />
+                <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', marginTop: '2px', marginLeft: '24px' }}>
+                  {editingAccount?.id === user?.id 
+                    ? t('Bạn không thể vô hiệu hóa tài khoản của chính mình.') 
+                    : t('Cho phép đăng nhập hệ thống.')}
+                </p>
               </div>
             </div>
 

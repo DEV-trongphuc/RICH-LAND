@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore, getModulePermissionScope } from '../store/authStore';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
@@ -35,7 +35,12 @@ const fmtDate = (d: any) => {
 export const QuotesPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const currentUser = useAuthStore(state => state.user);
-  const isViewer = currentUser?.role === 'viewer';
+  const isViewer = React.useMemo(() => {
+    if (!currentUser) return true;
+    if (currentUser.role === 'admin' || currentUser.role === 'superadmin') return false;
+    const scope = getModulePermissionScope(currentUser, 'quotes', 'write');
+    return scope === 'none';
+  }, [currentUser]);
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('this_month');

@@ -33,6 +33,7 @@ import styles from './EntityDrawer.module.css';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getModulePermissionScope } from '../store/authStore';
 
 const EditHistoryIndicator = ({ history }: { history: any }) => {
   const [showPopup, setShowPopup] = useState(false);
@@ -665,7 +666,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range',
-      'project_id', 'ttl1_completed', 'ttl1_data'
+      'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data'
     ];
 
     const cleanObject = (obj: any) => {
@@ -677,14 +678,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       return clean;
     };
 
+    const serializeCustomFields = (fields: any) => {
+      if (!Array.isArray(fields)) return '';
+      return fields.map(f => `${f.id}:${f.value === null || f.value === undefined ? '' : f.value}`).sort().join('|');
+    };
+
     const hash1 = JSON.stringify({
       formData: cleanObject(formData),
-      tags: tags || []
+      tags: tags || [],
+      customFields: serializeCustomFields(formData.custom_fields)
     });
 
     const hash2 = JSON.stringify({
       formData: cleanObject(baseData),
-      tags: baseTags || []
+      tags: baseTags || [],
+      customFields: serializeCustomFields(baseData.custom_fields)
     });
 
     return hash1 !== hash2;
@@ -903,11 +911,22 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
   const isOwnerOrAdmin = useMemo(() => {
+    const scope = getModulePermissionScope(currentUser, 'leads', 'write');
+    if (scope === 'all') return true;
+    if (scope === 'team') {
+      const userTeamId = (currentUser as any)?.team_id || (currentUser as any)?.consultant_profile?.team_id;
+      if (userTeamId && Number(contact?.team_id || formData.team_id) === Number(userTeamId)) return true;
+    }
+    if (scope === 'own') {
+      return Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id) || Number(currentUser?.consultant_id) === Number(formData.owner_id || contact?.owner_id);
+    }
+    if (scope === 'none') return false;
+
     if (currentUser?.role === 'viewer') return false;
     const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
     const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
     return isOwner || isAdmin;
-  }, [currentUser, formData.owner_id, contact?.owner_id]);
+  }, [currentUser, formData.owner_id, contact?.owner_id, contact?.team_id, formData.team_id]);
   const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
   const isViewer = currentUser?.role === 'viewer';
   const [decayDays, setDecayDays] = useState<number>(5);
@@ -946,6 +965,35 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [coopError, setCoopError] = useState('');
   const [isRequestingChange, setIsRequestingChange] = useState(false);
   const [changeReason, setChangeReason] = useState('');
+
+  const isCoopShareholder = useMemo(() => {
+    if (!coopSlip || !currentUser) return false;
+    return coopSlip.shareholders?.some((sh: any) => String(sh.user_id) === String(currentUser.id) || String(sh.user_id) === String(currentUser.consultant_id));
+  }, [coopSlip, currentUser]);
+
+  const isCoopCreator = useMemo(() => {
+    if (!coopSlip || !currentUser) return false;
+    return String(coopSlip.created_by) === String(currentUser.id);
+  }, [coopSlip, currentUser]);
+
+  const isCoopApprover = useMemo(() => {
+    if (!currentUser) return false;
+    return ['admin', 'superadmin', 'super_admin', 'director'].includes(currentUser.role);
+  }, [currentUser]);
+
+  const canEditShares = useMemo(() => {
+    if (!coopSlip) return false;
+    const inEditableState = coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected';
+    if (inEditableState) {
+      return isCoopCreator || isCoopApprover;
+    }
+    return isRequestingChange && (isCoopShareholder || isCoopCreator || isCoopApprover);
+  }, [coopSlip, isCoopCreator, isCoopApprover, isRequestingChange, isCoopShareholder]);
+
+  const canManageCoopAttachments = useMemo(() => {
+    const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
+    return isCoopApprover || isCoopCreator || isOwner;
+  }, [isCoopApprover, isCoopCreator, currentUser?.id, formData.owner_id, contact?.owner_id]);
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
@@ -4822,7 +4870,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     </p>
                                   </div>
 
-                                  {status === 'pending_manager_approval' && isAdmin && (
+                                  {status === 'pending_manager_approval' && isCoopApprover && (
                                     <div style={{ display: 'flex', gap: '8px', marginLeft: '16px' }}>
                                       <button 
                                         className="btn primary sm" 
@@ -5002,7 +5050,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         </p>
                                       </div>
                                     </div>
-                                    {isOwnerOrAdmin && (
+                                    {canManageCoopAttachments && (
                                       <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                                         <button className="btn-icon sm" title="Đổi tên" onClick={() => {
                                           const filename = fileUrl.split('/').pop() || '';
@@ -5036,7 +5084,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     )}
                                   </div>
                                 ))}
-                                {isOwnerOrAdmin && (
+                                {canManageCoopAttachments && (
                                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginTop: '4px' }}>
                                     <input
                                       type="file"
@@ -5071,7 +5119,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
                                   Chưa có tài liệu/hợp đồng đính kèm cho phiếu này.
                                 </p>
-                                {isOwnerOrAdmin && (
+                                {canManageCoopAttachments && (
                                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                                     <input
                                       type="file"
@@ -5101,8 +5149,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                     <div style={{
                                       flex: 1,
-                                      pointerEvents: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'approved_pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange)) ? 'none' : 'auto',
-                                      opacity: (idx === 0 || (coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'approved_pending_signatures' && coopSlip.status !== 'rejected')) ? 0.6 : 1
+                                      pointerEvents: (idx === 0 || !canEditShares) ? 'none' : 'auto',
+                                      opacity: (idx === 0 || !canEditShares) ? 0.6 : 1
                                     }}>
                                       <CustomSelect
                                         value={share.user_id}
@@ -5141,12 +5189,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                           newShares[idx].percentage = e.target.value;
                                           setCoopShares(newShares);
                                         }}
-                                        disabled={coopSlip.status !== 'pending_signatures' && coopSlip.status !== 'approved_pending_signatures' && coopSlip.status !== 'rejected' && !isRequestingChange}
+                                        disabled={!canEditShares}
                                         style={{ textAlign: 'right' }}
                                       />
                                       <span style={{ fontWeight: 600 }}>%</span>
                                     </div>
-                                    {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
+                                    {canEditShares ? (
                                       (String(share.user_id) === String(contact?.owner_id || formData?.owner_id) || 
                                        String(share.user_id) === String(currentUser?.id) || 
                                        (currentUser?.consultant_id && String(share.user_id) === String(currentUser.consultant_id))) ? (
@@ -5190,7 +5238,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                             )}
 
-                            {(coopSlip.status === 'pending_signatures' || coopSlip.status === 'approved_pending_signatures' || coopSlip.status === 'rejected' || isRequestingChange) ? (
+                            {canEditShares ? (
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                   <button 
@@ -5227,7 +5275,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
                             ) : (
-                              (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && !isViewer && (
+                              (coopSlip.status === 'approved' || coopSlip.status === 'pending_manager_approval') && 
+                              (isCoopApprover || isCoopShareholder || isCoopCreator) && (
                                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                   <button 
                                     type="button"
@@ -5235,7 +5284,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     onClick={() => setIsRequestingChange(true)}
                                     style={{ color: 'var(--color-primary)', borderColor: 'var(--color-primary)' }}
                                   >
-                                    Yêu cầu thay đổi tỷ lệ
+                                    {isCoopApprover ? 'Cập nhật tỷ lệ' : 'Yêu cầu thay đổi tỷ lệ'}
                                   </button>
                                 </div>
                               )

@@ -11,9 +11,29 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 
-const ROLES = ['admin', 'manager', 'sales', 'viewer'];
-const R_LABEL: Record<string, string> = { admin: 'Quản trị viên', manager: 'Quản lý', sales: 'Sale', viewer: 'Xem' };
-const R_COLOR: Record<string, string> = { admin: 'danger', manager: 'warning', sales: 'info', viewer: 'cool' };
+const ROLES = ['admin', 'director', 'manager', 'assistant', 'sales', 'viewer'];
+const R_LABEL: Record<string, string> = { 
+  superadmin: 'Super Admin',
+  super_admin: 'Super Admin',
+  admin: 'Quản trị viên', 
+  director: 'Giám đốc kinh doanh',
+  manager: 'Quản lý', 
+  assistant: 'Trợ lý',
+  sales: 'Sale / Nhân viên', 
+  sale: 'Sale / Nhân viên', 
+  viewer: 'Chỉ xem' 
+};
+const R_COLOR: Record<string, string> = { 
+  superadmin: 'danger',
+  super_admin: 'danger',
+  admin: 'danger', 
+  director: 'warning',
+  manager: 'warning', 
+  assistant: 'info',
+  sales: 'info', 
+  sale: 'info', 
+  viewer: 'cool' 
+};
 
 
 const TABS = [
@@ -348,19 +368,21 @@ export const SettingsPage: React.FC = () => {
                 <thead>
                   <tr>
                     <th>Tính năng</th>
-                    <th>Admin</th><th>Manager</th><th>Sales</th><th>Viewer</th>
+                    <th>Admin</th><th>Director</th><th>Manager</th><th>Assistant</th><th>Sales</th><th>Viewer</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
-                    ['Xem khách hàng', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />],
-                    ['Thêm/sửa khách hàng', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />],
-                    ['Xóa khách hàng', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
-                    ['Xem deal', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <span className="badge info sm" style={{ padding: '2px 6px', fontSize: '10px' }}>Của mình</span>, <X size={16} color="var(--color-text-muted)" />],
-                    ['Xóa deal', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
-                    ['Xem báo cáo', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <span className="badge info sm" style={{ padding: '2px 6px', fontSize: '10px' }}>Của mình</span>, <X size={16} color="var(--color-text-muted)" />],
-                    ['Quản lý người dùng', <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
-                    ['Cài đặt hệ thống', <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
+                    ['Xem khách hàng', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />],
+                    ['Thêm/sửa khách hàng', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />],
+                    ['Xóa khách hàng', <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
+                    ['Xem deal', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <span className="badge info sm" style={{ padding: '2px 6px', fontSize: '10px' }}>Của mình</span>, <X size={16} color="var(--color-text-muted)" />],
+                    ['Xóa deal', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
+                    ['Duyệt Hợp tác (Coop Slip)', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
+                    ['Xem báo cáo', <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <Check size={16} color="var(--color-success)" />, <span className="badge info sm" style={{ padding: '2px 6px', fontSize: '10px' }}>Của mình</span>, <X size={16} color="var(--color-text-muted)" />],
+                    ['Quản lý người dùng', <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
+                    ['Cài đặt hệ thống', <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
+                    ['Cài đặt quy tắc (Rule Settings)', <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />, <Check size={16} color="var(--color-success)" />, <X size={16} color="var(--color-text-muted)" />, <X size={16} color="var(--color-text-muted)" />],
                   ].map(([feat, ...perms]) => (
                     <tr key={feat as string}>
                       <td className="font-semi">{feat}</td>
