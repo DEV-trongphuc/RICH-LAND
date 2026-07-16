@@ -1278,7 +1278,8 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           const recentTargets = ['Dashboard', 'Bàn làm việc', 'Báo cáo', 'Khách hàng', 'Pipeline', 'Giỏ hàng'];
           const recentItems = recentTargets
             .map(name => allVisibleItems.find(item => item.name === name))
-            .filter(Boolean);
+            .filter(Boolean)
+            .slice(0, 6);
 
           return (
             <div style={{ paddingRight: '4px' }}>
@@ -1308,7 +1309,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                               cursor: 'pointer',
                               transition: 'all 0.2s ease-in-out',
                             }}
-                            className="hover-lift"
                             onMouseEnter={e => {
                               e.currentTarget.style.background = 'rgba(0, 0, 0, 0.03)';
                             }}
@@ -1352,8 +1352,8 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                       </span>
                       <div style={{
                         display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                        gap: '12px'
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                        gap: '16px'
                       }}>
                         {recentItems.map(item => {
                           const colors = getItemColor(item.name);
@@ -1370,31 +1370,38 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                gap: '8px',
-                                padding: '16px 12px',
+                                gap: '12px',
+                                padding: '20px 16px',
                                 background: 'var(--color-bg)',
                                 border: '1px solid var(--color-border-light)',
-                                borderRadius: '16px',
+                                borderRadius: '18px',
                                 cursor: 'pointer',
                                 textAlign: 'center',
                                 boxShadow: 'var(--shadow-sm)',
                                 transition: 'all 0.2s ease-in-out'
                               }}
-                              className="hover-lift"
+                              onMouseEnter={e => {
+                                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.02)';
+                                e.currentTarget.style.borderColor = 'var(--color-border)';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.background = 'var(--color-bg)';
+                                e.currentTarget.style.borderColor = 'var(--color-border-light)';
+                              }}
                             >
                               <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: '14px',
+                                width: '56px',
+                                height: '56px',
+                                borderRadius: '16px',
                                 background: colors.bg,
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                boxShadow: '0 4px 10px rgba(0,0,0,0.08)'
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
                               }}>
-                                <Icon size={24} color={colors.color} strokeWidth={2} />
+                                <Icon size={28} color={colors.color} strokeWidth={2} />
                               </div>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '4px' }}>
                                 {t(item.name)}
                               </span>
                             </div>
@@ -1435,7 +1442,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                   cursor: 'pointer',
                                   transition: 'all 0.2s ease-in-out',
                                 }}
-                                className="hover-lift"
                                 onMouseEnter={e => {
                                   e.currentTarget.style.background = 'rgba(0, 0, 0, 0.03)';
                                 }}
