@@ -168,23 +168,45 @@ class CampaignController {
     }
 
     public function update(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'manager', 'director']);
+        $isAuthorized = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'manager', 'director'], true);
+        if (!$isAuthorized) {
+            $stmtLeader = $this->db->prepare("SELECT 1 FROM teams WHERE leader_id = ? LIMIT 1");
+            $stmtLeader->execute([(int)$auth['user_id']]);
+            if ($stmtLeader->fetch()) {
+                $isAuthorized = true;
+            }
+        }
+        if (!$isAuthorized) {
+            respond(403, null, 'Quyền truy cập bị từ chối', false);
+        }
+
         $tenantId = $auth['tenant_id'] ?? 1;
         $userId = $auth['user_id'] ?? $auth['id'] ?? 1;
         
-        $stmtCheck = $this->db->prepare("SELECT created_by, manager_ids, user_ids FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
+        $stmtCheck = $this->db->prepare("SELECT created_by, manager_ids, user_ids, project_id FROM marketing_campaigns WHERE id = ? AND tenant_id = ?");
         $stmtCheck->execute([$id, $tenantId]);
         $camp = $stmtCheck->fetch(PDO::FETCH_ASSOC);
         if (!$camp) {
             respond(404, null, 'Chiến dịch không tồn tại', false);
         }
-        $isAdmin = in_array($auth['role'], ['admin', 'superadmin', 'super_admin'], true);
-        if (!$isAdmin) {
+        $isAdminOrDirector = in_array($auth['role'], ['admin', 'superadmin', 'super_admin', 'director'], true);
+        if (!$isAdminOrDirector) {
             $creatorId = $camp['created_by'];
             $mgrs = array_filter(array_map('intval', explode(',', $camp['manager_ids'] ?? '')));
             $users = array_filter(array_map('intval', explode(',', $camp['user_ids'] ?? '')));
             $isCreator = ($creatorId !== null && (int)$creatorId === (int)$userId);
             $isRoster = in_array((int)$userId, $mgrs, true) || in_array((int)$userId, $users, true);
+
+            if (!$isCreator && !$isRoster) {
+                if ($camp['project_id']) {
+                    $stmtRoster = $this->db->prepare("SELECT 1 FROM project_roster WHERE project_id = ? AND user_id = ? LIMIT 1");
+                    $stmtRoster->execute([(int)$camp['project_id'], (int)$userId]);
+                    if ($stmtRoster->fetch()) {
+                        $isRoster = true;
+                    }
+                }
+            }
+
             if (!$isCreator && !$isRoster) {
                 respond(403, null, 'Bạn không có quyền chỉnh sửa chiến dịch này', false);
             }

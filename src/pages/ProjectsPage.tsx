@@ -640,6 +640,23 @@ export default function ProjectsPage() {
     return String(proj.created_by) === String(user.id);
   };
 
+  const canEditCampaign = (camp: any) => {
+    if (!user) return false;
+    if (isSystemAdmin || ['admin', 'superadmin', 'super_admin', 'director'].includes(user.role)) return true;
+    const isManagerOrLeaderUser = user.role === 'manager' || teams.some(t => Number(t.leader_id) === Number(user.id));
+    if (isManagerOrLeaderUser) return true;
+    const isCreator = String(camp.created_by) === String(user.id);
+    const inManagerIds = camp.manager_ids && camp.manager_ids.split(',').map(String).includes(String(user.id));
+    const inUserIds = camp.user_ids && camp.user_ids.split(',').map(String).includes(String(user.id));
+    return isCreator || inManagerIds || inUserIds;
+  };
+
+  const canDeleteCampaign = (camp: any) => {
+    if (!user) return false;
+    if (isSystemAdmin) return true;
+    return String(camp.created_by) === String(user.id);
+  };
+
   const parseIds = (val: any): string[] => {
     if (!val) return [];
     if (Array.isArray(val)) return val.map(String);
@@ -2827,27 +2844,31 @@ export default function ProjectsPage() {
                         <span>•</span>
                         <span><strong>{staffCount}</strong> Nhân sự</span>
                       </div>
-                      {isAdmin && (
+                      {(isManagerOrLeader || canEditCampaign(camp)) && (
                         <div style={{ display: 'flex', gap: '6px' }} onClick={e => e.stopPropagation()}>
-                          <button
-                            onClick={() => {
-                              setEditingCampaign(camp);
-                              setCampaignModalMode('edit');
-                              setIsCampaignModalOpen(true);
-                            }}
-                            className="btn outline icon-only sm"
-                            title="Sửa"
-                          >
-                            <Edit size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCampaign(camp.id)}
-                            className="btn outline icon-only sm"
-                            style={{ color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
-                            title="Xóa"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          {canEditCampaign(camp) && (
+                            <button
+                              onClick={() => {
+                                setEditingCampaign(camp);
+                                setCampaignModalMode('edit');
+                                setIsCampaignModalOpen(true);
+                              }}
+                              className="btn outline icon-only sm"
+                              title="Sửa"
+                            >
+                              <Edit size={12} />
+                            </button>
+                          )}
+                          {canDeleteCampaign(camp) && (
+                            <button
+                              onClick={() => handleDeleteCampaign(camp.id)}
+                              className="btn outline icon-only sm"
+                              style={{ color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                              title="Xóa"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
