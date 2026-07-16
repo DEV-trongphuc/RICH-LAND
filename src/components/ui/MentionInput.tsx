@@ -24,6 +24,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [cursorPos, setCursorPos] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isTeamMember = (u: User) => {
@@ -73,6 +74,10 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showDropdown]);
 
+  // Reset selectedIndex when filter matches or dropdown changes
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [searchQuery, showDropdown]);
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     onChange(e);
@@ -81,7 +86,7 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
     const textBeforeCursor = val.slice(0, cursor);
     
     // Check if we are typing a mention
-    const match = textBeforeCursor.match(/@([a-zA-Z0-9_\u00C0-\u1EF9]*)$/);
+    const match = textBeforeCursor.match(/@([^\s]*)$/);
     if (match) {
       setSearchQuery(match[1].toLowerCase());
       setShowDropdown(true);
@@ -90,7 +95,6 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
       setShowDropdown(false);
     }
   };
-
   const handleSelectUser = (user: User) => {
     if (cursorPos === null || !textareaRef.current) return;
     
@@ -120,8 +124,26 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
     }, 0);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showDropdown && filteredUsers.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev + 1) % filteredUsers.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev - 1 + filteredUsers.length) % filteredUsers.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSelectUser(filteredUsers[selectedIndex]);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowDropdown(false);
+      }
+    }
+  };
+
   const filteredUsers = users.filter(u => {
-    // Do not show the currently logged in user
+    // Exclude the currently logged in user
     if (currentUser && u.id === currentUser.id) {
       return false;
     }
@@ -130,37 +152,19 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
     return name.includes(searchQuery) || role.includes(searchQuery);
   });
 
-  const stringToColor = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const colors = [
-      '#3b82f6', // Blue
-      '#ef4444', // Red
-      '#10b981', // Green
-      '#f59e0b', // Amber
-      '#8b5cf6', // Violet
-      '#ec4899', // Pink
-      '#14b8a6', // Teal
-      '#f97316'  // Orange
-    ];
-    const idx = Math.abs(hash) % colors.length;
-    return colors[idx];
-  };
-
   return (
     <div style={{ position: 'relative', flex: 1, display: 'flex', minWidth: 0 }}>
       <textarea
         ref={textareaRef}
         value={value}
         onChange={handleChange}
+        onKeyDown={handleKeyDown}
         className={`form-textarea ${props.className || ''}`}
         {...props}
         style={{ width: '100%', ...props.style }}
       />
       <AnimatePresence>
-        {showDropdown && filteredUsers.length > 0 && (
+        {showDropdown && (
           <motion.div
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
@@ -173,39 +177,78 @@ export const MentionInput: React.FC<MentionInputProps> = ({ value, onChange, use
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-md)',
               boxShadow: 'var(--shadow-lg)',
-              maxHeight: '150px',
+              maxHeight: '180px',
               overflowY: 'auto',
               zIndex: 100,
               width: '100%',
-              marginBottom: '4px'
+              marginBottom: '4px',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
-            {filteredUsers.map(u => {
-              const fullName = u.full_name || 'Không tên';
-              const roleName = u.role || 'user';
-              const avatarColor = stringToColor(fullName);
-              return (
-                <div
-                  key={u.id}
-                  onClick={() => handleSelectUser(u)}
-                  style={{
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid var(--color-border-light)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    color: 'var(--color-text)'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                  <Avatar name={fullName} src={u.avatar_url || u.avatar} size={20} />
-                  <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>{fullName}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{roleName}</div>
+            {/* Search input header */}
+            <div 
+              style={{ 
+                padding: '6px 8px', 
+                borderBottom: '1px solid var(--color-border-light)',
+                background: 'var(--color-bg-light)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 10
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <input
+                type="text"
+                placeholder="Gõ để tìm tên hoặc vai trò..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value.toLowerCase())}
+                style={{
+                  width: '100%',
+                  padding: '5px 8px',
+                  fontSize: '0.75rem',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-sm)',
+                  outline: 'none',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)'
+                }}
+              />
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {filteredUsers.length === 0 ? (
+                <div style={{ padding: '12px', fontSize: '0.8rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
+                  Không tìm thấy kết quả
                 </div>
-              );
-            })}
+              ) : (
+                filteredUsers.map((u, idx) => {
+                  const fullName = u.full_name || 'Không tên';
+                  const roleName = u.role || 'user';
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => handleSelectUser(u)}
+                      style={{
+                        padding: '8px 12px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid var(--color-border-light)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        color: 'var(--color-text)',
+                        background: idx === selectedIndex ? 'var(--color-bg)' : 'transparent'
+                      }}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                    >
+                      <Avatar name={fullName} src={u.avatar_url || u.avatar} size={20} />
+                      <div style={{ flex: 1, fontSize: '0.85rem', fontWeight: 600 }}>{fullName}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{roleName}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

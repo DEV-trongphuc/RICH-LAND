@@ -679,19 +679,37 @@ class ProjectController {
         $stmt->execute([$auth['tenant_id'], $projectId, $auth['user_id'], $body]);
         $newId = $this->db->lastInsertId();
 
-        // Retrieve roster users for this project
-        $stmtRoster = $this->db->prepare("SELECT user_id FROM project_roster WHERE project_id = ?");
-        $stmtRoster->execute([$projectId]);
-        $rosterUsers = $stmtRoster->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        // Parse mentions in comment body
+        $mentions = [];
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $body, $matches);
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $nameWithUnderscores) {
+                $fullName = str_replace('_', ' ', $nameWithUnderscores);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
+                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                if ($userRow) {
+                    $uid = (int)$userRow['id'];
+                    if ($uid !== (int)$auth['user_id']) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
 
         // Get project details for name & managers
         $stmtProj = $this->db->prepare("SELECT name, created_by, manager_ids FROM projects WHERE id = ?");
         $stmtProj->execute([$projectId]);
         $project = $stmtProj->fetch(PDO::FETCH_ASSOC);
-        $notifyUids = [];
+        $projectName = $project ? $project['name'] : "Dự án";
 
+        // Retrieve roster users for this project
+        $stmtRoster = $this->db->prepare("SELECT user_id FROM project_roster WHERE project_id = ?");
+        $stmtRoster->execute([$projectId]);
+        $rosterUsers = $stmtRoster->fetchAll(PDO::FETCH_COLUMN) ?: [];
+
+        $notifyUids = [];
         if ($project) {
-            $projectName = $project['name'];
             if ($project['created_by'] && (int)$project['created_by'] !== (int)$auth['user_id']) {
                 $notifyUids[] = (int)$project['created_by'];
             }
@@ -703,8 +721,6 @@ class ProjectController {
                     }
                 }
             }
-        } else {
-            $projectName = "Dự án";
         }
 
         foreach ($rosterUsers as $rUid) {
@@ -714,10 +730,41 @@ class ProjectController {
         }
 
         $notifyUids = array_unique($notifyUids);
+        
+        // Remove mentioned users from generic notifications
+        $notifyUids = array_diff($notifyUids, array_keys($mentions));
 
+        $preview = mb_strimwidth($body, 0, 50, "...");
+
+        // Send mention notifications (with email)
+        if (!empty($mentions)) {
+            require_once __DIR__ . '/../mailer.php';
+            $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_comment_mention', ?)");
+            foreach ($mentions as $mUid => $userRow) {
+                $stmtNotif->execute([
+                    $mUid,
+                    $auth['tenant_id'],
+                    "Bạn được nhắc tên trong dự án " . $projectName,
+                    $auth['full_name'] . " đã nhắc tên bạn trong dự án " . $projectName . ": \"" . $preview . "\"",
+                    "/projects?id=" . $projectId
+                ]);
+
+                if (!empty($userRow['email'])) {
+                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong bình luận dự án " . $projectName;
+                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một bình luận của dự án <strong>" . htmlspecialchars($projectName) . "</strong>.<br/>" .
+                                    "Nội dung:<br/>" .
+                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($body)) . "</blockquote>" .
+                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
+                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+        }
+
+        // Send regular notifications
         if (!empty($notifyUids)) {
             $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'project_comment', ?)");
-            $preview = mb_strimwidth($body, 0, 50, "...");
             foreach ($notifyUids as $nUid) {
                 $stmtNotif->execute([
                     $nUid,

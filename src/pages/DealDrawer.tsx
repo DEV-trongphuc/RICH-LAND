@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css';
 import { TagInput } from '../components/ui/TagInput';
 import { MentionInput } from '../components/ui/MentionInput';
+import { Avatar } from '../components/ui/Avatar';
 import { numberToText } from '../utils/numberToText';
 import { CustomModal } from '../components/ui/CustomModal';
 
@@ -117,9 +118,9 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
           </a>
         );
       } else if (part.startsWith('@')) {
-        const cleanMention = part.substring(1).toLowerCase();
+        const cleanMention = part.substring(1).toLowerCase().replace(/_\([^)]+\)/g, '');
         const taggedUser = users.find((u: any) => {
-          const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase();
+          const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '');
           return normalizedUser === cleanMention;
         });
 
@@ -145,37 +146,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
               verticalAlign: 'middle'
             }}
           >
-            {avatarUrl ? (
-              <img 
-                src={avatarUrl} 
-                alt={displayName} 
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  display: 'block'
-                }}
-              />
-            ) : (
-              <span 
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  background: '#ef4444',
-                  color: '#fff',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '9px',
-                  fontWeight: 'bold',
-                  lineHeight: 1
-                }}
-              >
-                {initial}
-              </span>
-            )}
+            <Avatar name={displayName} src={avatarUrl} size={16} />
             @{displayName}
           </span>
         );

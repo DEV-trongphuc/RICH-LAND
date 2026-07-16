@@ -1508,37 +1508,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               verticalAlign: 'middle'
             }}
           >
-            {avatarUrl ? (
-              <img 
-                src={avatarUrl} 
-                alt={displayName} 
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  objectFit: 'cover',
-                  display: 'block'
-                }}
-              />
-            ) : (
-              <span 
-                style={{
-                  width: '16px',
-                  height: '16px',
-                  borderRadius: '50%',
-                  background: '#ef4444',
-                  color: '#fff',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '9px',
-                  fontWeight: 'bold',
-                  lineHeight: 1
-                }}
-              >
-                {initial}
-              </span>
-            )}
+            <Avatar name={displayName} src={avatarUrl} size={16} />
             @{displayName}
           </span>
         );

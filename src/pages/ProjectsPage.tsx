@@ -657,6 +657,61 @@ export default function ProjectsPage() {
     return String(camp.created_by) === String(user.id);
   };
 
+  const renderFormattedText = (text: string) => {
+    if (!text) return '';
+    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
+    const parts = text.split(regex);
+    return parts.map((part, index) => {
+      if (part.startsWith('http://') || part.startsWith('https://')) {
+        return (
+          <a
+            key={index}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--color-primary)', textDecoration: 'underline', wordBreak: 'break-all' }}
+          >
+            {part}
+          </a>
+        );
+      } else if (part.startsWith('@')) {
+        const cleanMention = part.substring(1).toLowerCase().replace(/_\([^)]+\)/g, '');
+        const taggedUser = users.find((u: any) => {
+          const normalizedUser = (u.full_name || u.name || u.fullname || u.username || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '');
+          return normalizedUser === cleanMention;
+        });
+
+        const displayName = taggedUser?.full_name || taggedUser?.name || taggedUser?.fullname || taggedUser?.username || part.substring(1).replace(/_/g, ' ');
+        const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
+
+        return (
+          <span
+            key={index}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#dc2626',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              margin: '0 2px',
+              fontWeight: 600,
+              fontSize: '0.85em',
+              verticalAlign: 'middle'
+            }}
+          >
+            <Avatar name={displayName} src={avatarUrl} size={16} />
+            @{displayName}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   const parseIds = (val: any): string[] => {
     if (!val) return [];
     if (Array.isArray(val)) return val.map(String);
@@ -1047,7 +1102,6 @@ export default function ProjectsPage() {
                   
                   <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                     <MentionInput
-                      users={users}
                       value={newCommentText}
                       onChange={e => setNewCommentText(e.target.value)}
                       placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
@@ -1086,7 +1140,7 @@ export default function ProjectsPage() {
                                 {new Date(comment.created_at).toLocaleString('vi-VN')}
                               </span>
                             </div>
-                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{comment.body}</p>
+                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
                           </div>
                         </div>
                       ))
@@ -1643,7 +1697,6 @@ export default function ProjectsPage() {
                   
                   <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                     <MentionInput
-                      users={users}
                       value={newCommentText}
                       onChange={e => setNewCommentText(e.target.value)}
                       placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
@@ -1682,7 +1735,7 @@ export default function ProjectsPage() {
                                 {new Date(comment.created_at).toLocaleString('vi-VN')}
                               </span>
                             </div>
-                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{comment.body}</p>
+                            <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
                           </div>
                         </div>
                       ))
@@ -3068,7 +3121,6 @@ export default function ProjectsPage() {
                 
                 <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                   <MentionInput
-                    users={users}
                     value={newCommentText}
                     onChange={e => setNewCommentText(e.target.value)}
                     placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
@@ -3107,7 +3159,7 @@ export default function ProjectsPage() {
                               {new Date(comment.created_at).toLocaleString('vi-VN')}
                             </span>
                           </div>
-                          <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{comment.body}</p>
+                          <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
                         </div>
                       </div>
                     ))
@@ -4433,7 +4485,6 @@ export default function ProjectsPage() {
                 
                 <div style={{ background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
                   <MentionInput
-                    users={users}
                     value={newCommentText}
                     onChange={e => setNewCommentText(e.target.value)}
                     placeholder="Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)"
@@ -4472,7 +4523,7 @@ export default function ProjectsPage() {
                               {new Date(comment.created_at).toLocaleString('vi-VN')}
                             </span>
                           </div>
-                          <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{comment.body}</p>
+                          <p style={{ margin: 0, color: 'var(--color-text)', lineHeight: 1.4 }}>{renderFormattedText(comment.body)}</p>
                         </div>
                       </div>
                     ))

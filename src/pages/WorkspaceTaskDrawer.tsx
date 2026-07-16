@@ -319,10 +319,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
 
   const renderCommentContent = (text: string) => {
     if (!text) return '';
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const parts = text.split(urlRegex);
+    const regex = /(https?:\/\/[^\s]+|@[a-zA-Z0-9_\u00C0-\u1EF9()]+)/g;
+    const parts = text.split(regex);
     return parts.map((part, idx) => {
-      if (urlRegex.test(part)) {
+      if (part.startsWith('http://') || part.startsWith('https://')) {
         return (
           <a
             key={idx}
@@ -337,6 +337,39 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
           >
             {part}
           </a>
+        );
+      } else if (part.startsWith('@')) {
+        const cleanMention = part.substring(1).toLowerCase().replace(/_\([^)]+\)/g, '');
+        const taggedUser = users.find((u: any) => {
+          const normalizedUser = (u.full_name || u.name || u.fullname || u.username || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '');
+          return normalizedUser === cleanMention;
+        });
+
+        const displayName = taggedUser?.full_name || taggedUser?.name || taggedUser?.fullname || taggedUser?.username || part.substring(1).replace(/_/g, ' ');
+        const avatarUrl = taggedUser?.avatar_url || taggedUser?.avatar;
+        const initial = displayName ? displayName.charAt(0).toUpperCase() : '?';
+
+        return (
+          <span
+            key={idx}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#dc2626',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              padding: '2px 8px',
+              borderRadius: '9999px',
+              margin: '0 2px',
+              fontWeight: 600,
+              fontSize: '0.85em',
+              verticalAlign: 'middle'
+            }}
+          >
+            <Avatar name={displayName} src={avatarUrl} size={16} />
+            @{displayName}
+          </span>
         );
       }
       return part;
@@ -1557,7 +1590,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 {/* Add comment input */}
                 <div style={{ background: 'rgba(0, 0, 0, 0.015)', border: '1px solid var(--color-border-light)', padding: '12px', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '10px', boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.01)' }}>
                   <MentionInput
-                    users={users}
                     value={newCommentText}
                     onChange={e => setNewCommentText(e.target.value)}
                     placeholder={t('Viết bình luận... (Gõ @ để nhắc tên đồng nghiệp)')}

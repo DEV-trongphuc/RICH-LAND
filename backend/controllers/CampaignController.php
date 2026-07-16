@@ -362,6 +362,56 @@ class CampaignController {
         ");
         $stmt->execute([$auth['tenant_id'], $campaignId, $auth['user_id'], $body]);
         $newId = $this->db->lastInsertId();
+
+        // Parse mentions in comment body
+        $mentions = [];
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $body, $matches);
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $nameWithUnderscores) {
+                $fullName = str_replace('_', ' ', $nameWithUnderscores);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
+                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                if ($userRow) {
+                    $uid = (int)$userRow['id'];
+                    if ($uid !== (int)$auth['user_id']) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        // Get campaign name
+        $stmtCamp = $this->db->prepare("SELECT name FROM marketing_campaigns WHERE id = ?");
+        $stmtCamp->execute([$campaignId]);
+        $campaignName = $stmtCamp->fetchColumn() ?: "Chiến dịch";
+
+        if (!empty($mentions)) {
+            require_once __DIR__ . '/../mailer.php';
+            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
+            $preview = mb_strimwidth($body, 0, 50, "...");
+            foreach ($mentions as $uid => $userRow) {
+                $notif->execute([
+                    $uid, $auth['tenant_id'],
+                    "Bạn được nhắc tên trong chiến dịch " . $campaignName,
+                    $auth['full_name'] . ' đã nhắc tên bạn trong bình luận chiến dịch ' . $campaignName . ': "' . $preview . '"',
+                    'campaign_comment_mention',
+                    "/projects?sub=campaigns"
+                ]);
+
+                if (!empty($userRow['email'])) {
+                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong bình luận chiến dịch " . $campaignName;
+                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một bình luận của chiến dịch <strong>" . htmlspecialchars($campaignName) . "</strong>.<br/>" .
+                                    "Nội dung:<br/>" .
+                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($body)) . "</blockquote>" .
+                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
+                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+        }
+
         respond(200, ['id' => $newId], 'Thêm bình luận thành công');
     }
 

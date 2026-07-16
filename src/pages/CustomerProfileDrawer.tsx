@@ -229,10 +229,10 @@ const renderFormattedText = (text: string, users: any[]) => {
         </a>
       );
     } else if (part.startsWith('@')) {
-      const cleanMention = part.substring(1).toLowerCase();
+      const cleanMention = part.substring(1).toLowerCase().replace(/_\([^)]+\)/g, '');
       // Look up user to find avatar
       const taggedUser = users.find((u: any) => {
-        const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase();
+        const normalizedUser = (u.full_name || '').trim().replace(/\s+/g, '_').toLowerCase().replace(/_\([^)]+\)/g, '');
         return normalizedUser === cleanMention;
       });
 
@@ -258,39 +258,9 @@ const renderFormattedText = (text: string, users: any[]) => {
             verticalAlign: 'middle'
           }}
         >
-          {avatarUrl ? (
-            <img 
-              src={avatarUrl} 
-              alt={displayName} 
-              style={{
-                width: '16px',
-                height: '16px',
-                borderRadius: '50%',
-                objectFit: 'cover',
-                display: 'block'
-              }}
-            />
-          ) : (
-            <span 
-              style={{
-                width: '16px',
-                height: '16px',
-                borderRadius: '50%',
-                background: '#ef4444',
-                color: '#fff',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '9px',
-                fontWeight: 'bold',
-                lineHeight: 1
-              }}
-            >
-              {initial}
-            </span>
-          )}
-          @{displayName}
-        </span>
+            <Avatar name={displayName} src={avatarUrl} size={16} />
+            @{displayName}
+          </span>
       );
     }
     return part;
@@ -499,8 +469,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
             <Avatar name="Bạn" size="sm" />
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ position: 'relative' }}>
-                <MentionInput 
-                  users={users}
+                <MentionInput
                   className="form-input" 
                   style={{ minHeight: '60px', padding: '8px 12px', fontSize: '0.875rem', paddingRight: '40px', opacity: submitting ? 0.7 : 1, width: '100%' }} 
                   placeholder="Viết bình luận..."
