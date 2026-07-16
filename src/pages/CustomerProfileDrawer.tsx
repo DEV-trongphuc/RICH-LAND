@@ -4518,6 +4518,43 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '320px', margin: '0 auto 1.5rem' }}>
                             Khách hàng này chưa có cấu hình phiếu phân chia hoa hồng. Bắt đầu thiết lập để phân chia tỷ lệ doanh thu.
                           </p>
+                          {/* Yêu cầu tài liệu & Trạng thái được phép tạo phiếu */}
+                          <div style={{
+                            margin: '1.5rem auto',
+                            maxWidth: '380px',
+                            background: 'var(--color-bg-secondary)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: '12px',
+                            padding: '12px 16px',
+                            textAlign: 'left',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}>
+                            {coopEligibleStatuses.length > 0 && (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                                <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>•</span>
+                                <span>
+                                  Trạng thái được tạo: <strong>
+                                    {coopEligibleStatuses.map(s => {
+                                      const found = pipelineStages?.find(stage => stage.id === s);
+                                      return found ? found.name : s;
+                                    }).join(', ')}
+                                  </strong>
+                                </span>
+                              </div>
+                            )}
+                            
+                            {coopDefaultFiles.length > 0 && (
+                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                                <span style={{ color: 'var(--color-primary)', fontWeight: 'bold' }}>•</span>
+                                <span>
+                                  Tài liệu đính kèm bắt buộc: <strong>{coopDefaultFiles.join(', ')}</strong>
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
                           {!isViewer && (
                             <button
                               className="btn primary"
