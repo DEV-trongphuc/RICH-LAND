@@ -1207,68 +1207,80 @@ const ConsultantsInner = () => {
                     onClick={() => openEditTeamModal(team)}
                     style={{ 
                       cursor: 'pointer', 
-                      padding: '1.5rem', 
+                      padding: '1.25rem', 
                       display: 'flex', 
                       flexDirection: 'column', 
-                      gap: '1.25rem',
+                      gap: '1rem',
                       border: '1px solid var(--color-border-light)',
                       borderRadius: '16px',
-                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                       background: 'var(--color-surface)',
                       boxShadow: 'var(--shadow-sm)',
-                      position: 'relative',
-                      overflow: 'hidden'
+                      transition: 'transform 0.25s, box-shadow 0.25s, border-color 0.25s'
                     }}
                   >
-                    {/* Top line indicator */}
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'linear-gradient(90deg, var(--color-primary), #3b82f6)' }} />
-
-                    {/* Card Header: Title & Member Count */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--color-text)', lineHeight: 1.3 }}>{team.name}</h3>
-                        {team.branch && (
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Building2 size={12} /> {team.branch}
-                          </span>
-                        )}
+                    {/* Header Row */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <div style={{ 
+                        width: '42px', 
+                        height: '42px', 
+                        borderRadius: '12px', 
+                        background: 'linear-gradient(135deg, var(--color-primary-light, #eff6ff), #f0fdf4)', 
+                        border: '1px solid var(--color-border-light)',
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        color: 'var(--color-primary)',
+                        flexShrink: 0
+                      }}>
+                        <Users size={20} />
                       </div>
-                      <span className="badge info" style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: '12px', fontWeight: 700, flexShrink: 0 }}>
-                        {team.member_count} {t('nhành viên')}
-                      </span>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {team.name}
+                        </h3>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
+                          <span className="badge info sm" style={{ fontWeight: 700, fontSize: '0.6875rem', padding: '2px 6px' }}>
+                            {team.member_count} {t('nhân viên')}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Slogan / Description */}
-                    {team.description ? (
-                      <p style={{ 
-                        fontSize: '0.8125rem', 
-                        color: 'var(--color-text-light)', 
-                        fontStyle: 'italic', 
-                        lineHeight: 1.4,
-                        margin: 0,
-                        background: 'var(--color-bg)',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        borderLeft: '3px solid var(--color-primary)'
-                      }}>
-                        "{team.description}"
-                      </p>
-                    ) : (
-                      <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', margin: 0, fontStyle: 'italic' }}>
-                        {t('Chưa có mô tả nhóm / Slogan...')}
-                      </p>
-                    )}
+                    <div style={{ 
+                      fontSize: '0.8125rem', 
+                      color: 'var(--color-text-light)', 
+                      fontStyle: 'italic', 
+                      background: 'var(--color-bg)',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      borderLeft: '3px solid var(--color-primary)',
+                      lineHeight: 1.4
+                    }}>
+                      {team.description ? `"${team.description}"` : `"${t('Đội ngũ tư vấn Richland chuyên nghiệp, phục vụ tận tâm')}"`}
+                    </div>
 
-                    {/* Team Details Grid: Leader / Focus project / KPI */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '1rem', marginTop: 'auto' }}>
-                      {/* Leader info */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                        <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('Trưởng nhóm')}:</span>
+                    {/* Details Panel */}
+                    <div style={{ 
+                      background: 'rgba(0, 0, 0, 0.01)', 
+                      border: '1px solid var(--color-border-light)', 
+                      borderRadius: '12px', 
+                      padding: '12px', 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '10px' 
+                    }}>
+                      {/* Trưởng nhóm */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)' }}>
+                          <User size={14} />
+                          <span>{t('Trưởng nhóm')}:</span>
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           {team.leader_name ? (
                             <>
                               <Avatar src={leader?.avatar_url || leader?.avatar} name={team.leader_name} size={18} />
-                              <strong style={{ color: 'var(--color-text)', fontWeight: 700 }}>{team.leader_name}</strong>
+                              <span style={{ color: 'var(--color-text)', fontWeight: 700 }}>{team.leader_name}</span>
                             </>
                           ) : (
                             <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>
@@ -1276,48 +1288,70 @@ const ConsultantsInner = () => {
                         </div>
                       </div>
 
-                      {/* Focus project info */}
-                      {team.focus_project && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('Dự án trọng điểm')}:</span>
-                          <span className="badge success" style={{ fontWeight: 700, fontSize: '0.75rem' }}>{team.focus_project}</span>
+                      {/* Chi nhánh */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)' }}>
+                          <Building2 size={14} />
+                          <span>{t('Chi nhánh')}:</span>
                         </div>
-                      )}
+                        <span style={{ color: 'var(--color-text)', fontWeight: team.branch ? 600 : 400 }}>
+                          {team.branch || <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>}
+                        </span>
+                      </div>
 
-                      {/* KPI Target */}
-                      {team.kpi_target !== null && team.kpi_target !== undefined && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
-                          <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>{t('KPI doanh thu tháng')}:</span>
-                          <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(team.kpi_target)}
-                          </strong>
+                      {/* KPI */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)' }}>
+                          <TrendingUp size={14} />
+                          <span>{t('KPI doanh thu tháng')}:</span>
                         </div>
-                      )}
+                        {team.kpi_target !== null && team.kpi_target !== undefined ? (
+                          <strong style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
+                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(team.kpi_target)}
+                          </strong>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa thiết lập')}</span>
+                        )}
+                      </div>
+
+                      {/* Dự án */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-muted)' }}>
+                          <CheckCircle size={14} />
+                          <span>{t('Dự án trọng điểm')}:</span>
+                        </div>
+                        {team.focus_project ? (
+                          <span className="badge success sm" style={{ fontWeight: 700, fontSize: '0.7rem' }}>
+                            {team.focus_project}
+                          </span>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontStyle: 'italic' }}>{t('Chưa gán')}</span>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Actions (If admin) */}
+                    {/* Actions */}
                     {isWriteAuthorized && (
                       <div 
                         style={{ 
                           display: 'flex', 
                           justifyContent: 'flex-end', 
                           gap: '0.5rem', 
-                          borderTop: '1px solid var(--color-border-light)', 
-                          paddingTop: '1rem', 
-                          marginTop: '0.25rem' 
+                          marginTop: 'auto',
+                          paddingTop: '8px'
                         }} 
                         onClick={e => e.stopPropagation()}
                       >
                         <button 
                           className="btn sm outline" 
                           onClick={() => openEditTeamModal(team)}
-                          style={{ borderRadius: '8px', fontWeight: 700 }}
+                          style={{ borderRadius: '8px', padding: '4px 12px', fontSize: '0.75rem', fontWeight: 600 }}
                         >
                           {t('Sửa')}
                         </button>
                         <button
                           className="btn sm"
-                          style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none', borderRadius: '8px', fontWeight: 700 }}
+                          style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)', border: 'none', borderRadius: '8px', padding: '4px 12px', fontSize: '0.75rem', fontWeight: 600 }}
                           onClick={() => {
                             setDeleteTeamId(team.id);
                             setConfirmDeleteTeamOpen(true);
