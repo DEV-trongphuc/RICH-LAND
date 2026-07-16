@@ -3862,7 +3862,7 @@ export default function ProjectsPage() {
                         placeholder="Chọn Nhóm (Team)..."
                         options={teams
                           .map(team => {
-                            const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                            const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id) || Number(m.id) === Number(team.leader_id));
                             const assignedInTeam = teamMembers.filter(m => m.is_assigned === 1);
                             if (teamMembers.length === 0) return null;
                             return {
@@ -3875,7 +3875,7 @@ export default function ProjectsPage() {
                         }
                         value={teams
                           .filter(team => {
-                            const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                            const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id) || Number(m.id) === Number(team.leader_id));
                             return teamMembers.length > 0 && teamMembers.every(m => m.is_assigned === 1);
                           })
                           .map(team => String(team.id))
@@ -3883,7 +3883,7 @@ export default function ProjectsPage() {
                         onChange={(newVal: string[]) => {
                           const currentSelected = teams
                             .filter(team => {
-                              const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                              const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id) || Number(m.id) === Number(team.leader_id));
                               return teamMembers.length > 0 && teamMembers.every(m => m.is_assigned === 1);
                             })
                             .map(team => String(team.id));
@@ -3891,12 +3891,15 @@ export default function ProjectsPage() {
                           const addedIds = newVal.filter(id => !currentSelected.includes(id)).map(Number);
                           const removedIds = currentSelected.filter(id => !newVal.includes(id)).map(Number);
 
+                          const addedLeaders = teams.filter(t => addedIds.includes(t.id)).map(t => Number(t.leader_id));
+                          const removedLeaders = teams.filter(t => removedIds.includes(t.id)).map(t => Number(t.leader_id));
+
                           setRosterMembers(prev =>
                             prev.map(m => {
-                              if (addedIds.includes(Number(m.team_id))) {
+                              if (addedIds.includes(Number(m.team_id)) || addedLeaders.includes(Number(m.id))) {
                                 return { ...m, is_assigned: 1 };
                               }
-                              if (removedIds.includes(Number(m.team_id))) {
+                              if (removedIds.includes(Number(m.team_id)) || removedLeaders.includes(Number(m.id))) {
                                 return { ...m, is_assigned: 0 };
                               }
                               return m;
