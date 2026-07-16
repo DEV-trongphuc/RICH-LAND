@@ -505,7 +505,6 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
                   value={text}
                   disabled={submitting}
                   onChange={e => setText(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
                 />
                 <label style={{ position: 'absolute', right: '8px', bottom: '8px', cursor: submitting ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)' }}>
                   <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.csv,image/*" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading || submitting} />
