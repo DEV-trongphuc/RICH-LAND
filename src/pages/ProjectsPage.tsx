@@ -2191,6 +2191,9 @@ export default function ProjectsPage() {
         addToast('Cập nhật roster dự án thành công!', 'success');
         setIsRosterModalOpen(false);
         loadProjects();
+        if (editingProject && editingProject.id === selectedProjectId) {
+          loadProjectRoster(editingProject.id);
+        }
       } else {
         addToast(res.message || 'Lỗi lưu roster', 'error');
       }
@@ -3585,6 +3588,56 @@ export default function ProjectsPage() {
                     placeholder="Chọn manager..."
                   />
                 </div>
+
+                <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                      Đội ngũ nhân sự phụ trách (Roster)
+                    </span>
+                    {editingProject?.id && (
+                      <button
+                        type="button"
+                        className="btn-link"
+                        onClick={() => handleOpenRoster(editingProject.id)}
+                        style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 700 }}
+                      >
+                        Cấu hình Roster
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    background: 'var(--color-bg-light, #f8fafc)', 
+                    padding: '8px 12px', 
+                    borderRadius: '12px', 
+                    border: '1px solid var(--color-border-light)'
+                  }}>
+                    {projectRoster.length > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {projectRoster
+                          .slice(0, 5)
+                          .map((m: any) => (
+                            <Avatar key={m.id} src={m.avatar_url} name={m.full_name} size={22} />
+                          ))
+                        }
+                        {projectRoster.length > 5 && (
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>
+                            +{projectRoster.length - 5}
+                          </span>
+                        )}
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)', marginLeft: '4px' }}>
+                          ({projectRoster.length} nhân sự)
+                        </span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                        Chưa phân công nhân sự phân phối
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Card 2: Tài liệu & Liên kết */}
@@ -3801,42 +3854,57 @@ export default function ProjectsPage() {
                       Thêm nhanh theo Nhóm (Team):
                     </span>
                   </div>
-                  <div style={{ flex: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <select
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (!val) return;
-                        const teamId = Number(val);
-                        setRosterMembers(prev =>
-                          prev.map(m => (Number(m.team_id) === teamId ? { ...m, is_assigned: 1 } : m))
-                        );
-                        e.target.value = '';
-                      }}
-                      defaultValue=""
-                      style={{
-                        flex: 1,
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--color-border)',
-                        fontSize: '0.8125rem',
-                        background: 'var(--color-surface)',
-                        color: 'var(--color-text)',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="" disabled>-- Chọn Nhóm --</option>
-                      {teams.map(team => {
-                        const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
-                        const assignedInTeam = teamMembers.filter(m => m.is_assigned === 1);
-                        if (teamMembers.length === 0) return null;
-                        return (
-                          <option key={team.id} value={team.id}>
-                            {team.name} ({assignedInTeam.length}/{teamMembers.length} thành viên)
-                          </option>
-                        );
-                      })}
-                    </select>
+                  <div style={{ flex: 1, display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <CustomSelect
+                        multiple={true}
+                        searchable={true}
+                        placeholder="Chọn Nhóm (Team)..."
+                        options={teams
+                          .map(team => {
+                            const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                            const assignedInTeam = teamMembers.filter(m => m.is_assigned === 1);
+                            if (teamMembers.length === 0) return null;
+                            return {
+                              value: String(team.id),
+                              label: team.name,
+                              sublabel: `${assignedInTeam.length}/${teamMembers.length} thành viên`
+                            };
+                          })
+                          .filter(Boolean) as any[]
+                        }
+                        value={teams
+                          .filter(team => {
+                            const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                            return teamMembers.length > 0 && teamMembers.every(m => m.is_assigned === 1);
+                          })
+                          .map(team => String(team.id))
+                        }
+                        onChange={(newVal: string[]) => {
+                          const currentSelected = teams
+                            .filter(team => {
+                              const teamMembers = rosterMembers.filter(m => Number(m.team_id) === Number(team.id));
+                              return teamMembers.length > 0 && teamMembers.every(m => m.is_assigned === 1);
+                            })
+                            .map(team => String(team.id));
+
+                          const addedIds = newVal.filter(id => !currentSelected.includes(id)).map(Number);
+                          const removedIds = currentSelected.filter(id => !newVal.includes(id)).map(Number);
+
+                          setRosterMembers(prev =>
+                            prev.map(m => {
+                              if (addedIds.includes(Number(m.team_id))) {
+                                return { ...m, is_assigned: 1 };
+                              }
+                              if (removedIds.includes(Number(m.team_id))) {
+                                return { ...m, is_assigned: 0 };
+                              }
+                              return m;
+                            })
+                          );
+                        }}
+                      />
+                    </div>
 
                     <button
                       type="button"
@@ -3849,7 +3917,11 @@ export default function ProjectsPage() {
                         padding: '6px 12px', 
                         fontSize: '0.75rem', 
                         fontWeight: 600,
-                        whiteSpace: 'nowrap'
+                        whiteSpace: 'nowrap',
+                        height: '38px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}
                     >
                       Bỏ chọn tất cả
