@@ -1662,10 +1662,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             transition: 'all 0.2s ease'
                           }}
                         >
-                          <Avatar src={commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || 'User'} size={28} />
+                          <Avatar src={comment.avatar_url || commUser?.avatar || commUser?.avatar_url} name={commUser?.full_name || comment.user_name || 'Đồng nghiệp'} size={28} />
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || 'Đồng nghiệp'}</span>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-text)' }}>{commUser?.full_name || comment.user_name || 'Đồng nghiệp'}</span>
                               <span style={{ fontSize: '0.68rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{new Date(comment.created_at).toLocaleString('vi-VN')}</span>
                             </div>
                             <p style={{ fontSize: '0.825rem', color: 'var(--color-text-light)', margin: '4px 0 0', lineHeight: '1.45', whiteSpace: 'pre-wrap' }}>{renderCommentContent(comment.content)}</p>

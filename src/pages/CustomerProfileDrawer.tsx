@@ -422,7 +422,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {comments.map((c: any) => (
             <div key={c.id} style={{ display: 'flex', gap: '0.75rem' }}>
-              <Avatar name={c.user_name} size="sm" />
+              <Avatar name={c.user_name} src={c.avatar_url || undefined} size="sm" />
               <div style={{ flex: 1, background: 'var(--color-surface)', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                   <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>

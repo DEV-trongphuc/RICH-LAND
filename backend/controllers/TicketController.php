@@ -439,6 +439,52 @@ class TicketController {
 
         $stmt = $this->db->prepare("INSERT INTO ticket_comments (ticket_id, user_id, body) VALUES (?, ?, ?)");
         $stmt->execute([$ticketId, $auth['user_id'], $data['body']]);
+
+        // Parse mentions in comment body
+        $bodyText = $data['body'];
+        $mentions = [];
+        preg_match_all('/@([a-zA-Z0-9_\x{00C0}-\x{1EF9}()]+)/u', $bodyText, $matches);
+        if (!empty($matches[1])) {
+            foreach ($matches[1] as $nameWithUnderscores) {
+                $fullName = str_replace('_', ' ', $nameWithUnderscores);
+                $stmtUser = $this->db->prepare("SELECT id, email, full_name FROM users WHERE tenant_id=? AND full_name=?");
+                $stmtUser->execute([$auth['tenant_id'], $fullName]);
+                $userRow = $stmtUser->fetch(PDO::FETCH_ASSOC);
+                if ($userRow) {
+                    $uid = (int)$userRow['id'];
+                    if ($uid !== (int)$auth['user_id']) {
+                        $mentions[$uid] = $userRow;
+                    }
+                }
+            }
+        }
+
+        // Send mention notifications (with email)
+        if (!empty($mentions)) {
+            require_once __DIR__ . '/../mailer.php';
+            $preview = mb_strimwidth($bodyText, 0, 50, "...");
+            $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'ticket_comment_mention', ?)");
+            foreach ($mentions as $mUid => $userRow) {
+                $stmtNotif->execute([
+                    $mUid,
+                    $auth['tenant_id'],
+                    "Bạn được nhắc tên trong ticket hỗ trợ #" . $ticketId,
+                    $auth['full_name'] . " đã nhắc tên bạn trong ghi chú ticket hỗ trợ #" . $ticketId . ": \"" . $preview . "\"",
+                    "/tickets?id=" . $ticketId
+                ]);
+
+                if (!empty($userRow['email'])) {
+                    $emailSubject = "[RICH LAND] Bạn được nhắc tên trong ghi chú ticket #" . $ticketId;
+                    $emailTitle = "NHẮC TÊN TRÊN HỆ THỐNG";
+                    $emailContent = "Chào <strong>" . htmlspecialchars($userRow['full_name']) . "</strong>,<br/><br/>" .
+                                    "Bạn đã được nhắc tên bởi <strong>" . htmlspecialchars($auth['full_name']) . "</strong> trong một ghi chú của ticket hỗ trợ <strong>#" . $ticketId . "</strong>.<br/>" .
+                                    "Nội dung:<br/>" .
+                                    "<blockquote style='border-left: 4px solid #eab308; padding-left: 12px; margin: 12px 0; color: #475569;'>" . nl2br(htmlspecialchars($bodyText)) . "</blockquote>" .
+                                    "Vui lòng truy cập hệ thống để biết thêm chi tiết.";
+                    sendEmailNotification($userRow['email'], $emailSubject, $emailTitle, $emailContent, '', false);
+                }
+            }
+        }
         
         $this->getComments($auth, $ticketId);
     }
