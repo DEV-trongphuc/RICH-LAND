@@ -1086,6 +1086,65 @@ const SettingsInner = () => {
     toast.success(t("Đã xuất file kết quả lọc trùng thành công!"));
   };
 
+  const parseSecurityTimer = (val: string) => {
+    const match = (val || '').match(/^\+?(\d+)\s*(\w+)/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      let unit = match[2].toLowerCase();
+      if (unit === 'day') unit = 'days';
+      if (unit === 'hour') unit = 'hours';
+      if (unit === 'month') unit = 'months';
+      if (unit === 'week') unit = 'weeks';
+      return { num, unit };
+    }
+    return { num: 1, unit: 'days' };
+  };
+
+  const renderDurationInput = (
+    label: string, 
+    value: string, 
+    onChange: (newVal: string) => void,
+    helpText: string
+  ) => {
+    const { num, unit } = parseSecurityTimer(value);
+    
+    return (
+      <div>
+        <label className="form-label">{t(label)}</label>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="number"
+            min="1"
+            className="form-input"
+            value={num}
+            onChange={e => {
+              const newNum = Math.max(1, parseInt(e.target.value, 10) || 1);
+              onChange(`+${newNum} ${unit}`);
+            }}
+            style={{ width: '80px', flexShrink: 0, textAlign: 'center' }}
+          />
+          <select
+            className="form-input"
+            value={unit}
+            onChange={e => {
+              const newUnit = e.target.value;
+              onChange(`+${num} ${newUnit}`);
+            }}
+            style={{ flex: 1, cursor: 'pointer' }}
+          >
+            <option value="hours">{t('Giờ (hours)')}</option>
+            <option value="days">{t('Ngày (days)')}</option>
+            <option value="weeks">{t('Tuần (weeks)')}</option>
+            <option value="months">{t('Tháng (months)')}</option>
+          </select>
+        </div>
+        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+          {t(helpText)}
+        </span>
+      </div>
+    );
+  };
+
   const getTabStyle = (tab: string) => ({
     padding: '8px 18px',
     borderRadius: '8px',
@@ -3169,78 +3228,12 @@ function doPost(e) {
                           {t('Các nguồn lead cách nhau bằng dấu phẩy (ví dụ: R3_Fb,R3,R2,broadcast).')}
                         </span>
                       </div>
-                      <div>
-                        <label className="form-label">{t('Thời gian Chưa Xác Định')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={securityTimerChuaXacDinh}
-                          onChange={e => setSecurityTimerChuaXacDinh(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Hạn bảo mật mặc định (ví dụ: +3 hours).')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Thời gian Quan Tâm')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={securityTimerQuanTam}
-                          onChange={e => setSecurityTimerQuanTam(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Hạn bảo mật mặc định (ví dụ: +1 day).')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Thời gian Thiện Chí')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={securityTimerThienChi}
-                          onChange={e => setSecurityTimerThienChi(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Hạn bảo mật mặc định (ví dụ: +3 days).')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Thời gian Đồng Ý Gặp')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={securityTimerDongYGap}
-                          onChange={e => setSecurityTimerDongYGap(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Hạn bảo mật mặc định (ví dụ: +4 days).')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Thời gian Đã Gặp')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={securityTimerDaGap}
-                          onChange={e => setSecurityTimerDaGap(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Hạn bảo mật mặc định (ví dụ: +5 days).')}
-                        </span>
-                      </div>
-                      <div>
-                        <label className="form-label">{t('Thời gian Booking')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={securityTimerBooking}
-                          onChange={e => setSecurityTimerBooking(e.target.value)}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
-                          {t('Hạn bảo mật mặc định (ví dụ: +3 months).')}
-                        </span>
-                      </div>
+                      {renderDurationInput('Thời gian Chưa Xác Định', securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh, 'Hạn bảo mật mặc định (ví dụ: +3 hours).')}
+                      {renderDurationInput('Thời gian Quan Tâm', securityTimerQuanTam, setSecurityTimerQuanTam, 'Hạn bảo mật mặc định (ví dụ: +1 day).')}
+                      {renderDurationInput('Thời gian Thiện Chí', securityTimerThienChi, setSecurityTimerThienChi, 'Hạn bảo mật mặc định (ví dụ: +3 days).')}
+                      {renderDurationInput('Thời gian Đồng Ý Gặp', securityTimerDongYGap, setSecurityTimerDongYGap, 'Hạn bảo mật mặc định (ví dụ: +4 days).')}
+                      {renderDurationInput('Thời gian Đã Gặp', securityTimerDaGap, setSecurityTimerDaGap, 'Hạn bảo mật mặc định (ví dụ: +5 days).')}
+                      {renderDurationInput('Thời gian Booking', securityTimerBooking, setSecurityTimerBooking, 'Hạn bảo mật mặc định (ví dụ: +3 months).')}
                     </div>
                   </div>
 

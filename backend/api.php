@@ -8800,7 +8800,7 @@ switch ($action) {
             $res = $conn->query("
                 SELECT 
                     TABLE_NAME AS name, 
-                    TABLE_ROWS AS rows, 
+                    TABLE_ROWS AS `rows`, 
                     DATA_LENGTH AS data_size, 
                     INDEX_LENGTH AS index_size, 
                     DATA_FREE AS overhead 
