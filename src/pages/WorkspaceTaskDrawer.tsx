@@ -681,15 +681,6 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
       return item;
     });
 
-    // Auto calculate progress percentage
-    const completedCount = updatedChecklist.filter((x: any) => x.done).length;
-    const progressPercent = updatedChecklist.length > 0 
-      ? Math.round((completedCount / updatedChecklist.length) * 100) 
-      : 0;
-
-    setFormData((prev: any) => ({ ...prev, progress: progressPercent }));
-    handleUpdateField('progress', progressPercent);
-
     const updatedMeta = { ...erpMeta, checklist: updatedChecklist };
     handleSaveMeta(updatedMeta);
   };
@@ -1138,16 +1129,86 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                 <label style={cardLabelStyle}>
                   {t('Checklist công việc con')}
                 </label>
-                <button
-                  type="button"
-                  className="btn outline sm"
-                  onClick={() => setShowAddChecklist(!showAddChecklist)}
-                  style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-border)', color: 'var(--color-text-light)' }}
-                >
-                  <Plus size={12} />
-                  {t('Thêm mục')}
-                </button>
+                {currentUser?.role !== 'viewer' && (
+                  <button
+                    type="button"
+                    className="btn outline sm"
+                    onClick={() => setShowAddChecklist(!showAddChecklist)}
+                    style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: '20px', display: 'flex', alignItems: 'center', gap: '4px', borderColor: 'var(--color-border)', color: 'var(--color-text-light)' }}
+                  >
+                    <Plus size={12} />
+                    {t('Thêm mục')}
+                  </button>
+                )}
               </div>
+
+              {/* Checklist Progress Bar */}
+              {erpMeta.checklist && erpMeta.checklist.length > 0 && (() => {
+                const total = erpMeta.checklist.length;
+                const completed = erpMeta.checklist.filter((x: any) => x.done).length;
+                const percent = Math.round((completed / total) * 100);
+                const showSuggestion = currentUser?.role !== 'viewer' && Number(formData.progress || 0) !== percent;
+
+                return (
+                  <div style={{
+                    marginTop: '8px',
+                    marginBottom: '12px',
+                    padding: '8px 12px',
+                    background: 'rgba(0, 0, 0, 0.02)',
+                    borderRadius: '8px',
+                    border: '1px dashed var(--color-border-light)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>
+                        {t('Tiến độ việc con:')} <strong style={{ color: 'var(--color-success)' }}>{completed}/{total}</strong> {t('đã xong')} ({percent}%)
+                      </span>
+                      {showSuggestion && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData((prev: any) => ({ ...prev, progress: percent }));
+                            toast.success(t('Đã cập nhật tiến độ công việc chính thành ') + percent + '%');
+                          }}
+                          style={{
+                            background: 'rgba(16, 185, 129, 0.08)',
+                            color: 'var(--color-success)',
+                            border: '1px solid rgba(16, 185, 129, 0.15)',
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.15)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(16, 185, 129, 0.08)';
+                          }}
+                        >
+                          {t('👉 Đồng bộ tiến độ chính')}
+                        </button>
+                      )}
+                    </div>
+                    <div style={{
+                      width: '100%',
+                      height: '6px',
+                      borderRadius: '3px',
+                      background: 'var(--color-border-light)',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{
+                        width: `${percent}%`,
+                        height: '100%',
+                        background: percent === 100 ? 'var(--color-success)' : 'linear-gradient(90deg, var(--color-primary) 0%, var(--color-success) 100%)',
+                        borderRadius: '3px',
+                        transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                      }} />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Add checklist item expander form */}
               {showAddChecklist && (
@@ -1270,7 +1331,8 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                             type="checkbox"
                             checked={!!item.done}
                             onChange={() => handleToggleChecklist(item.id)}
-                            style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--color-success)' }}
+                            disabled={currentUser?.role === 'viewer'}
+                            style={{ width: '15px', height: '15px', cursor: currentUser?.role === 'viewer' ? 'default' : 'pointer', accentColor: 'var(--color-success)' }}
                           />
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{
@@ -1299,13 +1361,15 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => handleDeleteChecklistItem(item.id)}
-                          style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px' }}
-                          className="hover-lift"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {currentUser?.role !== 'viewer' && (
+                          <button
+                            onClick={() => handleDeleteChecklistItem(item.id)}
+                            style={{ border: 'none', background: 'transparent', color: 'var(--color-danger)', cursor: 'pointer', padding: '4px' }}
+                            className="hover-lift"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                       </div>
                     );
                   })
