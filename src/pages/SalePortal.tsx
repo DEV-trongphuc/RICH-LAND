@@ -3882,8 +3882,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: '1rem',
-          marginBottom: '1.25rem'
+          gap: '0.75rem',
+          marginBottom: '1rem'
         }}>
           {/* Card 1: Overdue */}
           <div 
@@ -3893,31 +3893,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsTaskFilter('all');
             }}
             style={{
-              padding: '1.25rem',
-              borderRadius: '12px',
-              border: wsDatePreset === 'overdue' ? '1.5px solid var(--color-danger)' : '1px solid var(--color-border-light)',
-              background: wsDatePreset === 'overdue' ? 'var(--color-danger-light)' : 'var(--color-surface)',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: wsDatePreset === 'overdue' ? '1px solid var(--color-danger)' : '1px solid var(--color-border-light)',
+              background: wsDatePreset === 'overdue' ? 'rgba(239, 68, 68, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'all var(--transition-fluid)'
+              gap: '0.75rem',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {t('Quá hạn')}
-              </span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', lineHeight: 1 }}>
-                {workspaceStats.overdue}
-              </span>
-            </div>
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
+              width: '32px',
+              height: '32px',
+              borderRadius: '6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -3925,7 +3915,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: 'var(--color-danger)',
               flexShrink: 0
             }}>
-              <Clock size={20} />
+              <Clock size={16} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {t('Quá hạn')}
+              </span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-danger)', marginTop: '1px', lineHeight: 1.1 }}>
+                {workspaceStats.overdue}
+              </span>
             </div>
           </div>
 
@@ -3937,31 +3935,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsTaskFilter('all');
             }}
             style={{
-              padding: '1.25rem',
-              borderRadius: '12px',
-              border: wsDatePreset === 'today' ? '1.5px solid var(--color-warning)' : '1px solid var(--color-border-light)',
-              background: wsDatePreset === 'today' ? 'var(--color-warning-light)' : 'var(--color-surface)',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: wsDatePreset === 'today' ? '1px solid var(--color-warning)' : '1px solid var(--color-border-light)',
+              background: wsDatePreset === 'today' ? 'rgba(245, 158, 11, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'all var(--transition-fluid)'
+              gap: '0.75rem',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {t('Đến hạn')}
-              </span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-warning)', lineHeight: 1 }}>
-                {workspaceStats.dueToday}
-              </span>
-            </div>
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
+              width: '32px',
+              height: '32px',
+              borderRadius: '6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -3969,7 +3957,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: 'var(--color-warning)',
               flexShrink: 0
             }}>
-              <Calendar size={20} />
+              <Calendar size={16} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {t('Đến hạn')}
+              </span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-warning)', marginTop: '1px', lineHeight: 1.1 }}>
+                {workspaceStats.dueToday}
+              </span>
             </div>
           </div>
 
@@ -3981,31 +3977,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsTaskFilter('all');
             }}
             style={{
-              padding: '1.25rem',
-              borderRadius: '12px',
-              border: wsDatePreset === 'tomorrow' ? '1.5px solid var(--color-info)' : '1px solid var(--color-border-light)',
-              background: wsDatePreset === 'tomorrow' ? 'var(--color-info-light)' : 'var(--color-surface)',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: wsDatePreset === 'tomorrow' ? '1px solid var(--color-info)' : '1px solid var(--color-border-light)',
+              background: wsDatePreset === 'tomorrow' ? 'rgba(59, 130, 246, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'all var(--transition-fluid)'
+              gap: '0.75rem',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {t('Sắp đến hạn')}
-              </span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-info)', lineHeight: 1 }}>
-                {workspaceStats.upcoming}
-              </span>
-            </div>
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
+              width: '32px',
+              height: '32px',
+              borderRadius: '6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -4013,7 +3999,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: 'var(--color-info)',
               flexShrink: 0
             }}>
-              <ArrowUpRight size={20} />
+              <ArrowUpRight size={16} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {t('Sắp đến hạn')}
+              </span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-info)', marginTop: '1px', lineHeight: 1.1 }}>
+                {workspaceStats.upcoming}
+              </span>
             </div>
           </div>
 
@@ -4025,31 +4019,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               setWsDatePreset('all');
             }}
             style={{
-              padding: '1.25rem',
-              borderRadius: '12px',
-              border: wsTaskFilter === 'approve_by_me' ? '1.5px solid #8b5cf6' : '1px solid var(--color-border-light)',
+              padding: '0.75rem 1rem',
+              borderRadius: '8px',
+              border: wsTaskFilter === 'approve_by_me' ? '1px solid #8b5cf6' : '1px solid var(--color-border-light)',
               background: wsTaskFilter === 'approve_by_me' ? 'rgba(139, 92, 246, 0.04)' : 'var(--color-surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '12px',
-              boxShadow: 'var(--shadow-sm)',
-              transition: 'all var(--transition-fluid)'
+              gap: '0.75rem',
+              transition: 'all 0.15s ease'
             }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                {t('Chờ tôi duyệt')}
-              </span>
-              <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6', lineHeight: 1 }}>
-                {workspaceStats.pendingApproval}
-              </span>
-            </div>
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
+              width: '32px',
+              height: '32px',
+              borderRadius: '6px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -4057,7 +4041,15 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               color: '#8b5cf6',
               flexShrink: 0
             }}>
-              <UserCheck size={20} />
+              <UserCheck size={16} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {t('Chờ tôi duyệt')}
+              </span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#8b5cf6', marginTop: '1px', lineHeight: 1.1 }}>
+                {workspaceStats.pendingApproval}
+              </span>
             </div>
           </div>
         </div>
