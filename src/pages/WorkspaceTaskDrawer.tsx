@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { MentionInput } from '../components/ui/MentionInput';
@@ -37,6 +38,7 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
   embedMode = false
 }) => {
   const { t } = useLanguage();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user: currentUser } = useAuth();
   const { showConfirm, closeConfirm } = useUIStore();
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
@@ -206,11 +208,10 @@ export const WorkspaceTaskDrawer: React.FC<WorkspaceTaskDrawerProps> = ({
             }, 2500);
             
             // Clean URL parameters
-            const newParams = new URLSearchParams(window.location.search);
+            const newParams = new URLSearchParams(searchParams);
             newParams.delete('comment_id');
             newParams.delete('highlight_comment_id');
-            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
-            window.history.replaceState({}, '', cleanUrl);
+            setSearchParams(newParams, { replace: true });
           }
         }, 300);
       }

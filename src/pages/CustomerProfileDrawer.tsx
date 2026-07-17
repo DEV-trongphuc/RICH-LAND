@@ -24,7 +24,7 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { numberToText } from '../utils/numberToText';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { useUIStore } from '../store/uiStore';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { fetchAPI } from '../utils/api';
 import { DEV_MODE } from '../config/env';
@@ -570,6 +570,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate, initialTab }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user: currentUser } = useAuth();
   const { t } = useLanguage();
   const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
@@ -722,11 +723,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         
         // Clean URL parameters after a short delay so children components can read them first
         setTimeout(() => {
-          const newParams = new URLSearchParams(window.location.search);
+          const newParams = new URLSearchParams(searchParams);
           newParams.delete('highlight_activity_id');
           newParams.delete('highlight_comment_id');
-          const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
-          window.history.replaceState({}, '', cleanUrl);
+          setSearchParams(newParams, { replace: true });
         }, 1200);
       }
     }
