@@ -8,7 +8,7 @@ import {
   Clock3, GitBranch, ArrowUpRight, ShieldAlert, Send, ArrowLeft,
   Sun, Moon, ChevronDown, ChevronUp, AlertTriangle, ChevronLeft, ChevronRight,
   LayoutDashboard, Database, Ticket, Calendar, RefreshCw, Menu, Tag, Server, Scale, Settings, Info, Cpu,
-  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, UserCheck, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save
+  Camera, Video, Layers, Plus, Receipt, Building2, Users, User, UserCheck, Trash2, CheckSquare, X, Paperclip, LifeBuoy, Fingerprint, LayoutGrid, Monitor, Tv, Phone, Save, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createPortal } from 'react-dom';
@@ -16,6 +16,7 @@ import confetti from 'canvas-confetti';
 
 import { WarRoomFlightDeck } from '../components/Dashboard/WarRoomFlightDeck';
 import { QuickAddLeadModal } from '../components/QuickAddLeadModal';
+import { AddressSelect } from '../components/ui/AddressSelect';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ComposedChart,
@@ -854,6 +855,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     emergency: false
   });
   const [profileActiveTab, setProfileActiveTab] = useState('personal');
+  const [emergencyContacts, setEmergencyContacts] = useState<{ name: string, relationship: string, phone: string }[]>([{ name: '', relationship: '', phone: '' }]);
+  const [profileCertificates, setProfileCertificates] = useState<{ id: string, name: string, code: string, issuer: string, link: string, image: string, issuedDate: string, expiryDate: string }[]>([]);
+  const [profileHRRecords, setProfileHRRecords] = useState<{ id: string, type: 'award' | 'warning' | 'discipline', title: string, date: string, amount: string, reason: string, decisionNumber: string, documentLink: string }[]>([]);
+  const [editAddressTemporary, setEditAddressTemporary] = useState('');
 
   const toggleProfileSection = (sec: string) => {
     setOpenProfileSections(prev => ({ ...prev, [sec]: !prev[sec] }));
@@ -2289,6 +2294,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   useEffect(() => {
     if (data.consultant_profile) {
+      const isSaleOrManager = ['sale', 'manager'].includes(String(displayUser?.role || user?.role).toLowerCase());
+      setProfileActiveTab(isSaleOrManager ? 'schedule' : 'personal');
       setEditName(data.consultant_profile.name || '');
       setEditAvatar(data.consultant_profile.avatar || '');
       setEditWorkStartTime(data.consultant_profile.work_start_time || '08:00');
@@ -2315,6 +2322,32 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           setEditEmergencyName(erp.emergency_contact_name || '');
           setEditEmergencyRelation(erp.emergency_contact_relationship || '');
           setEditEmergencyPhone(erp.emergency_contact_phone || '');
+          setEditAddressTemporary(erp.address_temporary || '');
+          if (Array.isArray(erp.emergency_contacts) && erp.emergency_contacts.length > 0) {
+            setEmergencyContacts(erp.emergency_contacts);
+          } else if (erp.emergency_contact_name || erp.emergency_contact_relationship || erp.emergency_contact_phone) {
+            setEmergencyContacts([
+              {
+                name: erp.emergency_contact_name || '',
+                relationship: erp.emergency_contact_relationship || '',
+                phone: erp.emergency_contact_phone || ''
+              }
+            ]);
+          } else {
+            setEmergencyContacts([{ name: '', relationship: '', phone: '' }]);
+          }
+
+          if (Array.isArray(erp.certificates)) {
+            setProfileCertificates(erp.certificates);
+          } else {
+            setProfileCertificates([]);
+          }
+
+          if (Array.isArray(erp.hr_records)) {
+            setProfileHRRecords(erp.hr_records);
+          } else {
+            setProfileHRRecords([]);
+          }
           setEditTaxId(erp.tax_id || '');
           setEditInsuranceId(erp.insurance_id || '');
           setEditBrokerLicense(erp.broker_license || '');
@@ -2341,6 +2374,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         setEditEmergencyName('');
         setEditEmergencyRelation('');
         setEditEmergencyPhone('');
+        setEditAddressTemporary('');
+        setEmergencyContacts([{ name: '', relationship: '', phone: '' }]);
+        setProfileCertificates([]);
+        setProfileHRRecords([]);
         setEditTaxId('');
         setEditInsuranceId('');
         setEditBrokerLicense('');
@@ -2399,6 +2436,36 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
   };
 
+  const handleCertificateImageUpload = async (index: number, file: File) => {
+    try {
+      const compressedFile = await compressToWebP(file);
+      const fd = new FormData();
+      fd.append('avatar', compressedFile);
+
+      const currentImg = profileCertificates[index]?.image || '';
+      const query = `upload_avatar&old_avatar=${encodeURIComponent(currentImg)}`;
+
+      const res = await fetchAPI(query, {
+        method: 'POST',
+        body: fd
+      });
+
+      if (res.success && res.url) {
+        const updated = [...profileCertificates];
+        updated[index] = {
+          ...updated[index],
+          image: res.url
+        };
+        setProfileCertificates(updated);
+        toast.success(t('Tải lên ảnh chứng chỉ thành công!'));
+      } else {
+        toast.error(res.message || t('Lỗi tải ảnh chứng chỉ lên'));
+      }
+    } catch (err: any) {
+      toast.error(t('Lỗi kết nối tải ảnh: ') + err.message);
+    }
+  };
+
   const handleSaveProfile = async () => {
     if (!editName.trim()) {
       toast.error(t('Tên không được để trống.'));
@@ -2406,9 +2473,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
     setSavingProfile(true);
     try {
+      const firstEmergency = emergencyContacts[0] || { name: '', relationship: '', phone: '' };
       const addressPayload = JSON.stringify({
         erp_profile: {
           address_text: editAddress,
+          address_temporary: editAddressTemporary,
           employee_id: editEmployeeId,
           department: editDepartment,
           job_title: editJobTitle,
@@ -2418,9 +2487,12 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           workplace: editWorkplace,
           personal_phone: editPersonalPhone,
           ext_number: editExtNumber,
-          emergency_contact_name: editEmergencyName,
-          emergency_contact_relationship: editEmergencyRelation,
-          emergency_contact_phone: editEmergencyPhone,
+          emergency_contact_name: firstEmergency.name || '',
+          emergency_contact_relationship: firstEmergency.relationship || '',
+          emergency_contact_phone: firstEmergency.phone || '',
+          emergency_contacts: emergencyContacts,
+          certificates: profileCertificates,
+          hr_records: profileHRRecords,
           tax_id: editTaxId,
           insurance_id: editInsuranceId,
           broker_license: editBrokerLicense,
@@ -2428,7 +2500,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           nationality: editNationality,
           marital_status: editMaritalStatus,
           personal_email: editPersonalEmail,
-          hometown: editHometown,
+          hometown: '',
           bank_branch: editBankBranch
         }
       });
@@ -7833,6 +7905,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* Sidebar Tab Menu */}
             <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '0.25rem', overflowX: isMobile ? 'auto' : 'visible', overflowY: isMobile ? 'visible' : 'auto', flex: 1 }} className={styles.tabGroup}>
+              {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                <button
+                  type="button"
+                  className={`${styles.sidebarTabBtn} ${profileActiveTab === 'schedule' ? styles.sidebarTabActive : ''}`}
+                  onClick={() => setProfileActiveTab('schedule')}
+                  style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+                >
+                  <Clock size={15} />
+                  <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
+                </button>
+              )}
               <button
                 type="button"
                 className={`${styles.sidebarTabBtn} ${profileActiveTab === 'personal' ? styles.sidebarTabActive : ''}`}
@@ -7877,15 +7960,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               >
                 <Scale size={15} />
                 <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
-              </button>
-              <button
-                type="button"
-                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'schedule' ? styles.sidebarTabActive : ''}`}
-                onClick={() => setProfileActiveTab('schedule')}
-                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <Clock size={15} />
-                <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
               </button>
               <button
                 type="button"
@@ -7965,17 +8039,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Quê quán / Quê hương')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={editHometown}
-                          onChange={(e) => setEditHometown(e.target.value)}
-                          placeholder={t('VD: Hà Nội, Việt Nam')}
-                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
-                        />
-                      </div>
-                      <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Quốc tịch')}</label>
                         <input
                           type="text"
@@ -7986,9 +8049,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
                         />
                       </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Tình trạng hôn nhân')}</label>
                         <CustomSelect
@@ -8004,17 +8064,18 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           placeholder={t('Chọn tình trạng...')}
                         />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Email cá nhân')}</label>
-                        <input
-                          type="email"
-                          className="form-input"
-                          value={editPersonalEmail}
-                          onChange={(e) => setEditPersonalEmail(e.target.value)}
-                          placeholder={t('VD: email@gmail.com')}
-                          style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
-                        />
-                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Email cá nhân')}</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={editPersonalEmail}
+                        onChange={(e) => setEditPersonalEmail(e.target.value)}
+                        placeholder={t('VD: email@gmail.com')}
+                        style={{ fontSize: isMobile ? '0.8125rem' : '0.875rem', height: isMobile ? '36px' : '40px' }}
+                      />
                     </div>
                 </div>
               </div>
@@ -8022,7 +8083,8 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
             {/* 2. ERP PROFILE */}
             {profileActiveTab === 'erp' && (
-              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <>
+                <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
                 </h3>
@@ -8144,6 +8206,467 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
                 </div>
               </div>
+
+              {/* DANH SÁCH CHỨNG CHỈ & BẰNG CẤP */}
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginTop: '2rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Award size={18} color="var(--color-primary)" />
+                  {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t('Cập nhật các bằng cấp, chứng chỉ chuyên môn của bạn để phục vụ công tác thẩm định hồ sơ nhân sự.')}
+                </p>
+
+                {profileCertificates.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', background: 'var(--color-bg)', borderRadius: '12px', border: '1px dashed var(--color-border-light)' }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                      {t('Chưa có chứng chỉ hoặc bằng cấp nào được thêm.')}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {profileCertificates.map((cert, index) => (
+                      <div key={cert.id || index} style={{
+                        display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        gap: '1.5rem',
+                        padding: '1.5rem',
+                        background: 'var(--color-bg-alt)',
+                        borderRadius: '12px',
+                        border: '1px solid var(--color-border-light)',
+                        position: 'relative'
+                      }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(t('Bạn có chắc chắn muốn xóa chứng chỉ này?'))) {
+                              setProfileCertificates(profileCertificates.filter((_, i) => i !== index));
+                            }
+                          }}
+                          style={{
+                            position: 'absolute', top: '12px', right: '12px',
+                            background: 'rgba(239, 68, 68, 0.08)', border: 'none',
+                            color: 'var(--color-danger)', cursor: 'pointer',
+                            padding: '6px', borderRadius: '50%',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            transition: 'all 0.2s'
+                          }}
+                          className="hover-bg-danger-light"
+                          title={t('Xóa chứng chỉ')}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', minWidth: '150px' }}>
+                          <div style={{
+                            width: '140px',
+                            height: '90px',
+                            borderRadius: '8px',
+                            border: '2px dashed var(--color-border)',
+                            background: 'var(--color-surface)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            position: 'relative',
+                            boxShadow: 'var(--shadow-sm)'
+                          }}>
+                            {cert.image ? (
+                              <img src={resolveAttachmentUrl(cert.image)} alt="Certificate" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', color: 'var(--color-text-muted)' }}>
+                                <Camera size={20} />
+                                <span style={{ fontSize: '0.65rem' }}>{t('Chưa có ảnh')}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <label style={{
+                            background: 'var(--color-primary-light)',
+                            color: 'var(--color-primary)',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }} className="hover-lift">
+                            <Plus size={12} />
+                            {cert.image ? t('Thay ảnh') : t('Tải ảnh')}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleCertificateImageUpload(index, file);
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr', gap: '1rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên bằng cấp / chứng chỉ')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={cert.name || ''}
+                                onChange={(e) => {
+                                  const updated = [...profileCertificates];
+                                  updated[index] = { ...updated[index], name: e.target.value };
+                                  setProfileCertificates(updated);
+                                }}
+                                placeholder={t('Ví dụ: Chứng chỉ hành nghề Môi giới BĐS')}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Mã số chứng chỉ')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={cert.code || ''}
+                                onChange={(e) => {
+                                  const updated = [...profileCertificates];
+                                  updated[index] = { ...updated[index], code: e.target.value };
+                                  setProfileCertificates(updated);
+                                }}
+                                placeholder={t('Số hiệu / Mã số')}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Tổ chức cấp')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={cert.issuer || ''}
+                                onChange={(e) => {
+                                  const updated = [...profileCertificates];
+                                  updated[index] = { ...updated[index], issuer: e.target.value };
+                                  setProfileCertificates(updated);
+                                }}
+                                placeholder={t('Ví dụ: Sở Xây Dựng TP.HCM')}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Đường dẫn liên kết (Link)')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={cert.link || ''}
+                                onChange={(e) => {
+                                  const updated = [...profileCertificates];
+                                  updated[index] = { ...updated[index], link: e.target.value };
+                                  setProfileCertificates(updated);
+                                }}
+                                placeholder={t('Ví dụ: https://example.com/certificate')}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày cấp')}</label>
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={cert.issuedDate || ''}
+                                onChange={(e) => {
+                                  const updated = [...profileCertificates];
+                                  updated[index] = { ...updated[index], issuedDate: e.target.value };
+                                  setProfileCertificates(updated);
+                                }}
+                              />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                              <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày hết hạn')}</label>
+                              <input
+                                type="date"
+                                className="form-input"
+                                value={cert.expiryDate || ''}
+                                onChange={(e) => {
+                                  const updated = [...profileCertificates];
+                                  updated[index] = { ...updated[index], expiryDate: e.target.value };
+                                  setProfileCertificates(updated);
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="btn outline"
+                  onClick={() => {
+                    setProfileCertificates([...profileCertificates, {
+                      id: 'cert_' + Math.random().toString(36).substring(2, 9),
+                      name: '',
+                      code: '',
+                      issuer: '',
+                      link: '',
+                      image: '',
+                      issuedDate: '',
+                      expiryDate: ''
+                    }]);
+                  }}
+                  style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Plus size={16} />
+                  {t('Thêm bằng cấp / chứng chỉ')}
+                </button>
+              </div>
+
+              {/* KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT */}
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginTop: '2rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <AlertCircle size={18} color="var(--color-primary)" />
+                  {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t('Lịch sử ghi nhận thành tích, nhắc nhở hoặc các quyết định kỷ luật từ phòng Nhân sự.')}
+                </p>
+
+                {profileHRRecords.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem', background: 'var(--color-bg)', borderRadius: '12px', border: '1px dashed var(--color-border-light)' }}>
+                    <span style={{ fontSize: '0.825rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                      {t('Chưa có ghi nhận khen thưởng hoặc kỷ luật nào.')}
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {profileHRRecords.map((record, index) => {
+                      const isAward = record.type === 'award';
+                      const isWarning = record.type === 'warning';
+                      const isDiscipline = record.type === 'discipline';
+
+                      const badgeColor = isAward ? 'var(--color-success)' : (isWarning ? 'var(--color-warning)' : 'var(--color-danger)');
+                      const badgeBg = isAward ? 'rgba(16, 185, 129, 0.1)' : (isWarning ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)');
+                      
+                      const canEdit = ['admin', 'superadmin', 'manager', 'assistant'].includes(String(user?.role).toLowerCase());
+
+                      return (
+                        <div key={record.id || index} style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '1rem',
+                          padding: '1.25rem',
+                          background: 'var(--color-bg-alt)',
+                          borderRadius: '12px',
+                          border: '1px solid var(--color-border-light)',
+                          position: 'relative'
+                        }}>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(t('Bạn có chắc chắn muốn xóa ghi nhận này?'))) {
+                                  setProfileHRRecords(profileHRRecords.filter((_, i) => i !== index));
+                                }
+                              }}
+                              style={{
+                                position: 'absolute', top: '12px', right: '12px',
+                                background: 'rgba(239, 68, 68, 0.08)', border: 'none',
+                                color: 'var(--color-danger)', cursor: 'pointer',
+                                padding: '6px', borderRadius: '50%',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s'
+                              }}
+                              className="hover-bg-danger-light"
+                              title={t('Xóa ghi nhận')}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+
+                          {!canEdit ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                <span style={{
+                                  fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase',
+                                  padding: '4px 8px', borderRadius: '6px', color: badgeColor, background: badgeBg
+                                }}>
+                                  {isAward ? t('Khen thưởng') : (isWarning ? t('Cảnh cáo') : t('Kỷ luật'))}
+                                </span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                                  {record.title || t('Chưa đặt tiêu đề')}
+                                </span>
+                                {record.decisionNumber && (
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                    ({t('Số QĐ')}: {record.decisionNumber})
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-light)', marginTop: '4px' }}>
+                                <div>📅 <strong>{t('Ngày quyết định')}:</strong> {record.date ? new Date(record.date).toLocaleDateString('vi-VN') : t('Chưa cập nhật')}</div>
+                                {record.amount && <div>💰 <strong>{t('Giá trị phạt/thưởng')}:</strong> {record.amount}</div>}
+                                {record.documentLink && (
+                                  <div>
+                                    🔗 <strong>{t('Văn bản đính kèm')}:</strong>{' '}
+                                    <a href={record.documentLink} target="_blank" rel="noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontWeight: 600 }} className="hover-underline">
+                                      {t('Xem tài liệu')}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                              {record.reason && (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: '6px 0 0 0', lineHeight: 1.4, padding: '8px', background: 'var(--color-surface)', borderRadius: '6px', borderLeft: `3px solid ${badgeColor}` }}>
+                                  <strong>{t('Lý do / Nội dung chi tiết')}:</strong> {record.reason}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1.5fr 1fr', gap: '1rem' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Phân loại')}</label>
+                                  <CustomSelect
+                                    options={[
+                                      { value: 'award', label: t('Khen thưởng') },
+                                      { value: 'warning', label: t('Cảnh cáo') },
+                                      { value: 'discipline', label: t('Kỷ luật') }
+                                    ]}
+                                    value={record.type}
+                                    onChange={val => {
+                                      const updated = [...profileHRRecords];
+                                      updated[index] = { ...updated[index], type: val as any };
+                                      setProfileHRRecords(updated);
+                                    }}
+                                    placeholder={t('Chọn loại...')}
+                                  />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Tiêu đề / Tên quyết định')}</label>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={record.title || ''}
+                                    onChange={(e) => {
+                                      const updated = [...profileHRRecords];
+                                      updated[index] = { ...updated[index], title: e.target.value };
+                                      setProfileHRRecords(updated);
+                                    }}
+                                    placeholder={t('Ví dụ: Vinh danh chuyên xuất sắc quý 2')}
+                                  />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Số quyết định')}</label>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={record.decisionNumber || ''}
+                                    onChange={(e) => {
+                                      const updated = [...profileHRRecords];
+                                      updated[index] = { ...updated[index], decisionNumber: e.target.value };
+                                      setProfileHRRecords(updated);
+                                    }}
+                                    placeholder="Ví dụ: QĐ-12/2026/RL"
+                                  />
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1.5fr', gap: '1rem' }}>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Ngày quyết định')}</label>
+                                  <input
+                                    type="date"
+                                    className="form-input"
+                                    value={record.date || ''}
+                                    onChange={(e) => {
+                                      const updated = [...profileHRRecords];
+                                      updated[index] = { ...updated[index], date: e.target.value };
+                                      setProfileHRRecords(updated);
+                                    }}
+                                  />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Giá trị phạt/thưởng (nếu có)')}</label>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={record.amount || ''}
+                                    onChange={(e) => {
+                                      const updated = [...profileHRRecords];
+                                      updated[index] = { ...updated[index], amount: e.target.value };
+                                      setProfileHRRecords(updated);
+                                    }}
+                                    placeholder="Ví dụ: +1,000,000đ hoặc -500,000đ"
+                                  />
+                                </div>
+                                <div className="form-group" style={{ margin: 0 }}>
+                                  <label className="form-label" style={{ fontWeight: 600 }}>{t('Đường dẫn văn bản đính kèm')}</label>
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    value={record.documentLink || ''}
+                                    onChange={(e) => {
+                                      const updated = [...profileHRRecords];
+                                      updated[index] = { ...updated[index], documentLink: e.target.value };
+                                      setProfileHRRecords(updated);
+                                    }}
+                                    placeholder="https://example.com/decision.pdf"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 600 }}>{t('Lý do & Nội dung chi tiết')}</label>
+                                <textarea
+                                  className="form-input"
+                                  rows={2}
+                                  value={record.reason || ''}
+                                  onChange={(e) => {
+                                    const updated = [...profileHRRecords];
+                                    updated[index] = { ...updated[index], reason: e.target.value };
+                                    setProfileHRRecords(updated);
+                                  }}
+                                  placeholder={t('Ghi chú chi tiết lý do và nội dung sự việc')}
+                                  style={{ minHeight: '60px' }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {['admin', 'superadmin', 'manager', 'assistant'].includes(String(user?.role).toLowerCase()) && (
+                  <button
+                    type="button"
+                    className="btn outline"
+                    onClick={() => {
+                      setProfileHRRecords([...profileHRRecords, {
+                        id: 'hr_' + Math.random().toString(36).substring(2, 9),
+                        type: 'award',
+                        title: '',
+                        decisionNumber: '',
+                        date: new Date().toISOString().split('T')[0],
+                        amount: '',
+                        documentLink: '',
+                        reason: ''
+                      }]);
+                    }}
+                    style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <Plus size={16} />
+                    {t('Thêm khen thưởng / kỷ luật')}
+                  </button>
+                )}
+              </div>
+            </>
             )}
 
             {/* 3. CONTACT & LOGIN */}
@@ -8192,16 +8715,23 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       </div>
                     </div>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Địa chỉ thường trú')}</label>
-                      <textarea
-                        className="form-input"
-                        rows={2}
-                        value={editAddress}
-                        onChange={(e) => setEditAddress(e.target.value)}
-                        placeholder={t('Nhập địa chỉ của bạn')}
-                        style={{ minHeight: '60px', padding: '10px 14px' }}
-                      />
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <AddressSelect
+                          label={t('Địa chỉ thường trú')}
+                          value={editAddress}
+                          onChange={(val) => setEditAddress(val)}
+                          placeholder={t('Chọn địa chỉ thường trú...')}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <AddressSelect
+                          label={t('Địa chỉ tạm trú')}
+                          value={editAddressTemporary}
+                          onChange={(val) => setEditAddressTemporary(val)}
+                          placeholder={t('Chọn địa chỉ tạm trú...')}
+                        />
+                      </div>
                     </div>
                 </div>
               </div>
@@ -8279,41 +8809,99 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Scale size={16} color="var(--color-primary)" /> {t('Liên hệ khẩn cấp')}
                 </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Người liên hệ')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={editEmergencyName}
-                          onChange={(e) => setEditEmergencyName(e.target.value)}
-                          placeholder="Họ tên người liên hệ"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Mối quan hệ')}</label>
-                        <input
-                          type="text"
-                          className="form-input"
-                          value={editEmergencyRelation}
-                          onChange={(e) => setEditEmergencyRelation(e.target.value)}
-                          placeholder="VD: Bố, Mẹ, Vợ, Chồng..."
-                        />
-                      </div>
-                    </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t('Thêm danh sách liên hệ khẩn cấp của bạn để công ty có thể chủ động liên lạc khi cần thiết.')}
+                </p>
 
-                    <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại khẩn cấp')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={editEmergencyPhone}
-                        onChange={(e) => setEditEmergencyPhone(e.target.value)}
-                        placeholder="SĐT người liên hệ"
-                      />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {emergencyContacts.map((contact, index) => (
+                    <div key={index} style={{
+                      padding: '1.25rem',
+                      background: 'var(--color-bg-alt)',
+                      borderRadius: '10px',
+                      border: '1px solid var(--color-border-light)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      position: 'relative'
+                    }}>
+                      {emergencyContacts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmergencyContacts(emergencyContacts.filter((_, i) => i !== index));
+                          }}
+                          style={{
+                            position: 'absolute', top: '10px', right: '10px',
+                            background: 'transparent', border: 'none',
+                            color: 'var(--color-danger)', cursor: 'pointer',
+                            padding: '4px', borderRadius: '4px'
+                          }}
+                          className="hover-bg-danger-light"
+                          title={t('Xóa liên hệ')}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Người liên hệ')}</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={contact.name || ''}
+                            onChange={(e) => {
+                              const updated = [...emergencyContacts];
+                              updated[index] = { ...updated[index], name: e.target.value };
+                              setEmergencyContacts(updated);
+                            }}
+                            placeholder="Họ tên người liên hệ"
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 600 }}>{t('Mối quan hệ')}</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={contact.relationship || ''}
+                            onChange={(e) => {
+                              const updated = [...emergencyContacts];
+                              updated[index] = { ...updated[index], relationship: e.target.value };
+                              setEmergencyContacts(updated);
+                            }}
+                            placeholder="VD: Bố, Mẹ, Vợ, Chồng..."
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600 }}>{t('Số điện thoại khẩn cấp')}</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={contact.phone || ''}
+                          onChange={(e) => {
+                            const updated = [...emergencyContacts];
+                            updated[index] = { ...updated[index], phone: e.target.value };
+                            setEmergencyContacts(updated);
+                          }}
+                          placeholder="SĐT người liên hệ"
+                        />
+                      </div>
                     </div>
+                  ))}
                 </div>
+
+                <button
+                  type="button"
+                  className="btn outline sm"
+                  onClick={() => setEmergencyContacts([...emergencyContacts, { name: '', relationship: '', phone: '' }])}
+                  style={{ width: 'fit-content', alignSelf: 'flex-start', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Plus size={14} />
+                  {t('Thêm người liên hệ')}
+                </button>
               </div>
             )}
 
