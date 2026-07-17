@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { fetchAPI } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Link2, Save, Check, X, AlertCircle, RefreshCw, Code, CheckCircle, Info, ShieldAlert, ArrowRight } from 'lucide-react';
+import { Link2, Save, Check, X, AlertCircle, RefreshCw, Code, CheckCircle, Info, ShieldAlert, ArrowRight, Search, Calendar, FileText, MessageCircle, Eye, Zap } from 'lucide-react';
 import { CustomModal } from '../components/ui/CustomModal';
 import { Skeleton } from '../components/ui/Skeleton';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 interface CapiLog {
   id: number;
@@ -98,6 +99,17 @@ export default function CapiPage() {
       setSaving(false);
     }
   };
+
+  const capiEventOptions = [
+    { value: 'Skip', label: 'Không gửi (Skip)', icon: <X size={14} style={{ color: 'var(--color-text-muted)' }} /> },
+    { value: 'Lead', label: 'Lead (Khách tiềm năng)', icon: <Search size={14} style={{ color: '#3b82f6' }} /> },
+    { value: 'Schedule', label: 'Schedule (Hẹn gặp)', icon: <Calendar size={14} style={{ color: '#10b981' }} /> },
+    { value: 'CompleteRegistration', label: 'CompleteRegistration', icon: <CheckCircle size={14} style={{ color: '#f59e0b' }} /> },
+    { value: 'SubmitApplication', label: 'SubmitApplication', icon: <FileText size={14} style={{ color: '#6366f1' }} /> },
+    { value: 'Contact', label: 'Contact (Liên hệ)', icon: <MessageCircle size={14} style={{ color: '#ec4899' }} /> },
+    { value: 'ViewContent', label: 'ViewContent (Xem hàng)', icon: <Eye size={14} style={{ color: '#8b5cf6' }} /> },
+    { value: 'Purchase', label: 'Purchase (Đặt cọc)', icon: <Zap size={14} style={{ color: 'var(--color-primary)' }} /> }
+  ];
 
   return (
     <div className="page-container anim-fade-up" style={{ color: 'var(--color-text)' }}>
@@ -208,21 +220,13 @@ export default function CapiPage() {
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
                       {pipelineStatusLabels[status] || status}
                     </span>
-                    <select
-                      className="form-input"
-                      style={{ width: '170px', padding: '4px 8px', fontSize: '0.75rem', height: '32px', borderRadius: '6px' }}
+                    <CustomSelect
+                      options={capiEventOptions}
                       value={capiEventTriggers[status] || 'Skip'}
-                      onChange={e => setCapiEventTriggers(prev => ({ ...prev, [status]: e.target.value }))}
-                    >
-                      <option value="Skip">Không gửi (Skip)</option>
-                      <option value="Lead">Lead (Khách tiềm năng)</option>
-                      <option value="Schedule">Schedule (Hẹn gặp)</option>
-                      <option value="CompleteRegistration">CompleteRegistration</option>
-                      <option value="SubmitApplication">SubmitApplication</option>
-                      <option value="Contact">Contact (Liên hệ)</option>
-                      <option value="ViewContent">ViewContent (Xem hàng)</option>
-                      <option value="Purchase">Purchase (Đặt cọc)</option>
-                    </select>
+                      onChange={val => setCapiEventTriggers(prev => ({ ...prev, [status]: val }))}
+                      width="185px"
+                      placeholder="Chọn sự kiện..."
+                    />
                   </div>
                 ))}
               </div>
