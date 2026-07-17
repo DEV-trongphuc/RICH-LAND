@@ -786,8 +786,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                 filter: Number(r.is_active) !== 1 ? 'grayscale(0.95)' : 'none',
                 background: Number(r.is_active) !== 1 ? (theme === 'dark' ? '#1f2937' : '#f9fafb') : undefined
               }}>
-                <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                <div style={{ padding: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Zap size={18} color={color} />
@@ -872,8 +872,8 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     )}
                   </div>
 
-                  <div style={{ flex: 1, marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '1rem', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                         <p style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-muted)', margin: 0, minWidth: 95 }}>
                           {t('{count} Thành viên').replace('{count}', String(consList.length))}
@@ -949,7 +949,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
 
                     {compensatedConsultants.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                        <div style={{ padding: '0.5rem', background: 'var(--color-warning-light)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ padding: '0.375rem 0.5rem', background: 'var(--color-warning-light)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Zap size={14} color="var(--color-warning)" style={{ fill: 'var(--color-warning)', flexShrink: 0 }} />
                           <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600, lineHeight: 1.4 }}>
                             {t('Đang bù data:')}{' '}
@@ -991,7 +991,7 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       </div>
                     ) : (
                       r.next_assigned_name && (
-                        <div style={{ padding: '0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ padding: '0.375rem 0.5rem', background: 'var(--color-primary-light)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Zap size={14} color="var(--color-primary)" />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-primary-dark)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             {t('Sale lượt tới:')}
@@ -1003,12 +1003,12 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                     )}
                   </div>
 
-                  <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'flex', gap: '0.75rem' }}>
-                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
+                  <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', display: 'flex', gap: '0.75rem' }}>
+                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.375rem 0.5rem' }}>
                       <Info size={13} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                     </button>
                     {!isReadOnly && (
-                      <button className="btn secondary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.5rem' }}>
+                      <button className="btn secondary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.375rem 0.5rem' }}>
                         <Zap size={13} /> {t("Bù Data")}
                       </button>
                     )}
