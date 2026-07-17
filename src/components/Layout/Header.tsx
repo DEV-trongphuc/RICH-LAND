@@ -1865,165 +1865,226 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                 );
               }
 
+              const parseActorName = (body: string) => {
+                if (!body) return null;
+                const match = body.match(/^([A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĐ][a-zàáâãèéêìíòóôõùúýỳỹỷỵđ_]*\s+){2,4}?[đd]ã\s+/u)
+                  || body.match(/^([A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĐ][a-zàáâãèéêìíòóôõùúýỳỹỷỵđ_]*\s+){2,4}?[Cc]ó\s+/u);
+                if (match) {
+                  return match[0].replace(/[đd]ã\s+$/, '').replace(/[Cc]ó\s+$/, '').trim();
+                }
+                return null;
+              };
+
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {filtered.map(notif => (
-                    <div
-                      key={notif.id}
-                      onClick={() => handleNotifClick(notif)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'start',
-                        gap: '0.75rem',
-                        padding: notif.is_read ? '12px 16px' : '12px 16px 12px 12px',
-                        borderRadius: '8px',
-                        background: notif.is_read ? 'rgba(100, 116, 139, 0.02)' : 'rgba(189, 29, 45, 0.09)',
-                        border: `1px solid ${notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.25)'}`,
-                        borderLeft: notif.is_read ? undefined : '4px solid var(--color-primary)',
-                        cursor: notif.link ? 'pointer' : 'default',
-                        transition: 'all 0.2s',
-                        position: 'relative',
-                        boxShadow: notif.is_read ? 'none' : '0 3px 10px rgba(189, 29, 45, 0.08)',
-                        opacity: notif.is_read ? 0.65 : 1
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = 'var(--color-primary-light)';
-                        if (notif.is_read) {
-                          e.currentTarget.style.opacity = '0.9';
-                        }
-                        if (notif.link) {
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.05)';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = notif.is_read ? 'var(--color-border-light)' : 'rgba(189, 29, 45, 0.15)';
-                        if (notif.is_read) {
-                          e.currentTarget.style.opacity = '0.65';
-                        }
-                        e.currentTarget.style.transform = 'none';
-                        e.currentTarget.style.boxShadow = notif.is_read ? 'none' : '0 3px 10px rgba(189, 29, 45, 0.06)';
-                      }}
-                    >
-                      {/* Icon */}
-                      <div style={{
-                        marginTop: 2,
-                        padding: 8,
-                        borderRadius: '50%',
-                        background: notif.is_read ? 'var(--color-bg-alt)' : 'var(--color-surface)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.03)'
-                      }}>
-                        {(() => {
-                          switch (notif.type) {
-                            case 'mention':
-                            case 'task_assignment':
-                            case 'task_participant':
-                            case 'approval_request':
-                              return <CheckSquare size={16} style={{ color: '#3b82f6' }} />;
-                            case 'project_roster':
-                              return <Users size={16} style={{ color: '#10b981' }} />;
-                            case 'project_document':
-                              return <FileText size={16} style={{ color: '#f59e0b' }} />;
-                            case 'project_comment':
-                              return <MessageSquare size={16} style={{ color: '#8b5cf6' }} />;
-                            case 'warning':
-                              return <AlertTriangle size={16} style={{ color: '#ef4444' }} />;
-                            default:
-                              return <Info size={16} style={{ color: '#6b7280' }} />;
-                          }
-                        })()}
-                      </div>
+                  {filtered.map(notif => {
+                    const actorName = parseActorName(notif.body);
+                    const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn')));
+                    
+                    const bgBase = notif.is_read 
+                      ? 'var(--color-surface)' 
+                      : (isWarning ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.02) 0%, rgba(239, 68, 68, 0.06) 100%)' : 'linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(59, 130, 246, 0.06) 100%)');
+                    
+                    const borderColor = notif.is_read
+                      ? 'var(--color-border-light)'
+                      : (isWarning ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)');
 
-                      {/* Content */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', marginBottom: 2 }}>
-                          <h4 style={{
-                            margin: 0,
-                            fontSize: '0.875rem',
-                            fontWeight: notif.is_read ? 600 : 700,
-                            color: 'var(--color-text)',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }}>
-                            {notif.title}
-                          </h4>
-                          <span style={{ fontSize: '0.6875rem', color: notif.is_read ? 'var(--color-text-muted)' : 'var(--color-text-light)', fontWeight: notif.is_read ? 500 : 600, whiteSpace: 'nowrap' }}>
-                            {(() => {
-                              if (!notif.created_at) return '';
-                              const d = new Date(notif.created_at.replace(' ', 'T'));
-                              if (isNaN(d.getTime())) return notif.created_at;
-                              const now = new Date();
-                              const diffMs = now.getTime() - d.getTime();
-                              const diffMins = Math.floor(diffMs / 60000);
-                              const diffHours = Math.floor(diffMs / 3600000);
-                              const diffDays = Math.floor(diffMs / 86400000);
-                              if (diffMins < 1) return t('Vừa xong');
-                              if (diffMins < 60) return `${diffMins} ${t('phút trước')}`;
-                              if (diffHours < 24) return `${diffHours} ${t('giờ trước')}`;
-                              if (diffDays < 7) return `${diffDays} ${t('ngày trước')}`;
-                              return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                            })()}
-                          </span>
-                        </div>
-                        <p style={{
-                          margin: 0,
-                          fontSize: '0.8125rem',
-                          color: notif.is_read ? 'var(--color-text-muted)' : 'var(--color-text-light)',
-                          lineHeight: '1.4',
-                          wordBreak: 'break-word'
-                        }}>
-                          {notif.body}
-                        </p>
-                      </div>
-
-                      {/* Actions */}
+                    return (
                       <div
-                        style={{ display: 'flex', gap: '4px', alignSelf: 'center', opacity: 0.8 }}
-                        onClick={e => e.stopPropagation()} // Prevent card click trigger
+                        key={notif.id}
+                        onClick={() => handleNotifClick(notif)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'start',
+                          gap: '0.875rem',
+                          padding: '14px 16px',
+                          borderRadius: '12px',
+                          background: bgBase,
+                          border: `1px solid ${borderColor}`,
+                          cursor: notif.link || isWarning ? 'pointer' : 'default',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                          position: 'relative',
+                          boxShadow: notif.is_read ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)',
+                          opacity: notif.is_read ? 0.75 : 1
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.borderColor = isWarning ? '#ef4444' : '#3b82f6';
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08)';
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                          if (notif.is_read) {
+                            e.currentTarget.style.opacity = '1';
+                          }
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.borderColor = borderColor;
+                          e.currentTarget.style.boxShadow = notif.is_read ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)';
+                          e.currentTarget.style.transform = 'none';
+                          if (notif.is_read) {
+                            e.currentTarget.style.opacity = '0.75';
+                          }
+                        }}
                       >
-                        <button
-                          onClick={() => handleMarkRead(notif.id, notif.is_read ? 0 : 1)}
-                          style={{
-                            padding: '4px 6px',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: 'var(--color-text-light)',
-                            borderRadius: '4px',
-                            transition: 'all 0.2s',
-                            outline: 'none'
-                          }}
-                          title={notif.is_read ? t("Đánh dấu chưa đọc") : t("Đánh dấu đã đọc")}
-                          onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
-                          onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-light)'}
+                        <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
+                          {actorName ? (
+                            <Avatar name={actorName} size={38} />
+                          ) : (
+                            <div style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: '50%',
+                              background: isWarning ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)'
+                            }}>
+                              {(() => {
+                                switch (notif.type) {
+                                  case 'mention':
+                                  case 'task_assignment':
+                                  case 'task_participant':
+                                  case 'approval_request':
+                                    return <CheckSquare size={18} style={{ color: '#3b82f6' }} />;
+                                  case 'project_roster':
+                                    return <Users size={18} style={{ color: '#10b981' }} />;
+                                  case 'project_document':
+                                    return <FileText size={18} style={{ color: '#f59e0b' }} />;
+                                  case 'project_comment':
+                                    return <MessageSquare size={18} style={{ color: '#8b5cf6' }} />;
+                                  case 'warning':
+                                    return <AlertTriangle size={18} style={{ color: '#ef4444' }} />;
+                                  default:
+                                    return <Info size={18} style={{ color: '#6b7280' }} />;
+                                }
+                              })()}
+                            </div>
+                          )}
+                          
+                          {!notif.is_read && (
+                            <span style={{
+                              position: 'absolute',
+                              bottom: -2,
+                              right: -2,
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              background: isWarning ? '#ef4444' : '#3b82f6',
+                              border: '2px solid var(--color-surface, #ffffff)',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                            }} />
+                          )}
+                        </div>
+
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+                            <h4 style={{
+                              margin: 0,
+                              fontSize: '0.875rem',
+                              fontWeight: notif.is_read ? 700 : 800,
+                              color: 'var(--color-text)',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {notif.title}
+                            </h4>
+                            <span style={{ 
+                              fontSize: '0.72rem', 
+                              color: 'var(--color-text-muted)', 
+                              fontWeight: 600, 
+                              whiteSpace: 'nowrap' 
+                            }}>
+                              {(() => {
+                                if (!notif.created_at) return '';
+                                const d = new Date(notif.created_at.replace(' ', 'T'));
+                                if (isNaN(d.getTime())) return notif.created_at;
+                                const now = new Date();
+                                const diffMs = now.getTime() - d.getTime();
+                                const diffMins = Math.floor(diffMs / 60000);
+                                const diffHours = Math.floor(diffMs / 3600000);
+                                const diffDays = Math.floor(diffMs / 86400000);
+                                if (diffMins < 1) return t('Vừa xong');
+                                if (diffMins < 60) return `${diffMins} ${t('phút trước')}`;
+                                if (diffHours < 24) return `${diffHours} ${t('giờ trước')}`;
+                                if (diffDays < 7) return `${diffDays} ${t('ngày trước')}`;
+                                return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                              })()}
+                            </span>
+                          </div>
+                          <p style={{
+                            margin: 0,
+                            fontSize: '0.8125rem',
+                            color: notif.is_read ? 'var(--color-text-muted)' : 'var(--color-text-light)',
+                            lineHeight: '1.45',
+                            wordBreak: 'break-word',
+                            fontWeight: notif.is_read ? 500 : 600
+                          }}>
+                            {notif.body}
+                          </p>
+                        </div>
+
+                        <div
+                          style={{ display: 'flex', gap: '2px', alignSelf: 'center', opacity: 0.8, marginLeft: '6px' }}
+                          onClick={e => e.stopPropagation()}
                         >
-                          {notif.is_read ? <EyeOff size={14} /> : <Eye size={14} />}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteNotif(notif.id)}
-                          style={{
-                            padding: '4px 6px',
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            color: 'var(--color-text-light)',
-                            borderRadius: '4px',
-                            transition: 'all 0.2s',
-                            outline: 'none'
-                          }}
-                          title={t("Xóa")}
-                          onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                          onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-light)'}
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                          <button
+                            onClick={() => handleMarkRead(notif.id, notif.is_read ? 0 : 1)}
+                            style={{
+                              padding: '6px',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: 'var(--color-text-light)',
+                              borderRadius: '6px',
+                              transition: 'all 0.2s',
+                              outline: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title={notif.is_read ? t("Đánh dấu chưa đọc") : t("Đánh dấu đã đọc")}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.color = 'var(--color-primary)';
+                              e.currentTarget.style.background = 'var(--color-bg)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.color = 'var(--color-text-light)';
+                              e.currentTarget.style.background = 'none';
+                            }}
+                          >
+                            {notif.is_read ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNotif(notif.id)}
+                            style={{
+                              padding: '6px',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              color: 'var(--color-text-light)',
+                              borderRadius: '6px',
+                              transition: 'all 0.2s',
+                              outline: 'none',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            title={t("Xóa")}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.color = '#ef4444';
+                              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.color = 'var(--color-text-light)';
+                              e.currentTarget.style.background = 'none';
+                            }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               );
             })()}

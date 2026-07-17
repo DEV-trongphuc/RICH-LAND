@@ -106,13 +106,23 @@ class ContactController {
         }
 
         if ($search) {
-            $where[]  = '(CONCAT(c.first_name, \' \', c.last_name) LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ? OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ?)';
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
+            if (is_numeric($search)) {
+                $where[]  = '(CONCAT(c.first_name, \' \', c.last_name) LIKE ? OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ? OR c.id = ? OR c.person_id = ?)';
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = (int)$search;
+                $params[] = (int)$search;
+            } else {
+                $where[]  = '(CONCAT(c.first_name, \' \', c.last_name) LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ? OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ?)';
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+                $params[] = "%$search%";
+            }
         }
         if ($status) { $where[] = 'c.status = ?'; $params[] = $status; }
         if ($source) { $where[] = 'c.source = ?'; $params[] = $source; }

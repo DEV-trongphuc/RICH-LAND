@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { AlertCircle, CheckCircle, Send, Loader2, Shield, XCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle, Send, Loader2, Shield, XCircle, Clock } from 'lucide-react';
 import { fetchPublicAPI } from '../utils/api';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -29,7 +29,9 @@ const TEST_MOCK_CONTEXT = {
   round_name: 'Vòng A — Facebook Inbound',
   assigned_at: new Date().toISOString(),
   existing_report: null as string | null,
-  duplicate_check_months: 6
+  duplicate_check_months: 6,
+  is_accepted: 0,
+  lead_recall_minutes: 2
 };
 
 // Color hash for avatars
@@ -46,7 +48,70 @@ interface ReportContext {
   consultant_name: string; consultant_email: string; round_name: string;
   assigned_at: string; existing_report: string | null;
   duplicate_check_months?: number;
+  is_accepted?: number;
+  lead_recall_minutes?: number;
 }
+
+const CountdownTimer = ({ assignedAt, recallMinutes }: { assignedAt: string; recallMinutes: number }) => {
+  const { t } = useLanguage();
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+
+  useEffect(() => {
+    const calculateTimeLeft = () => {
+      const start = new Date(assignedAt).getTime();
+      const limit = start + recallMinutes * 60 * 1000;
+      const diff = limit - Date.now();
+      return diff > 0 ? Math.floor(diff / 1000) : 0;
+    };
+
+    setTimeLeft(calculateTimeLeft());
+
+    const timer = setInterval(() => {
+      const left = calculateTimeLeft();
+      setTimeLeft(left);
+      if (left <= 0) {
+        clearInterval(timer);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [assignedAt, recallMinutes]);
+
+  if (timeLeft <= 0) {
+    return (
+      <div style={{ color: '#ef4444', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+        <Clock size={14} />
+        <span>{t('Đã hết hạn chờ / Đang thu hồi...')}</span>
+      </div>
+    );
+  }
+
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+  const formattedTime = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+  const isUrgent = timeLeft < 30; // less than 30s is urgent
+
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 6,
+      background: isUrgent ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+      border: isUrgent ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)',
+      padding: '4px 10px',
+      borderRadius: 8,
+      color: isUrgent ? '#f87171' : '#fbbf24',
+      fontWeight: 700,
+      fontSize: '0.8rem',
+      marginTop: 4,
+      animation: isUrgent ? 'pulse 1s infinite alternate' : 'none'
+    }}>
+      <Clock size={14} className={isUrgent ? 'pulse-icon' : ''} />
+      <span>{t('Thu hồi sau:')} {formattedTime}</span>
+    </div>
+  );
+};
 
 export const ReportData = () => {
   const { t } = useLanguage();
@@ -256,7 +321,10 @@ export const ReportData = () => {
                         <div style={{ height: 1, background: 'var(--color-border)' }} />
                         <InfoItem label={t("Vòng phân bổ")} value={context.round_name} accent />
                         <div style={{ height: 1, background: 'var(--color-border)' }} />
-                        <InfoItem label={t("Nhận lúc")} value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
+                        <InfoItem label={context.is_accepted === 1 ? t("Nhận lúc") : t("Chia lúc")} value={context.assigned_at ? new Date(context.assigned_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' }) : '—'} />
+                        {context.is_accepted === 0 && context.assigned_at && (
+                          <CountdownTimer assignedAt={context.assigned_at} recallMinutes={context.lead_recall_minutes || 2} />
+                        )}
                         {context.lead_note && (
                           <>
                             <div style={{ height: 1, background: 'var(--color-border)' }} />
@@ -581,6 +649,13 @@ const ResponsiveStyle = () => (
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      100% { opacity: 1; }
+    }
+    .pulse-icon {
+      animation: spin 3s linear infinite;
     }
   `}</style>
 );

@@ -206,23 +206,17 @@ export const ContactsPage: React.FC = () => {
     if (openContactId) {
       const cid = Number(openContactId);
       if (cid) {
+        setSearch(String(cid));
         api.get(`/contacts/${cid}`).then(res => {
           if (res.data.success && res.data.data) {
             setProfileContact(res.data.data);
-            const newParams = new URLSearchParams(searchParams);
-            newParams.delete('open_contact_id');
-            newParams.delete('id');
-            setSearchParams(newParams, { replace: true });
-          } else {
-            addToast('Khách hàng này không tồn tại hoặc đã bị xóa khỏi hệ thống.', 'error');
-            const newParams = new URLSearchParams(searchParams);
-            newParams.delete('open_contact_id');
-            newParams.delete('id');
-            setSearchParams(newParams, { replace: true });
           }
+          const newParams = new URLSearchParams(searchParams);
+          newParams.delete('open_contact_id');
+          newParams.delete('id');
+          setSearchParams(newParams, { replace: true });
         }).catch(err => {
           console.error("Error loading auto-open contact:", err);
-          addToast('Không thể tải thông tin khách hàng hoặc khách hàng đã bị xóa.', 'error');
           const newParams = new URLSearchParams(searchParams);
           newParams.delete('open_contact_id');
           newParams.delete('id');

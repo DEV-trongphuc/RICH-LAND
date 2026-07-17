@@ -3431,9 +3431,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                 {pendingLeads.map((lead: any) => {
-                  const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
+                  const leadRecallMins = Number(lead.lead_recall_minutes) || 2;
                   const limitMs = leadRecallMins * 60 * 1000;
-                  const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
+                  const elapsedMs = now - new Date(lead.received_at || lead.last_interaction_date).getTime();
                   const remainingMs = limitMs - elapsedMs;
                   const isOverdue = leadRecallMins > 0 && remainingMs <= 0;
 
@@ -3454,18 +3454,27 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       }}
                     >
                       <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                          <Avatar name={lead.lead_name || 'K'} size={32} />
                           <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
                             {lead.lead_name || t('Khách hàng mới')}
                           </span>
+                        </div>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                          SĐT: {(() => {
+                            const phone = lead.phone || '';
+                            if (!phone) return '—';
+                            if (phone.length < 6) return '***';
+                            return phone.slice(0, 4) + '***' + phone.slice(-3);
+                          })()}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '4px 0 0 0' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Vòng:</span>
                           <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#ffe3e8', color: '#8a0f1b', fontWeight: 700 }}>
                             {lead.round_name || t('Bàn giao')}
                           </span>
                         </div>
-                        <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                          SĐT: {lead.phone}
-                        </p>
-                        <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                           Nguồn: {lead.source || 'Facebook CAPI'}
                         </p>
                       </div>
@@ -3473,7 +3482,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
-                            {t('Nhận lúc:')} {lead.received_at ? new Date(lead.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            {t('Chia lúc:')} {lead.received_at ? new Date(lead.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
                           </span>
                           {leadRecallMins > 0 && (
                             <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--color-danger)' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
@@ -10480,7 +10489,9 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '8px' }}>
-                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>{t('Nhận lúc:')}</span>
+                <span style={{ fontWeight: 700, color: 'var(--color-text-muted)' }}>
+                  {activeDetailLead.is_accepted === 1 ? t('Nhận lúc:') : t('Chia lúc:')}
+                </span>
                 <span style={{ color: 'var(--color-text-light)' }}>
                   {activeDetailLead.received_at ? new Date(activeDetailLead.received_at).toLocaleString('vi-VN') : 'N/A'}
                 </span>

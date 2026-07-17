@@ -7,11 +7,14 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
     
-    echo "=== COLUMNS OF LEADS ===\n";
-    $stmt = $db->query("DESCRIBE `leads`");
-    while ($row = $stmt->fetch()) {
-        echo "{$row['Field']}\n";
-    }
+    echo "=== COLUMNS OF CONSULTANTS ===\n";
+    $stmt = $db->query("DESCRIBE `consultants`");
+    print_r($stmt->fetchAll());
+
+    echo "=== SAMPLE OF CONSULTANTS ===\n";
+    $stmt = $db->query("SELECT * FROM `consultants` LIMIT 5");
+    print_r($stmt->fetchAll());
+
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
 }

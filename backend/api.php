@@ -6258,13 +6258,15 @@ switch ($action) {
 
         // Verify ownership: lead must be assigned to this consultant in this round
         $verifyStmt = $conn->prepare("
-            SELECT dl.id, dl.status, l.name as lead_name, l.phone as lead_phone, l.email as lead_email, l.source, l.type as lead_type, l.note,
+            SELECT dl.id, dl.status, l.name as lead_name, l.phone as lead_phone, l.email as lead_email, l.source, l.type as lead_type, l.note, l.is_accepted,
                    c.name as consultant_name, c.email as consultant_email,
-                   dr.round_name, dl.received_at
+                   dr.round_name, dl.received_at,
+                   COALESCE(NULLIF(sc.lead_recall_minutes, 0), (SELECT CAST(setting_value AS UNSIGNED) FROM system_settings WHERE setting_key = 'lead_response_timeout_minutes'), 2) as lead_recall_minutes
             FROM distribution_logs dl
             JOIN leads l ON dl.lead_id = l.id
             JOIN consultants c ON dl.assigned_to = c.id
             JOIN distribution_rounds dr ON dl.round_id = dr.id
+            LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             WHERE dl.lead_id = ? AND dl.assigned_to = ? AND dl.round_id = ?
             ORDER BY dl.received_at DESC LIMIT 1
         ");
@@ -6317,6 +6319,8 @@ switch ($action) {
                 'consultant_email' => $ctx['consultant_email'],
                 'round_name' => $ctx['round_name'],
                 'assigned_at' => $ctx['received_at'],
+                'is_accepted' => (int)$ctx['is_accepted'],
+                'lead_recall_minutes' => (int)$ctx['lead_recall_minutes'],
                 'existing_report' => $existingReport ? $existingReport['status'] : null,
                 'duplicate_check_months' => (int) get_system_setting($conn, 'duplicate_check_months') ?: 6,
                 'report_error_reasons' => get_normalized_report_error_reasons($conn),
