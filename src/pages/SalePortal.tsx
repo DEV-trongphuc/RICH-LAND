@@ -7855,8 +7855,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             padding: '1.5rem 1rem',
             flexShrink: 0,
             background: 'var(--color-bg-alt)',
-            height: isMobile ? 'auto' : '100%',
-            overflowY: isMobile ? 'visible' : 'auto'
+            position: isMobile ? 'static' : 'sticky',
+            top: isMobile ? 'auto' : '5rem',
+            alignSelf: isMobile ? 'stretch' : 'flex-start',
+            zIndex: 10
           }}>
             {/* Compact Profile Avatar Section */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0' }}>
