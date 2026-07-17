@@ -3390,6 +3390,121 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </button>
         </div>
 
+        {/* Pending Leads Section */}
+        {(() => {
+          const pendingLeads = (data.leads || []).filter((l: any) => !Number(l.is_accepted));
+          if (pendingLeads.length === 0) return null;
+          return (
+            <div 
+              style={{
+                background: 'linear-gradient(135deg, rgba(163, 20, 34, 0.03) 0%, rgba(163, 20, 34, 0.08) 100%)',
+                border: '1px solid rgba(163, 20, 34, 0.15)',
+                borderRadius: '16px',
+                padding: '1.25rem',
+                marginBottom: '1rem',
+                animation: 'pulseGlow 2s infinite alternate'
+              }}
+            >
+              <style>{`
+                @keyframes pulseGlow {
+                  0% { box-shadow: 0 4px 6px -1px rgba(163, 20, 34, 0.05), 0 2px 4px -1px rgba(163, 20, 34, 0.03); }
+                  100% { box-shadow: 0 10px 15px -3px rgba(163, 20, 34, 0.15), 0 4px 6px -2px rgba(163, 20, 34, 0.05); }
+                }
+                @keyframes pulseDot {
+                  0% { transform: scale(0.9); opacity: 0.6; }
+                  100% { transform: scale(1.1); opacity: 1; }
+                }
+                .pulsing-dot-red {
+                  width: 8px;
+                  height: 8px;
+                  border-radius: 50%;
+                  background-color: var(--color-primary);
+                  display: inline-block;
+                  animation: pulseDot 0.8s infinite alternate;
+                }
+              `}</style>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                <span className="pulsing-dot-red" />
+                {t('🚨 DATA MỚI ĐANG CHỜ TIẾP NHẬN')} ({pendingLeads.length})
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                {pendingLeads.map((lead: any) => {
+                  const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
+                  const limitMs = leadRecallMins * 60 * 1000;
+                  const elapsedMs = now - new Date(lead.last_interaction_date).getTime();
+                  const remainingMs = limitMs - elapsedMs;
+                  const isOverdue = leadRecallMins > 0 && remainingMs <= 0;
+
+                  return (
+                    <div 
+                      key={lead.log_id} 
+                      style={{
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
+                        borderRadius: '12px',
+                        padding: '1rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '0.75rem',
+                        boxShadow: 'var(--shadow-sm)',
+                        position: 'relative'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--color-text)' }}>
+                            {lead.lead_name || t('Khách hàng mới')}
+                          </span>
+                          <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#ffe3e8', color: '#8a0f1b', fontWeight: 700 }}>
+                            {lead.round_name || t('Bàn giao')}
+                          </span>
+                        </div>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                          SĐT: {lead.phone}
+                        </p>
+                        <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                          Nguồn: {lead.source || 'Facebook CAPI'}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+                            {t('Nhận lúc:')} {lead.received_at ? new Date(lead.received_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          </span>
+                          {leadRecallMins > 0 && (
+                            <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--color-danger)' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
+                              {isOverdue ? t('Quá hạn thu hồi') : `${t('Còn lại:')} ${Math.floor(Math.max(0, remainingMs) / 60000)}m ${Math.floor((Math.max(0, remainingMs) % 60000) / 1000)}s`}
+                            </span>
+                          )}
+                        </div>
+
+                        <button 
+                          onClick={() => handleAcceptLead(lead.lead_id)} 
+                          className="btn primary sm hover-lift"
+                          style={{
+                            height: '32px',
+                            borderRadius: '8px',
+                            fontWeight: 700,
+                            padding: '0 14px',
+                            background: 'var(--color-primary)',
+                            color: '#fff',
+                            fontSize: '0.8rem'
+                          }}
+                        >
+                          {t('Tiếp nhận')}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Main Subtabs Selection (iOS Segmented Control style) */}
         <div className="segmented-control-wrapper" style={{ marginBottom: '1rem' }}>
           <div style={{
@@ -6341,11 +6456,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         </div>
                       </div>
 
-                      {((effectiveRole === 'sale' && !Number(lead.is_accepted) && Number(lead.lead_recall_minutes) > 0) || lead.report_status || (isAllowedToReport &&
+                      {((effectiveRole === 'sale' && !Number(lead.is_accepted)) || lead.report_status || (isAllowedToReport &&
                         (!data.below_standard_fallback_round_ids || !data.below_standard_fallback_round_ids.includes(Number(lead.round_id))) &&
                         (!data.below_standard_fallback_round_id || Number(lead.round_id) !== Number(data.below_standard_fallback_round_id)))) && (
                           <div onClick={e => e.stopPropagation()} style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '12px' }}>
-                            {effectiveRole === 'sale' && !Number(lead.is_accepted) && Number(lead.lead_recall_minutes) > 0 && (
+                            {effectiveRole === 'sale' && !Number(lead.is_accepted) && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 {(() => {
                                   const leadRecallMins = Number(lead.lead_recall_minutes) || 0;
@@ -6454,7 +6569,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               </span>
                             </div>
 
-                            {effectiveRole === 'sale' && !Number(lead.is_accepted) && Number(lead.lead_recall_minutes) > 0 && (
+                            {effectiveRole === 'sale' && !Number(lead.is_accepted) && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={e => e.stopPropagation()}>
                                 {(() => {
                                   const leadRecallMins = Number(lead.lead_recall_minutes) || 0;

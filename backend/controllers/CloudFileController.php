@@ -112,10 +112,14 @@ class CloudFileController {
         // Security: Max file size 10MB
         if ($file['size'] > 10 * 1024 * 1024) respond(422, null, 'Dung lượng tệp tối đa cho phép là 10MB', false);
 
-        // Security: Whitelist extensions
+        // Security: Blocklist extensions
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowed = ['jpg','jpeg','png','gif','webp','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','zip','rar','csv'];
-        if (!in_array($ext, $allowed)) respond(422, null, "Định dạng tệp .$ext không được hỗ trợ", false);
+        $blockedExts = [
+            'php', 'php3', 'php4', 'php5', 'phtml', 
+            'js', 'ts', 'py', 'pl', 'sh', 'cgi', 'rb', 'go', 'c', 'cpp', 'java', 'h', 'cs', 'swift', 'kt', 'rs',
+            'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'vbs', 'wsf', 'ps1', 'jar', 'apk'
+        ];
+        if (in_array($ext, $blockedExts)) respond(422, null, "Định dạng tệp .$ext không được hỗ trợ hoặc không an toàn", false);
 
         $tid = $auth['tenant_id'];
         $uid = $auth['user_id'];

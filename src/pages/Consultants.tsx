@@ -1687,7 +1687,7 @@ const ConsultantsInner = () => {
       )}
       {/* Statistics Modal */}
       {statsModalOpen && statsConsultant && typeof document !== 'undefined' && createPortal(
-        <div className="overlay-backdrop" onClick={() => setStatsModalOpen(false)}>
+        <div className="overlay-backdrop" onClick={() => setStatsModalOpen(false)} style={{ zIndex: 9999999 }}>
           <div
             className="card"
             style={{

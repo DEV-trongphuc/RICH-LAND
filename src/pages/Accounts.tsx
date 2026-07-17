@@ -716,6 +716,17 @@ const AccountsInner = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              {editingAccount && Number(editingAccount.id) !== 1 && editingAccount.id !== user?.id && (
+                <button
+                  type="button"
+                  onClick={handleDeleteClickInModal}
+                  className="btn outline"
+                  style={{ borderColor: 'var(--color-danger)', color: 'var(--color-danger)', padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Trash2 size={16} />
+                  {t('Xóa tài khoản')}
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={isSaving}
@@ -973,6 +984,16 @@ const AccountsInner = () => {
                           <button onClick={(e) => { e.stopPropagation(); openEditModal(acc); }} className="btn ghost" style={{ padding: 8, color: 'var(--color-primary)' }} title={t("Sửa")}>
                             <Edit3 size={16} />
                           </button>
+                          {Number(acc.id) !== 1 && acc.id !== user?.id && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); triggerDeleteFlow(acc.id); }} 
+                              className="btn ghost" 
+                              style={{ padding: 8, color: 'var(--color-danger)' }} 
+                              title={t("Xóa")}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

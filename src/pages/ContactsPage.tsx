@@ -21,6 +21,7 @@ import { AddressSelect } from '../components/ui/AddressSelect';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CopyButton } from '../components/ui/CopyButton';
 import api from '../api/axios';
+import { fetchAPI } from '../utils/api';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { useDebounce } from '../hooks/useDebounce';
@@ -170,12 +171,14 @@ export const ContactsPage: React.FC = () => {
 
   useEffect(() => {
     if (isSale) {
-      api.get('/get_sale_portal_data').then(res => {
-        if (res.data && res.data.success && Array.isArray(res.data.data)) {
-          const count = res.data.data.filter((l: any) => Number(l.is_accepted) === 0).length;
+      fetchAPI('get_sale_portal_data').then(res => {
+        if (res && res.success && Array.isArray(res.leads)) {
+          const count = res.leads.filter((l: any) => Number(l.is_accepted) === 0).length;
           setPendingLeadsCount(count);
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        console.error("Error loading pending leads banner:", err);
+      });
     }
   }, [isSale]);
 

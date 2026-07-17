@@ -368,6 +368,17 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
     }
   }, [expanded, comments, activityId]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const highlightCommentId = params.get('highlight_comment_id');
+    if (highlightCommentId && comments.length > 0) {
+      const hasComment = comments.some((c: any) => String(c.id) === String(highlightCommentId));
+      if (hasComment) {
+        setExpanded(true);
+      }
+    }
+  }, [comments]);
+
   const displayCount = hasFetched ? comments.length : initialCount;
 
   const toggleExpand = async () => {
@@ -453,19 +464,41 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {(() => {
             const rootComments = comments.filter((c: any) => !c.parent_id);
-            const getReplies = (parentId: number) => {
-              return comments
-                .filter((c: any) => Number(c.parent_id) === Number(parentId))
-                .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            const getDescendants = (rootId: number) => {
+              const result: any[] = [];
+              const queue = [rootId];
+              while (queue.length > 0) {
+                const currentId = queue.shift();
+                const children = comments
+                  .filter((c: any) => Number(c.parent_id) === Number(currentId))
+                  .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                for (const child of children) {
+                  if (!result.some(r => r.id === child.id)) {
+                    result.push(child);
+                    queue.push(child.id);
+                  }
+                }
+              }
+              return result.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
             };
 
-            const renderCommentNode = (c: any, isReply: boolean = false) => {
+            const renderCommentNode = (c: any, isReply: boolean = false, rootId?: number) => {
+              const parentComment = isReply && c.parent_id ? comments.find((pc: any) => pc.id === c.parent_id) : null;
+              const isDirectReplyToRoot = parentComment && !parentComment.parent_id;
+
               return (
                 <div key={c.id} id={`comment-${c.id}`} style={{ display: 'flex', gap: '0.75rem', transition: 'all 0.5s ease', borderRadius: '12px', padding: isReply ? '4px 0 4px 12px' : '4px', borderLeft: isReply ? '2px solid var(--color-border-light)' : undefined }}>
                   <Avatar name={c.user_name} src={c.avatar_url || undefined} size={isReply ? 24 : "sm"} />
                   <div style={{ flex: 1, background: isReply ? 'transparent' : 'var(--color-surface)', padding: isReply ? '4px 0' : '0.75rem', borderRadius: isReply ? '0' : '12px', border: isReply ? 'none' : '1px solid var(--color-border-light)', boxShadow: isReply ? 'none' : 'var(--shadow-sm)', overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                      <strong style={{ fontSize: isReply ? '0.75rem' : '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>
+                      <strong style={{ fontSize: isReply ? '0.75rem' : '0.8125rem', color: 'var(--color-text)' }}>
+                        {c.user_name}
+                        {isReply && parentComment && !isDirectReplyToRoot && (
+                          <span style={{ fontWeight: 400, color: 'var(--color-text-muted)', marginLeft: '6px', fontSize: '0.7rem' }}>
+                            trả lời <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>@{parentComment.user_name}</span>
+                          </span>
+                        )}
+                      </strong>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
                         {canDeleteComment(c) && (
@@ -502,28 +535,26 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
                         </div>
                       );
                     })}
-                    {!isReply && (
-                      <button
-                        onClick={() => setReplyTo({ id: c.id, userName: c.user_name || 'Đồng nghiệp' })}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, display: 'block' }}
-                        className="hover-lift"
-                      >
-                        Phản hồi
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setReplyTo({ id: c.id, userName: c.user_name || 'Đồng nghiệp' })}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', padding: '4px 0 0 0', cursor: 'pointer', fontWeight: 700, display: 'block' }}
+                      className="hover-lift"
+                    >
+                      Phản hồi
+                    </button>
                   </div>
                 </div>
               );
             };
 
             return rootComments.map((rootC: any) => {
-              const replies = getReplies(rootC.id);
+              const replies = getDescendants(rootC.id);
               return (
                 <div key={rootC.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {renderCommentNode(rootC, false)}
                   {replies.length > 0 && (
                     <div style={{ marginLeft: '2.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderLeft: '1px solid var(--color-border-light)', paddingLeft: '0.75rem' }}>
-                      {replies.map((reply: any) => renderCommentNode(reply, true))}
+                      {replies.map((reply: any) => renderCommentNode(reply, true, rootC.id))}
                     </div>
                   )}
                 </div>
@@ -717,7 +748,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const hasHighlight = params.has('highlight_activity_id');
+    const hasHighlight = params.has('highlight_activity_id') || params.has('highlight_comment_id');
     const hasHighlightNote = params.has('highlight_note_id');
     
     if (isOpen && hasHighlight) {

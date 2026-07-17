@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
-import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, MoreHorizontal, Loader2 } from 'lucide-react';
+import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, MoreHorizontal, Loader2, Lock } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useUIStore } from '../store/uiStore';
@@ -335,35 +335,42 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                 </div>
 
                 {/* Reply Box */}
-                <div style={{ padding: '1.5rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
-                  {replyTo && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(201, 24, 43, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#c9182b', fontWeight: 700, marginBottom: '8px' }}>
-                      <span>Đang trả lời {replyTo.userName}</span>
-                      <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#c9182b', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
-                    </div>
-                  )}
-                  <div style={{ position: 'relative' }}>
-                    <textarea 
-                      className="form-input" 
-                      placeholder="Thêm ghi chú, cập nhật tiến độ xử lý..."
-                      value={newComment}
-                      onChange={e => setNewComment(e.target.value)}
-                      style={{ minHeight: '100px', paddingBottom: '3rem', resize: 'none' }}
-                    />
-                    <div style={{ position: 'absolute', bottom: '12px', left: '12px', display: 'flex', gap: '8px' }}>
-                      <button className="btn-icon sm"><Paperclip size={16} /></button>
-                    </div>
-                    <button 
-                      className="btn primary sm"
-                      style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      onClick={handleSend}
-                      disabled={isSubmitting || !newComment.trim()}
-                    >
-                      {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
-                      {isSubmitting ? 'Đang cập nhật' : 'Cập nhật'}
-                    </button>
+                {ticket.status === 'closed' ? (
+                  <div style={{ padding: '1.5rem', background: 'var(--color-bg-light)', borderTop: '1px solid var(--color-border)', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>
+                    <Lock size={16} style={{ display: 'inline-block', marginRight: '6px', verticalAlign: 'middle', color: 'var(--color-text-muted)' }} />
+                    Ticket đã đóng, không thể thêm phản hồi hoặc cập nhật.
                   </div>
-                </div>
+                ) : (
+                  <div style={{ padding: '1.5rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
+                    {replyTo && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(201, 24, 43, 0.08)', padding: '6px 12px', borderRadius: '8px', fontSize: '0.72rem', color: '#c9182b', fontWeight: 700, marginBottom: '8px' }}>
+                        <span>Đang trả lời {replyTo.userName}</span>
+                        <button onClick={() => setReplyTo(null)} style={{ border: 'none', background: 'transparent', color: '#c9182b', cursor: 'pointer', fontWeight: 800, fontSize: '0.9rem', padding: '0 4px' }}>×</button>
+                      </div>
+                    )}
+                    <div style={{ position: 'relative' }}>
+                      <textarea 
+                        className="form-input" 
+                        placeholder="Thêm ghi chú, cập nhật tiến độ xử lý..."
+                        value={newComment}
+                        onChange={e => setNewComment(e.target.value)}
+                        style={{ minHeight: '100px', paddingBottom: '3rem', resize: 'none' }}
+                      />
+                      <div style={{ position: 'absolute', bottom: '12px', left: '12px', display: 'flex', gap: '8px' }}>
+                        <button className="btn-icon sm"><Paperclip size={16} /></button>
+                      </div>
+                      <button 
+                        className="btn primary sm"
+                        style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        onClick={handleSend}
+                        disabled={isSubmitting || !newComment.trim()}
+                      >
+                        {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                        {isSubmitting ? 'Đang cập nhật' : 'Cập nhật'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right: Info Panel */}

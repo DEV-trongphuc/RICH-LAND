@@ -97,6 +97,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
   const [heldLeadsCount, setHeldLeadsCount] = useState(0);
   const [pendingCoopCount, setPendingCoopCount] = useState(0);
   const [undoneTasksCount, setUndoneTasksCount] = useState(0);
+  const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   // Poll pending counts every 60s
@@ -106,6 +107,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
       try {
         const role = user.role as string;
         const isAdminOrManager = role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'manager' || role === 'director';
+        setPendingLeadsCount(0);
 
         // Fetch undone tasks for all roles
         const resTasks = await fetchAPI('activities&type=task&limit=100');
@@ -133,7 +135,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
           }
 
           if (resHeld.success) {
-            countHeld = resHeld.total_count ?? 0;
+            countHeld = resHeld.totalCount || resHeld.total || 0;
           }
 
           if (resCoop.success) {
@@ -154,6 +156,17 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
             }).length;
           }
           setPendingCoopCount(countUnsigned);
+
+          // Fetch pending leads for Sales
+          try {
+            const resSalePortal = await fetchAPI('get_sale_portal_data');
+            if (resSalePortal && resSalePortal.success && Array.isArray(resSalePortal.leads)) {
+              const pendingAcceptLeads = resSalePortal.leads.filter((l: any) => Number(l.is_accepted) === 0).length;
+              setPendingLeadsCount(pendingAcceptLeads);
+            }
+          } catch {
+            setPendingLeadsCount(0);
+          }
         }
       } catch { /* silent */ }
     };
@@ -161,10 +174,14 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
     const interval = setInterval(fetchPending, 60000);
     window.addEventListener('ticket-resolved', fetchPending);
     window.addEventListener('task-updated', fetchPending);
+    window.addEventListener('lead-accepted', fetchPending);
+    window.addEventListener('uncontacted-count-changed', fetchPending);
     return () => {
       clearInterval(interval);
       window.removeEventListener('ticket-resolved', fetchPending);
       window.removeEventListener('task-updated', fetchPending);
+      window.removeEventListener('lead-accepted', fetchPending);
+      window.removeEventListener('uncontacted-count-changed', fetchPending);
     };
   }, [user]);
 
@@ -366,7 +383,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, isMobileOpen, onMobileC
                   </span>
                 )}
                  {group.items.map(({ name, href, icon: Icon, end, badgeKey }) => {
-                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'workspaceTasks' ? undoneTasksCount : 0;
+                   const badgeCount = badgeKey === 'tickets' ? pendingTickets : badgeKey === 'gatekeeper' ? heldLeadsCount : badgeKey === 'coopSlips' ? pendingCoopCount : badgeKey === 'workspaceTasks' ? (undoneTasksCount + pendingLeadsCount) : 0;
                    const checkIsActive = (locationPath: string, locationSearch: string, itemHref: string) => {
                      const qIdx = itemHref.indexOf('?');
                      if (qIdx !== -1) {

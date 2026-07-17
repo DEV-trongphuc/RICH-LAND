@@ -2259,11 +2259,6 @@ switch ($action) {
         }
 
         $dateConditionDl = str_replace('received_at', 'dl.received_at', $dateCondition);
-        $dateConditionSubQuery = $dateCondition;
-
-        if ($dateConditionDl !== "1=1") {
-            $where[] = $dateConditionDl;
-        }
 
         $whereClause = implode(" AND ", $where);
 
@@ -2277,12 +2272,12 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent' AND $dateConditionSubQuery
+                WHERE status != 'silent'
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
             JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = dl.assigned_to AND c.deleted_at IS NULL
-            WHERE $whereClause
+            WHERE $whereClause AND (l.is_accepted = 0 OR $dateConditionDl)
         ";
         $totalCount = 0;
         $stmtCount = $conn->prepare($sqlCount);
@@ -2301,7 +2296,7 @@ switch ($action) {
             $limitStr = "LIMIT $pageSize OFFSET $offset";
         }
 
-        // 1. Query leads with date filter pushed down into the subquery and limits applied
+        // 1. Query leads with limits applied
         $sqlLeads = "
             SELECT dl.id as log_id, dl.received_at, dl.status, dl.message, dl.round_id, dl.assigned_to,
                    l.id as lead_id, l.name as lead_name, l.phone, l.email as lead_email, l.source, l.type, l.note,
@@ -2315,7 +2310,7 @@ switch ($action) {
             INNER JOIN (
                 SELECT lead_id, MAX(id) as max_id 
                 FROM distribution_logs 
-                WHERE status != 'silent' AND $dateConditionSubQuery
+                WHERE status != 'silent'
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
@@ -2331,7 +2326,7 @@ switch ($action) {
                     GROUP BY lead_id, consultant_id
                 ) dr2 ON dr1.id = dr2.max_dr_id
             ) dr ON dr.lead_id = l.id AND dr.consultant_id = dl.assigned_to
-            WHERE $whereClause
+            WHERE $whereClause AND (l.is_accepted = 0 OR $dateConditionDl)
             ORDER BY dl.received_at DESC
             $limitStr
         ";

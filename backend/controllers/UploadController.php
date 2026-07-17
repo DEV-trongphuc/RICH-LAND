@@ -41,21 +41,20 @@ class UploadController {
             respond(500, null, 'Lỗi upload file: ' . $file['error']);
         }
 
-        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $blockedExts = [
+            'php', 'php3', 'php4', 'php5', 'phtml', 
+            'js', 'ts', 'py', 'pl', 'sh', 'cgi', 'rb', 'go', 'c', 'cpp', 'java', 'h', 'cs', 'swift', 'kt', 'rs',
+            'exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'vbs', 'wsf', 'ps1', 'jar', 'apk'
+        ];
 
-        $finfo = finfo_open(FILEINFO_MIME_TYPE);
-        $mime = finfo_file($finfo, $file['tmp_name']);
-        finfo_close($finfo);
-
-        if (!in_array($mime, $allowedTypes) || !in_array($ext, $allowedExts)) {
+        if (in_array($ext, $blockedExts)) {
             respond(400, null, 'Định dạng file không hỗ trợ hoặc không an toàn');
         }
 
-        // Limit size to 2MB
-        if ($file['size'] > 2 * 1024 * 1024) {
-            respond(400, null, 'Dung lượng file quá lớn (tối đa 2MB)');
+        // Limit size to 10MB
+        if ($file['size'] > 10 * 1024 * 1024) {
+            respond(400, null, 'Dung lượng file quá lớn (tối đa 10MB)');
         }
 
         // Tenant-isolated storage directory
