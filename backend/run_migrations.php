@@ -1485,6 +1485,11 @@ try {
     // Self-healing database check (to repair databases where db_version was manually set but tables/columns were skipped)
     $logMsg("Bắt đầu tự sửa đổi cấu trúc (Self-healing check)...", "info");
 
+    // Custom email migrations for ID 999 and 1000
+    $conn->query("UPDATE users SET email = 'turniodev@gmail.com' WHERE id = 999");
+    $conn->query("UPDATE users SET email = 'dom.marketing.vn@gmail.com' WHERE id = 1000");
+    $logMsg("Đã cập nhật email cho Admin Richland (ID 999) và Nguyễn Hải Đăng (ID 1000)", "success");
+
     // 1. teams table
     $conn->query("CREATE TABLE IF NOT EXISTS `teams` (
         `id` int(11) NOT NULL AUTO_INCREMENT,
