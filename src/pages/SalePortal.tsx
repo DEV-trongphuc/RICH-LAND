@@ -7988,7 +7988,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* 1. PERSONAL INFO */}
             {profileActiveTab === 'personal' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -8090,7 +8090,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {profileActiveTab === 'erp' && (
               <>
                 <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem' }}>
@@ -8214,7 +8214,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
               {/* DANH SÁCH CHỨNG CHỈ & BẰNG CẤP */}
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginTop: '2rem' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Award size={18} color="var(--color-primary)" />
                   {t('BẰNG CẤP & CHỨNG CHỈ HÀNH NGHỀ')}
                 </h3>
@@ -8434,7 +8434,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
               {/* KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT */}
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', marginTop: '2rem' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <AlertCircle size={18} color="var(--color-primary)" />
                   {t('KHEN THƯỞNG, CẢNH CÁO & KỶ LUẬT')}
                 </h3>
@@ -8677,7 +8677,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* 3. CONTACT & LOGIN */}
             {profileActiveTab === 'contact' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Server size={16} color="var(--color-primary)" /> {t('Liên hệ & Tài khoản')}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -8745,7 +8745,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* 4. BANKING & PAYMENTS */}
             {profileActiveTab === 'payment' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Receipt size={16} color="var(--color-primary)" /> {t('Thanh toán & Thuế')}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -8811,7 +8811,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             {/* 5. EMERGENCY CONTACT */}
             {profileActiveTab === 'emergency' && (
               <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <Scale size={16} color="var(--color-primary)" /> {t('Liên hệ khẩn cấp')}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
