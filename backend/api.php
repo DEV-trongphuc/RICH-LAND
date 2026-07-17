@@ -10034,8 +10034,12 @@ switch ($action) {
             $res = $conn->query("SELECT id, username, name, email, role, created_at, zalo_chat_id, is_confirmed, last_login, avatar, dob, gender, citizen_id, address, bank_name, bank_account, phone, is_active, team_id FROM accounts ORDER BY created_at DESC");
         }
         $data = [];
-        while ($row = $res->fetch_assoc())
+        while ($row = $res->fetch_assoc()) {
+            if (isset($row['role']) && $row['role'] === 'sales') {
+                $row['role'] = 'sale';
+            }
             $data[] = $row;
+        }
         echo json_encode(['success' => true, 'data' => $data]);
         break;
 
@@ -10871,6 +10875,9 @@ switch ($action) {
             $password = $input['password'] ?? '';
             $name = trim($input['name'] ?? '');
             $role = $input['role'] ?? 'viewer';
+            if ($role === 'sale') {
+                $role = 'sales';
+            }
             $email = trim($input['email'] ?? '');
             $zalo_chat_id = trim($input['zalo_chat_id'] ?? '');
             $avatar = isset($input['avatar']) ? trim($input['avatar']) : null;
@@ -10998,6 +11005,9 @@ switch ($action) {
             $password = $input['password'] ?? '';
             $name = trim($input['name'] ?? '');
             $role = $input['role'] ?? 'viewer';
+            if ($role === 'sale') {
+                $role = 'sales';
+            }
             
             if (!$isAdmin) {
                 $role = $exRow ? $exRow['role'] : 'viewer';
