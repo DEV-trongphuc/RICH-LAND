@@ -1752,12 +1752,33 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             : t('Khi được kích hoạt, trạng thái công việc của nhân sự sẽ tự động báo cáo cho bộ phận nhân sự là đang nghỉ phép/nghỉ lễ.')}
                         </p>
                       </div>
-                      <input 
-                        type="checkbox" 
-                        checked={vacationMode} 
-                        onChange={e => setVacationMode(e.target.checked)} 
-                        style={{ width: '40px', height: '20px', cursor: 'pointer' }}
-                      />
+                      <div 
+                        onClick={() => setVacationMode(!vacationMode)}
+                        style={{
+                          width: '46px',
+                          height: '24px',
+                          borderRadius: '12px',
+                          backgroundColor: vacationMode ? '#10B981' : '#E2E8F0',
+                          padding: '2px',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <div 
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                            transform: vacationMode ? 'translateX(22px)' : 'translateX(0px)',
+                            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                          }}
+                        />
+                      </div>
                     </div>
 
                     {/* Overtime mode */}
@@ -1778,12 +1799,33 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                             : t('Ghi nhận thông tin tăng ca đêm của nhân sự để phục vụ cho việc tính ngày công tăng ca hàng tháng.')}
                         </p>
                       </div>
-                      <input 
-                        type="checkbox" 
-                        checked={overtimeMode} 
-                        onChange={e => setOvertimeMode(e.target.checked)} 
-                        style={{ width: '40px', height: '20px', cursor: 'pointer' }}
-                      />
+                      <div 
+                        onClick={() => setOvertimeMode(!overtimeMode)}
+                        style={{
+                          width: '46px',
+                          height: '24px',
+                          borderRadius: '12px',
+                          backgroundColor: overtimeMode ? '#10B981' : '#E2E8F0',
+                          padding: '2px',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <div 
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            backgroundColor: 'white',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                            transform: overtimeMode ? 'translateX(22px)' : 'translateX(0px)',
+                            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                          }}
+                        />
+                      </div>
                     </div>
 
                     {/* Leave Range picker */}
