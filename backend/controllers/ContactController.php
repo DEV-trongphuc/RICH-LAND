@@ -715,12 +715,26 @@ class ContactController {
             // AUTO TRIGGER META CAPI EVENTS ON STATE TRANSITION AND UPDATE SECURITY TIMERS / DATABANK STATUS
             if ($newStatus && $newStatus !== $currStatus) {
                 require_once __DIR__ . '/../config/CapiHelper.php';
-                if ($newStatus === 'dong_y_gap' || $newStatus === 'da_gap') {
-                    CapiHelper::sendEvent($this->db, $id, 'Schedule');
-                } elseif ($newStatus === 'not_lead') {
-                    CapiHelper::sendEvent($this->db, $id, 'BAD');
-                } elseif ($newStatus === 'dat_coc') {
-                    CapiHelper::sendEvent($this->db, $id, 'Purchase');
+                
+                // Load CAPI triggers mapping from settings dynamically
+                $capiTriggersRaw = $this->getSetting('capi_event_triggers', '');
+                $capiMap = [];
+                if (!empty($capiTriggersRaw)) {
+                    $capiMap = json_decode($capiTriggersRaw, true) ?: [];
+                }
+                
+                // Fallback mapping if not configured in settings
+                if (empty($capiMap)) {
+                    $capiMap = [
+                        'dong_y_gap' => 'Schedule',
+                        'da_gap' => 'Schedule',
+                        'not_lead' => 'BAD',
+                        'dat_coc' => 'Purchase'
+                    ];
+                }
+                
+                if (isset($capiMap[$newStatus])) {
+                    CapiHelper::sendEvent($this->db, $id, $capiMap[$newStatus]);
                 }
 
                 // Update security_expires_at
@@ -887,12 +901,26 @@ class ContactController {
         // Trigger CAPI / Security timer updates on status change
         if ($newStatus !== $currStatus) {
             require_once __DIR__ . '/../config/CapiHelper.php';
-            if ($newStatus === 'dong_y_gap' || $newStatus === 'da_gap') {
-                CapiHelper::sendEvent($this->db, $id, 'Schedule');
-            } elseif ($newStatus === 'not_lead') {
-                CapiHelper::sendEvent($this->db, $id, 'BAD');
-            } elseif ($newStatus === 'dat_coc') {
-                CapiHelper::sendEvent($this->db, $id, 'Purchase');
+            
+            // Load CAPI triggers mapping from settings dynamically
+            $capiTriggersRaw = $this->getSetting('capi_event_triggers', '');
+            $capiMap = [];
+            if (!empty($capiTriggersRaw)) {
+                $capiMap = json_decode($capiTriggersRaw, true) ?: [];
+            }
+            
+            // Fallback mapping if not configured in settings
+            if (empty($capiMap)) {
+                $capiMap = [
+                    'dong_y_gap' => 'Schedule',
+                    'da_gap' => 'Schedule',
+                    'not_lead' => 'BAD',
+                    'dat_coc' => 'Purchase'
+                ];
+            }
+            
+            if (isset($capiMap[$newStatus])) {
+                CapiHelper::sendEvent($this->db, $id, $capiMap[$newStatus]);
             }
 
             // Update security timer

@@ -399,45 +399,58 @@ class DepositController {
                 ];
                 $nextTemp = $tempDecayMap[$currTemp] ?? 'neutral';
 
-                // Resolve stage_ids for 'booking' and 'da_gap' using system_slug column
+                // Dynamically resolve target demoted statuses from system settings
+                $demotedBookingStatus = $this->getSetting('deposit_cancel_demoted_booking_status', 'booking');
+                $demotedStatus = $this->getSetting('deposit_cancel_demoted_status', 'da_gap');
+
+                // Resolve stage_ids for dynamic targets
                 $stmtStages = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? ORDER BY order_index");
                 $stmtStages->execute([$auth['tenant_id']]);
                 $stages = $stmtStages->fetchAll(PDO::FETCH_COLUMN);
 
-                $stmtBooking = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? AND system_slug = 'booking' LIMIT 1");
-                $stmtBooking->execute([$auth['tenant_id']]);
+                $stmtBooking = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? AND system_slug = ? LIMIT 1");
+                $stmtBooking->execute([$auth['tenant_id'], $demotedBookingStatus]);
                 $bookingStageId = (int)$stmtBooking->fetchColumn();
 
-                $stmtDaGap = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? AND system_slug = 'da_gap' LIMIT 1");
-                $stmtDaGap->execute([$auth['tenant_id']]);
+                $stmtDaGap = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id = ? AND system_slug = ? LIMIT 1");
+                $stmtDaGap->execute([$auth['tenant_id'], $demotedStatus]);
                 $daGapStageId = (int)$stmtDaGap->fetchColumn();
 
-                // Check if the contact ever had an active booking in their audit logs
+                // Check if the contact ever had an active booking/target status in their audit logs
                 $stmtHasBooking = $this->db->prepare("
                     SELECT 1 FROM audit_logs 
                     WHERE tenant_id = ? 
                       AND resource = 'contact' 
                       AND resource_id = ? 
                       AND action = 'MOVE_STAGE'
-                      AND (new_data LIKE '%\"pipeline_status\":\"booking\"%' OR new_data LIKE '%\"to_stage\":\"booking\"%')
+                      AND (new_data LIKE ? OR new_data LIKE ?)
                     LIMIT 1
                 ");
-                $stmtHasBooking->execute([$auth['tenant_id'], $contactId]);
+                $likeBooking1 = '%"pipeline_status":"' . $demotedBookingStatus . '"%';
+                $likeBooking2 = '%"to_stage":"' . $demotedBookingStatus . '"%';
+                $stmtHasBooking->execute([$auth['tenant_id'], $contactId, $likeBooking1, $likeBooking2]);
                 $hadBooking = (bool)$stmtHasBooking->fetchColumn();
 
-                $targetStatus = 'da_gap';
+                $targetStatus = $demotedStatus;
                 $targetStageId = $daGapStageId ?: ($stages[3] ?? ($stages[0] ?? 0));
-                $interval = '5 DAY';
+                
+                // Get security timer durations dynamically
+                $timerKey = 'security_timer_' . $demotedStatus;
+                $duration = $this->getSetting($timerKey, '+5 days');
+                $expiresAt = date('Y-m-d H:i:s', strtotime($duration));
 
                 if ($hadBooking && $bookingStageId > 0) {
-                    $targetStatus = 'booking';
+                    $targetStatus = $demotedBookingStatus;
                     $targetStageId = $bookingStageId;
-                    $interval = '3 MONTH';
+                    
+                    $timerBookingKey = 'security_timer_' . $demotedBookingStatus;
+                    $bookingDuration = $this->getSetting($timerBookingKey, '+3 months');
+                    $expiresAt = date('Y-m-d H:i:s', strtotime($bookingDuration));
                 }
 
-                // Revert status to Booking or Da Gap
-                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, stage_id = ?, temperature = ?, status = 'lead', security_expires_at = DATE_ADD(NOW(), INTERVAL $interval) WHERE id = ?");
-                $stmtRev->execute([$targetStatus, $targetStageId, $nextTemp, $contactId]);
+                // Revert status dynamically and save security_expires_at datetime
+                $stmtRev = $this->db->prepare("UPDATE contacts SET pipeline_status = ?, stage_id = ?, temperature = ?, status = 'lead', security_expires_at = ? WHERE id = ?");
+                $stmtRev->execute([$targetStatus, $targetStageId, $nextTemp, $expiresAt, $contactId]);
             } else {
                 // If paid, keep in Dat Coc but mark deposit cancelled (Bể cọc, tiền thu hoặc chuyển đợt)
                 // In this case, contact remains in Customer status
@@ -476,5 +489,12 @@ class DepositController {
             $this->db->rollBack();
             respond(500, null, 'Lỗi báo hủy cọc: ' . $e->getMessage(), false);
         }
+    }
+
+    private function getSetting(string $key, string $default): string {
+        $stmt = $this->db->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute([$key]);
+        $val = $stmt->fetchColumn();
+        return $val !== false ? $val : $default;
     }
 }
