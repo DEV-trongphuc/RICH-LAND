@@ -81,6 +81,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   // --- Notifications State & Logic ---
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [notifAvatars, setNotifAvatars] = useState<any>({});
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread' | 'read'>('all');
 
@@ -90,6 +91,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       if (res.success && res.data) {
         setNotifications(res.data.items || []);
         setUnreadCount(res.data.unread_count || 0);
+        setNotifAvatars(res.data.avatars || {});
       }
     } catch (err) {
       console.error("Error fetching notifications:", err);
@@ -1926,13 +1928,13 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                         <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
                           {actorName ? (
                             <div style={{ position: 'relative', display: 'inline-flex' }}>
-                              <Avatar name={actorName} size={38} />
+                              <Avatar src={notifAvatars[actorName] || undefined} name={actorName} size={38} />
                               <span style={{
                                 position: 'absolute',
                                 bottom: -2,
                                 right: -2,
-                                width: 16,
-                                height: 16,
+                                width: 18,
+                                height: 18,
                                 borderRadius: '50%',
                                 background: (() => {
                                   switch (notif.type) {
@@ -1959,17 +1961,17 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                                     case 'task_assignment':
                                     case 'task_participant':
                                     case 'approval_request':
-                                      return <CheckSquare size={9} style={{ color: 'white' }} />;
+                                      return <CheckSquare size={11} style={{ color: 'white' }} />;
                                     case 'project_roster':
-                                      return <Users size={9} style={{ color: 'white' }} />;
+                                      return <Users size={11} style={{ color: 'white' }} />;
                                     case 'project_document':
-                                      return <FileText size={9} style={{ color: 'white' }} />;
+                                      return <FileText size={11} style={{ color: 'white' }} />;
                                     case 'project_comment':
-                                      return <MessageSquare size={9} style={{ color: 'white' }} />;
+                                      return <MessageSquare size={11} style={{ color: 'white' }} />;
                                     case 'warning':
-                                      return <AlertTriangle size={9} style={{ color: 'white' }} />;
+                                      return <AlertTriangle size={11} style={{ color: 'white' }} />;
                                     default:
-                                      return <Info size={9} style={{ color: 'white' }} />;
+                                      return <Info size={11} style={{ color: 'white' }} />;
                                   }
                                 })()}
                               </span>
