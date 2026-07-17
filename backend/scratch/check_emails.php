@@ -19,3 +19,9 @@ while ($row = $resUsers->fetch_assoc()) {
     print_r($row);
 }
 
+echo "\n--- DESCRIBE LEADS ---\n";
+$resDesc = $conn->query("DESCRIBE leads");
+while ($row = $resDesc->fetch_assoc()) {
+    print_r($row);
+}
+

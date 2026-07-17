@@ -461,7 +461,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         logSync("Checking for pending work hours leads to release...");
         
         // Select all logs pending work hours, including status and leave dates to check if they went on leave
-        $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, dl.round_id, dl.message, COALESCE(dl.received_at, NOW()) AS received_at,
+        $sql = "SELECT dl.id as log_id, dl.lead_id, dl.assigned_to, dl.round_id, dl.message, dl.status as log_status, COALESCE(dl.received_at, NOW()) AS received_at,
                        l.name as lead_name, l.phone as lead_phone, l.email as lead_email,
                        l.source as lead_source, l.type as lead_type, l.note as lead_note,
                        c.name as consultant_name, c.email as consultant_email, c.work_start_time, c.work_end_time, c.work_schedule,
@@ -469,13 +469,13 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                        r.round_name, r.cc_emails
                 FROM distribution_logs dl
                 JOIN leads l ON dl.lead_id = l.id
-                JOIN consultants c ON dl.assigned_to = c.id
+                LEFT JOIN consultants c ON dl.assigned_to = c.id
                 LEFT JOIN distribution_rounds r ON dl.round_id = r.id
-                WHERE dl.status = 'pending_work_hours'";
-                
+                WHERE dl.status = 'pending_work_hours' OR dl.status = 'pending'";
+                 
         $res = $conn->query($sql);
         if (!$res) {
-            logSync("Error querying pending work hours leads.");
+            logSync("Error querying pending work hours / pending leads.");
             return;
         }
         
@@ -489,9 +489,11 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
             $leaveEnd = $row['leave_end'] ?? null;
             $today = date('Y-m-d');
             
-            // Check if consultant is actually on leave or inactive
+            // Check if consultant is actually on leave or inactive, or if it is a pending log
             $isActuallyOnLeaveOrInactive = false;
-            if ($status !== 'active') {
+            if ($row['log_status'] === 'pending') {
+                $isActuallyOnLeaveOrInactive = true;
+            } else if ($status !== 'active') {
                 $isActuallyOnLeaveOrInactive = true;
             } else if (!empty($leaveStart) && !empty($leaveEnd)) {
                 if ($today >= $leaveStart && $today <= $leaveEnd) {
@@ -500,26 +502,61 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
             }
             
             if ($isActuallyOnLeaveOrInactive) {
-                logSync("Lead ID {$row['lead_id']} assigned to {$row['consultant_name']} who is on leave or inactive. Reallocating...");
+                logSync("Lead ID {$row['lead_id']} is pending or owner is inactive. Checking for new allocation...");
+                
+                $assignedConsultantId = null;
+                $assignResult = null;
+                if ($row['round_id'] > 0) {
+                    $assignResult = getNextConsultantInRound($conn, $row['round_id']);
+                    if ($assignResult) {
+                        $assignedConsultantId = $assignResult['id'];
+                    }
+                }
+                
+                $isFallbackAdmin = false;
+                $fallbackAdminData = null;
+                $fallbackCcEmails = '';
+                if (!$assignedConsultantId) {
+                    $fbSettings = [];
+                    $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
+                    if ($fbRes) {
+                        while ($fbRow = $fbRes->fetch_assoc()) {
+                            $fbSettings[$fbRow['setting_key']] = $fbRow['setting_value'];
+                        }
+                    }
+                    $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
+                    $fbCc = $fbSettings['fallback_cc_email'] ?? '';
+                    
+                    if ($fbAdminId > 0) {
+                        $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin') LIMIT 1");
+                        if ($admStmt) {
+                            $admStmt->bind_param("i", $fbAdminId);
+                            $admStmt->execute();
+                            $admRes = $admStmt->get_result();
+                            if ($admRes->num_rows > 0) {
+                                $fallbackAdminData = $admRes->fetch_assoc();
+                                $isFallbackAdmin = true;
+                                $fallbackCcEmails = $fbCc;
+                            }
+                            $admStmt->close();
+                        }
+                    }
+                }
+
+                $oldAssignedTo = $row['assigned_to'] !== null ? (int)$row['assigned_to'] : null;
+                $newAssignedTo = $assignedConsultantId !== null ? (int)$assignedConsultantId : ($isFallbackAdmin ? (int)$fallbackAdminData['id'] : null);
+                
+                if ($newAssignedTo === $oldAssignedTo && $row['log_status'] === 'pending') {
+                    // Nothing changed, skip to avoid spam
+                    continue;
+                }
                 
                 $conn->begin_transaction();
                 try {
-                    $assignedConsultantId = null;
                     $newStatus = 'assigned';
-                    $logMsg = "Thu hồi từ Sale nghỉ phép/không hoạt động ({$row['consultant_name']}). ";
-                    $isFallbackAdmin = false;
-                    $fallbackAdminData = null;
-                    $fallbackCcEmails = '';
+                    $logMsg = !empty($row['consultant_name']) ? "Thu hồi từ Sale nghỉ phép/không hoạt động ({$row['consultant_name']}). " : "Phân bổ lại lead đang chờ xử lý. ";
                     $newConsultantName = '';
                     $newConsultantEmail = '';
-                    
-                    if ($row['round_id'] > 0) {
-                        $assignResult = getNextConsultantInRound($conn, $row['round_id']);
-                        if ($assignResult) {
-                            $assignedConsultantId = $assignResult['id'];
-                            $newStatus = $assignResult['is_compensation'] ? 'compensation' : 'assigned';
-                        }
-                    }
                     
                     if ($assignedConsultantId) {
                         $whStmt = $conn->prepare("SELECT name, email, work_start_time, work_end_time, work_schedule FROM consultants WHERE id = ?");
@@ -535,41 +572,19 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                                 $newStatus = 'pending_work_hours';
                                 $logMsg .= "Gán cho Sale mới: {$whRow['name']} (Chờ ngoài giờ làm việc).";
                             } else {
+                                $newStatus = ($assignResult && $assignResult['is_compensation']) ? 'compensation' : 'assigned';
                                 $logMsg .= "Tái phân bổ thành công cho Sale mới: {$whRow['name']}.";
                             }
                             $newConsultantName = $whRow['name'];
                             $newConsultantEmail = $whRow['email'];
                         }
                         $whStmt->close();
+                    } else if ($isFallbackAdmin && $fallbackAdminData) {
+                        $newStatus = 'assigned';
+                        $logMsg .= "Không có Sale hoạt động khác trong vòng, chuyển fallback về Admin: " . $fallbackAdminData['name'];
                     } else {
-                        // Fallback to Admin
-                        $fbSettings = [];
-                        $fbRes = $conn->query("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('fallback_type', 'fallback_round_id', 'fallback_admin_id', 'fallback_cc_email')");
-                        if ($fbRes) {
-                            while ($fbRow = $fbRes->fetch_assoc()) {
-                                $fbSettings[$fbRow['setting_key']] = $fbRow['setting_value'];
-                            }
-                        }
-                        $fbAdminId = (int) ($fbSettings['fallback_admin_id'] ?? 0);
-                        $fbCc = $fbSettings['fallback_cc_email'] ?? '';
-                        
-                        if ($fbAdminId > 0) {
-                            $admStmt = $conn->prepare("SELECT id, name, email, zalo_chat_id FROM accounts WHERE id = ? AND (role = 'admin' OR role = 'superadmin') LIMIT 1");
-                            $admStmt->bind_param("i", $fbAdminId);
-                            $admStmt->execute();
-                            $admRes = $admStmt->get_result();
-                            if ($admRes->num_rows > 0) {
-                                $fallbackAdminData = $admRes->fetch_assoc();
-                                $isFallbackAdmin = true;
-                                $newStatus = 'assigned';
-                                $logMsg .= "Không có Sale hoạt động khác trong vòng, chuyển fallback về Admin: " . $fallbackAdminData['name'];
-                                $fallbackCcEmails = $fbCc;
-                            }
-                            $admStmt->close();
-                        } else {
-                            $newStatus = 'pending';
-                            $logMsg .= "Không có Sale hoạt động khác trong vòng hoặc Admin fallback. Lead chuyển về Chờ xử lý.";
-                        }
+                        $newStatus = 'pending';
+                        $logMsg .= "Không có Sale hoạt động khác trong vòng hoặc Admin fallback. Lead chuyển về Chờ xử lý.";
                     }
                     
                     // Update lead table
@@ -579,13 +594,13 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     $upLead->close();
                     
                     // Revoke old distribution log
-                    $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'reallocated', message = CONCAT(message, '\n[Thu hồi do Sale nghỉ phép lúc ', NOW(), ']') WHERE id = ?");
+                    $upLog = $conn->prepare("UPDATE distribution_logs SET status = 'reallocated', message = CONCAT(message, '\n[Thu hồi/phân bổ lại lúc ', NOW(), ']') WHERE id = ?");
                     $upLog->bind_param("i", $row['log_id']);
                     $upLog->execute();
                     $upLog->close();
 
-                    // Bù lead cho Sale bị thu hồi (tăng compensation_count lên 1) để đảm bảo "Bù lead đồ đầy đủ"
-                    if ($row['round_id'] > 0) {
+                    // Bù lead cho Sale bị thu hồi (tăng compensation_count lên 1) để đảm bảo "Bù lead đồ đầy đủ" - chỉ khi Sale cũ có tồn tại
+                    if ($row['round_id'] > 0 && $row['assigned_to'] !== null) {
                         $compUpStmt = $conn->prepare("UPDATE round_consultants SET compensation_count = compensation_count + 1 WHERE round_id = ? AND consultant_id = ?");
                         $compUpStmt->bind_param("ii", $row['round_id'], $row['assigned_to']);
                         $compUpStmt->execute();
@@ -742,7 +757,7 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
                     if ($affected > 0) {
                         // Post-commit: kích hoạt đồng bộ 2 chiều lên Google Sheets
                         triggerTwoWaySync($conn, $row['lead_id']);
-
+ 
                         logSync("Releasing lead ID {$row['lead_id']} to consultant {$row['consultant_name']} ({$row['consultant_email']})...");
                         
                         // Send Email
@@ -799,7 +814,6 @@ if (!function_exists('releasePendingWorkHoursLeads')) {
         }
     }
 }
-
 if (!function_exists('recallInactiveLeads')) {
     function recallInactiveLeads($conn) {
         logSync("Checking for inactive unaccepted leads to recall...");

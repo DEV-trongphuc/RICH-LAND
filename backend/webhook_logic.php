@@ -1134,10 +1134,13 @@ function getNextConsultantInRound($conn, $roundId, $lead = null)
 
     // Fallback: everyone is skipped or offline simultaneously
     if (!$chosenConsultant) {
-        $chosenConsultant = $consultants[$startIdx];
-        $skipResetStmt->bind_param("ii", $roundId, $chosenConsultant['id']);
-        $skipResetStmt->execute();
-        $skippedConsultants = []; // Reset skipped list
+        if (isset($skipResetStmt))
+            $skipResetStmt->close();
+        if (isset($skipIncrStmt))
+            $skipIncrStmt->close();
+        if (isset($cStmt))
+            $cStmt->close();
+        return null;
     }
 
     $nextId = $chosenConsultant['id'];
@@ -1628,7 +1631,7 @@ function simulateNextConsultantInRound($conn, $roundId, $lead = null)
 
     // Fallback
     if (!$chosenConsultant) {
-        $chosenConsultant = $consultants[$startIdx];
+        return null;
     }
 
     return $chosenConsultant;
