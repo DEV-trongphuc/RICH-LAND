@@ -97,7 +97,7 @@ class ReportController
 
         // Performance by Owner: Split between Won Revenue and Pipeline Value (Filtered by selected range)
         $stmt2 = $this->db->prepare("
-            SELECT u.id, u.full_name as name, 
+            SELECT u.id, u.full_name as name, u.avatar_url,
                    COUNT(d.id) as deals, 
                    COALESCE(SUM(CASE WHEN ps.is_won = 1 THEN d.value ELSE 0 END), 0) as revenue,
                    COALESCE(SUM(CASE WHEN ps.is_won = 0 AND ps.is_lost = 0 THEN d.value ELSE 0 END), 0) as pipeline_value
@@ -106,7 +106,7 @@ class ReportController
             LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
             WHERE u.tenant_id = ? $ownerFilter
             GROUP BY u.id
-            ORDER BY revenue DESC
+            ORDER BY revenue DESC, name ASC, u.id ASC
         ");
         $stmt2->execute($pOwnerList);
 

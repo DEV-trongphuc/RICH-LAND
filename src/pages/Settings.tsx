@@ -2018,7 +2018,7 @@ const SettingsInner = () => {
                                       <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                          <Avatar name={item.name || t('Không có tên')} size={32} />
+                                          <Avatar name={item.name || t('Không có tên')} src={item.avatar_url || item.avatar || item.photo} size={32} />
                                           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                             <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Chưa cập nhật')}</em>}</span>
                                             <div>{statusBadge}</div>
@@ -2034,7 +2034,7 @@ const SettingsInner = () => {
                                       <td style={{ padding: '10px 16px' }}>
                                         {item.consultant_name ? (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Avatar src={consultants.find(c => c.name === item.consultant_name)?.avatar} name={item.consultant_name} size={24} />
+                                            <Avatar src={consultants.find(c => c.name === item.consultant_name)?.avatar || consultants.find(c => c.name === item.consultant_name)?.avatar_url} name={item.consultant_name} size={24} />
                                             <strong style={{ fontWeight: 600 }}>{item.consultant_name}</strong>
                                             {ownerStatusBadge}
                                           </div>
@@ -2578,7 +2578,7 @@ const SettingsInner = () => {
                                       <td style={{ padding: '10px 16px', color: 'var(--color-text-muted)' }}>{globalIdx}</td>
                                       <td style={{ padding: '10px 16px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                          <Avatar name={item.name || t('Không có tên')} size={32} />
+                                          <Avatar name={item.name || t('Không có tên')} src={item.avatar_url || item.avatar || item.photo} size={32} />
                                           <span style={{ fontWeight: 600 }}>{item.name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Chưa cập nhật')}</em>}</span>
                                         </div>
                                       </td>
@@ -2591,7 +2591,7 @@ const SettingsInner = () => {
                                       <td style={{ padding: '10px 16px' }}>
                                         {item.consultant_name ? (
                                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Avatar src={consultants.find(c => c.name === item.consultant_name)?.avatar} name={item.consultant_name} size={24} />
+                                            <Avatar src={consultants.find(c => c.name === item.consultant_name)?.avatar || consultants.find(c => c.name === item.consultant_name)?.avatar_url} name={item.consultant_name} size={24} />
                                             <strong style={{ fontWeight: 600 }}>{item.consultant_name}</strong>
                                             {ownerStatusBadge}
                                           </div>
@@ -5092,7 +5092,7 @@ function doPost(e) {
                       <tr key={idx} style={{ borderBottom: idx < Math.min(localRows.length, 5) - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
                         <td style={{ padding: '10px 16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <Avatar name={name || t('Không có tên')} size={32} />
+                            <Avatar name={name || t('Không có tên')} src={phone ? (consultants.find(c => c.phone === phone)?.avatar || consultants.find(c => c.phone === phone)?.avatar_url) : undefined} size={32} />
                             <span style={{ fontWeight: 600 }}>{name || <em style={{ color: '#cbd5e1', fontWeight: 400 }}>{t('Chưa cập nhật')}</em>}</span>
                           </div>
                         </td>
@@ -5108,7 +5108,7 @@ function doPost(e) {
                         <td style={{ padding: '10px 16px' }}>
                           {saleDisplayName ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <Avatar src={matchedSale?.avatar} name={saleDisplayName} size={24} />
+                              <Avatar src={matchedSale?.avatar || matchedSale?.avatar_url} name={saleDisplayName} size={24} />
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <strong style={{ fontWeight: 600 }}>{saleDisplayName}</strong>
                                 {saleSubText && <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)' }}>{saleSubText}</span>}

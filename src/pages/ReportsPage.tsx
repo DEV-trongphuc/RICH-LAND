@@ -382,7 +382,7 @@ export const ReportsPage: React.FC = () => {
                             <tr key={o.id || o.user_id || o.name || o.user_name}>
                               <td>
                                 <div className="flex items-center gap-2">
-                                  <Avatar name={o.name || o.user_name || 'U'} size={28} />
+                                  <Avatar name={o.name || o.user_name || 'U'} src={o.avatar_url || o.avatar} size={28} />
                                   <span style={{ fontWeight: 600 }}>{o.name || o.user_name || 'Unknown'}</span>
                                 </div>
                               </td>
