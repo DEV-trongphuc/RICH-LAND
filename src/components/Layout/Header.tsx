@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText } from 'lucide-react';
+import { Search, Command, Activity, Sun, Moon, Keyboard, ChevronDown, User, AlertTriangle, LogOut, Menu, LayoutGrid, LayoutDashboard, Users, Building2, Clock, Truck, Boxes, Receipt, Settings, CheckCircle2, Fingerprint, Bell, MessageSquare, Info, Trash2, Check, Eye, EyeOff, CheckSquare, FileText, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { ToggleSwitch } from '../ui/ToggleSwitch';
 import { useUIStore } from '../../store/uiStore';
@@ -1810,6 +1810,43 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
         }}
         title={t("Thông báo hệ thống")}
         width={700}
+        headerAction={
+          <button
+            onClick={() => {
+              if (showNotifSettings) {
+                setShowNotifSettings(false);
+              } else {
+                fetchNotifPrefs();
+                setShowNotifSettings(true);
+              }
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '2rem',
+              height: '2rem',
+              borderRadius: 'var(--radius-md)',
+              color: showNotifSettings ? 'var(--color-primary)' : 'var(--color-text-light)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s, color 0.2s',
+              outline: 'none'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.backgroundColor = 'var(--color-bg)';
+              e.currentTarget.style.color = 'var(--color-text)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = showNotifSettings ? 'var(--color-primary)' : 'var(--color-text-light)';
+            }}
+            title={showNotifSettings ? t("Quay lại thông báo") : t("Cấu hình Email")}
+          >
+            <Settings size={20} />
+          </button>
+        }
       >
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px', maxHeight: '70vh' }}>
           {showNotifSettings ? (
@@ -1830,10 +1867,11 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                     outline: 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '6px'
                   }}
                 >
-                  Quay lại thông báo
+                  <ArrowLeft size={16} />
+                  {t("Quay lại thông báo")}
                 </button>
               </div>
               
@@ -1866,7 +1904,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                         <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
                           {pref.title}
                         </span>
-                        {pref.isImportant ? (
+                        {pref.isImportant && (
                           <span style={{
                             fontSize: '0.625rem',
                             fontWeight: 700,
@@ -1876,19 +1914,7 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                             borderRadius: '10px',
                             textTransform: 'uppercase'
                           }}>
-                            Mặc định Bật
-                          </span>
-                        ) : (
-                          <span style={{
-                            fontSize: '0.625rem',
-                            fontWeight: 700,
-                            color: 'var(--color-text-light)',
-                            background: 'var(--color-border-light)',
-                            padding: '2px 6px',
-                            borderRadius: '10px',
-                            textTransform: 'uppercase'
-                          }}>
-                            Mặc định Tắt
+                            Mặc định
                           </span>
                         )}
                       </div>

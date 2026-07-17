@@ -12,6 +12,7 @@ interface CustomModalProps {
   children: React.ReactNode;
   showCloseIcon?: boolean;
   disableAnimation?: boolean;
+  headerAction?: React.ReactNode;
 }
 
 export const CustomModal: React.FC<CustomModalProps> = ({
@@ -21,7 +22,8 @@ export const CustomModal: React.FC<CustomModalProps> = ({
   width,
   children,
   showCloseIcon = true,
-  disableAnimation = false
+  disableAnimation = false,
+  headerAction
 }) => {
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -91,11 +93,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               {title && (
                 <div className={styles.header}>
                   <h3 className={styles.title}>{title}</h3>
-                  {showCloseIcon && (
-                    <button className={styles.closeBtn} onClick={onClose}>
-                      <X size={20} />
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {headerAction}
+                    {showCloseIcon && (
+                      <button className={styles.closeBtn} onClick={onClose}>
+                        <X size={20} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {!title && showCloseIcon && (
@@ -129,11 +134,14 @@ export const CustomModal: React.FC<CustomModalProps> = ({
               {title && (
                 <div className={styles.header}>
                   <h3 className={styles.title}>{title}</h3>
-                  {showCloseIcon && (
-                    <button className={styles.closeBtn} onClick={onClose}>
-                      <X size={20} />
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {headerAction}
+                    {showCloseIcon && (
+                      <button className={styles.closeBtn} onClick={onClose}>
+                        <X size={20} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {!title && showCloseIcon && (

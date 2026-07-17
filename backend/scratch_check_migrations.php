@@ -7,8 +7,8 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
     
-    echo "=== COLUMNS OF PERSONS ===\n";
-    $stmt = $db->query("DESCRIBE persons");
+    echo "=== COLUMNS OF USERS ===\n";
+    $stmt = $db->query("DESCRIBE users");
     print_r($stmt->fetchAll());
 
 } catch (Exception $e) {
