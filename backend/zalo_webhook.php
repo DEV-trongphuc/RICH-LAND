@@ -112,7 +112,7 @@ if ($eventName === 'user_send_text' || $eventName === 'message.text.received') {
                         . "  • Loại: Quan tâm dịch vụ\n\n"
                         . "❖ GHI CHÚ:\n"
                         . "  Khách gọi cần tư vấn gấp vào buổi sáng.\n\n"
-                        . "Báo lỗi Data tại đây: https://open.richland.net/...";
+                        . "Báo lỗi Data tại đây: https://open.richland.test/...";
                     sendZaloMessage($botToken, $chatId, $zaloMsg);
                 } else if ($textLower === 'test_data_admin') {
                     $zaloMsg = "[ YÊU CẦU DUYỆT TICKET ]\n\n"

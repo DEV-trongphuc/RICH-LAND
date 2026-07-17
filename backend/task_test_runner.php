@@ -24,9 +24,9 @@ try {
     $suffix = uniqid();
 
     // Setup Test Users
-    $saleEmail = "task_sale_$suffix@richland.net";
-    $mgrEmail = "task_mgr_$suffix@richland.net";
-    $viewerEmail = "task_viewer_$suffix@richland.net";
+    $saleEmail = "task_sale_$suffix@richland.test";
+    $mgrEmail = "task_mgr_$suffix@richland.test";
+    $viewerEmail = "task_viewer_$suffix@richland.test";
 
     $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, 'hash', 'sales', 'Sale Task E2E', 'active')")
        ->execute([$tenantId, $saleEmail]);

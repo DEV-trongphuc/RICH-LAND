@@ -66,9 +66,9 @@ try {
     $suffix = uniqid();
 
     // 1. Create temporary mock user IDs for roles
-    $salesEmail = "perm_sale_$suffix@richland.net";
-    $viewerEmail = "perm_viewer_$suffix@richland.net";
-    $adminEmail = "perm_admin_$suffix@richland.net";
+    $salesEmail = "perm_sale_$suffix@richland.test";
+    $viewerEmail = "perm_viewer_$suffix@richland.test";
+    $adminEmail = "perm_admin_$suffix@richland.test";
 
     $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, 'hash', 'sales', 'Sale E2E Perm', 'active')")
        ->execute([$tenantId, $salesEmail]);
@@ -363,9 +363,9 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // Test Case Group 5: Team and Manager Permissions
     // ─────────────────────────────────────────────────────────────────
-    $mgrEmail = "perm_mgr_$suffix@richland.net";
-    $sales1Email = "perm_s1_$suffix@richland.net"; // In team
-    $sales2Email = "perm_s2_$suffix@richland.net"; // Outside team
+    $mgrEmail = "perm_mgr_$suffix@richland.test";
+    $sales1Email = "perm_s1_$suffix@richland.test"; // In team
+    $sales2Email = "perm_s2_$suffix@richland.test"; // Outside team
 
     // Create users
     $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, 'hash', 'manager', 'Manager E2E Perm', 'active')")

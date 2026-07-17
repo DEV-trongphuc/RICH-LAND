@@ -6,7 +6,7 @@ require_once __DIR__ . '/auth.php';
 $decodedUser = [
     'id' => 1007,
     'user_id' => 1007,
-    'email' => 'manager@richland.net',
+    'email' => 'manager@richland.test',
     'role' => 'manager'
 ];
 

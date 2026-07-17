@@ -1486,8 +1486,8 @@ try {
     $logMsg("Bắt đầu tự sửa đổi cấu trúc (Self-healing check)...", "info");
 
     // Custom email migrations for ID 999 and 1000 and cleanup duplicates
-    $conn->query("DELETE FROM users WHERE email = 'haidang@richland.net' AND id != 1000");
-    $conn->query("DELETE FROM users WHERE email = 'admin@richland.net' AND id != 999");
+    $conn->query("DELETE FROM users WHERE email = 'haidang@richland.test' AND id != 1000");
+    $conn->query("DELETE FROM users WHERE email = 'admin@richland.test' AND id != 999");
     if (!$conn->query("UPDATE users SET email = 'turniodev@gmail.com' WHERE id = 999")) {
         $logMsg("Lỗi cập nhật email ID 999: " . $conn->error, "error");
     }

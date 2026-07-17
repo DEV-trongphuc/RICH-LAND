@@ -12,7 +12,7 @@ if (!defined('JWT_EXPIRE_ACCESS')) define('JWT_EXPIRE_ACCESS',  60 * 60);       
 if (!defined('JWT_EXPIRE_REFRESH')) define('JWT_EXPIRE_REFRESH', 60 * 60 * 24 * 30); // 30 days
 
 // ── CORS ───────────────────────────────────────
-if (!defined('ALLOWED_ORIGINS')) define('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000,http://open.richland.net,https://open.richland.net');
+if (!defined('ALLOWED_ORIGINS')) define('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000,http://open.richland.test,https://open.richland.test');
 
 // ── Upload paths ───────────────────────────────
 if (!defined('UPLOAD_DIR')) define('UPLOAD_DIR', __DIR__ . '/../uploads/');

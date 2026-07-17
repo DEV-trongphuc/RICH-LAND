@@ -98,11 +98,11 @@ try {
     // Phase 2: Roster & Multi-Role User Setup
     // ─────────────────────────────────────────────────────────────────
     $suffix = uniqid();
-    $saleEmail = "sale_$suffix@richland.net";
-    $assistEmail = "assist_$suffix@richland.net";
-    $mgrEmail = "mgr_$suffix@richland.net";
-    $adminEmail = "admin_$suffix@richland.net";
-    $saEmail = "sa_$suffix@richland.net";
+    $saleEmail = "sale_$suffix@richland.test";
+    $assistEmail = "assist_$suffix@richland.test";
+    $mgrEmail = "mgr_$suffix@richland.test";
+    $adminEmail = "admin_$suffix@richland.test";
+    $saEmail = "sa_$suffix@richland.test";
 
     $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, ?, 'sales', ?, 'active')")
        ->execute([$tenantId, $saleEmail, password_hash('pass123', PASSWORD_BCRYPT), '[E2E] Nguyễn Văn Nam ' . $suffix]);
@@ -1076,12 +1076,12 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // 1. Create a second sale user and add them to the round
     $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, ?, 'sales', ?, 'active')")
-       ->execute([$tenantId, "sale2_$suffix@richland.net", password_hash('pass123', PASSWORD_BCRYPT), '[E2E] TVV Phụ ' . $suffix]);
+       ->execute([$tenantId, "sale2_$suffix@richland.test", password_hash('pass123', PASSWORD_BCRYPT), '[E2E] TVV Phụ ' . $suffix]);
     $sale2UserId = (int)$db->lastInsertId();
     
     // Safety check and update for consultants triggers
     $db->prepare("INSERT IGNORE INTO consultants (id, name, email, status) VALUES (?, ?, ?, 'active')")
-       ->execute([$sale2UserId, '[E2E] TVV Phụ ' . $suffix, "sale2_$suffix@richland.net"]);
+       ->execute([$sale2UserId, '[E2E] TVV Phụ ' . $suffix, "sale2_$suffix@richland.test"]);
     $db->prepare("UPDATE consultants SET vacation_mode = 0 WHERE id = ?")->execute([$sale2UserId]);
     
     $todayStr = date('Y-m-d');
@@ -1160,7 +1160,7 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // GENERATE VIEWER TOKEN
     // ─────────────────────────────────────────────────────────────────
-    $viewerEmail = "viewer_$suffix@richland.net";
+    $viewerEmail = "viewer_$suffix@richland.test";
     $db->prepare("INSERT INTO users (tenant_id, email, password_hash, role, full_name, status) VALUES (?, ?, ?, 'viewer', ?, 'active')")
        ->execute([$tenantId, $viewerEmail, password_hash('pass123', PASSWORD_BCRYPT), '[E2E] Người xem ' . $suffix]);
     $viewerUserId = (int)$db->lastInsertId();

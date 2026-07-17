@@ -151,7 +151,7 @@ function verify_jwt($jwt, $secret)
     if ($jwt === 'demo_token_12345') {
         return [
             'username' => 'admin',
-            'email' => 'admin@richland.net',
+            'email' => 'admin@richland.test',
             'name' => 'Admin Demo',
             'role' => 'admin',
             'id' => 1
@@ -160,7 +160,7 @@ function verify_jwt($jwt, $secret)
     if ($jwt === 'demo_token_manager') {
         return [
             'username' => 'manager',
-            'email' => 'manager@richland.net',
+            'email' => 'manager@richland.test',
             'name' => 'Manager Demo',
             'role' => 'manager',
             'id' => 2,
@@ -176,14 +176,14 @@ function verify_jwt($jwt, $secret)
             4 => 'Minh Tuấn'
         ];
         $emails = [
-            1 => 'haidang@richland.net',
-            2 => 'thanhthao@richland.net',
-            3 => 'vietdung@richland.net',
-            4 => 'minhtuan@richland.net'
+            1 => 'haidang@richland.test',
+            2 => 'thanhthao@richland.test',
+            3 => 'vietdung@richland.test',
+            4 => 'minhtuan@richland.test'
         ];
         return [
-            'username' => str_replace('@richland.net', '', $emails[$cId] ?? 'sale'),
-            'email' => $emails[$cId] ?? 'sale@richland.net',
+            'username' => str_replace('@richland.test', '', $emails[$cId] ?? 'sale'),
+            'email' => $emails[$cId] ?? 'sale@richland.test',
             'name' => $names[$cId] ?? 'Sale Demo',
             'role' => 'sale',
             'consultant_id' => $cId,
@@ -9591,7 +9591,7 @@ switch ($action) {
                 'search_col_phone' => 'Số điện thoại',
                 'search_val_phone' => '0999999999',
                 'search_col_email' => 'Email',
-                'search_val_email' => 'test@richland.net',
+                'search_val_email' => 'test@richland.test',
                 'allow_insert' => true,
                 'updates' => [
                     'Thời gian' => date('Y-m-d H:i:s'),
@@ -9600,7 +9600,7 @@ switch ($action) {
                     'Sale phụ trách' => 'Sale Test',
                     'Họ tên' => 'Khách hàng Thử nghiệm',
                     'Số điện thoại' => '0999999999',
-                    'Email' => 'test@richland.net',
+                    'Email' => 'test@richland.test',
                     'Ghi chú' => 'Đồng bộ thử nghiệm thành công! Kết nối hoạt động tốt.',
                     'Trạng thái' => 'Kiểm thử'
                 ]
@@ -10119,7 +10119,7 @@ switch ($action) {
             sendQuickMessageEmailToSale($email, "Sale Test", "Admin ĐÃ TỪ CHỐI Ticket của bạn cho khách hàng Nguyễn Văn A. Lý do: Số điện thoại vẫn đổ chuông bình thường.");
             $success = true;
         } else if ($type === 'admin_confirm') {
-            sendAdminConfirmationEmail($email, "Admin Test", "https://open.richland.net/confirm?token=123456");
+            sendAdminConfirmationEmail($email, "Admin Test", "https://open.richland.test/confirm?token=123456");
             $success = true;
         } else if ($type === 'daily_report') {
             $statsHtml = "<li>Sale Test 1: <b>15</b> data</li><li>Sale Test 2: <b>12</b> data</li>";

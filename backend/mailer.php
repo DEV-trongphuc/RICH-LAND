@@ -126,7 +126,7 @@ function sendEmailNotification($to, $subject, $title, $content, $ccEmailString =
             $mail->CharSet = 'UTF-8';
             $mail->Timeout = 15;
 
-            $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@richland.net';
+            $senderEmail = $settings['ses_sender_email'] ?? 'no-reply@richland.test';
             $senderName = $settings['ses_sender_name'] ?? 'RICH LAND TEAM';
 
             $mail->setFrom($senderEmail, $senderName);

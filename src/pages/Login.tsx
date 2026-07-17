@@ -359,13 +359,13 @@ export const Login = () => {
                 Admin
               </button>
               <button
-                onClick={() => handleQuickLogin('director@richland.net', 'director123', 'Director')}
+                onClick={() => handleQuickLogin('director@richland.test', 'director123', 'Director')}
                 style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
               >
                 Director
               </button>
               <button
-                onClick={() => handleQuickLogin('manager@richland.net', 'manager123', 'Manager')}
+                onClick={() => handleQuickLogin('manager@richland.test', 'manager123', 'Manager')}
                 style={{ height: '36px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(15, 23, 42, 0.6)', color: '#cbd5e1', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
               >
                 Manager
