@@ -14,3 +14,10 @@ $resCons = $conn->query("SELECT id, email, name FROM consultants WHERE id IN (99
 while ($row = $resCons->fetch_assoc()) {
     print_r($row);
 }
+
+echo "\n--- CHECK TARGET EMAILS ---\n";
+$resTargets = $conn->query("SELECT id, email, username FROM users WHERE email IN ('turniodev@gmail.com', 'dom.marketing.vn@gmail.com')");
+while ($row = $resTargets->fetch_assoc()) {
+    print_r($row);
+}
+
