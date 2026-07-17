@@ -1867,10 +1867,9 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
 
               const parseActorName = (body: string) => {
                 if (!body) return null;
-                const match = body.match(/^([A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĐ][a-zàáâãèéêìíòóôõùúýỳỹỷỵđ_]*\s+){2,4}?[đd]ã\s+/u)
-                  || body.match(/^([A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝĐ][a-zàáâãèéêìíòóôõùúýỳỹỷỵđ_]*\s+){2,4}?[Cc]ó\s+/u);
+                const match = body.match(/^(\p{Lu}\p{Ll}*(?:\s+\p{Lu}\p{Ll}*){1,4})\s+(?:đã|có)\s+/u);
                 if (match) {
-                  return match[0].replace(/[đd]ã\s+$/, '').replace(/[Cc]ó\s+$/, '').trim();
+                  return match[1].trim();
                 }
                 return null;
               };
@@ -1926,7 +1925,55 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                       >
                         <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
                           {actorName ? (
-                            <Avatar name={actorName} size={38} />
+                            <div style={{ position: 'relative', display: 'inline-flex' }}>
+                              <Avatar name={actorName} size={38} />
+                              <span style={{
+                                position: 'absolute',
+                                bottom: -2,
+                                right: -2,
+                                width: 16,
+                                height: 16,
+                                borderRadius: '50%',
+                                background: (() => {
+                                  switch (notif.type) {
+                                    case 'warning': return '#ef4444';
+                                    case 'mention':
+                                    case 'task_assignment':
+                                    case 'task_participant':
+                                    case 'approval_request': return '#3b82f6';
+                                    case 'project_roster': return '#10b981';
+                                    case 'project_document': return '#f59e0b';
+                                    case 'project_comment': return '#8b5cf6';
+                                    default: return '#6b7280';
+                                  }
+                                })(),
+                                border: '1.5px solid var(--color-surface, #ffffff)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
+                                {(() => {
+                                  switch (notif.type) {
+                                    case 'mention':
+                                    case 'task_assignment':
+                                    case 'task_participant':
+                                    case 'approval_request':
+                                      return <CheckSquare size={9} style={{ color: 'white' }} />;
+                                    case 'project_roster':
+                                      return <Users size={9} style={{ color: 'white' }} />;
+                                    case 'project_document':
+                                      return <FileText size={9} style={{ color: 'white' }} />;
+                                    case 'project_comment':
+                                      return <MessageSquare size={9} style={{ color: 'white' }} />;
+                                    case 'warning':
+                                      return <AlertTriangle size={9} style={{ color: 'white' }} />;
+                                    default:
+                                      return <Info size={9} style={{ color: 'white' }} />;
+                                  }
+                                })()}
+                              </span>
+                            </div>
                           ) : (
                             <div style={{
                               width: 38,
@@ -1959,20 +2006,6 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                               })()}
                             </div>
                           )}
-                          
-                          {!notif.is_read && (
-                            <span style={{
-                              position: 'absolute',
-                              bottom: -2,
-                              right: -2,
-                              width: 12,
-                              height: 12,
-                              borderRadius: '50%',
-                              background: isWarning ? '#ef4444' : '#3b82f6',
-                              border: '2px solid var(--color-surface, #ffffff)',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
-                            }} />
-                          )}
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
@@ -1984,9 +2017,22 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
                               color: 'var(--color-text)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
-                              textOverflow: 'ellipsis'
+                              textOverflow: 'ellipsis',
+                              display: 'flex',
+                              alignItems: 'center'
                             }}>
                               {notif.title}
+                              {!notif.is_read && (
+                                <span style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: '50%',
+                                  background: isWarning ? '#ef4444' : '#3b82f6',
+                                  display: 'inline-block',
+                                  marginLeft: '6px',
+                                  boxShadow: `0 0 6px ${isWarning ? '#ef4444' : '#3b82f6'}`
+                                }} />
+                              )}
                             </h4>
                             <span style={{ 
                               fontSize: '0.72rem', 
