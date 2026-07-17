@@ -619,7 +619,8 @@ switch ($resource) {
     case 'teams':
         $auth = requireAuth();
         $ctrl = new TeamController($db);
-        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        if     ($resourceId === 'leave' && $method === 'POST') $ctrl->leave($auth);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);

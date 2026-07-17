@@ -292,4 +292,42 @@ class TeamController
             respond(500, null, 'Lỗi cơ sở dữ liệu: ' . $e->getMessage(), false);
         }
     }
+
+    public function leave(array $auth): void
+    {
+        $uid = (int)$auth['user_id'];
+        
+        $uStmt = $this->db->prepare("SELECT team_id, email FROM users WHERE id = ?");
+        $uStmt->execute([$uid]);
+        $userRow = $uStmt->fetch();
+        
+        if (!$userRow || !$userRow['team_id']) {
+            respond(400, null, 'Bạn hiện không tham gia nhóm nào', false);
+        }
+        
+        $teamId = (int)$userRow['team_id'];
+        $email = $userRow['email'];
+        
+        try {
+            $this->db->beginTransaction();
+            
+            // Set team_id to NULL for the user
+            $upUser = $this->db->prepare("UPDATE users SET team_id = NULL WHERE id = ?");
+            $upUser->execute([$uid]);
+            
+            // Set team_id to NULL for the corresponding consultant (if any)
+            if ($email) {
+                $upConsultant = $this->db->prepare("UPDATE consultants SET team_id = NULL WHERE email = ?");
+                $upConsultant->execute([$email]);
+            }
+            
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'LEAVE', 'team', $teamId);
+            
+            $this->db->commit();
+            respond(200, null, 'Bạn đã rời khỏi nhóm thành công');
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, 'Lỗi hệ thống khi rời nhóm: ' . $e->getMessage(), false);
+        }
+    }
 }

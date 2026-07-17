@@ -925,7 +925,7 @@ class ActivityController {
             
             if ($parentOwnerId > 0 && $parentOwnerId !== (int)$auth['user_id']) {
                 $title = "Bạn có phản hồi mới trong thảo luận";
-                $body = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong hoạt động: " . ($activity['title'] ?? 'Công việc');
+                $body = ($auth['full_name'] ?? 'Đồng nghiệp') . " đã trả lời bình luận của bạn trong hoạt động: " . ($activity['subject'] ?? 'Công việc');
                 $type = "info";
                 $link = "/contacts?id=" . ($activity['contact_id'] ?? $activity['related_id'] ?? '') . "&highlight_comment_id=" . $commentId;
 

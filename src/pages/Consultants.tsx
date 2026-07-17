@@ -172,6 +172,8 @@ const ConsultantsInner = () => {
   const leaderDropdownRef = useRef<HTMLDivElement>(null);
   const [confirmDeleteTeamOpen, setConfirmDeleteTeamOpen] = useState(false);
   const [deleteTeamId, setDeleteTeamId] = useState<number | null>(null);
+  const [confirmLeaveTeamOpen, setConfirmLeaveTeamOpen] = useState(false);
+  const [isLeavingTeam, setIsLeavingTeam] = useState(false);
   
   const [consultantsPage, setConsultantsPage] = useState(1);
   const [teamsPage, setTeamsPage] = useState(1);
@@ -515,6 +517,25 @@ const ConsultantsInner = () => {
     setIsDeleting(false);
     setConfirmDeleteTeamOpen(false);
     setDeleteTeamId(null);
+  };
+
+  const handleLeaveTeam = async () => {
+    setIsLeavingTeam(true);
+    try {
+      const res = await fetchAPI('teams/leave', { method: 'POST' });
+      if (res.success) {
+        toast.success(t('Bạn đã rời khỏi nhóm thành công!'));
+        fetchTeams();
+        fetchUsers();
+        setTeamModalOpen(false);
+      } else {
+        toast.error(res.message || t('Lỗi khi rời khỏi nhóm'));
+      }
+    } catch (e: any) {
+      toast.error(t('Lỗi: ') + e.message);
+    }
+    setIsLeavingTeam(false);
+    setConfirmLeaveTeamOpen(false);
   };
 
   const confirmUnlinkZalo = (id: number) => {
@@ -2582,9 +2603,21 @@ const ConsultantsInner = () => {
                     {isSaving ? t('Đang lưu...') : t('Lưu lại')}
                   </button>
                 ) : (
-                  <button type="button" className="btn primary" onClick={() => setTeamModalOpen(false)}>
-                    {t('Đóng')}
-                  </button>
+                  <>
+                    {editingTeam && teamFormData.member_ids.includes(String(user?.id)) && (
+                      <button 
+                        type="button" 
+                        className="btn danger" 
+                        onClick={() => setConfirmLeaveTeamOpen(true)}
+                        disabled={isLeavingTeam}
+                      >
+                        {isLeavingTeam ? t('Đang rời nhóm...') : t('Rời khỏi nhóm')}
+                      </button>
+                    )}
+                    <button type="button" className="btn primary" onClick={() => setTeamModalOpen(false)}>
+                      {t('Đóng')}
+                    </button>
+                  </>
                 )}
               </div>
             </form>
@@ -2600,6 +2633,15 @@ const ConsultantsInner = () => {
         title={t("Xóa Nhóm")}
         message={t("Bạn có chắc chắn muốn xóa nhóm này không? Các thành viên trong nhóm sẽ được đưa về trạng thái tự do (không thuộc nhóm nào).")}
         confirmText={t("Xóa nhóm")}
+      />
+
+      <ConfirmModal
+        isOpen={confirmLeaveTeamOpen}
+        onClose={() => setConfirmLeaveTeamOpen(false)}
+        onConfirm={handleLeaveTeam}
+        title={t("Rời khỏi nhóm")}
+        message={t("Bạn có chắc chắn muốn rời khỏi nhóm này không? Bạn sẽ không còn thuộc nhóm này và hệ thống phân bổ data sẽ được cập nhật tương ứng.")}
+        confirmText={t("Rời nhóm")}
       />
 
       {/* Consultants & Teams Guide Modal */}
