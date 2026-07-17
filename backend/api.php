@@ -12616,7 +12616,7 @@ switch ($action) {
 
         // Query actually accepted counts for all consultants
         $acceptedMap = [];
-        $dateConditionL = str_replace('received_at', 'l.received_at', $dateCondition);
+        $dateConditionL = str_replace('received_at', 'l.created_at', $dateCondition);
         $acceptedRes = $conn->query("
             SELECT l.assigned_to, COUNT(*) as cnt 
             FROM leads l
