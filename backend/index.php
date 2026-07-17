@@ -109,7 +109,7 @@ function requireAuth(): array {
     // Verify user actually exists and is active in the database (handles stale session tokens gracefully)
     try {
         $db = Database::getInstance();
-        $stmt = $db->prepare("SELECT id, role, full_name, email FROM users WHERE id = ? AND tenant_id = ? AND is_active = 1 LIMIT 1");
+        $stmt = $db->prepare("SELECT id, role, full_name, email, permissions_json FROM users WHERE id = ? AND tenant_id = ? AND is_active = 1 LIMIT 1");
         $stmt->execute([$payload['user_id'], $payload['tenant_id']]);
         $dbUser = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$dbUser) {
@@ -118,6 +118,10 @@ function requireAuth(): array {
         $payload['role'] = $dbUser['role'] === 'sale' ? 'sales' : $dbUser['role'];
         $payload['full_name'] = $dbUser['full_name'];
         $payload['email'] = $dbUser['email'];
+        $payload['permissions'] = null;
+        if (!empty($dbUser['permissions_json'])) {
+            $payload['permissions'] = json_decode($dbUser['permissions_json'], true);
+        }
     } catch (Throwable $e) {
         // Fallback in case Database connection is not ready or has temporary issues during requireAuth
     }

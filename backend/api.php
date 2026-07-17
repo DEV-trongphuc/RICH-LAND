@@ -44,6 +44,7 @@ if (in_array($baseAction, [
 require_once 'env.php';
 require_once 'config.php';
 require_once 'db_connect.php';
+require_once 'permission_matrix_helper.php';
 
 try {
     $conn->query("ALTER TABLE consultants ADD COLUMN dob DATE NULL");
@@ -442,6 +443,19 @@ if (!in_array($action, $publicActions)) {
         $decodedUser['user_id'] = $decodedUser['id'];
     }
 
+    $decodedUser['permissions'] = null;
+    $lookupUserId = $decodedUser['user_id'] ?? $decodedUser['id'] ?? 0;
+    if ($lookupUserId > 0) {
+        $pStmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+        $pStmt->bind_param("i", $lookupUserId);
+        $pStmt->execute();
+        $pRes = $pStmt->get_result()->fetch_assoc();
+        $pStmt->close();
+        if ($pRes && !empty($pRes['permissions_json'])) {
+            $decodedUser['permissions'] = json_decode($pRes['permissions_json'], true);
+        }
+    }
+
     $currentSaleConsultantId = 0;
     $lookupId = $decodedUser['user_id'] ?? $decodedUser['id'] ?? 0;
     if ($lookupId > 0) {
@@ -495,64 +509,6 @@ if (!in_array($action, $publicActions)) {
         'update_profile', 'change_password', 'get_my_activity_logs'
     ];
 
-    if (($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') && !in_array($baseAction, $salesAllowedActions, true)) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Forbidden: Sale role cannot access admin APIs']);
-        exit();
-    }
-
-    $superAdminOnlyActions = [];
-
-    $adminOnlyActions = [
-        'resend_confirm_email',
-        'resend_zalo_verify_account',
-        'add_account',
-        'edit_account',
-        'delete_account',
-        'check_delete_account',
-        'get_accounts',
-        'get_admin_logs',
-        'save_settings',
-        'add_consultant',
-        'edit_consultant',
-        'delete_consultant',
-        'add_round',
-        'edit_round',
-        'update_round_ratios',
-        'delete_round',
-        'add_rule',
-        'edit_rule',
-        'delete_rule',
-        'reorder_rules',
-        'get_consultant_stats',
-        'add_connection',
-        'edit_connection',
-        'delete_connection',
-        'toggle_connection',
-        'toggle_require_both',
-        'toggle_notify_admin',
-        'add_mapping',
-        'edit_mapping',
-        'delete_mapping',
-        'approve_report',
-        'reject_report',
-        'compensate_approved_no_comp',
-        'get_active_compensation_logs',
-        'reassign_lead',
-        'force_sync',
-        'get_ticket_settings',
-        'save_ticket_settings', // Ticket notification config
-        'unlink_zalo',
-        'test_email',
-        'block_lead',
-        'get_zalo_send_logs',
-        'ai_chat',
-        'test_master_sync',
-        'rollback_admin_action',
-        'update_lead_fields',
-        'send_lead_reminder'
-    ];
-
     // Read the input body to check for self-operation
     $isSelfEdit = false;
     $isSelfUnlink = false;
@@ -567,108 +523,24 @@ if (!in_array($action, $publicActions)) {
             if ($inputData['type'] === 'account' && (int)$inputData['id'] === (int)$decodedUser['id']) {
                 $isSelfUnlink = true;
             } else if ($inputData['type'] === 'consultant') {
-                // For consultant type, we will check ownership inside the case block
                 $isSelfUnlink = true;
             }
         }
     }
 
-    if (in_array($action, $superAdminOnlyActions) && $decodedUser['role'] !== 'superadmin') {
-        if (!$isSelfEdit) {
+    // Dynamic Permission Matrix check
+    list($permModule, $permActionType) = getActionModuleAndType($action);
+    $resolvedScope = getModulePermissionScope($decodedUser, $permModule, $permActionType);
+
+    // Bypass check if it is a self-operation (e.g. updating one's own password, unlinking one's own Zalo)
+    $isSelfOperation = $isSelfEdit || $isSelfUnlink;
+
+    if ($resolvedScope === 'none' && !$isSelfOperation) {
+        if ($action !== 'get_accounts') {
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Forbidden: Require Super Admin privileges']);
+            echo json_encode(['success' => false, 'message' => "Forbidden: You do not have permission to $permActionType $permModule ($action)"]);
             exit();
         }
-    }
-
-    $managerAllowedActions = [
-        'approve_report',
-        'reject_report',
-        'reassign_lead',
-        'block_lead',
-        'update_lead_fields',
-        'send_lead_reminder',
-        'get_consultant_stats',
-        'edit_account',
-        'add_account',
-        'edit_consultant',
-        'add_consultant',
-        'upload_avatar',
-        'add_consultant_leave',
-        'delete_consultant_leave'
-    ];
-
-    if (in_array($action, $adminOnlyActions) 
-        && $decodedUser['role'] !== 'admin' 
-        && $decodedUser['role'] !== 'superadmin'
-        && !($decodedUser['role'] === 'manager' && in_array($action, $managerAllowedActions))
-    ) {
-        if ($action !== 'get_accounts' && !$isSelfUnlink) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Forbidden: Require Admin/Manager privileges']);
-            exit();
-        }
-    }
-
-    // Prevent viewer role from accessing write/modifying actions (read-only constraint)
-    $writeActions = [
-        'upload_avatar',
-        'update_consultant_self_profile',
-        'add_consultant',
-        'edit_consultant',
-        'toggle_consultant_vacation',
-        'accept_lead',
-        'delete_consultant',
-        'unlink_zalo',
-        'add_round',
-        'edit_round',
-        'update_round_ratios',
-        'update_compensations',
-        'delete_round',
-        'add_connection',
-        'edit_connection',
-        'delete_connection',
-        'toggle_connection',
-        'toggle_require_both',
-        'toggle_notify_admin',
-        'add_rule',
-        'edit_rule',
-        'delete_rule',
-        'reorder_rules',
-        'approve_report',
-        'reject_report',
-        'compensate_approved_no_comp',
-        'approve_held_lead',
-        'reject_held_lead',
-        'blacklist_held_lead',
-        'add_mapping',
-        'edit_mapping',
-        'delete_mapping',
-        'save_settings',
-        'alter_schema',
-        'add_account',
-        'edit_account',
-        'update_profile',
-        'change_password',
-        'delete_account',
-        'resend_confirm_email',
-        'resend_zalo_verify_account',
-        'resend_zalo_verify_consultant',
-        'save_ticket_settings',
-        'force_sync',
-        'reassign_lead',
-        'block_lead',
-        'send_quick_zalo_message',
-        'manual_insert_lead',
-        'delete_import_history',
-        'rollback_admin_action',
-        'update_lead_fields',
-        'send_lead_reminder'
-    ];
-    if (in_array($action, $writeActions) && $decodedUser['role'] === 'viewer') {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'message' => 'Forbidden: Viewer role is read-only']);
-        exit();
     }
 
     // Ghi nhận thời gian hoạt động cuối cùng (last active time)
