@@ -4249,6 +4249,9 @@ switch ($action) {
             $stmtUp->execute();
             $stmtUp->close();
 
+            require_once __DIR__ . '/webhook_logic.php';
+            ensurePersonAndContact($conn, $lead_id);
+
             $conn->commit();
             echo json_encode(['success' => true]);
         } catch (Exception $e) {

@@ -2133,6 +2133,23 @@ try {
         ");
         $logMsg("Đã đồng bộ hóa last_contact cho các contacts đã có lịch sử ghi chú/nhiệm vụ", "success");
 
+        // Self-healing check: Backfill missing contacts for accepted leads
+        require_once __DIR__ . '/webhook_logic.php';
+        $resAcceptedLeads = $conn->query("SELECT id FROM leads WHERE is_accepted = 1");
+        if ($resAcceptedLeads) {
+            $backfillCount = 0;
+            while ($leadRow = $resAcceptedLeads->fetch_assoc()) {
+                $chkContact = $conn->query("SELECT id FROM contacts WHERE person_id = (SELECT person_id FROM leads WHERE id = {$leadRow['id']}) LIMIT 1");
+                if ($chkContact && $chkContact->num_rows === 0) {
+                    ensurePersonAndContact($conn, $leadRow['id']);
+                    $backfillCount++;
+                }
+            }
+            if ($backfillCount > 0) {
+                $logMsg("Tự động khôi phục tạo $backfillCount CRM Contacts cho các Lead đã Chấp nhận", "success");
+            }
+        }
+
         $logMsg("Hoàn thành tự tạo các INDEX hiệu năng.", "success");
 
         // Initialize Zalo Group notification settings (Version 156 & 157)
