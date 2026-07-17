@@ -1,9 +1,20 @@
 <?php
+define('BYPASS_CRON_LOCK', true);
+define('DIAG_TOKEN', 'test_diag');
+
+require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../db_connect.php';
 require_once __DIR__ . '/../webhook_logic.php';
 require_once __DIR__ . '/../cron_sync.php';
 
 header('Content-Type: text/plain; charset=utf-8');
+
+// Re-create connection unconditionally since cron_sync.php closes it in CLI mode
+$conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
+if ($conn->connect_error) {
+    die("Database connection failed: " . $conn->connect_error);
+}
+$conn->set_charset("utf8mb4");
 
 $userId = 1000; // Nguyễn Hải Đăng
 
@@ -52,9 +63,12 @@ try {
     $conn->query("DELETE FROM contacts WHERE owner_id = $userId");
     echo "Cleaned up old contacts for user.\n";
 
-    // 2. Set backpressure limit to 3
+    // 2. Set backpressure limit to 3 and high quotas
     $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('backpressure_limit', '3') ON DUPLICATE KEY UPDATE setting_value = '3'");
-    echo "Set backpressure_limit to 3.\n";
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_hour', '1000') ON DUPLICATE KEY UPDATE setting_value = '1000'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_day', '1000') ON DUPLICATE KEY UPDATE setting_value = '1000'");
+    $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('databank_limit_per_month', '10000') ON DUPLICATE KEY UPDATE setting_value = '10000'");
+    echo "Set backpressure_limit to 3 and temporarily increased data limits/quotas.\n";
 
     // 3. Create 3 mock uncontacted contacts under user 1000
     for ($i = 1; $i <= 3; $i++) {
@@ -121,5 +135,8 @@ try {
     $conn->query("DELETE FROM leads WHERE id = 88888");
     $conn->query("DELETE FROM distribution_logs WHERE lead_id = 88888");
     $conn->query("UPDATE system_settings SET setting_value = '5' WHERE setting_key = 'backpressure_limit'");
+    $conn->query("UPDATE system_settings SET setting_value = '3' WHERE setting_key = 'databank_limit_per_hour'");
+    $conn->query("UPDATE system_settings SET setting_value = '10' WHERE setting_key = 'databank_limit_per_day'");
+    $conn->query("UPDATE system_settings SET setting_value = '300' WHERE setting_key = 'databank_limit_per_month'");
     echo "Cleaned up test environment.\n";
 }
