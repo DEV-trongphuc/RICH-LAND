@@ -693,9 +693,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hasHighlight = params.has('highlight_activity_id');
+    const hasHighlightNote = params.has('highlight_note_id');
     
     if (isOpen && hasHighlight) {
       setActiveTab('timeline');
+    } else if (isOpen && hasHighlightNote) {
+      setActiveTab('tags');
     } else if (isOpen && initialTab) {
       setActiveTab(initialTab);
     } else if (isOpen) {
@@ -739,6 +742,33 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
     }
   }, [isOpen, activeTab]);
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'tags' && notes.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const highlightNoteId = params.get('highlight_note_id');
+      if (highlightNoteId) {
+        setTimeout(() => {
+          const element = document.getElementById(`customer-note-${highlightNoteId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.style.boxShadow = '0 0 0 4px rgba(189, 29, 45, 0.2)';
+            element.style.borderColor = 'var(--color-primary)';
+            setTimeout(() => {
+              element.style.boxShadow = '0 4px 12px rgba(234, 179, 8, 0.05)';
+              element.style.borderColor = '#fef08a';
+            }, 2500);
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('highlight_note_id');
+            setSearchParams(newParams, { replace: true });
+          }
+        }, 300);
+      }
+    }
+  }, [isOpen, activeTab, notes, searchParams, setSearchParams]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [showScoringSystemModal, setShowScoringSystemModal] = useState(false);
@@ -2003,6 +2033,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         const params = new URLSearchParams(window.location.search);
         if (params.has('highlight_activity_id')) {
           setActiveTab('timeline');
+        } else if (params.has('highlight_note_id')) {
+          setActiveTab('tags');
         } else {
           setActiveTab(initialTab || 'info');
         }
@@ -4755,7 +4787,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                                 return (
                                   <div 
-                                    key={n.id} 
+                                    key={n.id} id={`customer-note-${n.id}`}
                                     draggable={!isViewer}
                                     onDragStart={(e) => handleDragStart(e, idx)}
                                     onDragOver={(e) => handleDragOver(e, idx)}

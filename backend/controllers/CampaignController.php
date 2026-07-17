@@ -396,7 +396,7 @@ class CampaignController {
                     "Bạn được nhắc tên trong chiến dịch " . $campaignName,
                     $auth['full_name'] . ' đã nhắc tên bạn trong bình luận chiến dịch ' . $campaignName . ': "' . $preview . '"',
                     'campaign_comment_mention',
-                    "/projects?sub=campaigns"
+                    "/projects?sub=campaigns&highlight_comment_id=" . $newId
                 ]);
 
                 if (!empty($userRow['email'])) {

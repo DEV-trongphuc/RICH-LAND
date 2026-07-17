@@ -765,7 +765,7 @@ class ProjectController {
                     $auth['tenant_id'],
                     "Bạn được nhắc tên trong dự án " . $projectName,
                     $auth['full_name'] . " đã nhắc tên bạn trong dự án " . $projectName . ": \"" . $preview . "\"",
-                    "/projects?id=" . $projectId
+                    "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
                 ]);
 
                 if (!empty($userRow['email'])) {
@@ -790,7 +790,7 @@ class ProjectController {
                     $auth['tenant_id'],
                     "Bình luận mới trong dự án " . $projectName,
                     $auth['full_name'] . " đã thêm một bình luận mới trong dự án " . $projectName . ": \"" . $preview . "\"",
-                    "/projects?id=" . $projectId
+                    "/projects?id=" . $projectId . "&highlight_comment_id=" . $newId
                 ]);
             }
         }

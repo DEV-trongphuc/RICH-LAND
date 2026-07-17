@@ -202,9 +202,9 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
           if (res.success && res.data) {
             const note = res.data;
             if (note.entity_type === 'contact') {
-              targetLink = `/contacts?open_contact_id=${note.entity_id}`;
+              targetLink = `/contacts?open_contact_id=${note.entity_id}&highlight_note_id=${noteMatch[1]}`;
             } else if (note.entity_type === 'deal') {
-              targetLink = `/deals?id=${note.entity_id}`;
+              targetLink = `/deals?id=${note.entity_id}&highlight_note_id=${noteMatch[1]}`;
             } else if (note.entity_type === 'company') {
               targetLink = `/companies?id=${note.entity_id}`;
             } else if (note.entity_type === 'project') {

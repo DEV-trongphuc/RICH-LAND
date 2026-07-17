@@ -463,6 +463,7 @@ class TicketController {
 
         $stmt = $this->db->prepare("INSERT INTO ticket_comments (ticket_id, user_id, body) VALUES (?, ?, ?)");
         $stmt->execute([$ticketId, $auth['user_id'], $data['body']]);
+        $newId = $this->db->lastInsertId();
 
         // Parse mentions in comment body
         $bodyText = $data['body'];
@@ -494,7 +495,7 @@ class TicketController {
                     $auth['tenant_id'],
                     "Bạn được nhắc tên trong ticket hỗ trợ #" . $ticketId,
                     $auth['full_name'] . " đã nhắc tên bạn trong ghi chú ticket hỗ trợ #" . $ticketId . ": \"" . $preview . "\"",
-                    "/tickets?id=" . $ticketId
+                    "/tickets?id=" . $ticketId . "&highlight_comment_id=" . $newId
                 ]);
 
                 if (!empty($userRow['email'])) {
