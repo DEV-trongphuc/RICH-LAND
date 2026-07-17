@@ -1055,108 +1055,121 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </div>
 
                 {openSections.personal && (
-                  <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">{t('Họ và tên')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                      <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t('Nguyễn Văn A')} required />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Ngày sinh')}</label>
-                      <input type="date" className="form-input" value={dob} onChange={e => setDob(e.target.value)} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Giới tính')}</label>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                        {[
-                          { value: 'Nam', label: '♂ ' + t('Nam') },
-                          { value: 'Nữ', label: '♀ ' + t('Nữ') },
-                          { value: 'Khác', label: '⚪ ' + t('Khác') }
-                        ].map(opt => {
-                          const isSelected = gender === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setGender(opt.value)}
-                              style={{
-                                flex: 1,
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                                fontSize: '0.8125rem',
-                                fontWeight: isSelected ? 600 : 500,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
+                  <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* Grid A: Standard inputs */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">{t('Họ và tên')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                        <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t('Nguyễn Văn A')} required />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Ngày sinh')}</label>
+                        <input type="date" className="form-input" value={dob} onChange={e => setDob(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Số CCCD / Hộ chiếu')}</label>
+                        <input className="form-input" value={citizenId} onChange={e => setCitizenId(e.target.value)} placeholder="031xxxxxxxx" />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Quê quán')}</label>
+                        <input className="form-input" value={hometown} onChange={e => setHometown(e.target.value)} placeholder={t('Quảng Nam')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Quốc tịch')}</label>
+                        <input className="form-input" value={nationality} onChange={e => setNationality(e.target.value)} placeholder={t('Việt Nam')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Email cá nhân')}</label>
+                        <input type="email" className="form-input" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="a@gmail.com" />
+                      </div>
+                      <div className="form-group" style={{ gridColumn: 'span 3' }}>
+                        <label className="form-label">{t('Địa chỉ tạm trú/thường trú')}</label>
+                        <input className="form-input" value={address} onChange={e => setAddress(e.target.value)} placeholder={t('123 Đường ABC, Quận X, TP. Y')} />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Số CCCD / Hộ chiếu')}</label>
-                      <input className="form-input" value={citizenId} onChange={e => setCitizenId(e.target.value)} placeholder="031xxxxxxxx" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Quê quán')}</label>
-                      <input className="form-input" value={hometown} onChange={e => setHometown(e.target.value)} placeholder={t('Quảng Nam')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Quốc tịch')}</label>
-                      <input className="form-input" value={nationality} onChange={e => setNationality(e.target.value)} placeholder={t('Việt Nam')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Tình trạng hôn nhân')}</label>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                        {[
-                          { value: 'single', label: t('Độc thân') },
-                          { value: 'married', label: t('Đã kết hôn') },
-                          { value: 'divorced', label: t('Đã ly hôn') }
-                        ].map(opt => {
-                          const isSelected = maritalStatus === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setMaritalStatus(opt.value)}
-                              style={{
-                                flex: 1,
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                                fontSize: '0.8125rem',
-                                fontWeight: isSelected ? 600 : 500,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
+
+                    {/* Divider line */}
+                    <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)' }} />
+
+                    {/* Grid B: Visual choice cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Giới tính')}</label>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', width: 'fit-content' }}>
+                          {[
+                            { value: 'Nam', label: '♂ ' + t('Nam') },
+                            { value: 'Nữ', label: '♀ ' + t('Nữ') },
+                            { value: 'Khác', label: '⚪ ' + t('Khác') }
+                          ].map(opt => {
+                            const isSelected = gender === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setGender(opt.value)}
+                                style={{
+                                  height: '28px',
+                                  padding: '0 12px',
+                                  borderRadius: '6px',
+                                  border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                  background: isSelected ? 'rgba(189, 29, 45, 0.04)' : 'var(--color-bg)',
+                                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: isSelected ? 700 : 500,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px',
+                                  minWidth: '70px'
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Email cá nhân')}</label>
-                      <input type="email" className="form-input" value={personalEmail} onChange={e => setPersonalEmail(e.target.value)} placeholder="a@gmail.com" />
-                    </div>
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">{t('Địa chỉ tạm trú/thường trú')}</label>
-                      <input className="form-input" value={address} onChange={e => setAddress(e.target.value)} placeholder={t('123 Đường ABC, Quận X, TP. Y')} />
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Tình trạng hôn nhân')}</label>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', width: 'fit-content' }}>
+                          {[
+                            { value: 'single', label: t('Độc thân') },
+                            { value: 'married', label: t('Đã kết hôn') },
+                            { value: 'divorced', label: t('Đã ly hôn') }
+                          ].map(opt => {
+                            const isSelected = maritalStatus === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setMaritalStatus(opt.value)}
+                                style={{
+                                  height: '28px',
+                                  padding: '0 12px',
+                                  borderRadius: '6px',
+                                  border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                  background: isSelected ? 'rgba(189, 29, 45, 0.04)' : 'var(--color-bg)',
+                                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: isSelected ? 700 : 500,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px',
+                                  minWidth: '80px'
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1192,109 +1205,120 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                 </div>
 
                 {openSections.erp && (
-                  <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">{t('Mã nhân viên')}</label>
-                      <input className="form-input" value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder="RL-10025" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Phòng ban')}</label>
-                      <input className="form-input" value={department} onChange={e => setDepartment(e.target.value)} placeholder={t('Kinh doanh / Marketing')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Chức danh')}</label>
-                      <input className="form-input" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t('Chuyên viên tư vấn')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Loại hợp đồng')}</label>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
-                        {[
-                          { value: 'official', label: t('Chính thức') },
-                          { value: 'probation', label: t('Thử việc') },
-                          { value: 'collaborator', label: t('Cộng tác viên') },
-                          { value: 'internship', label: t('Thực tập sinh') }
-                        ].map(opt => {
-                          const isSelected = contractType === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setContractType(opt.value)}
-                              style={{
-                                flex: '1 1 calc(50% - 4px)',
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                                fontSize: '0.8125rem',
-                                fontWeight: isSelected ? 600 : 500,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
+                  <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {/* Grid A: Standard inputs */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">{t('Mã nhân viên')}</label>
+                        <input className="form-input" value={employeeId} onChange={e => setEmployeeId(e.target.value)} placeholder="RL-10025" />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Phòng ban')}</label>
+                        <input className="form-input" value={department} onChange={e => setDepartment(e.target.value)} placeholder={t('Kinh doanh / Marketing')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Chức danh')}</label>
+                        <input className="form-input" value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder={t('Chuyên viên tư vấn')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Ngày vào làm')}</label>
+                        <input type="date" className="form-input" value={dateJoined} onChange={e => setDateJoined(e.target.value)} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Quản lý trực tiếp')}</label>
+                        <input className="form-input" value={directManager} onChange={e => setDirectManager(e.target.value)} placeholder={t('Tên quản lý')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Địa điểm làm việc')}</label>
+                        <input className="form-input" value={workplace} onChange={e => setWorkplace(e.target.value)} placeholder={t('Văn phòng Q.2 / Q. Bình Thạnh')} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('Chứng chỉ môi giới')}</label>
+                        <input className="form-input" value={brokerLicense} onChange={e => setBrokerLicense(e.target.value)} placeholder={t('Số chứng chỉ hành nghề')} />
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Ngày vào làm')}</label>
-                      <input type="date" className="form-input" value={dateJoined} onChange={e => setDateJoined(e.target.value)} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Quản lý trực tiếp')}</label>
-                      <input className="form-input" value={directManager} onChange={e => setDirectManager(e.target.value)} placeholder={t('Tên quản lý')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Địa điểm làm việc')}</label>
-                      <input className="form-input" value={workplace} onChange={e => setWorkplace(e.target.value)} placeholder={t('Văn phòng Q.2 / Q. Bình Thạnh')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Chứng chỉ môi giới')}</label>
-                      <input className="form-input" value={brokerLicense} onChange={e => setBrokerLicense(e.target.value)} placeholder={t('Số chứng chỉ hành nghề')} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('Trình độ học vấn')}</label>
-                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
-                        {[
-                          { value: 'undergraduate', label: t('Đại học') },
-                          { value: 'postgraduate', label: t('Sau đại học') },
-                          { value: 'college', label: t('Cao đẳng') },
-                          { value: 'highschool', label: t('Trung học') }
-                        ].map(opt => {
-                          const isSelected = degree === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => setDegree(opt.value)}
-                              style={{
-                                flex: '1 1 calc(50% - 4px)',
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
-                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
-                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
-                                fontSize: '0.8125rem',
-                                fontWeight: isSelected ? 600 : 500,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              {opt.label}
-                            </button>
-                          );
-                        })}
+
+                    {/* Divider line */}
+                    <div style={{ height: '1px', backgroundColor: 'var(--color-border-light)' }} />
+
+                    {/* Grid B: Visual choice cards */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Loại hợp đồng')}</label>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', width: 'fit-content' }}>
+                          {[
+                            { value: 'official', label: t('Chính thức') },
+                            { value: 'probation', label: t('Thử việc') },
+                            { value: 'collaborator', label: t('Cộng tác viên') },
+                            { value: 'internship', label: t('Thực tập sinh') }
+                          ].map(opt => {
+                            const isSelected = contractType === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setContractType(opt.value)}
+                                style={{
+                                  height: '28px',
+                                  padding: '0 12px',
+                                  borderRadius: '6px',
+                                  border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                  background: isSelected ? 'rgba(189, 29, 45, 0.04)' : 'var(--color-bg)',
+                                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: isSelected ? 700 : 500,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('Trình độ học vấn')}</label>
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '6px', width: 'fit-content' }}>
+                          {[
+                            { value: 'undergraduate', label: t('Đại học') },
+                            { value: 'postgraduate', label: t('Sau đại học') },
+                            { value: 'college', label: t('Cao đẳng') },
+                            { value: 'highschool', label: t('Trung học') }
+                          ].map(opt => {
+                            const isSelected = degree === opt.value;
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => setDegree(opt.value)}
+                                style={{
+                                  height: '28px',
+                                  padding: '0 12px',
+                                  borderRadius: '6px',
+                                  border: isSelected ? '1.5px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                  background: isSelected ? 'rgba(189, 29, 45, 0.04)' : 'var(--color-bg)',
+                                  color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                  fontSize: '0.75rem',
+                                  fontWeight: isSelected ? 700 : 500,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: '4px'
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
