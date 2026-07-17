@@ -2377,7 +2377,7 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
             </div>
 
             {/* Content Area */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem 1.25rem 3rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', position: 'relative' }}>
               {statsLoading && !statsData ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>

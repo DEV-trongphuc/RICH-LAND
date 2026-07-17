@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -160,11 +160,24 @@ const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime()
 export const ContactsPage: React.FC = () => {
   const { user } = useAuth();
   const isSale = user?.role === 'sale';
+  const navigate = useNavigate();
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [uncontactedCount, setUncontactedCount] = useState(() => {
     return Number(sessionStorage.getItem('sale-uncontacted-count')) || 0;
   });
+  const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
   const [initialMetadataLoaded, setInitialMetadataLoaded] = useState(false);
+
+  useEffect(() => {
+    if (isSale) {
+      api.get('/get_sale_portal_data').then(res => {
+        if (res.data && res.data.success && Array.isArray(res.data.data)) {
+          const count = res.data.data.filter((l: any) => Number(l.is_accepted) === 0).length;
+          setPendingLeadsCount(count);
+        }
+      }).catch(() => {});
+    }
+  }, [isSale]);
 
   useEffect(() => {
     const handleUncontactedCountChanged = (e: Event) => {
@@ -834,6 +847,41 @@ export const ContactsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {isSale && pendingLeadsCount > 0 && (
+        <div 
+          onClick={() => navigate('/workspace')}
+          style={{
+            background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)',
+            border: '1px solid #fca5a5',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.05), 0 2px 4px -1px rgba(220, 38, 38, 0.03)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ background: '#ef4444', color: '#fff', borderRadius: '50%', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <AlertCircle size={16} />
+            </div>
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem', color: '#991b1b' }}>
+                Bạn có {pendingLeadsCount} khách hàng mới chưa tiếp nhận!
+              </p>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#b91c1c' }}>
+                Vui lòng vào Bàn làm việc để bấm "Tiếp nhận" ngay trước khi hết giờ và bị hệ thống thu hồi.
+              </p>
+            </div>
+          </div>
+          <button className="btn danger sm" style={{ height: 32, borderRadius: 8, fontSize: '0.8rem', padding: '0 12px' }}>
+            Đi tới Bàn làm việc
+          </button>
+        </div>
+      )}
 
       {/* Search + filter row */}
       <div className="card" style={{ padding: isMobile ? '10px' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
