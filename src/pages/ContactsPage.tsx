@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar, AlertTriangle, AlertCircle, CheckSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -219,6 +219,7 @@ export const ContactsPage: React.FC = () => {
   }, [openContactId]);
   const [segment, setSegment] = useState('all');
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const [page, setPage] = useState(1);
   const [profileContact, setProfileContact] = useState<any>(null);
   const [showImportExport, setShowImportExport] = useState(false);
@@ -836,9 +837,9 @@ export const ContactsPage: React.FC = () => {
 
       {/* Search + filter row */}
       <div className="card" style={{ padding: isMobile ? '10px' : '0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center' }}>
-        {/* Row 1: Search (with embedded Advanced Filter Button) */}
-        <div style={{ display: 'flex', gap: '8px', width: '100%', flex: 1 }}>
-          <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '3.5rem' }}>
+        {/* Row 1: Search and separate Filter Button */}
+        <div style={{ display: 'flex', gap: '8px', width: '100%', flex: 1, alignItems: 'center' }}>
+          <div className="filter-search" style={{ flex: 1, position: 'relative', width: 'auto', height: '38px', borderRadius: '8px', border: '1px solid var(--color-border)', boxSizing: 'border-box', paddingRight: '2.5rem' }}>
             <Search size={14} style={{ color:'var(--color-text-muted)', marginLeft: '4px' }}/>
             <input 
               placeholder="Tìm tên, email, điện thoại..." 
@@ -846,7 +847,7 @@ export const ContactsPage: React.FC = () => {
               onChange={e=>{setSearch(e.target.value);setPage(1);}} 
               style={{ paddingRight: '0.5rem', height: '100%' }}
             />
-            <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
               <AnimatePresence>
                 {search && (
                   <motion.button 
@@ -863,30 +864,68 @@ export const ContactsPage: React.FC = () => {
                   </motion.button>
                 )}
               </AnimatePresence>
-              <button 
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                style={{
-                  padding: 4,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  border: 'none',
-                  background: 'transparent',
-                  color: showAdvancedFilters ? 'var(--color-text)' : 'var(--color-text-muted)',
-                  outline: 'none',
-                  boxShadow: 'none'
-                }}
-                title="Bộ lọc nâng cao"
-              >
-                <Filter size={16} />
-              </button>
             </div>
           </div>
+
+          <button 
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            style={{
+              height: '38px',
+              padding: '0 0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              background: showAdvancedFilters ? 'var(--color-border-light)' : 'var(--color-surface)',
+              color: showAdvancedFilters ? 'var(--color-primary)' : 'var(--color-text)',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              transition: 'all 0.2s',
+              boxShadow: 'var(--shadow-sm)',
+              outline: 'none'
+            }}
+            title="Bộ lọc nâng cao"
+          >
+            <Filter size={14} />
+            <span>Bộ lọc</span>
+          </button>
         </div>
 
-        {/* Row 2: Sort Select & View Mode switchers */}
+        {/* Row 2: Chọn nhanh, Sort Select & View Mode switchers */}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', flexShrink: 0 }}>
+          <button 
+            onClick={() => {
+              if (isMultiSelectMode) {
+                setSelected(new Set());
+              }
+              setIsMultiSelectMode(!isMultiSelectMode);
+            }}
+            style={{
+              height: '38px',
+              padding: '0 0.875rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              border: isMultiSelectMode ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+              borderRadius: '8px',
+              background: isMultiSelectMode ? 'rgba(189, 29, 45, 0.08)' : 'var(--color-surface)',
+              color: isMultiSelectMode ? 'var(--color-primary)' : 'var(--color-text)',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              transition: 'all 0.2s',
+              boxShadow: 'var(--shadow-sm)',
+              outline: 'none'
+            }}
+            title="Chọn nhiều liên hệ"
+          >
+            <CheckSquare size={14} />
+            <span>Chọn nhanh</span>
+          </button>
           {!isMobile && <div style={{ flex: 1 }} />}
           
           <div style={{ width: isMobile ? '130px' : 170 }}>
@@ -1214,7 +1253,7 @@ export const ContactsPage: React.FC = () => {
 
       {/* Bulk Action Bar */}
       <AnimatePresence>
-        {selected.size > 0 && (
+        {isMultiSelectMode && selected.size > 0 && (
           <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0 }}
             style={{ position:'sticky', top:68, zIndex:100, marginBottom:'0.75rem', padding:'0.75rem 1.25rem', background:'var(--color-primary)', borderRadius:'var(--radius-xl)', display:'flex', alignItems:'center', gap:'0.75rem', boxShadow:'0 8px 24px rgba(163, 20, 34,0.3)' }}>
             <span style={{ color:'white', fontWeight:700, fontSize:'0.875rem' }}>{selected.size} đã chọn</span>
@@ -1292,12 +1331,14 @@ export const ContactsPage: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-bg)', boxShadow: '0 1px 0 var(--color-border)' }}>
                   <tr>
-                    <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
-                      <CustomCheckbox 
-                        checked={selected.size === paged.length && paged.length > 0} 
-                        onChange={toggleAll} 
-                      />
-                    </th>
+                    {isMultiSelectMode && (
+                      <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left' }}>
+                        <CustomCheckbox 
+                          checked={selected.size === paged.length && paged.length > 0} 
+                          onChange={toggleAll} 
+                        />
+                      </th>
+                    )}
                     {columns.find(c => c.id === 'name')?.visible && <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>}
                     {(columns.find(c => c.id === 'email')?.visible || columns.find(c => c.id === 'phone')?.visible) && (
                       <th style={{ padding: '1rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '1px solid var(--color-border)' }}>Liên lạc</th>
@@ -1333,12 +1374,14 @@ export const ContactsPage: React.FC = () => {
                          style={{ transition: 'background 0.2s', cursor: 'pointer' }}
                          className="table-row-hover"
                          onClick={() => setProfileContact(c)}>
-                        <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
-                          <CustomCheckbox 
-                            checked={selected.has(c.id)} 
-                            onChange={() => toggleSelect(c.id)} 
-                          />
-                        </td>
+                        {isMultiSelectMode && (
+                          <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }} onClick={e => e.stopPropagation()}>
+                            <CustomCheckbox 
+                              checked={selected.has(c.id)} 
+                              onChange={() => toggleSelect(c.id)} 
+                            />
+                          </td>
+                        )}
                         {columns.find(col => col.id === 'name')?.visible && (
                           <td style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
