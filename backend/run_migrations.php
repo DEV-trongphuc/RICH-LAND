@@ -1832,13 +1832,10 @@ try {
 
     //    // Seed default users for Developer Quick Login (All Roles)
     $devUsers = [
-        ['id' => 998, 'username' => 'superadmin', 'email' => 'superadmin@richland.net', 'password' => 'superadmin123', 'name' => 'Super Admin Richland', 'role' => 'superadmin'],
         ['id' => 999, 'username' => 'admin', 'email' => 'admin@richland.net', 'password' => 'admin123', 'name' => 'Admin Richland', 'role' => 'admin'],
         ['id' => 1000, 'username' => 'haidang', 'email' => 'haidang@richland.net', 'password' => 'sale123', 'name' => 'Nguyễn Hải Đăng (Sale)', 'role' => 'sales'],
         ['id' => 1001, 'username' => 'director', 'email' => 'director@richland.net', 'password' => 'director123', 'name' => 'Giám đốc kinh doanh Richland', 'role' => 'director'],
         ['id' => 1002, 'username' => 'manager', 'email' => 'manager@richland.net', 'password' => 'manager123', 'name' => 'Trưởng nhóm Richland', 'role' => 'manager'],
-        ['id' => 1003, 'username' => 'assistant', 'email' => 'assistant@richland.net', 'password' => 'assistant123', 'name' => 'Trợ lý Richland', 'role' => 'assistant'],
-        ['id' => 1004, 'username' => 'viewer', 'email' => 'viewer@richland.net', 'password' => 'viewer123', 'name' => 'Người xem Richland', 'role' => 'viewer'],
     ];
 
     foreach ($devUsers as $du) {
