@@ -1447,6 +1447,12 @@ const SettingsInner = () => {
             <Database size={16} /> {t('Bảo trì Database')}
           </span>
         </button>
+        <button onClick={() => setActiveTab('tags')} style={getTabStyle('tags')}>
+          {renderActiveIndicator('tags')}
+          <span style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Tag size={16} /> {t('Quản lý Thẻ (Tags)')}
+          </span>
+        </button>
       </div>
 
       {loading ? (
