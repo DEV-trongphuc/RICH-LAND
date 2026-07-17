@@ -225,14 +225,24 @@ class ActivityController {
         // 5. Team-based tags check
         if (!empty($activity['tags']) && strpos($activity['tags'], 'internal_') === 0) {
             if (in_array($auth['role'], ['sales', 'sale'], true)) {
-                $stmtTeamCheck = $this->db->prepare("
-                    SELECT 1 FROM users u 
-                    WHERE u.id = ? 
-                      AND (u.team_id = (SELECT team_id FROM users WHERE id = ?) 
-                           OR ? LIKE '%\"scope\":\"global\"%')
-                ");
-                $stmtTeamCheck->execute([$activity['user_id'], $auth['user_id'], $activity['body']]);
-                if ($stmtTeamCheck->fetch()) {
+                // For sales, they can only access if they are creator/assignee/participant (checked elsewhere)
+                // OR if the task is unassigned and they belong to the same team as the creator
+                if (empty($activity['user_id'])) {
+                    $creatorId = !empty($activity['created_by']) ? (int)$activity['created_by'] : 0;
+                    if ($creatorId > 0) {
+                        $stmtTeamCheck = $this->db->prepare("
+                            SELECT 1 FROM users u 
+                            WHERE u.id = ? 
+                              AND u.team_id = (SELECT team_id FROM users WHERE id = ?)
+                        ");
+                        $stmtTeamCheck->execute([$creatorId, $auth['user_id']]);
+                        if ($stmtTeamCheck->fetch()) {
+                            return true;
+                        }
+                    }
+                }
+                // Check if it's a global scope announcement
+                if (!empty($activity['body']) && strpos($activity['body'], '"scope":"global"') !== false) {
                     return true;
                 }
             } elseif ($auth['role'] === 'manager') {
@@ -327,8 +337,16 @@ class ActivityController {
                 OR (a.related_type = \'campaign\' AND EXISTS (
                     SELECT 1 FROM marketing_campaigns mc WHERE mc.id = a.related_id AND (FIND_IN_SET(?, mc.user_ids) OR FIND_IN_SET(?, mc.manager_ids) OR mc.created_by = ?)
                 ) AND (a.user_id IS NULL OR a.user_id = 0 OR a.user_id = ?))
-                OR (a.tags LIKE \'internal_%\' AND (a.user_id IN (SELECT id FROM users WHERE team_id = (SELECT team_id FROM users WHERE id = ?)) OR a.body LIKE \'%"scope":"global"%\'))
+                OR (a.tags LIKE \'internal_%\' AND (
+                    (a.user_id = ?)
+                    OR (
+                        (a.user_id IS NULL OR a.user_id = 0)
+                        AND (a.created_by IN (SELECT id FROM users WHERE team_id = (SELECT team_id FROM users WHERE id = ?)))
+                    )
+                    OR a.body LIKE \'%"scope":"global"%\\'
+                ))
             )';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
