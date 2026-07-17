@@ -134,7 +134,7 @@ class ContactController {
             case 'customer':   $where[] = "c.status = 'customer'"; break;
             case 'has_deal':   $where[] = "EXISTS (SELECT 1 FROM deals d WHERE d.contact_id = c.id AND d.deleted_at IS NULL)"; break;
             case 'no_contact': $where[] = "c.last_contact < DATE_SUB(NOW(), INTERVAL 30 DAY)"; break;
-            case 'not_contacted': $where[] = 'c.last_contact IS NULL'; break;
+            case 'not_contacted': $where[] = "NOT EXISTS (SELECT 1 FROM activities WHERE contact_id = c.id OR (related_type = 'contact' AND related_id = c.id)) AND NOT EXISTS (SELECT 1 FROM notes WHERE contact_id = c.id)"; break;
             case 'new_week':   $where[] = "c.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; break;
         }
 
