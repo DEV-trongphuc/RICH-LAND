@@ -21,7 +21,7 @@ const TYPES = [
   { id: 'call', label: 'Cuộc gọi', icon: <Phone size={16} />, color: 'var(--color-primary)' },
   { id: 'email', label: 'Email', icon: <Mail size={16} />, color: '#10b981' },
   { id: 'meeting', label: 'Cuộc họp', icon: <Users size={16} />, color: '#f59e0b' },
-  { id: 'task', label: 'Công việc', icon: <CheckSquare size={16} />, color: '#BD1D2D' },
+  { id: 'zalo_connect', label: 'Đã connect ZALO', icon: <img src="https://stc-zpl.zdn.vn/favicon.ico" style={{ width: 16, height: 16, objectFit: 'contain' }} alt="Zalo" />, color: '#0084FF' },
   { id: 'note', label: 'Ghi chú', icon: <AlignLeft size={16} />, color: '#f59e0b' }
 ];
 
@@ -151,14 +151,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                 <button 
                   key={t.id} type="button"
                   onClick={() => {
-                    if (t.id === 'task') {
-                      if (onSwitchToTask) {
-                        onClose();
-                        onSwitchToTask();
-                      }
-                      return;
-                    }
-                    setFormData({ ...formData, type: t.id, status: t.id === 'call' ? 'done' : 'planned' });
+                    setFormData({ ...formData, type: t.id, status: (t.id === 'call' || t.id === 'zalo_connect') ? 'done' : 'planned' });
                   }}
                   style={{
                     display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.625rem',
@@ -340,7 +333,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                           height: '100%',
                           border: 'none', 
                           borderRadius: '30px', 
-                          padding: '4px 12px', 
+                          padding: '4px 6px', 
                           fontSize: '0.8125rem', 
                           fontWeight: formData.status === 'planned' ? 700 : 500, 
                           cursor: 'pointer', 
@@ -348,7 +341,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                           background: formData.status === 'planned' ? 'var(--color-surface)' : 'transparent',
                           color: formData.status === 'planned' ? 'var(--color-primary)' : 'var(--color-text-muted)',
                           boxShadow: formData.status === 'planned' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                          outline: 'none'
+                          outline: 'none',
+                          whiteSpace: 'nowrap'
                         }} 
                         onClick={() => setFormData({...formData, status: 'planned'})}
                       >
@@ -361,7 +355,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                           height: '100%',
                           border: 'none', 
                           borderRadius: '30px', 
-                          padding: '4px 12px', 
+                          padding: '4px 6px', 
                           fontSize: '0.8125rem', 
                           fontWeight: formData.status === 'done' ? 700 : 500, 
                           cursor: 'pointer', 
@@ -369,7 +363,8 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                           background: formData.status === 'done' ? 'var(--color-success)' : 'transparent',
                           color: formData.status === 'done' ? 'white' : 'var(--color-text-muted)',
                           boxShadow: formData.status === 'done' ? '0 2px 6px rgba(16, 185, 129, 0.2)' : 'none',
-                          outline: 'none'
+                          outline: 'none',
+                          whiteSpace: 'nowrap'
                         }} 
                         onClick={() => setFormData({...formData, status: 'done'})}
                       >
@@ -395,29 +390,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
               />
             </div>
 
-            {/* Automation Trigger Toggle */}
-            <div 
-              style={{
-                background: 'linear-gradient(135deg, rgba(189, 29, 45, 0.08), rgba(189, 29, 45, 0.08))',
-                border: '1px solid var(--color-primary-light)', borderRadius: 'var(--radius-xl)',
-                padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer',
-                marginTop: '0.5rem'
-              }}
-              onClick={() => setFormData({ ...formData, auto_trigger: !formData.auto_trigger })}
-            >
-              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', boxShadow: 'var(--shadow-sm)' }}>
-                <Zap size={24} fill={formData.auto_trigger ? 'var(--color-primary)' : 'none'} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', marginBottom: '0.25rem' }}>
-                  Tích hợp Automation Workflow
-                </h4>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
-                  Hệ thống sẽ tự động gửi Email, cập nhật Lead Score hoặc chuyển trạng thái Deal dựa trên hành động này.
-                </p>
-              </div>
-              <div className={`custom-toggle ${formData.auto_trigger ? 'active' : ''}`} style={{ zoom: 1.2 }}></div>
-            </div>
+
           </form>
 
           <div className="modal-footer">

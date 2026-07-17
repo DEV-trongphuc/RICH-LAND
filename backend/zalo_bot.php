@@ -213,90 +213,10 @@ function sendLeadAssignedZaloMessageToSale($consultantId, $consultantName, $lead
         return false; // Sale chưa liên kết Zalo
     }
 
-    // Lấy email, loại data (type) và đánh giá AI từ DB
-    $email = $leadEmail;
-    $type = $leadType;
-    $aiScreenerStatus = '';
-    $aiEvaluation = '';
-    if ($leadId > 0) {
-        $stmt = $conn->prepare("SELECT email, type, ai_screener_status, ai_evaluation FROM leads WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $leadId);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            if ($res && $res->num_rows > 0) {
-                $row = $res->fetch_assoc();
-                if (empty($email))
-                    $email = $row['email'] ?? '';
-                if (empty($type))
-                    $type = $row['type'] ?? '';
-                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
-                $aiEvaluation = $row['ai_evaluation'] ?? '';
-            }
-            $stmt->close();
-        }
-    } else if (!empty($leadPhone)) {
-        $stmt = $conn->prepare("SELECT email, type, ai_screener_status, ai_evaluation FROM leads WHERE phone = ? ORDER BY id DESC LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("s", $leadPhone);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            if ($res && $res->num_rows > 0) {
-                $row = $res->fetch_assoc();
-                if (empty($email))
-                    $email = $row['email'] ?? '';
-                if (empty($type))
-                    $type = $row['type'] ?? '';
-                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
-                $aiEvaluation = $row['ai_evaluation'] ?? '';
-            }
-            $stmt->close();
-        }
-    }
-
-    // Build nội dung tin nhắn
-    $roundStr = !empty($roundName) ? " Vòng: $roundName\n" : "";
-    $fName = !empty($leadName) ? $leadName : "Không có";
-    $fPhone = !empty($leadPhone) ? $leadPhone : "Không có";
-    $fSource = !empty($leadSource) ? $leadSource : "Không có";
-    $fNote = !empty($leadNote) ? $leadNote : "Không có";
-
-    $emailLine = !empty($email) ? "  • Email: $email\n" : "";
-    $typeLine = (!empty($type) && $type !== '-') ? "  • Loại Data: $type\n" : "";
-
-    $aiSection = '';
-    if ($aiScreenerStatus === 'passed' && !empty($aiEvaluation)) {
-        $indentedEval = str_replace("\n", "\n  ", trim($aiEvaluation));
-        $aiSection = "\n🤖 ĐÁNH GIÁ AI:\n"
-            . "  " . $indentedEval . "\n";
-    }
-
-    // Build Report URL
-    $frontendUrl = rtrim(get_system_setting($conn, 'frontend_url'), '/');
-    if (empty($frontendUrl)) {
-        $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
-    }
-    $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
-    $roundLine = !empty($roundName) ? "  • Vòng phân bổ: $roundName\n" : "";
-
-    $roundTitle = !empty($roundName) ? " - " . mb_strtoupper($roundName, 'UTF-8') : "";
-    $text = "📥 [ THÔNG BÁO DATA MỚI$roundTitle ] 📥\n"
+    $text = "📥 [ THÔNG BÁO DATA MỚI ] 📥\n"
         . "━━━━━━━━━━━━━━━━━━━━━\n"
-        . "Chào $consultantName, hệ thống vừa phân bổ cho bạn một khách hàng mới:\n\n"
-        . "👤 THÔNG TIN KHÁCH HÀNG:\n"
-        . "  • Tên KH: $fName\n"
-        . "  • Số ĐT: $fPhone\n"
-        . $emailLine
-        . $typeLine
-        . "  • Nguồn: $fSource\n"
-        . $roundLine
-        . "\n📝 GHI CHÚ:\n"
-        . "  $fNote\n"
-        . $aiSection
-        . "\n⚠️ Nếu Data bị sai SĐT hoặc trùng lặp, vui lòng báo cáo tại đây:\n"
-        . "👉 Link: $reportUrl\n"
+        . "Chào $consultantName,\n\n"
+        . "Bạn vừa nhận được 1 lead mới. Vui lòng vào CRM/Bàn làm việc để tiếp nhận khách hàng.\n"
         . "━━━━━━━━━━━━━━━━━━━━━";
 
     return sendZaloMessage($botToken, $chatId, $text, $sync, $leadId);

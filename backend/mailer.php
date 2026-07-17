@@ -451,278 +451,34 @@ function sendLeadAssignedEmailToSale($consultantEmail, $consultantName, $leadNam
 {
     global $conn;
 
-    // Fetch additional fields (email, type, connection_id, AI evaluation) from DB to display completely
-    $email = '';
-    $type = '';
-    $connectionId = 0;
-    $aiScreenerStatus = '';
-    $aiEvaluation = '';
-    if ($leadId > 0) {
-        $stmt = $conn->prepare("SELECT email, type, connection_id, ai_screener_status, ai_evaluation FROM leads WHERE id = ?");
-        if ($stmt) {
-            $stmt->bind_param("i", $leadId);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            if ($res && $res->num_rows > 0) {
-                $row = $res->fetch_assoc();
-                $email = $row['email'] ?? '';
-                $type = $row['type'] ?? '';
-                $connectionId = (int) ($row['connection_id'] ?? 0);
-                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
-                $aiEvaluation = $row['ai_evaluation'] ?? '';
-            }
-            $stmt->close();
-        }
-    } else {
-        // Fallback by phone if ID not provided
-        $stmt = $conn->prepare("SELECT email, type, connection_id, ai_screener_status, ai_evaluation FROM leads WHERE phone = ? ORDER BY id DESC LIMIT 1");
-        if ($stmt) {
-            $stmt->bind_param("s", $leadPhone);
-            $stmt->execute();
-            $res = $stmt->get_result();
-            if ($res && $res->num_rows > 0) {
-                $row = $res->fetch_assoc();
-                $email = $row['email'] ?? '';
-                $type = $row['type'] ?? '';
-                $connectionId = (int) ($row['connection_id'] ?? 0);
-                $aiScreenerStatus = $row['ai_screener_status'] ?? '';
-                $aiEvaluation = $row['ai_evaluation'] ?? '';
-            }
-            $stmt->close();
-        }
-    }
-
-    $emailTemplate = '';
-    if ($connectionId > 0) {
-        $stmtTpl = $conn->prepare("SELECT email_template FROM sheet_connections WHERE id = ?");
-        if ($stmtTpl) {
-            $stmtTpl->bind_param("i", $connectionId);
-            $stmtTpl->execute();
-            $resTpl = $stmtTpl->get_result();
-            if ($resTpl->num_rows > 0) {
-                $emailTemplate = $resTpl->fetch_assoc()['email_template'] ?? '';
-            }
-        }
-    }
-
-    $roundStr = !empty($roundName) ? " vòng {$roundName}" : "";
-    $subject = "Bạn vừa nhận được Lead {$leadName}{$roundStr}";
-
-    // Format values nicely for HTML, converting newlines (\n) to <br/> tags
-    $formattedSource = !empty($leadSource) ? nl2br(htmlspecialchars($leadSource)) : '<em>Không có</em>';
-    $formattedType = !empty($type) ? nl2br(htmlspecialchars($type)) : '<em>Không có</em>';
-    $formattedEmail = !empty($email) ? htmlspecialchars($email) : '<em>Không có</em>';
-
-    $detailBlock = '';
-    if (!empty($emailTemplate)) {
-        // Replace templates
-        $replacements = [
-            '{name}' => htmlspecialchars($leadName),
-            '{phone}' => htmlspecialchars($leadPhone),
-            '{email}' => htmlspecialchars($email),
-            '{source}' => htmlspecialchars($leadSource),
-            '{type}' => htmlspecialchars($type),
-            '{assigned_to}' => htmlspecialchars($consultantName),
-            '{round}' => htmlspecialchars($roundName),
-            '{round_name}' => htmlspecialchars($roundName),
-            '{ai_evaluation}' => ($aiScreenerStatus === 'passed' && !empty($aiEvaluation)) ? nl2br(htmlspecialchars($aiEvaluation)) : '',
-        ];
-
-        $actualNote = '';
-        if (!empty($leadNote)) {
-            $lines = explode("\n", $leadNote);
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (empty($line))
-                    continue;
-
-                $matchedPlaceholder = false;
-                // Matches [Custom Key]: Value or Custom Key: Value
-                if (
-                    (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
-                    && strlen(trim($matches[1])) <= 40
-                    && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
-                ) {
-                    $cKey = trim($matches[1]);
-                    $cVal = trim($matches[2]);
-                    $lowerKey = strtolower($cKey);
-
-                    // Only treat as placeholder if it is actually used in the custom template
-                    if (strpos(strtolower($emailTemplate), '{' . $lowerKey . '}') !== false) {
-                        $replacements['{' . $lowerKey . '}'] = htmlspecialchars($cVal);
-                        $replacements['{' . $cKey . '}'] = htmlspecialchars($cVal);
-                        $matchedPlaceholder = true;
-                    }
-                }
-
-                if (!$matchedPlaceholder) {
-                    $actualNote .= htmlspecialchars($line) . "\n";
-                }
-            }
-        }
-        $replacements['{note}'] = nl2br(trim($actualNote));
-
-        $renderedTemplate = $emailTemplate;
-        // Auto-append {source} if not present in custom template to ensure consistency
-        if (strpos(strtolower($renderedTemplate), '{source}') === false && !empty($leadSource)) {
-            if (preg_match('/- Ghi Chú:/i', $renderedTemplate)) {
-                $renderedTemplate = preg_replace('/(- Ghi Chú:)/i', "- Nguồn Data: {source}\n$1", $renderedTemplate);
-            } else {
-                $renderedTemplate .= "\n- Nguồn Data: {source}";
-            }
-        }
-        foreach ($replacements as $placeholder => $value) {
-            $renderedTemplate = str_replace($placeholder, $value, $renderedTemplate);
-        }
-        // Remove empty placeholders
-        $renderedTemplate = preg_replace('/\{[a-zA-Z0-9_-]+\}/', '', $renderedTemplate);
-
-        $detailBlock = formatCustomTemplateToTable($renderedTemplate);
-    } else {
-        // Fallback to table representation (original default)
-        $actualNote = '';
-        $customFieldsHtml = '';
-        if (!empty($leadNote)) {
-            $lines = explode("\n", $leadNote);
-            foreach ($lines as $line) {
-                $line = trim($line);
-                if (empty($line))
-                    continue;
-                // Matches [Custom Key]: Value or Custom Key: Value
-                if (
-                    (preg_match('/^\[(.*?)\]:\s*(.*)$/', $line, $matches) || preg_match('/^(.*?):\s*(.*)$/', $line, $matches))
-                    && strlen(trim($matches[1])) <= 40
-                    && !preg_match('/^(https?|ftp)$/i', trim($matches[1]))
-                ) {
-                    $cKey = htmlspecialchars(trim($matches[1]));
-                    $cVal = htmlspecialchars(trim($matches[2]));
-                    $customFieldsHtml .= '
-                    <tr>
-                        <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">' . $cKey . ':</td>
-                        <td style="padding: 6px 0; font-weight: 600; color: #334155; vertical-align: top;">' . $cVal . '</td>
-                    </tr>';
-                } else {
-                    $actualNote .= htmlspecialchars($line) . '<br/>';
-                }
-            }
-        }
-
-        $detailBlock = '
-            <table style="width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; color: #334155;">
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; width: 140px; vertical-align: top; color: #64748b;">Họ và Tên:</td>
-                    <td style="padding: 6px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . htmlspecialchars($leadName) . '</td>
-                </tr>
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Số điện thoại:</td>
-                    <td style="padding: 6px 0; font-weight: 700; color: #d97706; vertical-align: top;">' . htmlspecialchars($leadPhone) . '</td>
-                </tr>
-                ' . (!empty($email) ? '
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Email:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . htmlspecialchars($email) . '</td>
-                </tr>
-                ' : '') . '
-                ' . (!empty($leadSource) ? '
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Nguồn Data:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . nl2br(htmlspecialchars($leadSource)) . '</td>
-                </tr>
-                ' : '') . '
-                ' . (!empty($type) ? '
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Loại Data:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top;">' . nl2br(htmlspecialchars($type)) . '</td>
-                </tr>
-                ' : '') . '
-                ' . (!empty($roundName) ? '
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Vòng:</td>
-                    <td style="padding: 6px 0; font-weight: 700; color: #0f172a; vertical-align: top;">' . htmlspecialchars($roundName) . '</td>
-                </tr>
-                ' : '') . '
-                ' . (!empty($actualNote) ? '
-                <tr>
-                    <td style="padding: 6px 0; font-weight: 600; vertical-align: top; color: #64748b;">Ghi chú / Khác:</td>
-                    <td style="padding: 6px 0; color: #0f172a; vertical-align: top; line-height: 1.5;">' . $actualNote . '</td>
-                </tr>
-                ' : '') .
-            $customFieldsHtml . '
-            </table>';
-    }
-
-    // BUG-02 fix: Build report URL dynamically from system_settings or server vars
+    // Construct portal URL
     $frontendUrl = '';
-    // 1. Try system_settings table first
     $urlSetting = $conn->query("SELECT setting_value FROM system_settings WHERE setting_key='frontend_url' LIMIT 1");
     if ($urlSetting && $urlSetting->num_rows > 0) {
         $frontendUrl = rtrim($urlSetting->fetch_assoc()['setting_value'], '/');
     }
-    // 2. Fallback: construct from current server HTTP_HOST
     if (empty($frontendUrl)) {
         $proto = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        // Strip /backend suffix to get root frontend URL
         $frontendUrl = $proto . '://' . preg_replace('/\/backend.*$/', '', $host);
     }
-    $reportUrl = $frontendUrl . "/report-data?lead_id={$leadId}&sale_id={$consultantId}&round_id={$roundId}";
     $portalUrl = $frontendUrl . "/sale-portal";
 
-    $aiBlock = '';
-    if ($aiScreenerStatus === 'passed' && !empty($aiEvaluation)) {
-        // If a custom template is used and it already contains {ai_evaluation}, do not show the duplicate aiBlock below
-        $hasAiPlaceholder = !empty($emailTemplate) && (strpos(strtolower($emailTemplate), '{ai_evaluation}') !== false);
-        if (!$hasAiPlaceholder) {
-            $aiBlock = '
-            <div style="background-color: #f5f3ff; border-left: 4px solid #7c3aed; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
-                <p style="color: #6d28d9; font-size: 16px; margin: 0 0 12px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #ddd6fe; padding-bottom: 8px;">
-                    🤖 Đánh giá AI:
-                </p>
-                <p style="color: #5b21b6; font-size: 15px; line-height: 1.6; margin: 0; font-weight: 500;">
-                    ' . nl2br(htmlspecialchars($aiEvaluation)) . '
-                </p>
-            </div>';
-        }
-    }
+    $timeSuffix = date('H:i:s d/m/Y');
+    $subject = "Bạn vừa nhận được 1 lead mới - [$timeSuffix]";
 
     $content = '
         <p style="color: #475569; font-size: 16px; line-height: 1.7; margin-bottom: 24px;">
             Chào <strong>' . htmlspecialchars($consultantName) . '</strong>,<br><br>
-            Hệ thống vừa phân bổ tự động cho bạn 1 khách hàng mới từ ' . (!empty($roundName) ? 'vòng ' . htmlspecialchars($roundName) : 'chiến dịch Inbound') . '.
+            Bạn vừa nhận được 1 lead mới. Vui lòng truy cập trang Bàn làm việc để tiếp nhận khách hàng.
         </p>
-        
-        <div style="background-color: #fefce8; border-left: 4px solid #eab308; padding: 24px; margin: 30px 0; border-radius: 0 12px 12px 0;">
-            <p style="color: #0f172a; font-size: 16px; margin: 0 0 15px 0; font-weight: bold; line-height: 1.6; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
-                Thông tin chi tiết Khách hàng:
-            </p>
-            ' . $detailBlock . '
-        </div>
-
-        ' . $aiBlock . '
 
         <div style="text-align: center; margin-top: 32px; padding-top: 24px; border-top: 1px dashed #cbd5e1; padding-bottom: 8px;">
-            <p style="color: #64748b; font-size: 14px; margin-bottom: 16px; line-height: 1.5;">Xem danh sách dữ liệu tại Trang Tư vấn viên hoặc báo cáo lỗi (sai SĐT, trùng lặp...) để nhận data bù:</p>
+            <p style="color: #64748b; font-size: 14px; margin-bottom: 16px; line-height: 1.5;">Bấm vào nút bên dưới để đi tới trang tiếp nhận khách hàng:</p>
             <div style="text-align: center; margin-top: 12px;">
-                <!--[if mso]>
-                <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto;">
-                <tr>
-                <td style="padding-right: 12px;">
-                <![endif]-->
-                <a href="' . $portalUrl . '" style="display: inline-block; background-color: #BD1D2D; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(189, 29, 45, 0.2); margin-right: 8px; margin-bottom: 8px; vertical-align: middle;">
-                    DATA CỦA BẠN
+                <a href="' . $portalUrl . '" style="display: inline-block; background-color: #BD1D2D; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(189, 29, 45, 0.2); margin-bottom: 8px; vertical-align: middle;">
+                    BÀN LÀM VIỆC / TIẾP NHẬN
                 </a>
-                <!--[if mso]>
-                </td>
-                <td>
-                <![endif]-->
-                <a href="' . $reportUrl . '" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2); margin-left: 8px; margin-bottom: 8px; vertical-align: middle;">
-                    BÁO CÁO DATA
-                </a>
-                <!--[if mso]>
-                </td>
-                </tr>
-                </table>
-                <![endif]-->
             </div>
         </div>
     ';
