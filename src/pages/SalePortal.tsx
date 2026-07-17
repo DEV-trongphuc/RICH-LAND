@@ -3469,7 +3469,6 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           })()}
                         </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', margin: '4px 0 0 0' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Vòng:</span>
                           <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '12px', background: '#ffe3e8', color: '#8a0f1b', fontWeight: 700 }}>
                             {lead.round_name || t('Bàn giao')}
                           </span>
@@ -3486,7 +3485,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           </span>
                           {leadRecallMins > 0 && (
                             <span style={{ fontSize: '0.72rem', color: isOverdue ? 'var(--color-danger)' : '#f59e0b', fontWeight: 700, marginTop: '2px' }}>
-                              {isOverdue ? t('Quá hạn thu hồi') : `${t('Còn lại:')} ${Math.floor(Math.max(0, remainingMs) / 60000)}m ${Math.floor((Math.max(0, remainingMs) % 60000) / 1000)}s`}
+                              {isOverdue ? t('Quá hạn tiếp nhận') : `${t('Còn lại:')} ${Math.floor(Math.max(0, remainingMs) / 60000)}m ${Math.floor((Math.max(0, remainingMs) % 60000) / 1000)}s`}
                             </span>
                           )}
                         </div>
