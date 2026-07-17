@@ -3426,7 +3426,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               `}</style>
               <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
                 <span className="pulsing-dot-red" />
-                {t('🚨 DATA MỚI ĐANG CHỜ TIẾP NHẬN')} ({pendingLeads.length})
+                {t('DATA MỚI ĐANG CHỜ TIẾP NHẬN')} ({pendingLeads.length})
               </h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
