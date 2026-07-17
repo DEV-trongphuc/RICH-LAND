@@ -519,15 +519,15 @@ export const Login = () => {
         }
         .input-icon {
           position: absolute;
-          left: 14px;
+          right: 14px;
           top: 13px;
           color: #64748b;
         }
         .input-field {
           width: 100%;
           height: 44px;
-          padding-left: 42px;
-          padding-right: 16px;
+          padding-left: 16px;
+          padding-right: 42px;
           border-radius: 12px;
           border: 1px solid rgba(255, 255, 255, 0.08);
           background: rgba(15, 23, 42, 0.8);
