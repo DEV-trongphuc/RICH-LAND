@@ -29,6 +29,7 @@ const ReportData = lazy(() => import('./pages/ReportData').then(module => ({ def
 const DemoEntry = lazy(() => import('./pages/DemoEntry').then(module => ({ default: module.DemoEntry })));
 const SalePortal = lazy(() => import('./pages/SalePortal').then(module => ({ default: module.SalePortal })));
 const FairShareAudit = lazy(() => import('./pages/FairShareAudit').then(module => ({ default: module.FairShareAudit })));
+const PersonalAccount = lazy(() => import('./pages/PersonalAccount').then(module => ({ default: module.PersonalAccount })));
 
 const ContactsPage = lazy(() => import('./pages/ContactsPage').then(module => ({ default: module.ContactsPage })));
 const CompaniesPage = lazy(() => import('./pages/CompaniesPage').then(module => ({ default: module.CompaniesPage })));
@@ -141,7 +142,9 @@ const AppTabs = () => {
       case '/workspace':
         return <SalePortal embedMode={true} activeTabProp="workspace" key="workspace" />;
       case '/account':
-        return <SalePortal embedMode={true} activeTabProp="schedule" key="schedule" />;
+        return ['sale', 'sales'].includes(user?.role || '') 
+          ? <SalePortal embedMode={true} activeTabProp="schedule" key="schedule" /> 
+          : <PersonalAccount key="personal-account" />;
       case '/data':
         return user?.role === 'sale' ? <Navigate to="/contacts" replace /> : <DataList key="data" />;
       case '/calendar':

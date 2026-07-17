@@ -489,12 +489,11 @@ if (!in_array($action, $publicActions)) {
         exit();
     }
 
-    $superAdminOnlyActions = [
-        'resend_confirm_email',
-        'resend_zalo_verify_account'
-    ];
+    $superAdminOnlyActions = [];
 
     $adminOnlyActions = [
+        'resend_confirm_email',
+        'resend_zalo_verify_account',
         'add_account',
         'edit_account',
         'delete_account',
