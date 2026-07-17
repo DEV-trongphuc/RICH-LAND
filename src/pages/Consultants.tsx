@@ -846,7 +846,7 @@ const ConsultantsInner = () => {
         {activeTab === 'consultants' && (
         <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
           {/* Card 1: Tổng TVV */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(73, 80, 87, 0.06)', color: 'var(--color-text-muted)' }}>
               <Users size={18} />
             </div>
@@ -857,7 +857,7 @@ const ConsultantsInner = () => {
           </div>
 
           {/* Card 2: Đang nhận Data */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.08)', color: 'var(--color-success)' }}>
               <CheckCircle size={18} />
             </div>
@@ -868,7 +868,7 @@ const ConsultantsInner = () => {
           </div>
 
           {/* Card 3: Đang nghỉ phép */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(245, 158, 11, 0.08)', color: 'var(--color-warning)' }}>
               <Calendar size={18} />
             </div>
@@ -879,7 +879,7 @@ const ConsultantsInner = () => {
           </div>
 
           {/* Card 4: Ngừng hoạt động */}
-          <div className="stat-card hover-lift" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
+          <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.08)', color: 'var(--color-danger)' }}>
               <UserX size={18} />
             </div>
@@ -1901,7 +1901,7 @@ const ConsultantsInner = () => {
 
                   {/* KPI Cards Row (4 Columns) */}
                   <div className="responsive-grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem' }}>
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Thành công')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-primary)', opacity: 0.8 }}><CheckCircle size={18} /></div>
@@ -1915,7 +1915,7 @@ const ConsultantsInner = () => {
                       </div>
                     </div>
 
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Nhắc lại')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-warning)', opacity: 0.8 }}><Clock size={18} /></div>
@@ -1929,7 +1929,7 @@ const ConsultantsInner = () => {
                       </div>
                     </div>
 
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Lỗi')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-danger)', opacity: 0.8 }}><AlertTriangle size={18} /></div>
@@ -1943,7 +1943,7 @@ const ConsultantsInner = () => {
                       </div>
                     </div>
 
-                    <div className="stat-card hover-lift" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
+                    <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '1rem', minHeight: '120px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                         <span className="stat-label" style={{ fontSize: '0.6875rem', fontWeight: 800, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t('Tỷ lệ')}</span>
                         <div className="stat-icon" style={{ color: 'var(--color-success)', opacity: 0.8 }}><BarChart2 size={18} /></div>
