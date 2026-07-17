@@ -1453,7 +1453,7 @@ const SettingsInner = () => {
     <div style={{ padding: '0.75rem 2rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s', minWidth: 0 }}>
       <div className="page-header settings-page-header" style={{
         position: 'sticky',
-        top: '-0.75rem',
+        top: '4.5rem',
         zIndex: 90,
         background: 'var(--color-bg)',
         paddingTop: '0.5rem',
