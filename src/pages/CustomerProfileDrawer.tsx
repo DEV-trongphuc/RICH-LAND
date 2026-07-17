@@ -312,9 +312,8 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const highlightActivityId = params.get('highlight_activity_id');
-    const highlightCommentId = params.get('highlight_comment_id');
 
-    if (String(activityId) === String(highlightActivityId) && highlightCommentId) {
+    if (String(activityId) === String(highlightActivityId)) {
       setExpanded(true);
       if (!hasFetched) {
         api.get(`/activities/${activityId}/comments`)
@@ -344,17 +343,26 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number, us
       const highlightCommentId = params.get('highlight_comment_id');
       const highlightActivityId = params.get('highlight_activity_id');
       
-      if (String(activityId) === String(highlightActivityId) && highlightCommentId) {
-        setTimeout(() => {
-          const element = document.getElementById(`comment-${highlightCommentId}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            element.style.backgroundColor = '#fef08a'; // yellow-200
-            setTimeout(() => {
-              element.style.backgroundColor = 'transparent';
-            }, 2500);
-          }
-        }, 300);
+      if (String(activityId) === String(highlightActivityId)) {
+        if (highlightCommentId) {
+          setTimeout(() => {
+            const element = document.getElementById(`comment-${highlightCommentId}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              element.style.backgroundColor = '#fef08a'; // yellow-200
+              setTimeout(() => {
+                element.style.backgroundColor = 'transparent';
+              }, 2500);
+            }
+          }, 300);
+        } else {
+          setTimeout(() => {
+            const element = document.getElementById(`activity-item-${highlightActivityId}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
+        }
       }
     }
   }, [expanded, comments, activityId]);
