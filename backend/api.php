@@ -11942,14 +11942,14 @@ switch ($action) {
 
         // NEW CALCULATIONS: Out-of-Hours Lead Ratio and Fair-Share Equity
         // 1. Out of Hours Lead Ratio
-        $outOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $dateCondition $managerFilter");
+        $outOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $dateCondition $managerFilterDlNoAlias");
         $outOfHoursCount = ($outOfHoursRes && $row = $outOfHoursRes->fetch_assoc()) ? (int)$row['cnt'] : 0;
         
         $totalLogsCount = (int)$statsRes['total'];
         $outOfHoursRatioVal = $totalLogsCount > 0 ? ($outOfHoursCount / $totalLogsCount) * 100 : 0;
         $outOfHoursRatio = number_format($outOfHoursRatioVal, 1) . '%';
 
-        $prevOutOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $prevDateCondition $managerFilter");
+        $prevOutOfHoursRes = $conn->query("SELECT COUNT(*) as cnt FROM distribution_logs WHERE (status = 'pending_work_hours' OR message LIKE '%ngoài khung giờ làm việc%' OR message LIKE '%outside working hours%') AND $prevDateCondition $managerFilterDlNoAlias");
         $prevOutOfHoursCount = ($prevOutOfHoursRes && $row = $prevOutOfHoursRes->fetch_assoc()) ? (int)$row['cnt'] : 0;
         
         $prevTotalLogsCount = (int)$prevStatsRes['total'];
