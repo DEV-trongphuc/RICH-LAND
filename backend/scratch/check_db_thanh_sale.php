@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../../../../../../d:/RICH_LAND_DATA_UI/backend/db_connect.php';
+require_once __DIR__ . '/../db_connect.php';
 
 header('Content-Type: text/plain; charset=utf-8');
 
@@ -10,18 +10,18 @@ while ($row = $resUser->fetch_assoc()) {
 }
 
 echo "\n--- CHECKING CONSULTANTS ---\n";
-$resConsultant = $conn->query("SELECT id, name, user_id FROM consultants WHERE user_id = 2713 OR name LIKE '%Thanh%'");
+$resConsultant = $conn->query("SELECT id, name FROM consultants WHERE id = 2713 OR name LIKE '%Thanh%'");
 while ($row = $resConsultant->fetch_assoc()) {
     print_r($row);
 }
 
 // Get the consultant ID of Thanh Sale
-$resConsultantId = $conn->query("SELECT id FROM consultants WHERE user_id = 2713");
+$resConsultantId = $conn->query("SELECT id FROM consultants WHERE id = 2713");
 $cId = null;
 if ($row = $resConsultantId->fetch_assoc()) {
     $cId = $row['id'];
 }
-echo "\nConsultant ID for Thanh Sale (user_id 2713): " . ($cId ?? 'NULL') . "\n";
+echo "\nConsultant ID for Thanh Sale (id 2713): " . ($cId ?? 'NULL') . "\n";
 
 if ($cId) {
     echo "\n--- CHECKING DISTRIBUTION LOGS FOR CONSULTANT $cId ---\n";
