@@ -619,7 +619,7 @@ export const ReportsPage: React.FC = () => {
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={`${((i * 13) % 40) + 40}%`} width="100%" />)}
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={200} debounce={50}>
                 <BarChart data={salesData?.by_month || MONTHLY} margin={{ left: -10 }}>
                   <defs>
                     <linearGradient id="colorSalesRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -806,7 +806,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
                <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Phân bổ theo giai đoạn</h3>
                <div style={{ height: 200 }}>
-                 <ResponsiveContainer width="100%" height="100%">
+                 <ResponsiveContainer width="100%" height="100%" debounce={50}>
                     <PieChart>
                        <Pie data={pipelineData} dataKey="count" nameKey="stage" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                         {pipelineData.map((s: any, i: number) => (
@@ -829,7 +829,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Nguồn khách hàng</h3>
               <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                   <PieChart>
                     <Pie data={customerData?.by_source || []} dataKey="count" nameKey="source" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                       {(customerData?.by_source || []).map((_: any, index: number) => (
@@ -845,7 +845,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Tăng trưởng khách hàng mới</h3>
               <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                   <BarChart data={customerData?.trend || []}>
                     <defs>
                       <linearGradient id="colorCustomerGrowth" x1="0" y1="0" x2="0" y2="1">
@@ -866,7 +866,7 @@ export const ReportsPage: React.FC = () => {
           <div className="card" style={{ padding: '1rem' }}>
             <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Phân bổ theo Lead Score</h3>
             <div style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={50}>
                 <BarChart data={customerData?.by_score || []}>
                   <defs>
                     <linearGradient id="colorCustomerScore" x1="0" y1="0" x2="0" y2="1">
@@ -892,7 +892,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Phân loại theo lĩnh vực</h3>
               <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                   <PieChart>
                     <Pie data={companyData?.by_industry || []} dataKey="count" nameKey="industry" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                       {(companyData?.by_industry || []).map((_: any, index: number) => (
@@ -908,7 +908,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Quy mô doanh nghiệp</h3>
               <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                   <PieChart>
                     <Pie data={companyData?.by_size || []} dataKey="count" nameKey="size" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                       {(companyData?.by_size || []).map((_: any, index: number) => (
@@ -925,7 +925,7 @@ export const ReportsPage: React.FC = () => {
           <div className="card" style={{ padding: '1rem' }}>
             <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Top 10 thành phố</h3>
             <div style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={50}>
                 <BarChart data={companyData?.by_city || []} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border-light)" />
                   <XAxis type="number" hide />
@@ -945,7 +945,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Cơ cấu chi phí</h3>
               <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                   <PieChart>
                     <Pie 
                       data={expenseData?.by_category || []} 
@@ -970,7 +970,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Biến động chi phí theo ngày</h3>
               <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                   <AreaChart data={expenseData?.trend || []}>
                     <defs>
                       <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
@@ -992,7 +992,7 @@ export const ReportsPage: React.FC = () => {
           <div className="card" style={{ padding: '1rem' }}>
             <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Chi phí vs Doanh thu (Kết hợp)</h3>
             <div style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={50}>
                 <ComposedChart data={salesData?.by_month || []}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
@@ -1014,7 +1014,7 @@ export const ReportsPage: React.FC = () => {
             <div className="card" style={{ padding: '1rem' }}>
               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Phân bổ loại hoạt động</h3>
               <div style={{ height: 200 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
                   <PieChart>
                     <Pie 
                       data={activityData?.by_type || []} 

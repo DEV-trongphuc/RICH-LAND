@@ -698,6 +698,171 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
   if (!isOpen) return null;
 
+  const isAddMode = !account;
+
+  if (isAddMode) {
+    return createPortal(
+      <div
+        className="drawer-backdrop"
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.4)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem',
+          zIndex: 10500
+        }}
+      >
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: '100%',
+            maxWidth: '560px',
+            maxHeight: '90vh',
+            backgroundColor: 'var(--color-surface)',
+            borderRadius: '24px',
+            boxShadow: 'var(--shadow-2xl)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            border: '1px solid var(--color-border)'
+          }}
+        >
+          {/* Header */}
+          <div style={{
+            padding: '1.25rem 1.5rem',
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'var(--color-surface)'
+          }}>
+            <div>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
+                {t('Thêm Nhân sự mới')}
+              </h2>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 0' }}>
+                {t('Khai báo hồ sơ làm việc và tài khoản mới.')}
+              </p>
+            </div>
+            <button 
+              onClick={onClose}
+              style={{
+                padding: '6px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                color: 'var(--color-text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              className="hover-bg-muted"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+            <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div className="form-group">
+                  <label className="form-label">{t('Họ và tên')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                  <input className="form-input" value={name} onChange={e => setName(e.target.value)} placeholder={t('Nguyễn Văn A')} required autoComplete="off" />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">{t('Email đăng nhập')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                  <input type="email" className="form-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@company.com" required autoComplete="off" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">{t('Tên đăng nhập (Username)')}</label>
+                  <input className="form-input" value={username} onChange={e => setUsername(e.target.value)} placeholder="nguyenvana" autoComplete="off" />
+                  <span style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                    {t('Để trống hệ thống sẽ tự sinh từ Email.')}
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">{t('Mật khẩu')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                  <input type="password" className="form-input" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('Tối thiểu 6 ký tự')} required autoComplete="new-password" />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">{t('Số điện thoại liên hệ')}</label>
+                  <input className="form-input" value={phone} onChange={e => setPhone(e.target.value)} placeholder="09xxxxxxx" autoComplete="off" />
+                </div>
+
+                {isAdmin && (
+                  <div className="form-group">
+                    <label className="form-label">{t('Phân quyền')} <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <CustomSelect 
+                      options={[
+                        { value: 'superadmin', label: t('Super Admin (Quản trị cấp cao)') },
+                        { value: 'admin', label: t('Admin (Toàn quyền)') },
+                        { value: 'director', label: t('Director (Giám đốc kinh doanh)') },
+                        { value: 'manager', label: t('Manager (Trưởng nhóm kinh doanh)') },
+                        { value: 'assistant', label: t('Assistant (Trợ lý / Phân bổ Data)') },
+                        { value: 'sale', label: t('Sales (Nhân viên kinh doanh)') },
+                        { value: 'viewer', label: t('Viewer (Chỉ xem Data)') }
+                      ]}
+                      value={role}
+                      onChange={val => {
+                        const newRole = val.toString();
+                        setRole(newRole);
+                        setPermissionsJson(getDefaultPermissionsForRole(newRole));
+                      }}
+                      width="100%"
+                    />
+                  </div>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Footer */}
+          <div style={{
+            padding: '1rem 1.5rem',
+            borderTop: '1px solid var(--color-border)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            backgroundColor: 'var(--color-surface)'
+          }}>
+            <button type="button" className="btn outline" onClick={onClose} style={{ minWidth: '100px' }}>
+              {t('Hủy')}
+            </button>
+            <button 
+              type="submit" 
+              form="account-detail-form" 
+              disabled={isSaving} 
+              className="btn primary" 
+              style={{ minWidth: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            >
+              {isSaving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+              {isSaving ? t('Đang tạo...') : t('Tạo tài khoản')}
+            </button>
+          </div>
+        </motion.div>
+      </div>,
+      document.body
+    );
+  }
+
   return createPortal(
     <>
       <div
@@ -901,17 +1066,40 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Giới tính')}</label>
-                      <CustomSelect
-                        options={[
-                          { value: '', label: t('Chọn giới tính') },
-                          { value: 'Nam', label: t('Nam') },
-                          { value: 'Nữ', label: t('Nữ') },
-                          { value: 'Khác', label: t('Khác') }
-                        ]}
-                        value={gender}
-                        onChange={val => setGender(val.toString())}
-                        width="100%"
-                      />
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                        {[
+                          { value: 'Nam', label: '♂ ' + t('Nam') },
+                          { value: 'Nữ', label: '♀ ' + t('Nữ') },
+                          { value: 'Khác', label: '⚪ ' + t('Khác') }
+                        ].map(opt => {
+                          const isSelected = gender === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setGender(opt.value)}
+                              style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                fontSize: '0.8125rem',
+                                fontWeight: isSelected ? 600 : 500,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Số CCCD / Hộ chiếu')}</label>
@@ -927,16 +1115,40 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Tình trạng hôn nhân')}</label>
-                      <CustomSelect
-                        options={[
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                        {[
                           { value: 'single', label: t('Độc thân') },
                           { value: 'married', label: t('Đã kết hôn') },
                           { value: 'divorced', label: t('Đã ly hôn') }
-                        ]}
-                        value={maritalStatus}
-                        onChange={val => setMaritalStatus(val.toString())}
-                        width="100%"
-                      />
+                        ].map(opt => {
+                          const isSelected = maritalStatus === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setMaritalStatus(opt.value)}
+                              style={{
+                                flex: 1,
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                fontSize: '0.8125rem',
+                                fontWeight: isSelected ? 600 : 500,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Email cá nhân')}</label>
@@ -995,17 +1207,41 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Loại hợp đồng')}</label>
-                      <CustomSelect
-                        options={[
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                        {[
                           { value: 'official', label: t('Chính thức') },
                           { value: 'probation', label: t('Thử việc') },
                           { value: 'collaborator', label: t('Cộng tác viên') },
                           { value: 'internship', label: t('Thực tập sinh') }
-                        ]}
-                        value={contractType}
-                        onChange={val => setContractType(val.toString())}
-                        width="100%"
-                      />
+                        ].map(opt => {
+                          const isSelected = contractType === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setContractType(opt.value)}
+                              style={{
+                                flex: '1 1 calc(50% - 4px)',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                fontSize: '0.8125rem',
+                                fontWeight: isSelected ? 600 : 500,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Ngày vào làm')}</label>
@@ -1025,17 +1261,41 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('Trình độ học vấn')}</label>
-                      <CustomSelect
-                        options={[
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                        {[
                           { value: 'undergraduate', label: t('Đại học') },
                           { value: 'postgraduate', label: t('Sau đại học') },
                           { value: 'college', label: t('Cao đẳng') },
                           { value: 'highschool', label: t('Trung học') }
-                        ]}
-                        value={degree}
-                        onChange={val => setDegree(val.toString())}
-                        width="100%"
-                      />
+                        ].map(opt => {
+                          const isSelected = degree === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setDegree(opt.value)}
+                              style={{
+                                flex: '1 1 calc(50% - 4px)',
+                                padding: '8px 12px',
+                                borderRadius: '8px',
+                                border: isSelected ? '1px solid var(--color-primary)' : '1px solid var(--color-border)',
+                                background: isSelected ? 'rgba(189, 29, 45, 0.05)' : 'var(--color-bg)',
+                                color: isSelected ? 'var(--color-primary)' : 'var(--color-text)',
+                                fontSize: '0.8125rem',
+                                fontWeight: isSelected ? 600 : 500,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
