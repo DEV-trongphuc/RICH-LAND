@@ -897,7 +897,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
 
   // Find oldest active offered lead to accept
   const activeIncomingOffer = useMemo(() => {
-    if (effectiveRole !== 'sale') return null;
+    if (!['sale', 'manager'].includes(String(effectiveRole).toLowerCase())) return null;
     const unacceptedLeads = (data.leads || []).filter(
       (l: any) => !Number(l.is_accepted) && Number(l.lead_recall_minutes) > 0
     );
@@ -1335,7 +1335,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       
       if (wsUserId) {
         callsUrl += `&user_id=${wsUserId}`;
-      } else if (currentUser?.role === 'sale') {
+      } else if (['sale', 'manager'].includes(String(currentUser?.role).toLowerCase())) {
         callsUrl += `&user_id=${currentUser?.id}`;
       }
 
@@ -2427,7 +2427,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       });
 
       const payload = {
-        consultant_id: displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null),
+        consultant_id: ['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) ? displayUser?.consultant_id : (data.consultant_profile?.id || null),
         name: editName.trim(),
         avatar: editAvatar,
         work_start_time: editWorkStartTime,
@@ -2464,7 +2464,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const fetchLeaveHistory = async () => {
     setLoadingLeaves(true);
     try {
-      const saleId = displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
+      const saleId = ['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
       const query = saleId ? `get_consultant_leaves&consultant_id=${saleId}` : 'get_consultant_leaves';
       const res = await fetchAPI(query);
       if (res.success) {
@@ -2611,7 +2611,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     }
     setSavingLeave(true);
     try {
-      const saleId = displayUser?.role === 'sale' ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
+      const saleId = ['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) ? displayUser?.consultant_id : (data.consultant_profile?.id || null);
       const payload = {
         consultant_id: saleId,
         start_date: editLeaveStart,
@@ -2797,7 +2797,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
       let consultantParam = '';
-      if (displayUser?.role === 'sale') {
+      if (['sale', 'manager'].includes(String(displayUser?.role).toLowerCase())) {
         consultantParam = displayUser.name;
       }
       const json = await fetchAPI(`get_calendar_stats&year=${year}&month=${month}&consultant=${encodeURIComponent(consultantParam)}`);
@@ -2822,7 +2822,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     setDayDetails(null);
     try {
       let consultantParam = '';
-      if (displayUser?.role === 'sale') {
+      if (['sale', 'manager'].includes(String(displayUser?.role).toLowerCase())) {
         consultantParam = displayUser.name;
       }
       const json = await fetchAPI(`get_calendar_day_details&date=${dateStr}&consultant=${encodeURIComponent(consultantParam)}`);
@@ -2922,7 +2922,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
         : (reportDetails.trim() ? `${reportReasonType} (Ghi chú: ${reportDetails.trim()})` : reportReasonType);
       const payload = {
         lead_id: selectedLead.lead_id,
-        sale_id: displayUser?.role === 'sale' ? displayUser?.consultant_id : selectedLead.assigned_to,
+        sale_id: ['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) ? displayUser?.consultant_id : selectedLead.assigned_to,
         round_id: selectedLead.round_id,
         reason: finalReason
       };
@@ -8142,7 +8142,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           {/* RIGHT COLUMN: Vacation Toggle & Work Hour Settings */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-            {effectiveRole === 'sale' && (
+            {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
               <>
             {/* Vacation Status Card */}
             <div className="card" style={{
@@ -8203,7 +8203,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     {!portalVacationMode && !onLeave ? t('Sẵn sàng') :
                       onLeave ? t('Nghỉ phép') : t('Tạm ngưng')}
                   </span>
-                  {effectiveRole === 'sale' && (
+                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                     <div style={{ pointerEvents: onLeave ? 'none' : 'auto', opacity: onLeave ? 0.5 : 1 }}>
                       <ToggleSwitch
                         checked={!portalVacationMode}
@@ -8289,7 +8289,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   }}>
                     {nightShiftRegistered ? t('Đã đăng ký trực') : t('Chưa đăng ký')}
                   </span>
-                  {effectiveRole === 'sale' && (
+                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                     <div style={{ opacity: nightShiftCanToggle ? 1 : 0.5, pointerEvents: nightShiftCanToggle ? 'auto' : 'none' }}>
                       <ToggleSwitch
                         checked={nightShiftRegistered}
@@ -9347,7 +9347,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </button>
 
             {/* Quick Vacation Toggle for Sale */}
-            {displayUser?.role === 'sale' && (
+            {['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) && (
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -9518,7 +9518,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             </div>
 
             {/* Check-in Button */}
-            {displayUser?.role === 'sale' && (
+            {['sale', 'manager'].includes(String(displayUser?.role).toLowerCase()) && (
               <div style={{ marginRight: '0.75rem', display: 'flex', alignItems: 'center' }}>
                 {todayCheckIn ? (
                   <div

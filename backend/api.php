@@ -2703,9 +2703,36 @@ switch ($action) {
             $extraCondition .= " AND dl.status != 'silent'";
         }
 
-        // Security check for Sale role: can only view their own logs
+        // Security check for Sale and Manager roles
         if (isset($decodedUser['role']) && $decodedUser['role'] === 'sale') {
             $extraCondition .= " AND dl.assigned_to = " . (int)$currentSaleConsultantId;
+        } elseif (isset($decodedUser['role']) && $decodedUser['role'] === 'manager') {
+            $teamMemberIds = [];
+            $stmtTeam = $conn->prepare("SELECT id FROM consultants WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
+            $stmtTeam->bind_param("i", $decodedUser['user_id']);
+            $stmtTeam->execute();
+            $resTeam = $stmtTeam->get_result();
+            while ($tRow = $resTeam->fetch_assoc()) {
+                $teamMemberIds[] = (int)$tRow['id'];
+            }
+            $stmtTeam->close();
+            
+            // Also include the manager's own consultant ID
+            $stmtSelf = $conn->prepare("SELECT id FROM consultants WHERE email = ? LIMIT 1");
+            $stmtSelf->bind_param("s", $decodedUser['email']);
+            $stmtSelf->execute();
+            $selfRow = $stmtSelf->get_result()->fetch_assoc();
+            $stmtSelf->close();
+            if ($selfRow) {
+                $teamMemberIds[] = (int)$selfRow['id'];
+            }
+            
+            $teamMemberIds = array_unique(array_filter($teamMemberIds));
+            if (!empty($teamMemberIds)) {
+                $extraCondition .= " AND dl.assigned_to IN (" . implode(',', $teamMemberIds) . ")";
+            } else {
+                $extraCondition .= " AND dl.assigned_to = " . (int)($selfRow ? $selfRow['id'] : 0);
+            }
         }
 
         // Get total count first with all active filters
