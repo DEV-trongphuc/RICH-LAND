@@ -20,6 +20,46 @@ function assertPermTest(string $name, bool $assertion, ?string $detail = null) {
     ];
 }
 
+function cleanupPermTestRecords($db, $salesUserId = null, $viewerUserId = null, $adminUserId = null, $mgrUserId = null, $sales1UserId = null, $sales2UserId = null, $teamId = null, $leadS1Id = null, $leadS2Id = null, $repS1Id = null, $repS2Id = null, $repS1Id_2 = null, $logS1Id = null, $logS2Id = null, $fileS1Id = null, $quoteId = null, $supplierId = null, $companyId = null, $projectId = null, $productId = null) {
+    if (!$db) return;
+    try {
+        $db->exec("SET FOREIGN_KEY_CHECKS = 0");
+        $uIds = array_filter([$salesUserId, $viewerUserId, $adminUserId, $mgrUserId, $sales1UserId, $sales2UserId]);
+        if (!empty($uIds)) {
+            $placeholders = implode(',', array_fill(0, count($uIds), '?'));
+            $db->prepare("DELETE FROM users WHERE id IN ($placeholders)")->execute($uIds);
+        }
+        if ($teamId) $db->prepare("DELETE FROM teams WHERE id = ?")->execute([$teamId]);
+        $lIds = array_filter([$leadS1Id, $leadS2Id]);
+        if (!empty($lIds)) {
+            $placeholders = implode(',', array_fill(0, count($lIds), '?'));
+            $db->prepare("DELETE FROM leads WHERE id IN ($placeholders)")->execute($lIds);
+        }
+        $cIds = array_filter([$sales1UserId, $sales2UserId]);
+        if (!empty($cIds)) {
+            $placeholders = implode(',', array_fill(0, count($cIds), '?'));
+            $db->prepare("DELETE FROM consultant_leaves WHERE consultant_id IN ($placeholders)")->execute($cIds);
+        }
+        $rIds = array_filter([$repS1Id, $repS2Id, $repS1Id_2]);
+        if (!empty($rIds)) {
+            $placeholders = implode(',', array_fill(0, count($rIds), '?'));
+            $db->prepare("DELETE FROM data_reports WHERE id IN ($placeholders)")->execute($rIds);
+        }
+        $logIds = array_filter([$logS1Id, $logS2Id]);
+        if (!empty($logIds)) {
+            $placeholders = implode(',', array_fill(0, count($logIds), '?'));
+            $db->prepare("DELETE FROM distribution_logs WHERE id IN ($placeholders)")->execute($logIds);
+        }
+        if ($fileS1Id) $db->prepare("DELETE FROM cloud_files WHERE id = ?")->execute([$fileS1Id]);
+        if ($quoteId) $db->prepare("DELETE FROM quotes WHERE id = ?")->execute([$quoteId]);
+        if ($supplierId) $db->prepare("DELETE FROM suppliers WHERE id = ?")->execute([$supplierId]);
+        if ($companyId) $db->prepare("DELETE FROM companies WHERE id = ?")->execute([$companyId]);
+        if ($projectId) $db->prepare("DELETE FROM projects WHERE id = ?")->execute([$projectId]);
+        if ($productId) $db->prepare("DELETE FROM products WHERE id = ?")->execute([$productId]);
+        $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+    } catch (Throwable $e) {}
+}
+
 try {
     $db = Database::getInstance();
     $tenantId = 1;
@@ -696,23 +736,11 @@ try {
     );
 
     // Clean up temporary DB records
-    $db->exec("SET FOREIGN_KEY_CHECKS = 0");
-    $db->prepare("DELETE FROM users WHERE id IN (?, ?, ?, ?, ?, ?)")->execute([$salesUserId, $viewerUserId, $adminUserId, $mgrUserId, $sales1UserId, $sales2UserId]);
-    $db->prepare("DELETE FROM teams WHERE id = ?")->execute([$teamId]);
-    $db->prepare("DELETE FROM leads WHERE id IN (?, ?)")->execute([$leadS1Id, $leadS2Id]);
-    $db->prepare("DELETE FROM consultant_leaves WHERE consultant_id IN (?, ?)")->execute([$sales1UserId, $sales2UserId]);
-    $db->prepare("DELETE FROM data_reports WHERE id IN (?, ?, ?)")->execute([$repS1Id, $repS2Id, $repS1Id_2]);
-    $db->prepare("DELETE FROM distribution_logs WHERE id IN (?, ?)")->execute([$logS1Id, $logS2Id]);
-    $db->prepare("DELETE FROM cloud_files WHERE id = ?")->execute([$fileS1Id]);
-    $db->prepare("DELETE FROM quotes WHERE id = ?")->execute([$quoteId]);
-    if ($supplierId) $db->prepare("DELETE FROM suppliers WHERE id = ?")->execute([$supplierId]);
-    if ($companyId) $db->prepare("DELETE FROM companies WHERE id = ?")->execute([$companyId]);
-    if ($projectId) $db->prepare("DELETE FROM projects WHERE id = ?")->execute([$projectId]);
-    if ($productId) $db->prepare("DELETE FROM products WHERE id = ?")->execute([$productId]);
-    $db->exec("SET FOREIGN_KEY_CHECKS = 1");
+    cleanupPermTestRecords($db, $salesUserId ?? null, $viewerUserId ?? null, $adminUserId ?? null, $mgrUserId ?? null, $sales1UserId ?? null, $sales2UserId ?? null, $teamId ?? null, $leadS1Id ?? null, $leadS2Id ?? null, $repS1Id ?? null, $repS2Id ?? null, $repS1Id_2 ?? null, $logS1Id ?? null, $logS2Id ?? null, $fileS1Id ?? null, $quoteId ?? null, $supplierId ?? null, $companyId ?? null, $projectId ?? null, $productId ?? null);
 
 } catch (Throwable $t) {
     assertPermTest("System test exception", false, $t->getMessage() . " in " . $t->getFile() . " line " . $t->getLine());
+    cleanupPermTestRecords($db ?? null, $salesUserId ?? null, $viewerUserId ?? null, $adminUserId ?? null, $mgrUserId ?? null, $sales1UserId ?? null, $sales2UserId ?? null, $teamId ?? null, $leadS1Id ?? null, $leadS2Id ?? null, $repS1Id ?? null, $repS2Id ?? null, $repS1Id_2 ?? null, $logS1Id ?? null, $logS2Id ?? null, $fileS1Id ?? null, $quoteId ?? null, $supplierId ?? null, $companyId ?? null, $projectId ?? null, $productId ?? null);
 }
 
 echo json_encode([

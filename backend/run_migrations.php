@@ -1845,8 +1845,8 @@ try {
     $devUsers = [
         ['id' => 999, 'username' => 'admin', 'email' => 'turniodev@gmail.com', 'password' => 'pass123', 'name' => 'Admin Richland', 'role' => 'admin'],
         ['id' => 1000, 'username' => 'haidang', 'email' => 'dom.marketing.vn@gmail.com', 'password' => 'sale123', 'name' => 'Nguyễn Hải Đăng (Sale)', 'role' => 'sales'],
-        ['id' => 1001, 'username' => 'director', 'email' => 'director@richland.net', 'password' => 'director123', 'name' => 'Giám đốc kinh doanh Richland', 'role' => 'director'],
-        ['id' => 1002, 'username' => 'manager', 'email' => 'manager@richland.net', 'password' => 'manager123', 'name' => 'Trưởng nhóm Richland', 'role' => 'manager'],
+        ['id' => 1001, 'username' => 'director', 'email' => 'director@richland.test', 'password' => 'director123', 'name' => 'Giám đốc kinh doanh Richland', 'role' => 'director'],
+        ['id' => 1002, 'username' => 'manager', 'email' => 'manager@richland.test', 'password' => 'manager123', 'name' => 'Trưởng nhóm Richland', 'role' => 'manager'],
     ];
 
     foreach ($devUsers as $du) {
