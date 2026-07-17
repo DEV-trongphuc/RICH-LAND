@@ -1714,11 +1714,10 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
         }}
       >
         <div className="responsive-filter-item" style={{ position: 'relative', width: 240 }}>
-          <Search size={16} style={{ position: 'absolute', left: 12, top: 11, color: 'var(--color-text-muted)' }} />
           <input
             className="form-input"
             placeholder={t("Tìm theo tên, SĐT, email...")}
-            style={{ paddingLeft: 36, width: '100%', height: 38, fontSize: '0.875rem' }}
+            style={{ paddingLeft: 12, width: '100%', height: 38, fontSize: '0.875rem' }}
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
           />
@@ -1750,6 +1749,7 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
               <CustomSelect
                 options={[
                   { value: 'all', label: t('Tất cả trạng thái'), icon: <Filter size={16} /> },
+                  { value: 'not_contacted', label: t('Chưa liên hệ') },
                   { value: 'assigned', label: t('Đã chia') },
                   { value: 'compensation', label: t('Data Bù') },
                   { value: 'pending_work_hours', label: t('Chờ giờ làm') },

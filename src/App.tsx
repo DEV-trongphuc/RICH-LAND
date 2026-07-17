@@ -146,7 +146,9 @@ const AppTabs = () => {
           ? <SalePortal embedMode={true} activeTabProp="schedule" key="schedule" /> 
           : <PersonalAccount key="personal-account" />;
       case '/data':
-        return user?.role === 'sale' ? <Navigate to="/contacts" replace /> : <DataList key="data" />;
+        return user?.role === 'sale' 
+          ? <Navigate to={`/contacts${location.search}`} replace /> 
+          : <DataList key="data" />;
       case '/calendar':
         return user?.role === 'sale' ? <SalePortal embedMode={true} activeTabProp="calendar" key="calendar" /> : <DataList key="calendar" />;
       case '/databank':

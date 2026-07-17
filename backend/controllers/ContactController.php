@@ -26,6 +26,11 @@ class ContactController {
         $offset = ($page - 1) * $limit;
         $search  = $_GET['search'] ?? '';
         $status  = $_GET['status'] ?? '';
+        $segment = $_GET['segment'] ?? 'all';
+        if ($status === 'not_contacted') {
+            $segment = 'not_contacted';
+            $status = '';
+        }
         $source  = $_GET['source'] ?? '';
         $owner   = $_GET['owner_id'] ?? '';
         $stage   = $_GET['stage_id'] ?? '';
@@ -36,7 +41,6 @@ class ContactController {
         $from    = $_GET['from'] ?? '';
         $to      = $_GET['to'] ?? '';
         $dateField = $_GET['date_field'] ?? 'created_at';
-        $segment = $_GET['segment'] ?? 'all';
         $sortBy  = $_GET['sort'] ?? 'created_at';
         $order   = $_GET['order'] ?? 'DESC';
 

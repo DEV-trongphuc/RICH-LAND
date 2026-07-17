@@ -1649,7 +1649,14 @@ const DashboardInner = ({ isActive }: { isActive: boolean }) => {
                                   </div>
                                 </div>
                               </td>
-                              <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>{accepted}/{total}</td>
+                              <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>
+                                <div>{accepted}/{total}</div>
+                                {recalled > 0 && (
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500, marginTop: '2px' }}>
+                                    (bỏ qua {recalled} cơ hội)
+                                  </div>
+                                )}
+                              </td>
                               <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                                 <span style={{
                                   padding: '2px 6px',

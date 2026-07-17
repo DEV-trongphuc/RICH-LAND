@@ -2725,7 +2725,23 @@ switch ($action) {
 
         if (isset($_GET['status']) && $_GET['status'] !== 'all') {
             $statusInput = $_GET['status'];
-            if (strpos($statusInput, ',') !== false) {
+            if ($statusInput === 'not_contacted') {
+                $extraCondition .= " AND l.status != 'reminder' AND l.is_accepted = 1 AND l.source NOT IN ('ca_nhan', 'gioi_thieu') 
+                    AND EXISTS (
+                        SELECT 1 FROM contacts co 
+                        WHERE co.person_id = l.person_id AND co.owner_id = dl.assigned_to AND co.deleted_at IS NULL
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM activities act 
+                        JOIN contacts co2 ON act.related_type = 'contact' AND act.related_id = co2.id
+                        WHERE co2.person_id = l.person_id AND co2.owner_id = dl.assigned_to AND co2.deleted_at IS NULL
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM notes n 
+                        JOIN contacts co3 ON n.entity_type = 'contact' AND n.entity_id = co3.id
+                        WHERE co3.person_id = l.person_id AND co3.owner_id = dl.assigned_to AND co3.deleted_at IS NULL
+                    )";
+            } else if (strpos($statusInput, ',') !== false) {
                 $statuses = explode(',', $statusInput);
                 $escapedStatuses = array_map(function ($s) use ($conn) {
                     return "'" . $conn->real_escape_string(trim($s)) . "'";

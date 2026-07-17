@@ -295,6 +295,17 @@ export const ContactsPage: React.FC = () => {
   });
 
   useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam === 'not_contacted') {
+      setFilterStatus('not_contacted');
+      setActiveFilters(prev => ({ ...prev, status: 'not_contacted' }));
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('status');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     if (showCreateModal && user) {
       setCreateForm(prev => ({
         ...prev,
@@ -1100,6 +1111,7 @@ export const ContactsPage: React.FC = () => {
                       onChange={v => setFilterStatus(v)}
                       options={[
                         { value: '', label: 'Tất cả trạng thái' },
+                        { value: 'not_contacted', label: 'Chưa liên hệ' },
                         ...(pipelineStages.length > 0 
                           ? pipelineStages.map(s => ({ value: String(s.id), label: s.name }))
                           : [
