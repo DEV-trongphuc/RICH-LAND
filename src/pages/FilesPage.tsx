@@ -6,7 +6,7 @@ import {
   MoreVertical, File, Filter, LayoutGrid, List, Plus, Edit,
   Shield, User, Users, Globe, Clock, ChevronRight, HardDrive,
   Star, Clock3, FileJson, FileCode, FileImage, FileVideo,
-  MoreHorizontal, Share2, Info, Building2, Eye
+  MoreHorizontal, Share2, Info, Building2, Eye, Megaphone
 } from 'lucide-react';
 import api from '../api/axios';
 import { compressToWebP } from '../utils/imageCompress';
@@ -74,18 +74,33 @@ export const FilesPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [totalSizeBytes, setTotalSizeBytes] = useState(0);
 
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+
   // Restored modal state fields
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadFormData, setUploadFormData] = useState({ name: '', category: 'general', project_id: '' });
+  const [uploadFormData, setUploadFormData] = useState({ name: '', category: 'general', project_id: '', campaign_id: '' });
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingFile, setEditingFile] = useState<any>(null);
-  const [editFormData, setEditFormData] = useState({ id: 0, name: '', category: 'general', visibility: 'shared', project_id: '' });
+  const [editFormData, setEditFormData] = useState({ id: 0, name: '', category: 'general', visibility: 'shared', project_id: '', campaign_id: '' });
   const [showCatModal, setShowCatModal] = useState(false);
   const [editingCat, setEditingCat] = useState<any>(null);
   const [catFormData, setCatFormData] = useState({ label: '' });
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [activeFolderMenuId, setActiveFolderMenuId] = useState<string | null>(null);
+  const [activeFileMenuId, setActiveFileMenuId] = useState<number | null>(null);
+  const [editFileExt, setEditFileExt] = useState('');
+
+  const fetchCampaigns = async () => {
+    try {
+      const res = await api.get('/marketing-campaigns');
+      if (res.data && res.data.success) {
+        setCampaigns(res.data.data || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch campaigns', e);
+    }
+  };
 
   useEffect(() => {
     fetchCategories();
@@ -93,6 +108,7 @@ export const FilesPage: React.FC = () => {
 
   useEffect(() => {
     fetchProjects();
+    fetchCampaigns();
     const params = new URLSearchParams(window.location.search);
     const pId = params.get('project_id');
     if (pId) {
@@ -126,8 +142,9 @@ export const FilesPage: React.FC = () => {
 
   // fetchFiles with auto-reset page on filter change
   useEffect(() => {
+    setPage(1);
     fetchFiles();
-  }, [page, category, searchTerm, selectedProjectId, activeTab]);
+  }, [category, activeTab, selectedProjectId, searchTerm]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -140,7 +157,7 @@ export const FilesPage: React.FC = () => {
     }
 
     setSelectedFile(file);
-    setUploadFormData({ name: file.name.split('.')[0], category: category === 'all' ? 'general' : category, project_id: '' });
+    setUploadFormData({ name: file.name.split('.')[0], category: category === 'all' ? 'general' : category, project_id: '', campaign_id: '' });
     setShowUploadModal(true);
     // Clear input so same file can be selected again
     e.target.value = '';
@@ -159,6 +176,9 @@ export const FilesPage: React.FC = () => {
       if (uploadFormData.project_id) {
         formData.append('project_id', uploadFormData.project_id);
       }
+      if (uploadFormData.campaign_id) {
+        formData.append('campaign_id', uploadFormData.campaign_id);
+      }
 
       await api.post('/cloud-files', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -167,7 +187,7 @@ export const FilesPage: React.FC = () => {
       addToast('Đã tải tệp lên thành công', 'success');
       setShowUploadModal(false);
       setSelectedFile(null);
-      setUploadFormData({ name: '', category: 'general', project_id: '' });
+      setUploadFormData({ name: '', category: 'general', project_id: '', campaign_id: '' });
       fetchFiles();
     } catch (e: any) {
       addToast('Lỗi khi tải tệp lên', 'error');
@@ -178,12 +198,18 @@ export const FilesPage: React.FC = () => {
 
   const handleOpenEditModal = (fileObj: any) => {
     setEditingFile(fileObj);
+    const name = fileObj.name || '';
+    const lastDot = name.lastIndexOf('.');
+    const ext = lastDot !== -1 ? name.substring(lastDot) : '';
+    const baseName = lastDot !== -1 ? name.substring(0, lastDot) : name;
+    setEditFileExt(ext);
     setEditFormData({
       id: fileObj.id,
-      name: fileObj.name,
+      name: baseName,
       category: fileObj.category || 'general',
       visibility: fileObj.visibility || 'shared',
-      project_id: fileObj.project_id ? String(fileObj.project_id) : ''
+      project_id: fileObj.project_id ? String(fileObj.project_id) : '',
+      campaign_id: fileObj.campaign_id ? String(fileObj.campaign_id) : ''
     });
     setShowEditModal(true);
   };
@@ -193,10 +219,11 @@ export const FilesPage: React.FC = () => {
     setLoading(true);
     try {
       await api.put(`/cloud-files/${editFormData.id}`, {
-        name: editFormData.name,
+        name: editFormData.name + editFileExt,
         category: editFormData.category,
         visibility: editFormData.visibility,
-        project_id: editFormData.project_id || null
+        project_id: editFormData.project_id || null,
+        campaign_id: editFormData.campaign_id || null
       });
       addToast('Cập nhật tài liệu thành công', 'success');
       setShowEditModal(false);
@@ -633,7 +660,7 @@ export const FilesPage: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '8px', paddingBottom: '160px' }}>
             {loading ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
                 {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton" style={{ height: '192px', borderRadius: 'var(--radius-2xl)' }} />)}
@@ -678,7 +705,8 @@ export const FilesPage: React.FC = () => {
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '12px',
-                                  position: 'relative'
+                                  position: 'relative',
+                                  overflow: 'visible'
                                 }}
                                 className="hover-shadow"
                                 onClick={() => {
@@ -801,7 +829,7 @@ export const FilesPage: React.FC = () => {
                               layout
                               initial={{ opacity: 0, scale: 0.9 }}
                               animate={{ opacity: 1, scale: 1 }}
-                              style={{ background: 'var(--color-surface)', padding: '1.15rem', borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', position: 'relative' }}
+                              style={{ background: 'var(--color-surface)', padding: '1.15rem', borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.8)', boxShadow: '0 1px 3px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03)', position: 'relative', overflow: 'visible' }}
                               className="hover-shadow"
                             >
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '0.75rem' }}>
@@ -813,19 +841,180 @@ export const FilesPage: React.FC = () => {
                                     {f.name}
                                   </h4>
                                 </div>
-                                <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={14} /></button>}
-                                  <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={14} /></button>
-                                  {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={14} /></button>}
+                                <div style={{ position: 'relative' }}>
+                                  <button 
+                                    className="btn-icon-bare" 
+                                    title="Thao tác" 
+                                    onClick={() => setActiveFileMenuId(activeFileMenuId === f.id ? null : f.id)}
+                                    style={{ padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  >
+                                    <MoreHorizontal size={16} />
+                                  </button>
+
+                                  {activeFileMenuId === f.id && (
+                                    <>
+                                      {/* Click overlay to close dropdown */}
+                                      <div 
+                                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                                        onClick={() => setActiveFileMenuId(null)}
+                                      />
+                                      <div 
+                                        style={{ 
+                                          position: 'absolute', 
+                                          right: 0, 
+                                          top: '100%', 
+                                          marginTop: '4px',
+                                          background: 'var(--color-surface)', 
+                                          borderRadius: '8px', 
+                                          border: '1px solid var(--color-border)', 
+                                          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                          padding: '4px', 
+                                          zIndex: 1000, 
+                                          display: 'flex', 
+                                          flexDirection: 'column', 
+                                          gap: '2px',
+                                          minWidth: '120px'
+                                        }}
+                                      >
+                                        <a 
+                                          href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{ 
+                                            padding: '6px 12px', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: 700, 
+                                            width: '100%', 
+                                            textAlign: 'left', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px', 
+                                            borderRadius: '6px',
+                                            color: 'var(--color-text-light)',
+                                            textDecoration: 'none'
+                                          }} 
+                                          onClick={() => setActiveFileMenuId(null)}
+                                        >
+                                          <Eye size={14} /> Xem tài liệu
+                                        </a>
+                                        <a 
+                                          href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                          download={f.name}
+                                          style={{ 
+                                            padding: '6px 12px', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: 700, 
+                                            width: '100%', 
+                                            textAlign: 'left', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px', 
+                                            borderRadius: '6px',
+                                            color: 'var(--color-text-light)',
+                                            textDecoration: 'none'
+                                          }} 
+                                          onClick={() => setActiveFileMenuId(null)}
+                                        >
+                                          <Download size={14} /> Tải xuống
+                                        </a>
+                                        {!isViewer && (!isSale || activeTab === 'personal') && (
+                                          <button 
+                                            className="btn-icon-bare" 
+                                            style={{ 
+                                              padding: '6px 12px', 
+                                              fontSize: '0.75rem', 
+                                              fontWeight: 700, 
+                                              width: '100%', 
+                                              textAlign: 'left', 
+                                              display: 'flex', 
+                                              alignItems: 'center', 
+                                              gap: '6px', 
+                                              borderRadius: '6px',
+                                              color: 'var(--color-text-light)',
+                                              border: 'none',
+                                              background: 'none',
+                                              cursor: 'pointer'
+                                            }} 
+                                            onClick={() => {
+                                              setActiveFileMenuId(null);
+                                              handleOpenEditModal(f);
+                                            }}
+                                          >
+                                            <Edit size={14} /> Chỉnh sửa
+                                          </button>
+                                        )}
+                                        <button 
+                                          className="btn-icon-bare" 
+                                          style={{ 
+                                            padding: '6px 12px', 
+                                            fontSize: '0.75rem', 
+                                            fontWeight: 700, 
+                                            width: '100%', 
+                                            textAlign: 'left', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px', 
+                                            borderRadius: '6px',
+                                            color: 'var(--color-text-light)',
+                                            border: 'none',
+                                            background: 'none',
+                                            cursor: 'pointer'
+                                          }} 
+                                          onClick={() => {
+                                            setActiveFileMenuId(null);
+                                            addToast('Đã sao chép link liên kết!', 'success');
+                                            navigator.clipboard.writeText(`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`);
+                                          }}
+                                        >
+                                          <Share2 size={14} /> Chia sẻ
+                                        </button>
+                                        {!isViewer && (!isSale || activeTab === 'personal') && (
+                                          <button 
+                                            className="btn-icon-bare" 
+                                            style={{ 
+                                              padding: '6px 12px', 
+                                              fontSize: '0.75rem', 
+                                              fontWeight: 700, 
+                                              width: '100%', 
+                                              textAlign: 'left', 
+                                              display: 'flex', 
+                                              alignItems: 'center', 
+                                              gap: '6px', 
+                                              borderRadius: '6px',
+                                              color: 'var(--color-danger)',
+                                              border: 'none',
+                                              background: 'none',
+                                              cursor: 'pointer'
+                                            }} 
+                                            onClick={() => {
+                                              setActiveFileMenuId(null);
+                                              handleDelete(f.id);
+                                            }}
+                                          >
+                                            <Trash2 size={14} /> Xóa
+                                          </button>
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               
-                              <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: f.project_name ? '0.5rem' : '1.15rem', paddingLeft: '40px' }}>
+                              <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: (f.project_name || f.campaign_name) ? '0.5rem' : '1.15rem', paddingLeft: '40px' }}>
                                 {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
                               </p>
-                              {f.project_name && (
-                                <div style={{ gap: '4px', background: 'rgba(99, 102, 241, 0.08)', color: '#4f46e5', padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: 800, marginBottom: '1.15rem', display: 'inline-flex', alignItems: 'center', marginLeft: '40px' }}>
-                                  <Building2 size={10} /> {f.project_name}
+                              {(f.project_name || f.campaign_name) && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginLeft: '40px', marginBottom: '1.15rem' }}>
+                                  {f.project_name && (
+                                    <div style={{ gap: '4px', background: 'rgba(99, 102, 241, 0.08)', color: '#4f46e5', padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: 800, display: 'inline-flex', alignItems: 'center' }}>
+                                      <Building2 size={10} /> {f.project_name}
+                                    </div>
+                                  )}
+                                  {f.campaign_name && (
+                                    <div style={{ gap: '4px', background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', padding: '2px 8px', borderRadius: '6px', fontSize: '9px', fontWeight: 800, display: 'inline-flex', alignItems: 'center' }}>
+                                      <Megaphone size={10} /> {f.campaign_name}
+                                    </div>
+                                  )}
                                 </div>
                               )}
 
@@ -837,27 +1026,6 @@ export const FilesPage: React.FC = () => {
                                     <Clock3 size={9} /> {new Date(f.created_at).toLocaleDateString('vi-VN')}
                                   </span>
                                 </div>
-                              </div>
-
-                              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                                <a 
-                                  href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="btn secondary" 
-                                  style={{ flex: 1, padding: '7px', fontSize: '0.75rem', borderRadius: '8px', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', border: '1px solid var(--color-border)' }}
-                                >
-                                  <Eye size={13} /> Xem tài liệu
-                                </a>
-                                <a 
-                                  href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                                  download={f.name}
-                                  className="btn secondary" 
-                                  style={{ padding: '7px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)' }}
-                                  title="Tải xuống"
-                                >
-                                  <Download size={15} />
-                                </a>
                               </div>
                             </motion.div>
                           ))}
@@ -1016,10 +1184,19 @@ export const FilesPage: React.FC = () => {
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                                       <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
-                                      {f.project_name && (
-                                        <span style={{ fontSize: '10px', color: '#4f46e5', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px', marginTop: '2px' }}>
-                                          <Building2 size={10} /> {f.project_name}
-                                        </span>
+                                      {(f.project_name || f.campaign_name) && (
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                                          {f.project_name && (
+                                            <span style={{ fontSize: '10px', color: '#4f46e5', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                              <Building2 size={10} /> {f.project_name}
+                                            </span>
+                                          )}
+                                          {f.campaign_name && (
+                                            <span style={{ fontSize: '10px', color: '#10b981', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                                              <Megaphone size={10} /> {f.campaign_name}
+                                            </span>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
                                   </div>
@@ -1040,28 +1217,166 @@ export const FilesPage: React.FC = () => {
                                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{new Date(f.created_at).toLocaleDateString('vi-VN')}</span>
                               </td>
                               <td data-label="Hành động" style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                    {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" title="Sửa" onClick={() => handleOpenEditModal(f)}><Edit size={18} /></button>}
-                                    <a 
-                                      href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                                      target="_blank"
-                                      rel="noreferrer"
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                  <div style={{ position: 'relative' }}>
+                                    <button 
                                       className="btn-icon-bare" 
-                                      title="Xem tài liệu"
+                                      title="Thao tác" 
+                                      onClick={() => setActiveFileMenuId(activeFileMenuId === f.id ? null : f.id)}
+                                      style={{ padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
-                                      <Eye size={18} />
-                                    </a>
-                                    <a 
-                                      href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
-                                      download={f.name}
-                                      className="btn-icon-bare" 
-                                      title="Tải xuống"
-                                    >
-                                      <Download size={18} />
-                                    </a>
-                                    {!isViewer && (!isSale || activeTab === 'personal') && <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>}
-                                    <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
+                                      <MoreHorizontal size={18} />
+                                    </button>
+
+                                    {activeFileMenuId === f.id && (
+                                      <>
+                                        {/* Click overlay to close dropdown */}
+                                        <div 
+                                          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} 
+                                          onClick={() => setActiveFileMenuId(null)}
+                                        />
+                                        <div 
+                                          style={{ 
+                                            position: 'absolute', 
+                                            right: 0, 
+                                            top: '100%', 
+                                            marginTop: '4px',
+                                            background: 'var(--color-surface)', 
+                                            borderRadius: '8px', 
+                                            border: '1px solid var(--color-border)', 
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                                            padding: '4px', 
+                                            zIndex: 1000, 
+                                            display: 'flex', 
+                                            flexDirection: 'column', 
+                                            gap: '2px',
+                                            minWidth: '120px',
+                                            textAlign: 'left'
+                                          }}
+                                        >
+                                          <a 
+                                            href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            style={{ 
+                                              padding: '6px 12px', 
+                                              fontSize: '0.75rem', 
+                                              fontWeight: 700, 
+                                              width: '100%', 
+                                              textAlign: 'left', 
+                                              display: 'flex', 
+                                              alignItems: 'center', 
+                                              gap: '6px', 
+                                              borderRadius: '6px',
+                                              color: 'var(--color-text-light)',
+                                              textDecoration: 'none'
+                                            }} 
+                                            onClick={() => setActiveFileMenuId(null)}
+                                          >
+                                            <Eye size={14} /> Xem tài liệu
+                                          </a>
+                                          <a 
+                                            href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                            download={f.name}
+                                            style={{ 
+                                              padding: '6px 12px', 
+                                              fontSize: '0.75rem', 
+                                              fontWeight: 700, 
+                                              width: '100%', 
+                                              textAlign: 'left', 
+                                              display: 'flex', 
+                                              alignItems: 'center', 
+                                              gap: '6px', 
+                                              borderRadius: '6px',
+                                              color: 'var(--color-text-light)',
+                                              textDecoration: 'none'
+                                            }} 
+                                            onClick={() => setActiveFileMenuId(null)}
+                                          >
+                                            <Download size={14} /> Tải xuống
+                                          </a>
+                                          {!isViewer && (!isSale || activeTab === 'personal') && (
+                                            <button 
+                                              className="btn-icon-bare" 
+                                              style={{ 
+                                                padding: '6px 12px', 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 700, 
+                                                width: '100%', 
+                                                textAlign: 'left', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '6px', 
+                                                borderRadius: '6px',
+                                                color: 'var(--color-text-light)',
+                                                border: 'none',
+                                                background: 'none',
+                                                cursor: 'pointer'
+                                              }} 
+                                              onClick={() => {
+                                                setActiveFileMenuId(null);
+                                                handleOpenEditModal(f);
+                                              }}
+                                            >
+                                              <Edit size={14} /> Chỉnh sửa
+                                            </button>
+                                          )}
+                                          <button 
+                                            className="btn-icon-bare" 
+                                            style={{ 
+                                              padding: '6px 12px', 
+                                              fontSize: '0.75rem', 
+                                              fontWeight: 700, 
+                                              width: '100%', 
+                                              textAlign: 'left', 
+                                              display: 'flex', 
+                                              alignItems: 'center', 
+                                              gap: '6px', 
+                                              borderRadius: '6px',
+                                              color: 'var(--color-text-light)',
+                                              border: 'none',
+                                              background: 'none',
+                                              cursor: 'pointer'
+                                            }} 
+                                            onClick={() => {
+                                              setActiveFileMenuId(null);
+                                              addToast('Đã sao chép link liên kết!', 'success');
+                                              navigator.clipboard.writeText(`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`);
+                                            }}
+                                          >
+                                            <Share2 size={14} /> Chia sẻ
+                                          </button>
+                                          {!isViewer && (!isSale || activeTab === 'personal') && (
+                                            <button 
+                                              className="btn-icon-bare" 
+                                              style={{ 
+                                                padding: '6px 12px', 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 700, 
+                                                width: '100%', 
+                                                textAlign: 'left', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '6px', 
+                                                borderRadius: '6px',
+                                                color: 'var(--color-danger)',
+                                                border: 'none',
+                                                background: 'none',
+                                                cursor: 'pointer'
+                                              }} 
+                                              onClick={() => {
+                                                setActiveFileMenuId(null);
+                                                handleDelete(f.id);
+                                              }}
+                                            >
+                                              <Trash2 size={14} /> Xóa
+                                            </button>
+                                          )}
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -1091,7 +1406,7 @@ export const FilesPage: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="modal-sheet"
-              style={{ width: '400px' }}
+              style={{ width: '560px' }}
             >
               <div className="modal-header">
                 <h3>Tải tài liệu mới</h3>
@@ -1116,26 +1431,69 @@ export const FilesPage: React.FC = () => {
                   />
                 </div>
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Danh mục</label>
-                  <CustomSelect
-                    options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.label }))}
-                    value={uploadFormData.category}
-                    onChange={val => setUploadFormData({ ...uploadFormData, category: String(val) })}
-                  />
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Danh mục</label>
+                    <CustomSelect
+                      options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.label }))}
+                      value={uploadFormData.category}
+                      onChange={val => setUploadFormData({ ...uploadFormData, category: String(val) })}
+                    />
+                  </div>
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Dự án liên kết</label>
-                  <CustomSelect
-                    options={[
-                      { value: '', label: 'Không liên kết' },
-                      ...projects.map(p => ({ value: String(p.id), label: p.name }))
-                    ]}
-                    value={uploadFormData.project_id}
-                    onChange={val => setUploadFormData({ ...uploadFormData, project_id: String(val) })}
-                    placeholder="Chọn dự án..."
-                  />
+                  <div style={{ margin: 0 }} />
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Dự án liên kết</label>
+                    <CustomSelect
+                      searchable
+                      direction="up"
+                      options={[
+                        { value: '', label: 'Không liên kết' },
+                        ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                      ]}
+                      value={uploadFormData.project_id}
+                      onChange={val => {
+                        const nextProj = String(val);
+                        let nextCamp = uploadFormData.campaign_id;
+                        if (nextCamp) {
+                          const c = campaigns.find(x => String(x.id) === nextCamp);
+                          if (c && String(c.project_id) !== nextProj) {
+                            nextCamp = '';
+                          }
+                        }
+                        setUploadFormData({ ...uploadFormData, project_id: nextProj, campaign_id: nextCamp });
+                      }}
+                      placeholder="Chọn dự án..."
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Chiến dịch liên kết</label>
+                    <CustomSelect
+                      searchable
+                      direction="up"
+                      options={[
+                        { value: '', label: 'Không liên kết' },
+                        ...campaigns
+                          .filter(c => !uploadFormData.project_id || String(c.project_id) === uploadFormData.project_id)
+                          .map(c => ({ value: String(c.id), label: c.name }))
+                      ]}
+                      value={uploadFormData.campaign_id}
+                      onChange={val => {
+                        const nextCamp = String(val);
+                        let nextProj = uploadFormData.project_id;
+                        if (nextCamp) {
+                          const c = campaigns.find(x => String(x.id) === nextCamp);
+                          if (c && c.project_id) {
+                            nextProj = String(c.project_id);
+                          }
+                        }
+                        setUploadFormData({ ...uploadFormData, campaign_id: nextCamp, project_id: nextProj });
+                      }}
+                      placeholder="Chọn chiến dịch..."
+                    />
+                  </div>
                 </div>
               </div>
               <div className="modal-footer" style={{ gap: '1rem' }}>
@@ -1160,7 +1518,7 @@ export const FilesPage: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="modal-sheet"
-              style={{ width: '400px' }}
+              style={{ width: '560px' }}
             >
               <div className="modal-header">
                 <h3>Chỉnh sửa tài liệu</h3>
@@ -1169,46 +1527,104 @@ export const FilesPage: React.FC = () => {
               <div className="modal-body">
                 <div className="form-group">
                   <label className="form-label">Tên hiển thị</label>
-                  <input 
-                    className="form-input" 
-                    value={editFormData.name} 
-                    onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
-                    placeholder="Nhập tên tài liệu..."
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <input 
+                      className="form-input" 
+                      value={editFormData.name} 
+                      onChange={e => setEditFormData({ ...editFormData, name: e.target.value })}
+                      placeholder="Nhập tên tài liệu..."
+                      style={{ flex: 1 }}
+                    />
+                    {editFileExt && (
+                      <span style={{ 
+                        background: 'var(--color-bg)', 
+                        padding: '0.625rem 0.85rem', 
+                        borderRadius: 'var(--radius-lg)', 
+                        border: '1px solid var(--color-border)', 
+                        color: 'var(--color-text-muted)', 
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {editFileExt}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Danh mục</label>
-                  <CustomSelect
-                    options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.label }))}
-                    value={editFormData.category}
-                    onChange={val => setEditFormData({ ...editFormData, category: String(val) })}
-                  />
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Danh mục</label>
+                    <CustomSelect
+                      options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.label }))}
+                      value={editFormData.category}
+                      onChange={val => setEditFormData({ ...editFormData, category: String(val) })}
+                    />
+                  </div>
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Quyền riêng tư</label>
-                  <CustomSelect
-                    options={[
-                      { value: 'shared', label: 'Chia sẻ (Shared)' },
-                      { value: 'personal', label: 'Cá nhân (Personal)' }
-                    ]}
-                    value={editFormData.visibility}
-                    onChange={val => setEditFormData({ ...editFormData, visibility: String(val) })}
-                  />
-                </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Quyền riêng tư</label>
+                    <CustomSelect
+                      options={[
+                        { value: 'shared', label: 'Chia sẻ (Shared)' },
+                        { value: 'personal', label: 'Cá nhân (Personal)' }
+                      ]}
+                      value={editFormData.visibility}
+                      onChange={val => setEditFormData({ ...editFormData, visibility: String(val) })}
+                    />
+                  </div>
 
-                <div className="form-group" style={{ marginTop: '1rem' }}>
-                  <label className="form-label">Dự án liên kết</label>
-                  <CustomSelect
-                    options={[
-                      { value: '', label: 'Không liên kết' },
-                      ...projects.map(p => ({ value: String(p.id), label: p.name }))
-                    ]}
-                    value={editFormData.project_id}
-                    onChange={val => setEditFormData({ ...editFormData, project_id: String(val) })}
-                    placeholder="Chọn dự án..."
-                  />
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Dự án liên kết</label>
+                    <CustomSelect
+                      searchable
+                      direction="up"
+                      options={[
+                        { value: '', label: 'Không liên kết' },
+                        ...projects.map(p => ({ value: String(p.id), label: p.name }))
+                      ]}
+                      value={editFormData.project_id}
+                      onChange={val => {
+                        const nextProj = String(val);
+                        let nextCamp = editFormData.campaign_id;
+                        if (nextCamp) {
+                          const c = campaigns.find(x => String(x.id) === nextCamp);
+                          if (c && String(c.project_id) !== nextProj) {
+                            nextCamp = '';
+                          }
+                        }
+                        setEditFormData({ ...editFormData, project_id: nextProj, campaign_id: nextCamp });
+                      }}
+                      placeholder="Chọn dự án..."
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Chiến dịch liên kết</label>
+                    <CustomSelect
+                      searchable
+                      direction="up"
+                      options={[
+                        { value: '', label: 'Không liên kết' },
+                        ...campaigns
+                          .filter(c => !editFormData.project_id || String(c.project_id) === editFormData.project_id)
+                          .map(c => ({ value: String(c.id), label: c.name }))
+                      ]}
+                      value={editFormData.campaign_id}
+                      onChange={val => {
+                        const nextCamp = String(val);
+                        let nextProj = editFormData.project_id;
+                        if (nextCamp) {
+                          const c = campaigns.find(x => String(x.id) === nextCamp);
+                          if (c && c.project_id) {
+                            nextProj = String(c.project_id);
+                          }
+                        }
+                        setEditFormData({ ...editFormData, campaign_id: nextCamp, project_id: nextProj });
+                      }}
+                      placeholder="Chọn chiến dịch..."
+                    />
+                  </div>
                 </div>
               </div>
               <div className="modal-footer" style={{ gap: '1rem' }}>

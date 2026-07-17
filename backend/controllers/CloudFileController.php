@@ -9,6 +9,9 @@ class CloudFileController {
         try {
             $this->db->exec("ALTER TABLE cloud_files ADD COLUMN contact_id INT NULL");
         } catch (Exception $e) {}
+        try {
+            $this->db->exec("ALTER TABLE cloud_files ADD COLUMN campaign_id INT NULL");
+        } catch (Exception $e) {}
     }
 
     public function index(array $auth): void {
@@ -20,6 +23,7 @@ class CloudFileController {
         $cat    = $_GET['category'] ?? '';
         $contactId = $_GET['contact_id'] ?? '';
         $projectId = $_GET['project_id'] ?? '';
+        $campaignId = $_GET['campaign_id'] ?? '';
 
         $role = $auth['role'] ?? '';
         $isSale = $role === 'sales' || $role === 'sale';
@@ -62,6 +66,11 @@ class CloudFileController {
             $params[] = (int)$projectId;
         }
 
+        if ($campaignId !== '') {
+            $where[] = "cf.campaign_id = ?";
+            $params[] = (int)$campaignId;
+        }
+
         $w = implode(' AND ', $where);
 
         $cnt = $this->db->prepare("SELECT COUNT(*) FROM cloud_files cf WHERE $w");
@@ -69,11 +78,12 @@ class CloudFileController {
         $total = (int)$cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            SELECT cf.*, u.full_name as uploader_name, u2.full_name as editor_name, p.name as project_name
+            SELECT cf.*, u.full_name as uploader_name, u2.full_name as editor_name, p.name as project_name, mc.name as campaign_name
             FROM cloud_files cf
             LEFT JOIN users u ON cf.uploaded_by = u.id
             LEFT JOIN users u2 ON cf.updated_by = u2.id
             LEFT JOIN projects p ON cf.project_id = p.id
+            LEFT JOIN marketing_campaigns mc ON cf.campaign_id = mc.id
             WHERE $w
             ORDER BY cf.created_at DESC
             LIMIT $limit OFFSET $offset
@@ -127,6 +137,7 @@ class CloudFileController {
         $visibility = $_POST['visibility'] ?? 'shared';
         $project_id = isset($_POST['project_id']) && $_POST['project_id'] !== '' ? (int)$_POST['project_id'] : null;
         $contact_id = isset($_POST['contact_id']) && $_POST['contact_id'] !== '' ? (int)$_POST['contact_id'] : null;
+        $campaign_id = isset($_POST['campaign_id']) && $_POST['campaign_id'] !== '' ? (int)$_POST['campaign_id'] : null;
 
         // 1. Prepare directory
         $targetDir = UPLOAD_DIR . "/cloud/$tid";
@@ -147,14 +158,64 @@ class CloudFileController {
 
         // 4. Save to DB
         $stmt = $this->db->prepare("
-            INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility, project_id, contact_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO cloud_files (tenant_id, uploaded_by, name, file_path, mime_type, file_size, category, visibility, project_id, contact_id, campaign_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $tid, $uid, $name,
             $dbPath, $file['type'], $file['size'],
-            $category, $visibility, $project_id, $contact_id
+            $category, $visibility, $project_id, $contact_id, $campaign_id
         ]);
+
+        // Auto notification for contact document upload
+        if ($contact_id) {
+            $stmtOwner = $this->db->prepare("SELECT owner_id, CONCAT(first_name, ' ', COALESCE(last_name, '')) as contact_name FROM contacts WHERE id = ? AND tenant_id = ?");
+            $stmtOwner->execute([$contact_id, $tid]);
+            $contactInfo = $stmtOwner->fetch();
+            if ($contactInfo) {
+                $ownerId = (int)$contactInfo['owner_id'];
+                $contactName = $contactInfo['contact_name'];
+                
+                // Get uploader name
+                $uploaderName = 'Hệ thống';
+                $stmtUser = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+                $stmtUser->execute([$uid]);
+                $uRow = $stmtUser->fetch();
+                if ($uRow && !empty($uRow['full_name'])) {
+                    $uploaderName = $uRow['full_name'];
+                }
+
+                $notifyUids = [];
+                if ($ownerId > 0 && $ownerId !== $uid) {
+                    $notifyUids[] = $ownerId;
+                }
+                
+                // Also notify managers of the owner's team
+                if ($ownerId > 0) {
+                    $stmtMgr = $this->db->prepare("
+                        SELECT leader_id FROM teams 
+                        WHERE id = (SELECT team_id FROM users WHERE id = ?) 
+                          AND leader_id IS NOT NULL 
+                          AND leader_id != ?
+                    ");
+                    $stmtMgr->execute([$ownerId, $uid]);
+                    $mgrId = $stmtMgr->fetchColumn();
+                    if ($mgrId) {
+                        $notifyUids[] = (int)$mgrId;
+                    }
+                }
+
+                $notifyUids = array_unique($notifyUids);
+                if (!empty($notifyUids)) {
+                    $title = "Tài liệu khách hàng mới";
+                    $body = "$uploaderName đã tải lên tài liệu mới \"$name\" cho khách hàng $contactName";
+                    $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'contact_document', ?)");
+                    foreach ($notifyUids as $nUid) {
+                        $stmtNotif->execute([$nUid, $tid, $title, $body, "/contacts?open_contact_id=$contact_id"]);
+                    }
+                }
+            }
+        }
 
         // Auto notification for consultant document upload
         if (strpos($category, 'consultant_') === 0) {
@@ -199,6 +260,7 @@ class CloudFileController {
         $category = trim($b['category'] ?? 'general');
         $visibility = trim($b['visibility'] ?? 'shared');
         $project_id = isset($b['project_id']) && $b['project_id'] !== '' ? (int)$b['project_id'] : null;
+        $campaign_id = isset($b['campaign_id']) && $b['campaign_id'] !== '' ? (int)$b['campaign_id'] : null;
 
         if (!$name) {
             respond(422, null, 'Tên tệp là bắt buộc', false);
@@ -223,10 +285,10 @@ class CloudFileController {
 
         $stmt = $this->db->prepare("
             UPDATE cloud_files 
-            SET name = ?, category = ?, visibility = ?, project_id = ?, updated_by = ?
+            SET name = ?, category = ?, visibility = ?, project_id = ?, campaign_id = ?, updated_by = ?
             WHERE id = ? AND tenant_id = ?
         ");
-        $stmt->execute([$name, $category, $visibility, $project_id, $auth['user_id'], $id, $tid]);
+        $stmt->execute([$name, $category, $visibility, $project_id, $campaign_id, $auth['user_id'], $id, $tid]);
 
         respond(200, null, 'Cập nhật thông tin tệp thành công');
     }

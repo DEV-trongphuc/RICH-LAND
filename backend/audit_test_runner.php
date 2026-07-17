@@ -2679,6 +2679,13 @@ try {
     // ─────────────────────────────────────────────────────────────────
     // TEST 108: Priority Weight Lead Assignment (Receive Ratio)
     // ─────────────────────────────────────────────────────────────────
+    // Reset limits, logs and active contacts to avoid interference from earlier E2E tests
+    $db->prepare("DELETE FROM contacts WHERE owner_id IN (?, ?)")->execute([$saleUserId, $sale2UserId]);
+    $db->prepare("DELETE FROM distribution_logs WHERE assigned_to IN (?, ?)")->execute([$saleUserId, $sale2UserId]);
+    $db->prepare("UPDATE system_settings SET setting_value = '9999' WHERE setting_key = 'databank_limit_per_day'")->execute();
+    $db->prepare("UPDATE system_settings SET setting_value = '9999' WHERE setting_key = 'databank_limit_per_hour'")->execute();
+    $db->prepare("UPDATE system_settings SET setting_value = '9999' WHERE setting_key = 'databank_limit_per_month'")->execute();
+
     // 1. Ensure sale2UserId is active in consultants and users
     $db->prepare("UPDATE consultants SET status = 'active', vacation_mode = 0 WHERE id = ?")->execute([$sale2UserId]);
     $db->prepare("UPDATE users SET status = 'active', vacation_mode = 0 WHERE id = ?")->execute([$sale2UserId]);

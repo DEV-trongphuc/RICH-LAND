@@ -86,6 +86,9 @@ try {
     $migrationsOutput = ob_get_clean();
     echo "   [MIGRATIONS LOG]:\n" . trim($migrationsOutput) . "\n";
     echo "   [SUCCESS] Migrations run successfully.\n";
+    try {
+        $conn->query("ALTER TABLE users ADD COLUMN permissions_json LONGTEXT NULL");
+    } catch (Exception $e) {}
     
     // 4. Seed beautiful and realistic test data
     echo "\n4. Seeding realistic test data...\n";
@@ -253,14 +256,30 @@ try {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     ");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN start_date DATE DEFAULT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN end_date DATE DEFAULT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN project_id INT NULL DEFAULT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN user_ids TEXT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN manager_ids TEXT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN document_ids TEXT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
-    $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN reference_url VARCHAR(500) NULL");
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN start_date DATE DEFAULT NULL");
+    } catch (Exception $e) {}
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN end_date DATE DEFAULT NULL");
+    } catch (Exception $e) {}
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN project_id INT NULL DEFAULT NULL");
+    } catch (Exception $e) {}
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN user_ids TEXT NULL");
+    } catch (Exception $e) {}
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN manager_ids TEXT NULL");
+    } catch (Exception $e) {}
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN document_ids TEXT NULL");
+    } catch (Exception $e) {}
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN folder_path VARCHAR(500) DEFAULT NULL");
+    } catch (Exception $e) {}
+    try {
+        $conn->query("ALTER TABLE marketing_campaigns ADD COLUMN reference_url VARCHAR(500) NULL");
+    } catch (Exception $e) {}
 
     $stmtCamp = $conn->prepare("INSERT INTO marketing_campaigns (tenant_id, name, description, status, project_id, user_ids) VALUES (1, 'Chiến dịch Vinhomes Vũ Yên Hè 2026', 'Tập trung phân phối biệt thự đảo sinh thái Vũ Yên', 'active', ?, ?)");
     $projIdVal = (int)$vinId;

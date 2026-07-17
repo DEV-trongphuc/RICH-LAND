@@ -8187,6 +8187,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="form-group">
                   <label className="form-label">Dự án *</label>
                   <CustomSelect
+                    searchable
                     options={projectsList.map(p => ({
                       value: String(p.id),
                       label: p.name

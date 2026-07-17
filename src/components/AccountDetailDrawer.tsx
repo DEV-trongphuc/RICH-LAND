@@ -458,7 +458,7 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
       const fd = new FormData();
       fd.append('file', file);
       fd.append('category', `consultant_${account.id}`);
-      fd.append('visibility', 'shared');
+      fd.append('visibility', 'personal');
       fd.append('name', file.name);
 
       const res = await fetchAPI('cloud-files', {

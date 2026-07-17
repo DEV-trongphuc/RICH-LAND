@@ -8781,7 +8781,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         formData.append('file', file);
                         formData.append('name', file.name);
                         formData.append('category', `consultant_${targetConsultantId}`);
-                        formData.append('visibility', 'shared');
+                        formData.append('visibility', 'personal');
                         
                         const uploadRes = await api.post('/cloud-files', formData, {
                           headers: { 'Content-Type': 'multipart/form-data' }
