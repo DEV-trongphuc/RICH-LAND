@@ -11611,6 +11611,7 @@ switch ($action) {
         $managerUserIds = [];
         $managerFilter = "";
         $managerFilterDl = "";
+        $managerFilterDlNoAlias = "";
         $managerFilterLeads = "";
         $managerFilterReports = "";
         $consultantFilter = "";
@@ -11642,6 +11643,7 @@ switch ($action) {
             
             $managerFilter = " AND assigned_to IN ($idsList) ";
             $managerFilterDl = " AND dl.assigned_to IN ($idsList) ";
+            $managerFilterDlNoAlias = " AND assigned_to IN ($idsList) ";
             $managerFilterLeads = " AND l.assigned_to IN ($idsList) ";
             $managerFilterReports = " AND consultant_id IN ($idsList) ";
             $consultantFilter = " AND (email IN (SELECT email FROM users WHERE id IN ($idsList))) ";
@@ -11650,10 +11652,12 @@ switch ($action) {
                 $campIdsStr = implode(',', $campIds);
                 $managerFilter .= " AND campaign_id IN ($campIdsStr) ";
                 $managerFilterDl .= " AND dl.lead_id IN (SELECT id FROM leads WHERE campaign_id IN ($campIdsStr)) ";
+                $managerFilterDlNoAlias .= " AND lead_id IN (SELECT id FROM leads WHERE campaign_id IN ($campIdsStr)) ";
                 $managerFilterLeads .= " AND l.campaign_id IN ($campIdsStr) ";
             } else {
                 $managerFilter .= " AND 1=0 ";
                 $managerFilterDl .= " AND 1=0 ";
+                $managerFilterDlNoAlias .= " AND 1=0 ";
                 $managerFilterLeads .= " AND 1=0 ";
             }
         } else if ($isManager) {
@@ -11677,6 +11681,7 @@ switch ($action) {
             
             $managerFilter = " AND assigned_to IN ($idsList) ";
             $managerFilterDl = " AND dl.assigned_to IN ($idsList) ";
+            $managerFilterDlNoAlias = " AND assigned_to IN ($idsList) ";
             $managerFilterLeads = " AND l.assigned_to IN ($idsList) ";
             $managerFilterReports = " AND consultant_id IN ($idsList) ";
             $consultantFilter = " AND (email IN (SELECT email FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = " . (int)$decodedUser['user_id'] . ")) OR email = '" . $conn->real_escape_string($decodedUser['email']) . "')";
@@ -11732,7 +11737,7 @@ switch ($action) {
                      INNER JOIN (
                          SELECT lead_id, MAX(id) as max_id 
                          FROM distribution_logs 
-                         WHERE status != 'silent' AND $dateCondition $managerFilter
+                         WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
                          GROUP BY lead_id
                      ) dl_max ON dl.id = dl_max.max_id
                      WHERE $dateConditionDl $managerFilterDl 
@@ -11771,7 +11776,7 @@ switch ($action) {
                          INNER JOIN (
                              SELECT lead_id, MAX(id) as max_id 
                              FROM distribution_logs 
-                             WHERE status != 'silent' AND $prevDateCondition $managerFilter
+                             WHERE status != 'silent' AND $prevDateCondition $managerFilterDlNoAlias
                              GROUP BY lead_id
                          ) dl_max ON dl.id = dl_max.max_id
                          WHERE $prevDateConditionDl $managerFilterDl 
@@ -11979,7 +11984,7 @@ switch ($action) {
                                      END as adjusted_status, 
                                      COUNT(*) as cnt 
                               FROM distribution_logs 
-                              WHERE $dateCondition $managerFilter
+                              WHERE $dateCondition $managerFilterDlNoAlias
                                 AND status IN ('assigned', 'compensation', 'error', 'rule_6_month', 'pending_work_hours') 
                               GROUP BY assigned_to, adjusted_status";
             $countsRes = $conn->query($leadCountsSql);
@@ -12182,7 +12187,7 @@ switch ($action) {
                                INNER JOIN (
                                    SELECT lead_id, MAX(id) as max_id 
                                    FROM distribution_logs 
-                                   WHERE status != 'silent' AND $dateCondition $managerFilter
+                                   WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
                                    GROUP BY lead_id
                                ) dl_max ON dl.id = dl_max.max_id
                                WHERE $dateConditionDl $managerFilterDl 
@@ -12206,7 +12211,7 @@ switch ($action) {
                                   INNER JOIN (
                                       SELECT lead_id, MAX(id) as max_id 
                                       FROM distribution_logs 
-                                      WHERE status != 'silent' AND $dateCondition $managerFilter
+                                      WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
                                       GROUP BY lead_id
                                       ) dl_max ON dl.id = dl_max.max_id
                                   WHERE $dateConditionDl $managerFilterDl 
@@ -12230,7 +12235,7 @@ switch ($action) {
                                  INNER JOIN (
                                      SELECT lead_id, MAX(id) as max_id 
                                      FROM distribution_logs 
-                                     WHERE status != 'silent' AND $dateCondition $managerFilter
+                                     WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
                                      GROUP BY lead_id
                                  ) dl_max ON dl.id = dl_max.max_id
                                  WHERE $dateConditionDl $managerFilterDl 
@@ -12252,7 +12257,7 @@ switch ($action) {
                               INNER JOIN (
                                   SELECT lead_id, MAX(id) as max_id 
                                   FROM distribution_logs 
-                                  WHERE status != 'silent' AND $dateCondition $managerFilter
+                                  WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
                                   GROUP BY lead_id
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
@@ -12312,7 +12317,7 @@ switch ($action) {
         $recalledRes = $conn->query("
             SELECT assigned_to, COUNT(*) as cnt 
             FROM distribution_logs 
-            WHERE status = 'recalled' AND $dateCondition $managerFilter
+            WHERE status = 'recalled' AND $dateCondition $managerFilterDlNoAlias
             GROUP BY assigned_to
         ");
         if ($recalledRes) {
@@ -12444,7 +12449,7 @@ switch ($action) {
                       INNER JOIN (
                           SELECT lead_id, MAX(id) as max_id 
                           FROM distribution_logs 
-                          WHERE status != 'silent' AND $dateCondition $managerFilter
+                          WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
                           GROUP BY lead_id
                       ) dl_max ON dl.id = dl_max.max_id
                       JOIN leads l ON dl.lead_id = l.id
@@ -12477,7 +12482,7 @@ switch ($action) {
                           INNER JOIN (
                               SELECT lead_id, MAX(id) as max_id 
                               FROM distribution_logs 
-                              WHERE status != 'silent' AND $dateCondition $managerFilter
+                              WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
                               GROUP BY lead_id
                           ) dl_max ON dl.id = dl_max.max_id
                           JOIN leads l ON dl.lead_id = l.id
