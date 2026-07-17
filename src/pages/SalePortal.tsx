@@ -8190,13 +8190,11 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 600 }}>{t('Địa điểm làm việc')}</label>
-                      <input
-                        type="text"
-                        className="form-input"
+                      <AddressSelect
+                        label={t('Địa điểm làm việc')}
                         value={editWorkplace}
-                        onChange={(e) => setEditWorkplace(e.target.value)}
-                        placeholder="VD: Trụ sở chính TP.HCM"
+                        onChange={(val) => setEditWorkplace(val)}
+                        placeholder={t('Chọn địa điểm làm việc...')}
                       />
                     </div>
 

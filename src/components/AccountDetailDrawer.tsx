@@ -1374,8 +1374,12 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         <input className="form-input" value={directManager} onChange={e => setDirectManager(e.target.value)} placeholder={t('Tên quản lý')} />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">{t('Địa điểm làm việc')}</label>
-                        <input className="form-input" value={workplace} onChange={e => setWorkplace(e.target.value)} placeholder={t('Văn phòng Q.2 / Q. Bình Thạnh')} />
+                        <AddressSelect
+                          label={t('Địa điểm làm việc')}
+                          value={workplace}
+                          onChange={(val) => setWorkplace(val)}
+                          placeholder={t('Chọn địa điểm làm việc...')}
+                        />
                       </div>
                       <div className="form-group">
                         <label className="form-label">{t('Chứng chỉ môi giới')}</label>
