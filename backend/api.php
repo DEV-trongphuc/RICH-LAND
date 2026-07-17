@@ -2276,8 +2276,8 @@ switch ($action) {
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
-            JOIN consultants cons ON dl.assigned_to = cons.id
-            JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.user_id AND c.deleted_at IS NULL
+            LEFT JOIN consultants cons ON dl.assigned_to = cons.id
+            LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.id AND c.deleted_at IS NULL
             WHERE $whereClause AND (l.is_accepted = 0 OR $dateConditionDl)
         ";
         $totalCount = 0;
@@ -2318,7 +2318,7 @@ switch ($action) {
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
-            INNER JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = c.user_id AND c_real.deleted_at IS NULL
+            LEFT JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = c.id AND c_real.deleted_at IS NULL
             LEFT JOIN (
                 SELECT dr1.* FROM data_reports dr1
                 INNER JOIN (
