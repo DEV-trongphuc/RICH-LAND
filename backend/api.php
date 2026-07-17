@@ -2276,7 +2276,8 @@ switch ($action) {
                 GROUP BY lead_id, assigned_to
             ) dl_max ON dl.id = dl_max.max_id
             JOIN leads l ON dl.lead_id = l.id
-            JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = dl.assigned_to AND c.deleted_at IS NULL
+            JOIN consultants cons ON dl.assigned_to = cons.id
+            JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.user_id AND c.deleted_at IS NULL
             WHERE $whereClause AND (l.is_accepted = 0 OR $dateConditionDl)
         ";
         $totalCount = 0;
@@ -2317,7 +2318,7 @@ switch ($action) {
             LEFT JOIN sheet_connections sc ON l.connection_id = sc.id
             LEFT JOIN distribution_rounds r ON dl.round_id = r.id
             LEFT JOIN consultants c ON dl.assigned_to = c.id
-            INNER JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = dl.assigned_to AND c_real.deleted_at IS NULL
+            INNER JOIN contacts c_real ON c_real.person_id = l.person_id AND c_real.owner_id = c.user_id AND c_real.deleted_at IS NULL
             LEFT JOIN (
                 SELECT dr1.* FROM data_reports dr1
                 INNER JOIN (
@@ -2571,7 +2572,8 @@ switch ($action) {
             $stmtKhtn = $conn->prepare("
                 SELECT COUNT(*) as cnt 
                 FROM leads l
-                INNER JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = l.assigned_to AND c.deleted_at IS NULL
+                INNER JOIN consultants cons ON l.assigned_to = cons.id
+                INNER JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.user_id AND c.deleted_at IS NULL
                 WHERE l.assigned_to = ?
                   AND l.status != 'reminder'
                   AND l.is_accepted = 1
@@ -12455,7 +12457,8 @@ switch ($action) {
         $uncontactedRes = $conn->query("
             SELECT l.assigned_to, COUNT(*) as cnt 
             FROM leads l
-            LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = l.assigned_to AND c.deleted_at IS NULL
+            JOIN consultants cons ON l.assigned_to = cons.id
+            LEFT JOIN contacts c ON c.person_id = l.person_id AND c.owner_id = cons.user_id AND c.deleted_at IS NULL
             WHERE l.status != 'reminder' 
               AND l.is_accepted = 1 
               AND l.source NOT IN ('ca_nhan', 'gioi_thieu')
