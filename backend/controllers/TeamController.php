@@ -307,6 +307,12 @@ class TeamController
         
         $teamId = (int)$userRow['team_id'];
         $email = $userRow['email'];
+
+        $tStmt = $this->db->prepare("SELECT name, leader_id FROM teams WHERE id = ?");
+        $tStmt->execute([$teamId]);
+        $teamRow = $tStmt->fetch();
+        $teamName = $teamRow ? $teamRow['name'] : 'Nhóm';
+        $leaderId = $teamRow ? (int)$teamRow['leader_id'] : 0;
         
         try {
             $this->db->beginTransaction();
@@ -321,6 +327,19 @@ class TeamController
                 $upConsultant->execute([$email]);
             }
             
+            // Send notification to the leader (Manager)
+            if ($leaderId > 0) {
+                $stmtNotif = $this->db->prepare("
+                    INSERT INTO notifications (user_id, tenant_id, title, body, type, link) 
+                    VALUES (?, ?, ?, ?, 'team_leave', ?)
+                ");
+                $title = "Thành viên rời nhóm";
+                $saleName = $auth['full_name'] ?? 'Tư vấn viên';
+                $body = "Tư vấn viên $saleName đã chủ động rời khỏi nhóm \"$teamName\".";
+                $link = "/consultants?tab=teams";
+                $stmtNotif->execute([$leaderId, $auth['tenant_id'], $title, $body, $link]);
+            }
+
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'LEAVE', 'team', $teamId);
             
             $this->db->commit();
