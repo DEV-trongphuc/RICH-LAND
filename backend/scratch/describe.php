@@ -7,16 +7,11 @@ try {
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
     ]);
     
-    function printTable($db, $table) {
-        echo "=== TABLE: $table ===\n";
-        $stmt = $db->query("DESCRIBE `$table`");
-        while ($row = $stmt->fetch()) {
-            echo "  {$row['Field']} - {$row['Type']} (Null: {$row['Null']}, Key: {$row['Key']}, Default: {$row['Default']})\n";
-        }
+    echo "=== COLUMNS OF LEADS ===\n";
+    $stmt = $db->query("DESCRIBE `leads`");
+    while ($row = $stmt->fetch()) {
+        echo "{$row['Field']}\n";
     }
-    
-    printTable($db, 'distribution_logs');
-    printTable($db, 'leads');
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
 }
