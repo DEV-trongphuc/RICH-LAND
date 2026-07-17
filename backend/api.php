@@ -222,15 +222,17 @@ function getModulePermissionScope($conn, $auth, $module, $action)
         return 'all';
     }
 
-    $permissionsJson = null;
-    $stmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
-    if ($stmt) {
-        $stmt->bind_param("i", $auth['user_id']);
-        $stmt->execute();
-        $res = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        if ($res && !empty($res['permissions_json'])) {
-            $permissionsJson = json_decode($res['permissions_json'], true);
+    $permissionsJson = $auth['permissions'] ?? null;
+    if ($permissionsJson === null) {
+        $stmt = $conn->prepare("SELECT permissions_json FROM users WHERE id = ? LIMIT 1");
+        if ($stmt) {
+            $stmt->bind_param("i", $auth['user_id']);
+            $stmt->execute();
+            $res = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if ($res && !empty($res['permissions_json'])) {
+                $permissionsJson = json_decode($res['permissions_json'], true);
+            }
         }
     }
 
@@ -530,7 +532,7 @@ if (!in_array($action, $publicActions)) {
 
     // Dynamic Permission Matrix check
     list($permModule, $permActionType) = getActionModuleAndType($action);
-    $resolvedScope = getModulePermissionScope($decodedUser, $permModule, $permActionType);
+    $resolvedScope = getModulePermissionScope($conn, $decodedUser, $permModule, $permActionType);
 
     // Bypass check if it is a self-operation (e.g. updating one's own password, unlinking one's own Zalo)
     $isSelfOperation = $isSelfEdit || $isSelfUnlink;
