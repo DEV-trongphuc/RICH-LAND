@@ -13,8 +13,6 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 const PRESTIGE_OPTIONS = [
   { value: 'A', label: 'Hạng A (Rất uy tín)' },
@@ -57,29 +55,6 @@ export const SuppliersPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   const fetchSuppliers = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...state.suppliers];
-      
-      if (searchTerm) {
-        const s = searchTerm.toLowerCase();
-        list = list.filter(sup => sup.name.toLowerCase().includes(s) || sup.contact_name?.toLowerCase().includes(s));
-      }
-      
-      if (filters.prestige_tier) {
-        list = list.filter(sup => sup.prestige_tier === filters.prestige_tier);
-      }
-      
-      if (filters.cooperation_status) {
-        list = list.filter(sup => sup.cooperation_status === filters.cooperation_status);
-      }
-      
-      setSuppliers(list);
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const params: any = { page, limit: 12, search: searchTerm };

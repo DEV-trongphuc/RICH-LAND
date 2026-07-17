@@ -27,8 +27,6 @@ import { useUIStore } from '../store/uiStore';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { fetchAPI } from '../utils/api';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import styles from './EntityDrawer.module.css';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
@@ -137,9 +135,7 @@ const formatDateTime = (dateStr: string) => {
 };
 
 const buildTasks = (c: any): any[] => {
-  if (!c) return [];
-  const { activities } = useMockStore.getState();
-  return activities.filter((a: any) => a.contact_id === c.id && a.type === 'task');
+  return [];
 };
 
 /* ─── Helpers ────────────────────────────────────────────────── */
@@ -1140,12 +1136,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     setFormData((prev: any) => ({ ...prev, ttl1_completed: completed, ttl1_data: JSON.stringify(updatedData) }));
 
     try {
-      if (!DEV_MODE) {
-        await api.put(`/contacts/${contact.id}`, {
-          ttl1_completed: completed,
-          ttl1_data: JSON.stringify(updatedData)
-        });
-      }
+      await api.put(`/contacts/${contact.id}`, {
+        ttl1_completed: completed,
+        ttl1_data: JSON.stringify(updatedData)
+      });
       addToast('Cập nhật Form TTL1 thành công!', 'success');
       onUpdate?.({ ...formData, ttl1_completed: completed, ttl1_data: JSON.stringify(updatedData) });
       window.dispatchEvent(new CustomEvent('contact-updated'));
@@ -1727,43 +1721,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (!contact?.id) return;
     const tabToLoad = targetTab || activeTab;
 
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      // Load from mock store
-      setNotes([]); // No notes in mock store yet
-      setDrawerActivities(state.activities.filter((a: any) => a.contact_id === contact.id));
-      setTasks(state.activities.filter((a: any) => a.contact_id === contact.id && a.type === 'task').map((a: any) => {
-        const link = a.body ? (a.body.match(/Tài liệu\/Link đính kèm:\s*(.*)$/m)?.[1]?.trim() || '') : '';
-        const description = a.body ? a.body.replace(/Tài liệu\/Link đính kèm:\s*.*$/m, '').trim() : '';
-        return {
-          id: a.id,
-          title: a.subject,
-          done: a.status === 'done',
-          priority: a.priority || 'medium',
-          due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—',
-          link,
-          description
-        };
-      }));
-      setDeals(state.deals.filter((d: any) => d.contact_id === contact.id).map((d: any) => ({
-        id: d.id,
-        title: d.title,
-        value: d.value,
-        stage: d.stage,
-        prob: d.probability,
-        close: d.expected_close,
-        stage_color: d.stage_color || '#3b82f6'
-      })));
-      setDrawerInvoices(state.invoices.filter((i: any) => i.contact_id === contact.id));
-      setDrawerQuotes(state.quotes.filter((q: any) => q.contact_id === contact.id)); 
-      setDrawerExpenses(state.expenses.filter((e: any) => e.contact_id === contact.id)); 
-      setDrawerTickets(state.tickets.filter((t: any) => t.customer_name === `${contact.first_name} ${contact.last_name}`.trim()));
-      setDocs(state.files.filter((f: any) => f.contact_id === contact.id));
-      setStages(DEFAULT_PIPELINE_STAGES);
-      setLoadingRelated(false);
-      return;
-    }
-
     setLoadingRelated(true);
     try {
       // 1. Fetch fresh Contact details
@@ -2284,8 +2241,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     formData.created_at, contact?.last_contact, contact?.updated_at, drawerActivities, decayDays
   ]);
 
-  const mockStore = useMockStore();
-
   const timeline = useMemo(() => {
     if (!contact?.id) return [];
     let source = drawerActivities;
@@ -2305,7 +2260,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       expense_image_url: a.expense_image_url,
       rawActivity: a
     })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-  }, [drawerActivities, mockStore.activities, contact?.id, timelineFilter]);
+  }, [drawerActivities, contact?.id, timelineFilter]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
   const ownerUser = users.find(u => u.full_name === formData.owner_name || u.name === formData.owner_name || u.username === formData.owner_name);
   const ownerAvatarUrl = ownerUser?.avatar_url || ownerUser?.avatar || undefined;
@@ -7710,12 +7665,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               done_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
             });
 
-            // Update local mock store for immediate timeline reflect
-            const { addActivity } = useMockStore.getState();
-            addActivity({
-              id: Date.now(), subject, type: 'call', status: 'done',
-              user_name: 'Admin', created_at: new Date().toISOString(), contact_id: contact?.id
-            });
+
 
             addToast('Đã ghi nhận cuộc gọi và thêm vào Timeline', 'success');
             fetchData();

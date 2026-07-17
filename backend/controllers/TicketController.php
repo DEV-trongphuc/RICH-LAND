@@ -35,12 +35,14 @@ class TicketController {
             $where[] = '(t.created_by = ? OR t.assignee_id = ? OR t.created_by IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ) OR t.assignee_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -113,8 +115,10 @@ class TicketController {
         $params = [$ticketId, $auth['tenant_id'], $auth['user_id'], $auth['user_id']];
         
         if ($auth['role'] === 'manager') {
-            $sql .= " OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?))
-                      OR assignee_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
+            $sql .= " OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?))
+                      OR assignee_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }
@@ -318,12 +322,14 @@ class TicketController {
             $sql .= " AND (created_by = ? OR assignee_id = ? OR created_by IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ) OR assignee_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -426,12 +432,14 @@ class TicketController {
             $sql .= " AND (created_by = ? OR assignee_id = ? OR created_by IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ) OR assignee_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];

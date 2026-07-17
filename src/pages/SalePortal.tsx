@@ -2829,7 +2829,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
       if (['sale', 'manager'].includes(String(displayUser?.role).toLowerCase())) {
         consultantParam = displayUser.name;
       }
-      const json = await fetchAPI(`get_calendar_day_details&date=${dateStr}&consultant=${encodeURIComponent(consultantParam)}`);
+      const json = await fetchAPI(`get_calendar_day_details&date=${dateStr}&consultant=${encodeURIComponent(consultantParam)}&view=individual`);
       if (json.success) {
         setDayDetails(json.data);
       }
@@ -3681,7 +3681,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
               boxShadow: '0 8px 30px -6px rgba(239, 68, 68, 0.15)'
             }}
             onClick={() => {
-              navigate('/data?status=not_contacted');
+              navigate('/contacts?status=not_contacted');
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

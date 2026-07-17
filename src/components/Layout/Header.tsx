@@ -11,7 +11,6 @@ import { Avatar } from '../ui/Avatar';
 import { useNavigate } from 'react-router-dom';
 import { CustomModal } from '../ui/CustomModal';
 import { fetchAPI } from '../../utils/api';
-import { DEV_MODE } from '../../config/env';
 import vnFlag from '../../assets/vn.svg';
 import usFlag from '../../assets/us.svg';
 import jpFlag from '../../assets/jp.svg';

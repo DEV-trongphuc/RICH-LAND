@@ -19,8 +19,6 @@ import { Pagination } from '../components/ui/Pagination';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import { InventorySyncModal } from '../components/ui/InventorySyncModal';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
-import { DEV_MODE } from '../config/env';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -105,33 +103,6 @@ export default function InventoryPage() {
   };
 
   const fetchBatches = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...state.batches];
-
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        list = list.filter(b => b.product_name.toLowerCase().includes(s) || b.sku?.toLowerCase().includes(s) || b.batch_code.toLowerCase().includes(s));
-      }
-
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'in_stock') list = list.filter(b => b.current_qty > 0);
-        else if (statusFilter === 'out_of_stock') list = list.filter(b => b.current_qty <= 0);
-        else if (statusFilter === 'low_stock') list = list.filter(b => b.current_qty > 0 && b.initial_qty > 0 && (b.current_qty / b.initial_qty) <= 0.10);
-      }
-
-      setBatches(list);
-      setTotal(list.length);
-      // Mock summary
-      setSummary({
-        total_items: list.reduce((acc, b) => acc + b.current_qty, 0),
-        out_of_stock: list.filter(b => b.current_qty <= 0).length,
-        capital_value: list.reduce((acc, b) => acc + (b.current_qty * b.import_price), 0)
-      });
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     // Always fetch from API
     try {
@@ -156,11 +127,6 @@ export default function InventoryPage() {
   };
 
   const fetchBatchLogs = async (batchId: number) => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      setLogs(state.inventory_logs.filter((l: any) => l.batch_id === batchId) as any);
-      return;
-    }
     try {
       const res = await api.get(`/inventory/logs/${batchId}`);
       if (res.data.success) setLogs(res.data.data);
@@ -170,11 +136,6 @@ export default function InventoryPage() {
   };
 
   const fetchGlobalLogs = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      setGlobalLogs(state.inventory_logs as any);
-      return;
-    }
     try {
       const res = await api.get('/inventory/global-logs');
       if (res.data.success) setGlobalLogs(res.data.data);

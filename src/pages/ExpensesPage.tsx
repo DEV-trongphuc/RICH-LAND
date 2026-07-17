@@ -18,19 +18,10 @@ import { numberToVietnameseText } from '../utils/numberToText';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 
 const PAGE_SIZE = 10;
 
-const MOCK_EXPENSES: any[] = [
-  { id: 1, title: 'Thuê văn phòng tháng 6', amount: 15000000, date: '2026-05-01', category: 'Vận hành', creator_name: 'Admin', status: 'approved', vendor_name: 'Minh House', has_vat_invoice: true, is_vat_inclusive: true },
-  { id: 2, title: 'Tiền điện nước T5', amount: 2450000, date: '2026-05-05', category: 'Vận hành', creator_name: 'Kế toán', status: 'pending', vendor_name: 'EVN/VWA', has_vat_invoice: true, is_vat_inclusive: true },
-  { id: 3, title: 'Chạy quảng cáo Facebook Ads', amount: 8000000, date: '2026-05-03', category: 'Marketing', creator_name: 'Marketing Dept', status: 'approved', vendor_name: 'Facebook Ireland', has_vat_invoice: false, is_vat_inclusive: true },
-  { id: 4, title: 'Mua máy pha cà phê mới', amount: 4200000, date: '2026-05-04', category: 'Vận hành', creator_name: 'Admin', status: 'pending', vendor_name: 'Coffee Store', has_vat_invoice: true, is_vat_inclusive: false },
-  { id: 5, title: 'Grab công tác gặp khách hàng', amount: 320000, date: '2026-05-05', category: 'Di chuyển', creator_name: 'Sale A', status: 'approved', vendor_name: 'Grab Vietnam', has_vat_invoice: true, is_vat_inclusive: true },
-];
 
 const CATEGORIES = [
   { label: 'Di chuyển', icon: Truck, color: '#3b82f6' },
@@ -87,7 +78,7 @@ export const ExpensesPage: React.FC = () => {
   const [viewItem, setViewItem] = useState<any>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [catOpen, setCatOpen] = useState(false);
-  const [users, setUsers] = useState<any[]>(DEV_MODE ? useMockStore.getState().users : []); // for approver dropdown
+  const [users, setUsers] = useState<any[]>([]); // for approver dropdown
   const [contacts, setContacts] = useState<any[]>([]); // for splitting bill
   const [suppliers, setSuppliers] = useState<any[]>([]); // for vendor autocomplete
   const [vendorSearch, setVendorSearch] = useState('');
@@ -97,29 +88,6 @@ export const ExpensesPage: React.FC = () => {
   const [summary, setSummary] = useState<any>({ total: 0, approved: 0 });
 
   const fetchExpenses = useCallback(async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...state.expenses];
-      
-      if (search) {
-        const s = search.toLowerCase();
-        list = list.filter(e => e.title.toLowerCase().includes(s) || e.notes?.toLowerCase().includes(s));
-      }
-      
-      if (catFilter) list = list.filter(e => e.category === catFilter);
-      if (statusFilter) list = list.filter(e => e.status === statusFilter);
-      
-      setItems(list);
-      setTotal(list.length);
-      // Mock summary
-      setSummary({
-        total: list.reduce((acc, e) => acc + Number(e.amount), 0),
-        approved: list.filter(e => e.status === 'approved').reduce((acc, e) => acc + Number(e.amount), 0)
-      });
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const params: any = { 

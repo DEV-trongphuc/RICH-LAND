@@ -7,8 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 import { Pagination } from '../components/ui/Pagination';
@@ -83,83 +81,6 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchSales = async () => {
-    if (DEV_MODE) {
-      if (!salesData) setLoading(true);
-      const state = getFilteredMockState();
-      let usersList = [...(state.users || [])];
-      let dealsList = [...(state.deals || [])];
-      let contactsList = [...(state.contacts || [])];
-
-      if (user?.role === 'sale') {
-        usersList = usersList.filter((u: any) => u.id === user.id);
-        dealsList = dealsList.filter((d: any) => d.owner_id === user.id);
-        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
-      } else if (user?.role === 'manager') {
-        const activeTeamId = getEffectiveTeamId();
-        if (activeTeamId) {
-          const teamMemberIds = usersList
-            .filter((u: any) => String(u.team_id) === String(activeTeamId))
-            .map((u: any) => u.id);
-          if (!teamMemberIds.includes(user.id)) {
-            teamMemberIds.push(user.id);
-          }
-          usersList = usersList.filter((u: any) => teamMemberIds.includes(u.id));
-          dealsList = dealsList.filter((d: any) => teamMemberIds.includes(d.owner_id));
-          contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
-        }
-      }
-
-      // Revenue = tổng value của deals đã chốt (stage_id === 'won')
-      const wonDeals = dealsList.filter((d: any) => d.stage_id === 'won');
-      const wonValue = wonDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
-
-      // Tổng tất cả deals để tính thống kê
-      const allDeals = dealsList;
-      const totalDealValue = allDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
-
-      // Doanh thu theo owner
-      const byOwner = usersList.map((u: any) => {
-        const userDeals = allDeals.filter((d: any) => d.owner_id === u.id);
-        return {
-          id: u.id,
-          name: u.full_name,
-          deals: userDeals.length,
-          revenue: userDeals.reduce((s: number, d: any) => s + (Number(d.value) || 0), 0)
-        };
-      }).filter((o: any) => o.deals > 0);
-
-      // Sinh dữ liệu 8 tháng gần nhất với giá trị thực
-      const BASE = totalDealValue > 0 ? totalDealValue / 8 : 500_000_000;
-      const now = new Date();
-      const byMonth = Array.from({ length: 8 }, (_, i) => {
-        const d = new Date(now.getFullYear(), now.getMonth() - (7 - i), 1);
-        const label = `T${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const factor = 0.6 + (i / 7) * 0.8 + (Math.sin(i) * 0.1);
-        return {
-          month: label,
-          revenue: Math.round(BASE * factor),
-          cost: Math.round(BASE * (0.3 + (i / 7) * 0.2)),
-        };
-      });
-
-      setSalesData({
-        summary: {
-          total_revenue: wonValue || totalDealValue * 0.3,
-          revenue_change: '+12.4%',
-          deals: allDeals.length,
-          deals_change: '+5.2%',
-          contacts: contactsList.length,
-          contacts_change: '+8.1%',
-          win_rate: allDeals.length > 0 ? Math.round((wonDeals.length / allDeals.length) * 100) : 68,
-          win_rate_change: '+2.5%'
-        },
-        by_month: byMonth,
-        by_owner: byOwner
-      });
-      setLoading(false);
-      return;
-    }
-
     if (!salesData) setLoading(true);
     try {
       const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
@@ -172,33 +93,6 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchPipeline = async () => {
-    if (DEV_MODE) {
-      if (pipelineData.length === 0) setLoading(true);
-      const state = getFilteredMockState();
-      let contactsList = [...(state.contacts || [])];
-
-      if (user?.role === 'sale') {
-        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
-      } else if (user?.role === 'manager' && (user as any).team_id) {
-        const teamMemberIds = (state.users || [])
-          .filter((u: any) => String(u.team_id) === String((user as any).team_id))
-          .map((u: any) => u.id);
-        if (!teamMemberIds.includes(user.id)) {
-          teamMemberIds.push(user.id);
-        }
-        contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
-      }
-
-      setPipelineData(state.pipeline_stages.map((s: any) => ({
-        stage: s.name,
-        count: contactsList.filter((c: any) => c.stage_id === s.id).length,
-        total_value: contactsList.filter((c: any) => c.stage_id === s.id).reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0),
-        color: s.color
-      })));
-      setLoading(false);
-      return;
-    }
-
     if (pipelineData.length === 0) setLoading(true);
     try {
       const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
@@ -215,47 +109,6 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchActivities = async () => {
-    if (DEV_MODE) {
-      if (!activityData) setLoading(true);
-      const state = getFilteredMockState();
-      const types = ['call', 'email', 'meeting', 'task', 'note'];
-      let usersList = [...(state.users || [])];
-      let activitiesList = [...(state.activities || [])];
-
-      if (user?.role === 'sale') {
-        usersList = usersList.filter((u: any) => u.id === user.id);
-        activitiesList = activitiesList.filter((a: any) => a.user_id === user.id);
-      } else if (user?.role === 'manager') {
-        const activeTeamId = getEffectiveTeamId();
-        if (activeTeamId) {
-          const teamMemberIds = usersList
-            .filter((u: any) => String(u.team_id) === String(activeTeamId))
-            .map((u: any) => u.id);
-          if (!teamMemberIds.includes(user.id)) {
-            teamMemberIds.push(user.id);
-          }
-          usersList = usersList.filter((u: any) => teamMemberIds.includes(u.id));
-          activitiesList = activitiesList.filter((a: any) => teamMemberIds.includes(a.user_id));
-        }
-      }
-
-      setActivityData({
-        by_type: types.map(t => ({
-          type: t,
-          total: activitiesList.filter((a: any) => a.type === t).length
-        })),
-        by_user_type: usersList.flatMap((u: any) => 
-          types.map(t => ({
-            user_name: u.full_name,
-            type: t,
-            total: activitiesList.filter((a: any) => a.user_id === u.id && a.type === t).length || Math.floor(Math.random() * 10) + 2
-          }))
-        )
-      });
-      setLoading(false);
-      return;
-    }
-
     if (!activityData) setLoading(true);
     try {
       const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
@@ -271,64 +124,6 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchCustomers = async () => {
-    if (DEV_MODE) {
-      if (!customerData) setLoading(true);
-      const state = getFilteredMockState();
-      let contactsList = [...(state.contacts || [])];
-
-      if (user?.role === 'sale') {
-        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
-      } else if (user?.role === 'manager' && (user as any).team_id) {
-        const teamMemberIds = (state.users || [])
-          .filter((u: any) => String(u.team_id) === String((user as any).team_id))
-          .map((u: any) => u.id);
-        if (!teamMemberIds.includes(user.id)) {
-          teamMemberIds.push(user.id);
-        }
-        contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
-      }
-
-      // Group by source
-      const sourcesMap: Record<string, number> = {};
-      contactsList.forEach(c => {
-        const src = c.source ? (c.source.charAt(0).toUpperCase() + c.source.slice(1)) : 'Other';
-        sourcesMap[src] = (sourcesMap[src] || 0) + 1;
-      });
-      const bySource = Object.entries(sourcesMap).map(([source, count]) => ({ source, count }));
-
-      // Group by score
-      const scoreBuckets = [
-        { bucket: '0-20', min: 0, max: 20, count: 0 },
-        { bucket: '21-40', min: 21, max: 40, count: 0 },
-        { bucket: '41-60', min: 41, max: 60, count: 0 },
-        { bucket: '61-80', min: 61, max: 80, count: 0 },
-        { bucket: '81-100', min: 81, max: 100, count: 0 }
-      ];
-      contactsList.forEach(c => {
-        const score = c.expected_revenue ? Math.min(Math.round(Number(c.expected_revenue) / 100_000_000), 100) : Math.floor(Math.random() * 40) + 40;
-        const b = scoreBuckets.find(bucket => score >= bucket.min && score <= bucket.max);
-        if (b) b.count += 1;
-      });
-
-      setCustomerData({
-        by_source: bySource.length > 0 ? bySource : [
-          { source: 'Facebook', count: 0 },
-          { source: 'Website', count: 0 },
-          { source: 'Referral', count: 0 },
-          { source: 'Other', count: 0 }
-        ],
-        trend: [
-          { date: '01/01', count: Math.round(contactsList.length * 0.2) },
-          { date: '05/01', count: Math.round(contactsList.length * 0.5) },
-          { date: '10/01', count: Math.round(contactsList.length * 0.3) },
-          { date: '15/01', count: contactsList.length }
-        ],
-        by_score: scoreBuckets.map(b => ({ bucket: b.bucket, count: b.count }))
-      });
-      setLoading(false);
-      return;
-    }
-
     if (!customerData) setLoading(true);
     try {
       const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
@@ -345,64 +140,6 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchCompanies = async () => {
-    if (DEV_MODE) {
-      if (!companyData) setLoading(true);
-      const state = getFilteredMockState();
-      let contactsList = [...(state.contacts || [])];
-
-      if (user?.role === 'sale') {
-        contactsList = contactsList.filter((c: any) => c.owner_id === user.id);
-      } else if (user?.role === 'manager' && (user as any).team_id) {
-        const teamMemberIds = (state.users || [])
-          .filter((u: any) => String(u.team_id) === String((user as any).team_id))
-          .map((u: any) => u.id);
-        if (!teamMemberIds.includes(user.id)) {
-          teamMemberIds.push(user.id);
-        }
-        contactsList = contactsList.filter((c: any) => teamMemberIds.includes(c.owner_id));
-      }
-
-      const companyIds = contactsList.map(c => c.company_id).filter(Boolean);
-      const companiesList = (state.companies || []).filter((comp: any) => companyIds.includes(comp.id));
-
-      // Group by industry
-      const industriesMap: Record<string, number> = {};
-      companiesList.forEach(c => {
-        const ind = c.industry || 'Khác';
-        industriesMap[ind] = (industriesMap[ind] || 0) + 1;
-      });
-      const byIndustry = Object.entries(industriesMap).map(([industry, count]) => ({ industry, count }));
-
-      // Group by city
-      const citiesMap: Record<string, number> = {};
-      companiesList.forEach(c => {
-        const city = c.city || 'Khác';
-        citiesMap[city] = (citiesMap[city] || 0) + 1;
-      });
-      const byCity = Object.entries(citiesMap).map(([city, count]) => ({ city, count }));
-
-      setCompanyData({
-        by_industry: byIndustry.length > 0 ? byIndustry : [
-          { industry: 'Công nghệ', count: 0 },
-          { industry: 'Sản xuất', count: 0 },
-          { industry: 'Dịch vụ', count: 0 },
-          { industry: 'Bán lẻ', count: 0 }
-        ],
-        by_size: [
-          { size: 'Nhỏ (1-10)', count: Math.round(companiesList.length * 0.4) },
-          { size: 'Vừa (11-50)', count: Math.round(companiesList.length * 0.3) },
-          { size: 'Lớn (>50)', count: Math.round(companiesList.length * 0.3) }
-        ],
-        by_city: byCity.length > 0 ? byCity : [
-          { city: 'Hà Nội', count: 0 },
-          { city: 'TP. HCM', count: 0 },
-          { city: 'Đà Nẵng', count: 0 }
-        ]
-      });
-      setLoading(false);
-      return;
-    }
-
     if (!companyData) setLoading(true);
     try {
       const r = await api.get('/reports/companies', { params: { team_id: getEffectiveTeamId() } });
@@ -419,45 +156,6 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchExpenses = async () => {
-    if (DEV_MODE) {
-      if (!expenseData) setLoading(true);
-      const state = getFilteredMockState();
-      let expensesList = [...(state.expenses || [])];
-
-      if (user?.role === 'sale') {
-        expensesList = expensesList.filter((e: any) => e.creator_id === user.id);
-      } else if (user?.role === 'manager') {
-        const activeTeamId = getEffectiveTeamId();
-        if (activeTeamId) {
-          const teamMemberIds = (state.users || [])
-            .filter((u: any) => String(u.team_id) === String(activeTeamId))
-            .map((u: any) => u.id);
-          if (!teamMemberIds.includes(user.id)) {
-            teamMemberIds.push(user.id);
-          }
-          expensesList = expensesList.filter((e: any) => teamMemberIds.includes(e.creator_id));
-        }
-      }
-
-      const totalExp = expensesList.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
-      setExpenseData({
-        by_category: [
-          { category: 'Marketing', total: totalExp * 0.4 },
-          { category: 'Vận hành', total: totalExp * 0.3 },
-          { category: 'Nhân sự', total: totalExp * 0.2 },
-          { category: 'Khác', total: totalExp * 0.1 }
-        ],
-        trend: [
-          { date: '01/01', total: totalExp * 0.1 },
-          { date: '05/01', total: totalExp * 0.2 },
-          { date: '10/01', total: totalExp * 0.15 },
-          { date: '15/01', total: totalExp * 0.25 }
-        ]
-      });
-      setLoading(false);
-      return;
-    }
-
     if (!expenseData) setLoading(true);
     try {
       const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });

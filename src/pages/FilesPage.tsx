@@ -15,8 +15,6 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { useAuthStore } from '../store/authStore';
 
 export const FilesPage: React.FC = () => {
@@ -46,10 +44,6 @@ export const FilesPage: React.FC = () => {
       const res = await api.get('/projects?bypass_roster=1');
       if (res.data?.success) {
         setProjects(res.data.data || []);
-      } else {
-        // Fallback for dev mode
-        const state = getFilteredMockState();
-        setProjects(state.projects || []);
       }
     } catch (err) {
       console.error('Failed to fetch projects', err);
@@ -57,7 +51,6 @@ export const FilesPage: React.FC = () => {
   };
 
   const fetchCategories = async () => {
-    if (DEV_MODE) return;
     try {
       const res = await api.get('/file-categories', {
         params: { visibility: activeTab }
@@ -108,36 +101,6 @@ export const FilesPage: React.FC = () => {
   }, []);
 
   const fetchFiles = async () => {
-    if (DEV_MODE) {
-      setLoading(true);
-      const state = getFilteredMockState();
-      let list = [...state.files];
-
-      // Filter by activeTab visibility
-      list = list.filter(f => (f.visibility || 'shared') === activeTab);
-
-      if (searchTerm) {
-        const s = searchTerm.toLowerCase();
-        list = list.filter(f => f.name.toLowerCase().includes(s));
-      }
-
-      if (category !== 'all') {
-        list = list.filter(f => f.category === category);
-      }
-
-      if (selectedProjectId !== 'all') {
-        list = list.filter(f => String(f.project_id) === String(selectedProjectId));
-      }
-
-      const totalSize = state.files.reduce((acc: number, f: any) => acc + (Number(f.file_size || f.size) || 0), 0);
-      setTotalSizeBytes(totalSize);
-
-      setFiles(list);
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const res = await api.get('/cloud-files', { 
@@ -260,18 +223,16 @@ export const FilesPage: React.FC = () => {
 
       if (editingCat) {
         const oldLabel = editingCat.label;
-        if (!DEV_MODE) {
-          await api.put(`/file-categories/${editingCat.id}`, { label: fullLabel });
-          // If this is a parent folder, update all its child subfolders recursively
-          const subCatsToRename = categories.filter(c => c.label.startsWith(oldLabel + '/'));
-          for (const sub of subCatsToRename) {
-            const relativePart = sub.label.slice(oldLabel.length);
-            await api.put(`/file-categories/${sub.id}`, { label: fullLabel + relativePart });
-          }
+        await api.put(`/file-categories/${editingCat.id}`, { label: fullLabel });
+        // If this is a parent folder, update all its child subfolders recursively
+        const subCatsToRename = categories.filter(c => c.label.startsWith(oldLabel + '/'));
+        for (const sub of subCatsToRename) {
+          const relativePart = sub.label.slice(oldLabel.length);
+          await api.put(`/file-categories/${sub.id}`, { label: fullLabel + relativePart });
         }
         addToast('Đã cập nhật thư mục', 'success');
       } else {
-        if (!DEV_MODE) await api.post('/file-categories', { label: fullLabel, icon_type: 'folder', visibility: activeTab });
+        await api.post('/file-categories', { label: fullLabel, icon_type: 'folder', visibility: activeTab });
         addToast('Đã tạo thư mục mới', 'success');
       }
       fetchCategories();
@@ -291,7 +252,7 @@ export const FilesPage: React.FC = () => {
       'Các tệp tin trong danh mục này sẽ được chuyển về mục Khác. Bạn chắc chứ?',
       async () => {
         try {
-          if (!DEV_MODE) await api.delete(`/file-categories/${id}`);
+          await api.delete(`/file-categories/${id}`);
           if (category === id) setCategory('all');
           addToast('Đã xóa danh mục', 'success');
           fetchCategories();

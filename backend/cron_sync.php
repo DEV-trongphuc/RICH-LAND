@@ -2313,7 +2313,7 @@ function checkCheckInSlaEscalation($conn) {
     
     $slaMinutes = (int) get_system_setting($conn, 'checkin_approval_sla_minutes') ?: 15;
     
-    $sql = "SELECT c.id, c.user_id, c.check_in_date, c.check_in_time, c.reason, u.full_name as sale_name, u.tenant_id
+    $sql = "SELECT c.id, c.user_id, c.check_in_date, c.check_in_time, c.reason, u.full_name as sale_name, u.tenant_id, u.team_id
             FROM check_ins c
             JOIN users u ON c.user_id = u.id
             WHERE c.status = 'pending_approval'
@@ -2334,8 +2334,23 @@ function checkCheckInSlaEscalation($conn) {
         while ($row = $res->fetch_assoc()) {
             $checkInId = (int)$row['id'];
             $tenantId = (int)$row['tenant_id'];
+            $uTeamId = $row['team_id'] !== null ? (int)$row['team_id'] : 0;
             
-            $admRes = $conn->query("SELECT id FROM users WHERE role IN ('admin', 'superadmin', 'manager', 'assistant') AND tenant_id = " . $tenantId);
+            $admQuery = "
+                SELECT id FROM users 
+                WHERE tenant_id = " . $tenantId . " 
+                  AND (
+                    role IN ('admin', 'superadmin', 'super_admin', 'director', 'assistant')
+                    OR (
+                      role = 'manager' 
+                      AND (
+                        id IN (SELECT leader_id FROM teams WHERE id = " . $uTeamId . ")
+                        OR team_id = " . $uTeamId . "
+                      )
+                    )
+                  )
+            ";
+            $admRes = $conn->query($admQuery);
             if ($admRes) {
                 $title = "CẢNH BÁO SLA: Duyệt đi trễ quá hạn";
                 $body = "Yêu cầu duyệt đi trễ của " . $row['sale_name'] . " (lý do: \"" . $row['reason'] . "\") đã quá " . $slaMinutes . " phút chưa được xử lý!";

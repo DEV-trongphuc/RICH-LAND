@@ -6,8 +6,6 @@ import { TicketDrawer } from './TicketDrawer';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -70,25 +68,6 @@ export const TicketsPage: React.FC = () => {
   };
 
   const fetchTickets = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...state.tickets];
-      
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        list = list.filter(t => t.subject.toLowerCase().includes(s) || t.customer_name?.toLowerCase().includes(s) || String(t.id).includes(s));
-      }
-      
-      if (filterStatus !== 'all') {
-        list = list.filter(t => t.status === filterStatus);
-      }
-      
-      setTickets(list);
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     // Always fetch from API
     try {

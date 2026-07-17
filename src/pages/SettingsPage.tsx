@@ -7,8 +7,6 @@ import { CustomModal } from '../components/ui/CustomModal';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 
 const ROLES = ['admin', 'director', 'manager', 'assistant', 'sales', 'viewer'];
@@ -60,13 +58,6 @@ export const SettingsPage: React.FC = () => {
   const [customFields, setCustomFields] = useState<any[]>([]);
 
   const fetchUsers = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      setUsers([...state.users]);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const r = await api.get('/users');
@@ -80,13 +71,6 @@ export const SettingsPage: React.FC = () => {
   };
 
   const fetchPipelines = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      setPipelines([...state.pipeline_stages].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)));
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const r = await api.get('/pipeline-stages');
@@ -99,13 +83,6 @@ export const SettingsPage: React.FC = () => {
   };
 
   const fetchTags = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      setTags([...state.tags]);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const r = await api.get('/tags');
@@ -118,13 +95,6 @@ export const SettingsPage: React.FC = () => {
   };
 
   const fetchCustomFields = async () => {
-    if (DEV_MODE) {
-      setCustomFields([
-        { id: 1, label: 'Mã số thuế', entity_type: 'company', field_type: 'text', is_required: false },
-        { id: 2, label: 'Ngày sinh', entity_type: 'contact', field_type: 'date', is_required: false }
-      ]);
-      return;
-    }
     setLoading(true);
     try {
       const r = await api.get('/custom-fields');

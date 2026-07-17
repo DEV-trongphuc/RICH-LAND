@@ -11,9 +11,7 @@ import { CompanyDrawer } from './CompanyDrawer';
 import { DealDrawer } from './DealDrawer';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
 import { useAuthStore } from '../store/authStore';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { useDebounce } from '../hooks/useDebounce';
@@ -277,56 +275,6 @@ export const DealsPage: React.FC = () => {
   };
 
   const fetchData = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = pipelineView === 'contacts' ? [...state.contacts] : (pipelineView === 'companies' ? [...state.companies] : [...state.deals]);
-      
-      const currentUser = useAuthStore.getState().user;
-      if (currentUser?.role === 'sale') {
-        list = list.filter(c => Number(c.owner_id) === Number(currentUser.id));
-      } else if (currentUser?.role === 'manager') {
-        const teamId = getEffectiveTeamId();
-        if (teamId) {
-          const teamMemberIds = (state.users || [])
-            .filter((u: any) => String(u.team_id) === String(teamId))
-            .map((u: any) => u.id);
-          if (!teamMemberIds.includes(currentUser.id)) {
-            teamMemberIds.push(currentUser.id);
-          }
-          list = list.filter(c => teamMemberIds.includes(Number(c.owner_id)));
-        }
-      }
-
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        if (pipelineView === 'contacts') {
-          list = list.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s));
-        } else if (pipelineView === 'companies') {
-          list = list.filter(c => c.name.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s));
-        } else {
-          list = list.filter(c => c.title?.toLowerCase().includes(s) || c.company_name?.toLowerCase().includes(s));
-        }
-      }
-      
-      if (filterAssignee) {
-        list = list.filter(c => String(c.owner_id) === String(filterAssignee));
-      }
-
-      const grouped: Record<number, any[]> = {};
-      list.forEach((d: any) => {
-        const sid = (!d.stage_id || d.stage_id === '0' || d.stage_id === 0 || d.stage_id === 'unassigned')
-          ? (stagesRef.current.length > 0 ? stagesRef.current[0].id : 'unassigned')
-          : d.stage_id;
-        if (!grouped[sid as any]) grouped[sid as any] = [];
-        grouped[sid as any].push(d);
-      });
-      
-      setItems(grouped);
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const endpoint = pipelineView === 'contacts' ? '/contacts' : (pipelineView === 'companies' ? '/companies' : '/deals');

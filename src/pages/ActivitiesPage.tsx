@@ -9,7 +9,6 @@ import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
-import { DEV_MODE } from '../config/env';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CalendarView } from '../components/CalendarView';
@@ -19,9 +18,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { MentionInput } from '../components/ui/MentionInput';
 
 const PAGE_SIZE = 10;
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
-
-const MOCK_ACTIVITIES: any[] = [];
 
 const TYPES = ['call', 'email', 'meeting', 'task', 'note'];
 const T_LABEL: Record<string, string> = { call: 'Cuộc gọi', email: 'Email', meeting: 'Cuộc họp', task: 'Task', note: 'Ghi chú' };
@@ -104,16 +100,9 @@ export const ActivitiesPage: React.FC = () => {
 
   useEffect(() => {
     if (showModal) {
-      if (DEV_MODE) {
-        const s = getFilteredMockState();
-        setContacts(s.contacts || []);
-        setDeals(s.deals || []);
-        setCompanies(s.companies || []);
-      } else {
-        api.get('/contacts', { params: { limit: 1000 } }).then(r => setContacts(r.data.data?.items || [])).catch(() => {});
-        api.get('/deals', { params: { limit: 1000 } }).then(r => setDeals(r.data.data?.items || r.data.data || [])).catch(() => {});
-        api.get('/companies', { params: { limit: 1000 } }).then(r => setCompanies(r.data.data?.items || [])).catch(() => {});
-      }
+      api.get('/contacts', { params: { limit: 1000 } }).then(r => setContacts(r.data.data?.items || [])).catch(() => {});
+      api.get('/deals', { params: { limit: 1000 } }).then(r => setDeals(r.data.data?.items || r.data.data || [])).catch(() => {});
+      api.get('/companies', { params: { limit: 1000 } }).then(r => setCompanies(r.data.data?.items || [])).catch(() => {});
     }
   }, [showModal]);
 
@@ -126,21 +115,16 @@ export const ActivitiesPage: React.FC = () => {
   }, [user?.role]);
 
   useEffect(() => {
-    if (DEV_MODE) {
-      const s = getFilteredMockState();
-      setUsers(s.users || []);
-    } else {
-      api.get('/users?all=1').then(r => {
-        const d = r.data.data;
-        const list = Array.isArray(d) ? d : (d?.items || []);
-        const team = list.filter((u: any) => {
-          if (!u || !u.role) return false;
-          const roleLower = u.role.toLowerCase();
-          return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
-        });
-        setUsers(team);
-      }).catch(() => {});
-    }
+    api.get('/users?all=1').then(r => {
+      const d = r.data.data;
+      const list = Array.isArray(d) ? d : (d?.items || []);
+      const team = list.filter((u: any) => {
+        if (!u || !u.role) return false;
+        const roleLower = u.role.toLowerCase();
+        return ['admin', 'superadmin', 'super_admin', 'sales', 'sale', 'manager', 'assistant', 'telesale', 'prescreener', 'director', 'staff', 'employee'].includes(roleLower);
+      });
+      setUsers(team);
+    }).catch(() => {});
   }, [user]);
 
   const teamOptions = useMemo(() => {
@@ -171,29 +155,6 @@ export const ActivitiesPage: React.FC = () => {
   };
 
   const fetchActivities = useCallback(async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...state.activities];
-      
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        list = list.filter(a => (a.subject || '').toLowerCase().includes(s) || (a.notes || '').toLowerCase().includes(s));
-      }
-      
-      if (filterType) list = list.filter(a => a.type === filterType);
-      if (filterStatus) list = list.filter(a => a.status === filterStatus);
-      if (filterUserId) list = list.filter(a => String(a.user_id) === String(filterUserId));
-      if (filterTeamId) {
-        const teamUsers = (state.users || []).filter((u: any) => String(u.team_id) === String(filterTeamId)).map((u: any) => u.id);
-        list = list.filter(a => teamUsers.includes(a.user_id));
-      }
-      
-      setItems(list);
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const params: any = { page, limit: PAGE_SIZE, search: debouncedSearch };

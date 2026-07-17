@@ -14,8 +14,6 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { EmptyCard } from '../components/ui/EmptyCard';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useDebounce } from '../hooks/useDebounce';
 import { Avatar } from '../components/ui/Avatar';
@@ -46,45 +44,6 @@ export const InvoicesPage: React.FC = () => {
   const [summary, setSummary] = useState<any>({ total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
 
   const fetchInvoices = useCallback(async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = state.invoices.map(i => {
-        const contact = state.contacts.find(c => c.id === i.contact_id);
-        const company = state.companies.find(c => c.id === i.company_id);
-        return {
-          ...i,
-          contact_name: contact ? `${contact.first_name} ${contact.last_name}` : 'Khách lẻ',
-          contact_phone: contact ? contact.phone : '',
-          company_name: company ? company.name : ''
-        };
-      });
-      
-      if (search) {
-        const s = search.toLowerCase();
-        list = list.filter(i => 
-          i.invoice_number.toLowerCase().includes(s) || 
-          i.contact_name?.toLowerCase().includes(s) || 
-          i.company_name?.toLowerCase().includes(s)
-        );
-      }
-      
-      if (statusFilter) {
-        list = list.filter(i => i.status === statusFilter);
-      }
-      
-      setItems(list);
-      setTotal(list.length);
-      // Mock summary
-      setSummary({
-        total_rev: list.reduce((acc, i) => acc + Number(i.total), 0),
-        paid_amt: list.filter(i => i.status === 'paid').reduce((acc, i) => acc + Number(i.total), 0),
-        pending_amt: list.filter(i => i.status === 'pending').reduce((acc, i) => acc + Number(i.total), 0),
-        overdue_amt: list.filter(i => i.status === 'overdue').reduce((acc, i) => acc + Number(i.total), 0)
-      });
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const params: any = { 

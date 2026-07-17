@@ -3120,12 +3120,13 @@ switch ($action) {
         $distRes = $conn->query("
             SELECT 
                 DATE(dl.received_at) as date_str,
-                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success') THEN 1 ELSE 0 END) as distributed,
+                SUM(CASE WHEN dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success') AND l.is_accepted = 1 AND l.assigned_to = dl.assigned_to THEN 1 ELSE 0 END) as distributed,
                 SUM(CASE WHEN dl.status = 'blacklisted' THEN 1 ELSE 0 END) as blacklist,
                 SUM(CASE WHEN dl.status = 'reminder' THEN 1 ELSE 0 END) as reminder,
                 SUM(CASE WHEN dl.status IN ('error', 'no_consultant') THEN 1 ELSE 0 END) as error,
                 COUNT(*) as total
             FROM distribution_logs dl
+            LEFT JOIN leads l ON dl.lead_id = l.id
             WHERE dl.received_at >= '$startDate' AND dl.received_at <= '$endDate' AND dl.status != 'silent' $distFilter
             GROUP BY DATE(dl.received_at)
         ");
@@ -3240,31 +3241,80 @@ switch ($action) {
             $ticketFilter = " AND r.consultant_id = " . $consultantId;
         }
 
-        // a) Sale distribution statistics
-        $salesRes = $conn->query("
-            SELECT 
-                c.name as sale_name, 
-                c.avatar as sale_avatar, 
-                dr.round_name,
-                dl.status,
-                COUNT(*) as cnt
-            FROM distribution_logs dl
-            LEFT JOIN consultants c ON dl.assigned_to = c.id
-            LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
-            WHERE DATE(dl.received_at) = '$escapedDate' AND dl.status != 'silent' $distFilter
-            GROUP BY dl.assigned_to, dl.round_id, dl.status
-        ");
-
+        $view = $_GET['view'] ?? '';
         $sales = [];
-        if ($salesRes) {
-            while ($row = $salesRes->fetch_assoc()) {
-                $sales[] = [
-                    'sale_name' => $row['sale_name'] ?: 'Chưa phân bổ',
-                    'sale_avatar' => $row['sale_avatar'],
-                    'round_name' => $row['round_name'] ?: '-',
-                    'status' => $row['status'],
-                    'count' => (int) $row['cnt']
-                ];
+
+        if ($view === 'individual') {
+            $salesRes = $conn->query("
+                SELECT 
+                    l.id as lead_id,
+                    l.name as lead_name,
+                    l.phone,
+                    l.source,
+                    dr.round_name,
+                    l.type,
+                    dl.received_at,
+                    dl.status,
+                    rep.status as report_status
+                FROM distribution_logs dl
+                JOIN leads l ON dl.lead_id = l.id
+                LEFT JOIN consultants c ON dl.assigned_to = c.id
+                LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+                LEFT JOIN data_reports rep ON rep.lead_id = l.id AND rep.consultant_id = c.id
+                WHERE DATE(dl.received_at) = '$escapedDate' 
+                  AND dl.lead_id IS NOT NULL 
+                  AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
+                  AND l.is_accepted = 1
+                  AND l.assigned_to = dl.assigned_to
+                  $distFilter
+                ORDER BY dl.id DESC
+            ");
+            if ($salesRes) {
+                while ($row = $salesRes->fetch_assoc()) {
+                    $sales[] = [
+                        'lead_id' => (int) $row['lead_id'],
+                        'lead_name' => $row['lead_name'] ?: 'Ẩn danh',
+                        'phone' => $row['phone'] ?: 'SĐT đã ẩn',
+                        'source' => $row['source'] ?: 'Chưa rõ',
+                        'round_name' => $row['round_name'] ?: 'Ngoài vòng',
+                        'type' => $row['type'],
+                        'received_at' => $row['received_at'],
+                        'status' => $row['status'],
+                        'report_status' => $row['report_status']
+                    ];
+                }
+            }
+        } else {
+            // a) Sale distribution statistics
+            $salesRes = $conn->query("
+                SELECT 
+                    c.name as sale_name, 
+                    c.avatar as sale_avatar, 
+                    dr.round_name,
+                    dl.status,
+                    COUNT(*) as cnt
+                FROM distribution_logs dl
+                LEFT JOIN consultants c ON dl.assigned_to = c.id
+                LEFT JOIN distribution_rounds dr ON dl.round_id = dr.id
+                LEFT JOIN leads l ON dl.lead_id = l.id
+                WHERE DATE(dl.received_at) = '$escapedDate' 
+                  AND dl.lead_id IS NOT NULL 
+                  AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'databank_claim', 'fallback', 'success')
+                  AND l.is_accepted = 1
+                  AND l.assigned_to = dl.assigned_to
+                  $distFilter
+                GROUP BY dl.assigned_to, dl.round_id, dl.status
+            ");
+            if ($salesRes) {
+                while ($row = $salesRes->fetch_assoc()) {
+                    $sales[] = [
+                        'sale_name' => $row['sale_name'] ?: 'Chưa phân bổ',
+                        'sale_avatar' => $row['sale_avatar'],
+                        'round_name' => $row['round_name'] ?: '-',
+                        'status' => $row['status'],
+                        'count' => (int) $row['cnt']
+                    ];
+                }
             }
         }
 
@@ -12493,7 +12543,7 @@ switch ($action) {
                               INNER JOIN (
                                   SELECT lead_id, MAX(id) as max_id 
                                   FROM distribution_logs 
-                                  WHERE status != 'silent' AND $dateCondition $managerFilterDlNoAlias
+                                  WHERE status != 'silent' AND lead_id IS NOT NULL AND $dateCondition $managerFilterDlNoAlias
                                   GROUP BY lead_id
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
@@ -12555,12 +12605,29 @@ switch ($action) {
         $recalledRes = $conn->query("
             SELECT assigned_to, COUNT(*) as cnt 
             FROM distribution_logs 
-            WHERE status = 'recalled' AND $dateCondition $managerFilterDlNoAlias
+            WHERE status = 'recalled' AND lead_id IS NOT NULL AND $dateCondition $managerFilterDlNoAlias
             GROUP BY assigned_to
         ");
         if ($recalledRes) {
             while ($r = $recalledRes->fetch_assoc()) {
                 $recalledMap[(int)$r['assigned_to']] = (int)$r['cnt'];
+            }
+        }
+
+        // Query actually accepted counts for all consultants
+        $acceptedMap = [];
+        $dateConditionL = str_replace('received_at', 'l.received_at', $dateCondition);
+        $acceptedRes = $conn->query("
+            SELECT l.assigned_to, COUNT(*) as cnt 
+            FROM leads l
+            WHERE l.is_accepted = 1 
+              AND l.assigned_to IS NOT NULL 
+              AND $dateConditionL $managerFilterLeads
+            GROUP BY l.assigned_to
+        ");
+        if ($acceptedRes) {
+            while ($r = $acceptedRes->fetch_assoc()) {
+                $acceptedMap[(int)$r['assigned_to']] = (int)$r['cnt'];
             }
         }
 
@@ -12571,7 +12638,8 @@ switch ($action) {
             $uCount = $uncontactedMap[$cId] ?? 0;
             $rCount = $recalledMap[$cId] ?? 0;
             $offered = $data_count + $rCount;
-            $acceptedPercent = $offered > 0 ? round(($data_count / $offered) * 100, 1) : 100.0;
+            $accCount = $acceptedMap[$cId] ?? 0;
+            $acceptedPercent = $offered > 0 ? round(($accCount / $offered) * 100, 1) : 0.0;
             $recalledPercent = $offered > 0 ? round(($rCount / $offered) * 100, 1) : 0.0;
 
             $topConsultantsList[] = [
@@ -12581,7 +12649,7 @@ switch ($action) {
                 'avatar' => $cStats['avatar'],
                 'status' => $cStats['status'],
                 'vacation_mode' => $cStats['vacation_mode'],
-                'data' => $data_count,
+                'data' => $accCount,
                 'uncontacted_count' => $uCount,
                 'recalled_count' => $rCount,
                 'offered_count' => $offered,

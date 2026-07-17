@@ -9,8 +9,6 @@ import { TagInput } from '../components/ui/TagInput';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { compressToWebP } from '../utils/imageCompress';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import { createPortal } from 'react-dom';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
@@ -209,40 +207,24 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       setTags(entity.tags || []);
       setBaseData(entity);
       setBaseTags(entity.tags || []);
-      if (entity.id) {
-        if (DEV_MODE) {
-          const { contacts, deals } = useMockStore.getState();
-          const compContacts = contacts.filter((c: any) => c.company_id === entity.id || c.company_name === entity.name);
-          setSubContacts(compContacts.map((c: any) => ({
+        setSubLoading(true);
+        api.get('/contacts', { params: { company_id: entity.id, limit: 50 } })
+          .then(r => setSubContacts((r.data.data?.items || r.data.data || []).map((c: any) => ({
             id: c.id,
             name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Chưa có tên',
             role: c.job_title || '',
             phone: c.phone || '',
             email: c.email || '',
             isPrimary: c.is_primary || false,
-          })));
-          setDeals(deals.filter((d: any) => d.company_id === entity.id || d.company_name === entity.name));
-        } else {
-          setSubLoading(true);
-          api.get('/contacts', { params: { company_id: entity.id, limit: 50 } })
-            .then(r => setSubContacts((r.data.data?.items || r.data.data || []).map((c: any) => ({
-              id: c.id,
-              name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Chưa có tên',
-              role: c.job_title || '',
-              phone: c.phone || '',
-              email: c.email || '',
-              isPrimary: c.is_primary || false,
-            }))))
-            .catch(() => setSubContacts([]))
-            .finally(() => setSubLoading(false));
-          
-          setDealsLoading(true);
-          api.get('/deals', { params: { company_id: entity.id } })
-            .then(r => setDeals(r.data.data?.items || r.data.data || []))
-            .catch(() => setDeals([]))
-            .finally(() => setDealsLoading(false));
-        }
-      }
+          }))))
+          .catch(() => setSubContacts([]))
+          .finally(() => setSubLoading(false));
+        
+        setDealsLoading(true);
+        api.get('/deals', { params: { company_id: entity.id } })
+          .then(r => setDeals(r.data.data?.items || r.data.data || []))
+          .catch(() => setDeals([]))
+          .finally(() => setDealsLoading(false));
     }
   }, [entity]);
 

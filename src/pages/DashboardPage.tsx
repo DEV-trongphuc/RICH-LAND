@@ -17,8 +17,6 @@ import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton } from '../components/ui/Skeleton';
 
 const FMT = (n: any) => {
@@ -36,13 +34,6 @@ const FMT_VND = (n: any) => {
   return new Intl.NumberFormat('vi-VN').format(num) + ' đ';
 };
 
-const MOCK_STATS = {
-  won_value: 0,
-  profit: 0,
-  new_contacts: 0,
-  expenses: 0,
-  tasks_due_today: 0
-};
 
 /* ── Component ──────────────────────────────────────────────── */
 export const DashboardPage: React.FC = () => {
@@ -70,79 +61,6 @@ export const DashboardPage: React.FC = () => {
   const ITEMS_PER_PAGE = isMobile ? 1 : 4;
 
   const fetchAll = useCallback(async () => {
-    if (DEV_MODE) {
-      setLoadingStats(true);
-      const state = getFilteredMockState();
-      
-      // Compute stats from mock data
-      const activeDeals = state.deals.filter((d: any) => d.stage_id !== 'won' && d.stage_id !== 'lost');
-      const wonDeals = state.deals.filter((d: any) => d.stage_id === 'won');
-      const wonValue = wonDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
-      const activeValue = activeDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
-      const expenses = (state.expenses || []).reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
-      
-      setStats({
-        won_value: wonValue,
-        gross_profit: wonValue * 0.4,
-        profit: wonValue - expenses,
-        new_contacts: state.contacts.length,
-        total_contacts: state.contacts.length * 12,
-        expenses: expenses,
-        tasks_due_today: state.activities.filter((a: any) => a.status === 'planned').length,
-        active_deals: activeDeals.length,
-        active_value: activeValue,
-        revenue_change: '+18.5%',
-        profit_change: '+12.4%',
-        contacts_change: '+5.2%',
-        expenses_change: '-2.1%',
-        today_tasks: state.activities.filter((a: any) => a.status === 'planned')
-      });
-
-      setRevenueChart([
-        { month: 'T06', revenue: wonValue * 0.45, cost: expenses * 0.5 },
-        { month: 'T07', revenue: wonValue * 0.55, cost: expenses * 0.6 },
-        { month: 'T08', revenue: wonValue * 0.5, cost: expenses * 0.55 },
-        { month: 'T09', revenue: wonValue * 0.65, cost: expenses * 0.7 },
-        { month: 'T10', revenue: wonValue * 0.75, cost: expenses * 0.8 },
-        { month: 'T11', revenue: wonValue * 0.85, cost: expenses * 0.9 },
-        { month: 'T12', revenue: wonValue * 0.95, cost: expenses * 0.85 },
-        { month: 'T01', revenue: wonValue, cost: expenses }
-      ]);
-
-      setPipelineFunnel(state.pipeline_stages.map((s: any) => ({
-        ...s,
-        deal_count: state.contacts.filter((c: any) => c.stage_id === s.id).length,
-        total_value: state.contacts.filter((c: any) => c.stage_id === s.id).reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0)
-      })));
-
-      setLeadSources([
-        { source: 'Facebook', count: 45, color: '#3b82f6' },
-        { source: 'Website', count: 32, color: '#10b981' },
-        { source: 'Referral', count: 18, color: '#BD1D2D' },
-        { source: 'Other', count: 5, color: '#6b7280' }
-      ]);
-
-      setLeaderboard(state.users.slice(0, 3).map((u: any, i: number) => ({
-        ...u,
-        won_value: wonValue * (0.5 - i * 0.1),
-        won_count: 5 - i
-      })));
-
-      setTagStats(state.tags.map((t: any) => ({
-        tag: t.name,
-        count: t.count || 0,
-        color: t.color
-      })));
-
-      setInventoryStats({
-        total_value: 1250000000,
-        total_batches: 45
-      });
-
-      setLoadingStats(false);
-      return;
-    }
-
     setLoadingStats(true);
 
     try {
@@ -155,7 +73,13 @@ export const DashboardPage: React.FC = () => {
         api.get('/tags/stats', { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/reports/inventory'),
       ]);
-      setStats(s.data.data || MOCK_STATS);
+      setStats(s.data.data || {
+        won_value: 0,
+        profit: 0,
+        new_contacts: 0,
+        expenses: 0,
+        tasks_due_today: 0
+      });
       setRevenueChart((rev.data.data || []).map((x: any) => ({
         ...x,
         revenue: Number(x.revenue || 0),

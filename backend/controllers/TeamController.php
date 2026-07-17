@@ -20,7 +20,8 @@ class TeamController
         $params = [];
 
         if ($role === 'manager') {
-            $where = " WHERE t.leader_id = ?";
+            $where = " WHERE (t.leader_id = ? OR t.id = (SELECT team_id FROM users WHERE id = ?))";
+            $params[] = $uid;
             $params[] = $uid;
         } else if (in_array($role, ['sale', 'sales'], true)) {
             $uStmt = $this->db->prepare("SELECT team_id FROM users WHERE id = ?");

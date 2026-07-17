@@ -17,7 +17,7 @@ class DealController {
             $roleFilter = " AND (owner_id = $uid OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = $uid
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = $uid)
             ))";
         } else if ($scope === 'own') {
             $uid = (int)$auth['user_id'];
@@ -97,8 +97,9 @@ class DealController {
             $where[] = '(d.owner_id = ? OR d.owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($scope === 'own') {
@@ -222,8 +223,9 @@ class DealController {
             $sql .= " AND (d.owner_id=? OR d.owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         } else if ($scope === 'own') {
@@ -290,8 +292,9 @@ class DealController {
                 $permissionSql .= " AND (owner_id=? OR owner_id IN (
                     SELECT id FROM users WHERE team_id IN (
                         SELECT id FROM teams WHERE leader_id = ?
-                    )
+                    ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
                 ))";
+                $cp[] = $auth['user_id'];
                 $cp[] = $auth['user_id'];
                 $cp[] = $auth['user_id'];
             }
@@ -387,8 +390,9 @@ class DealController {
             $permissionSql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))";
+            $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
             $cp[] = $auth['user_id'];
         } else if ($scope === 'own') {
@@ -446,8 +450,9 @@ class DealController {
             $sql .= " AND (owner_id=? OR owner_id IN (
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
-                )
+                ) OR team_id = (SELECT team_id FROM users WHERE id = ?)
             ))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         } else if ($scope === 'own') {

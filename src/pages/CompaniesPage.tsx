@@ -8,8 +8,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { Pagination } from '../components/ui/Pagination';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { PhoneLink } from '../components/ui/PhoneLink';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -42,25 +40,6 @@ export const CompaniesPage: React.FC = () => {
   });
 
   const fetchCompanies = useCallback(async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...state.companies];
-      
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        list = list.filter(c => c.name.toLowerCase().includes(s) || c.industry?.toLowerCase().includes(s));
-      }
-      
-      if (statusFilter) {
-        list = list.filter(c => c.status === statusFilter);
-      }
-      
-      setCompanies(list);
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const params: any = { page, limit: pageSize };

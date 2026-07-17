@@ -16,8 +16,6 @@ import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { CustomModal } from '../components/ui/CustomModal';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useDebounce } from '../hooks/useDebounce';
 import { Avatar } from '../components/ui/Avatar';
@@ -69,33 +67,6 @@ export const QuotesPage: React.FC = () => {
   }, []);
 
   const fetchQuotes = useCallback(async () => {
-    if (DEV_MODE) {
-      setLoading(true);
-      const state = getFilteredMockState();
-      let list = [...state.quotes];
-
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        list = list.filter(q => q.quote_number.toLowerCase().includes(s) || q.title.toLowerCase().includes(s) || q.contact_name?.toLowerCase().includes(s));
-      }
-
-      if (statusFilter) {
-        list = list.filter(q => q.status === statusFilter);
-      }
-
-      setItems(list);
-      setTotal(list.length);
-      setSummary({
-        total_val: list.reduce((sum, q) => sum + q.total, 0),
-        accepted_val: list.filter(q => q.status === 'accepted').reduce((sum, q) => sum + q.total, 0),
-        sent_count: list.filter(q => q.status === 'sent').length,
-        accepted_count: list.filter(q => q.status === 'accepted').length,
-        total_count: list.length
-      });
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const params = {

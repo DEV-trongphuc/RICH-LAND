@@ -22,8 +22,8 @@ class QuoteController {
         // Load team members if team scope
         $userIds = [$uid];
         if ($scope === 'team') {
-            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)");
-            $stmtTeam->execute([$uid]);
+            $stmtTeam = $this->db->prepare("SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)");
+            $stmtTeam->execute([$uid, $uid]);
             $teamMemberIds = $stmtTeam->fetchAll(PDO::FETCH_COLUMN) ?: [];
             $userIds = array_merge($userIds, array_map('intval', $teamMemberIds));
         }
@@ -134,7 +134,8 @@ class QuoteController {
                 $sqlContact .= " AND owner_id=?";
                 $pContact[] = $uid;
             } else if ($leadsReadScope === 'team') {
-                $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+                $pContact[] = $uid;
                 $pContact[] = $uid;
                 $pContact[] = $uid;
             } else if ($leadsReadScope === 'none') {
@@ -153,7 +154,8 @@ class QuoteController {
                 $sqlDeal .= " AND owner_id=?";
                 $pDeal[] = $uid;
             } else if ($isManager) {
-                $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+                $pDeal[] = $uid;
                 $pDeal[] = $uid;
                 $pDeal[] = $uid;
             }
@@ -210,7 +212,8 @@ class QuoteController {
             $sql .= " AND q.created_by=?";
             $p[] = $uid;
         } else if ($isManager) {
-            $sql .= " AND (q.created_by = ? OR q.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $sql .= " AND (q.created_by = ? OR q.created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+            $p[] = $uid;
             $p[] = $uid;
             $p[] = $uid;
         }
@@ -250,7 +253,8 @@ class QuoteController {
                     $sqlContact .= " AND owner_id=?";
                     $pContact[] = $uid;
                 } else if ($leadsReadScope === 'team') {
-                    $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                    $sqlContact .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+                    $pContact[] = $uid;
                     $pContact[] = $uid;
                     $pContact[] = $uid;
                 } else if ($leadsReadScope === 'none') {
@@ -268,7 +272,8 @@ class QuoteController {
                     $sqlDeal .= " AND owner_id=?";
                     $pDeal[] = $uid;
                 } else if ($dealsReadScope === 'team') {
-                    $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                    $sqlDeal .= " AND (owner_id = ? OR owner_id IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+                    $pDeal[] = $uid;
                     $pDeal[] = $uid;
                     $pDeal[] = $uid;
                 } else if ($dealsReadScope === 'none') {
@@ -290,7 +295,8 @@ class QuoteController {
                 $sql .= " AND created_by=?";
                 $params[] = $uid;
             } else if ($scope === 'team') {
-                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+                $params[] = $uid;
                 $params[] = $uid;
                 $params[] = $uid;
             }
@@ -327,7 +333,8 @@ class QuoteController {
                 $sql .= " AND created_by=?";
                 $p[] = $uid;
             } else if ($isManager) {
-                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+                $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+                $p[] = $uid;
                 $p[] = $uid;
                 $p[] = $uid;
             }
@@ -390,7 +397,8 @@ class QuoteController {
         $sql = "DELETE FROM quotes WHERE id=? AND tenant_id=?";
         $p = [$id, $tid];
         if ($scope === 'team') {
-            $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?)))";
+            $sql .= " AND (created_by = ? OR created_by IN (SELECT id FROM users WHERE team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR team_id = (SELECT team_id FROM users WHERE id = ?)))";
+            $p[] = $uid;
             $p[] = $uid;
             $p[] = $uid;
         } else if ($scope === 'own') {

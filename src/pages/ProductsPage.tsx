@@ -5,8 +5,6 @@ import { Plus, Package, Pencil, Trash2, X, Loader2, Search, Layers, Download } f
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
@@ -43,25 +41,6 @@ export const ProductsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   const fetchProducts = () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...state.products];
-      
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        list = list.filter(p => p.name.toLowerCase().includes(s) || p.sku?.toLowerCase().includes(s));
-      }
-      
-      if (categoryFilter) {
-        list = list.filter(p => String(p.category_id) === String(categoryFilter));
-      }
-      
-      setProducts(list);
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     const params = {
       page,

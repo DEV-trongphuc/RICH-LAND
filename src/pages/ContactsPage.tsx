@@ -22,8 +22,6 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { CopyButton } from '../components/ui/CopyButton';
 import api from '../api/axios';
 import { fetchAPI } from '../utils/api';
-import { DEV_MODE } from '../config/env';
-import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -408,69 +406,6 @@ export const ContactsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   const fetchData = async () => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...(state.contacts || [])];
-      
-      if (user?.role === 'sale') {
-        list = list.filter(c => Number(c.owner_id) === Number(user.id) || Number(c.created_by) === Number(user.id));
-      } else if (user?.role === 'manager') {
-        const activeTeamId = getEffectiveTeamId();
-        if (activeTeamId) {
-          const teamMemberIds = (state.users || [])
-            .filter((u: any) => String(u.team_id) === String(activeTeamId))
-            .map((u: any) => u.id);
-          if (!teamMemberIds.includes(user.id)) {
-            teamMemberIds.push(user.id);
-          }
-          list = list.filter(c => teamMemberIds.includes(Number(c.owner_id)) || teamMemberIds.includes(Number(c.created_by)));
-        }
-      }
-      
-      // Basic search
-      if (debouncedSearch) {
-        const s = debouncedSearch.toLowerCase();
-        list = list.filter(c => 
-          (c.first_name + ' ' + c.last_name).toLowerCase().includes(s) || 
-          c.email?.toLowerCase().includes(s) || 
-          c.phone?.includes(s)
-        );
-      }
-
-      // Advanced filters mapping for Mock Mode
-      if (activeFilters.status) {
-        list = list.filter(c => String(c.stage_id) === activeFilters.status || c.status === activeFilters.status);
-      }
-      if (activeFilters.source) {
-        list = list.filter(c => c.source === activeFilters.source);
-      }
-      if (activeFilters.ownerId) {
-        list = list.filter(c => String(c.owner_id) === activeFilters.ownerId);
-      }
-      if (activeFilters.projectId) {
-        list = list.filter(c => String(c.project_id) === activeFilters.projectId);
-      }
-      if (activeFilters.tag) {
-        list = list.filter(c => Array.isArray(c.tags) && c.tags.includes(activeFilters.tag));
-      }
-      if (activeFilters.dateActive) {
-        const field = activeFilters.dateField;
-        if (activeFilters.dateType === 'range') {
-          if (activeFilters.fromDate) list = list.filter(c => new Date(c[field]) >= new Date(activeFilters.fromDate));
-          if (activeFilters.toDate) list = list.filter(c => new Date(c[field]) <= new Date(activeFilters.toDate));
-        } else if (activeFilters.dateType === 'before') {
-          if (activeFilters.beforeDate) list = list.filter(c => new Date(c[field]) <= new Date(activeFilters.beforeDate));
-        } else if (activeFilters.dateType === 'after') {
-          if (activeFilters.afterDate) list = list.filter(c => new Date(c[field]) >= new Date(activeFilters.afterDate));
-        }
-      }
-
-      setContacts(list.map(c => ({ ...c, score: calcScore(c) })));
-      setTotal(list.length);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const params: any = { 
@@ -562,18 +497,6 @@ export const ContactsPage: React.FC = () => {
   }, [initialMetadataLoaded]);
 
   useEffect(() => {
-    if (DEV_MODE) {
-      const state = getFilteredMockState();
-      let list = [...(state.users || [])];
-      const activeTeamId = getEffectiveTeamId();
-      if (user?.role === 'manager' && activeTeamId) {
-        list = list.filter((u: any) => String(u.team_id) === String(activeTeamId));
-      }
-      setUsers(list);
-      setInitialMetadataLoaded(true);
-      return;
-    }
-
     const loadMetadata = async () => {
       try {
         const projPromise = api.get('/projects?bypass_roster=1').catch(() => null);

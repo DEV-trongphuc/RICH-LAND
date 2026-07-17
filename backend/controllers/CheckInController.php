@@ -31,9 +31,10 @@ class CheckInController {
         
         $params = [$auth['tenant_id']];
 
-        // RLS: Sales can only see their own check-ins. Managers see their team's.
+        // RLS: Sales can only see their own check-ins. Managers see their team's (where they are leader or belong to).
         if ($auth['role'] === 'manager') {
-            $sql .= " AND (u.id = ? OR u.team_id IN (SELECT id FROM teams WHERE leader_id = ?))";
+            $sql .= " AND (u.id = ? OR u.team_id IN (SELECT id FROM teams WHERE leader_id = ?) OR (u.team_id IS NOT NULL AND u.team_id = (SELECT team_id FROM users WHERE id = ?)))";
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             if (isset($_GET['user_id']) && !empty($_GET['user_id']) && $_GET['user_id'] !== 'all') {
@@ -142,17 +143,29 @@ class CheckInController {
 
         // Send notifications to Admins & Managers if late
         if ($isLate) {
-            // Get user's name
-            $stmtUserDetails = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+            // Get user's name & team_id
+            $stmtUserDetails = $this->db->prepare("SELECT full_name, team_id FROM users WHERE id = ?");
             $stmtUserDetails->execute([$auth['user_id']]);
-            $userName = $stmtUserDetails->fetchColumn() ?: 'Nhân viên';
+            $uDetails = $stmtUserDetails->fetch(PDO::FETCH_ASSOC);
+            $userName = $uDetails ? $uDetails['full_name'] : 'Nhân viên';
+            $userTeamId = $uDetails ? $uDetails['team_id'] : null;
 
             // Find all managers/admins/superadmins
             $stmtAdmins = $this->db->prepare("
                 SELECT id FROM users 
-                WHERE tenant_id = ? AND role IN ('admin', 'superadmin', 'super_admin', 'manager', 'assistant', 'director')
+                WHERE tenant_id = ? 
+                  AND (
+                    role IN ('admin', 'superadmin', 'super_admin', 'director', 'assistant')
+                    OR (
+                      role = 'manager' 
+                      AND (
+                        id IN (SELECT leader_id FROM teams WHERE id = ?)
+                        OR team_id = ?
+                      )
+                    )
+                  )
             ");
-            $stmtAdmins->execute([$auth['tenant_id']]);
+            $stmtAdmins->execute([$auth['tenant_id'], $userTeamId, $userTeamId]);
             $admins = $stmtAdmins->fetchAll(PDO::FETCH_COLUMN);
 
             if (!empty($admins)) {
@@ -225,9 +238,16 @@ class CheckInController {
             $stmtUserTeam->execute([$row['user_id']]);
             $targetUserTeamId = $stmtUserTeam->fetchColumn();
 
-            $stmtLead = $this->db->prepare("SELECT 1 FROM teams WHERE id = ? AND leader_id = ?");
-            $stmtLead->execute([$targetUserTeamId, $auth['user_id']]);
-            $isTeamMember = $stmtLead->fetch();
+            $isTeamMember = false;
+            if ($targetUserTeamId !== null) {
+                $stmtCheckManager = $this->db->prepare("
+                    SELECT 1 FROM teams WHERE id = ? AND leader_id = ?
+                    UNION
+                    SELECT 1 FROM users WHERE id = ? AND team_id = ? AND role = 'manager'
+                ");
+                $stmtCheckManager->execute([$targetUserTeamId, $auth['user_id'], $auth['user_id'], $targetUserTeamId]);
+                $isTeamMember = (bool)$stmtCheckManager->fetch();
+            }
 
             if ((int)$row['user_id'] !== (int)$auth['user_id'] && !$isTeamMember) {
                 respond(403, null, 'Bạn chỉ có quyền phê duyệt chấm công cho nhân viên thuộc nhóm của mình', false);
