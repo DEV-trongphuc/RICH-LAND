@@ -4244,11 +4244,59 @@ switch ($action) {
             }
 
             // If logged in as sale, verify the lead is assigned to them
-            if ($decodedUser['role'] === 'sale') {
+            if ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales') {
                 $sale_id = $currentSaleConsultantId;
                 if ((int)$resChk['assigned_to'] !== $sale_id) {
                     $conn->rollback();
                     echo json_encode(['success' => false, 'message' => 'Bạn không được phép tiếp nhận Lead này']);
+                    break;
+                }
+            }
+
+            // Check van chống ôm (backpressure limit)
+            if ((int)$resChk['assigned_to'] > 0) {
+                $backpressureLimit = (int) get_system_setting($conn, 'backpressure_limit');
+                if ($backpressureLimit <= 0) {
+                    $backpressureLimit = 5;
+                }
+
+                $stmtKhtn = $conn->prepare("
+                    SELECT COUNT(*) as cnt 
+                    FROM contacts c
+                    WHERE c.owner_id = ? 
+                      AND c.status != 'rejected'
+                      AND (
+                          c.pipeline_status = 'chua_xac_dinh'
+                          OR (
+                              c.pipeline_status = 'quan_tam'
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM notes n 
+                                  WHERE n.entity_type = 'contact' 
+                                    AND n.entity_id = c.id 
+                                    AND n.user_id = c.owner_id
+                              )
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM activities a
+                                  WHERE a.related_type = 'contact'
+                                    AND a.related_id = c.id
+                                    AND a.user_id = c.owner_id
+                                    AND a.status = 'done'
+                              )
+                          )
+                      )
+                ");
+                $targetUserId = (int)$resChk['assigned_to'];
+                $stmtKhtn->bind_param("i", $targetUserId);
+                $stmtKhtn->execute();
+                $khtnCnt = (int) ($stmtKhtn->get_result()->fetch_assoc()['cnt'] ?? 0);
+                $stmtKhtn->close();
+
+                if ($khtnCnt >= $backpressureLimit) {
+                    $conn->rollback();
+                    echo json_encode([
+                        'success' => false, 
+                        'message' => "Bạn đã vượt quá van chống ôm ($khtnCnt/$backpressureLimit data chưa xử lý). Vui lòng tương tác/ghi chú các data hiện tại trước khi nhận thêm."
+                    ]);
                     break;
                 }
             }
