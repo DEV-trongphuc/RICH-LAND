@@ -214,7 +214,7 @@ export default function CapiPage() {
                 Chỉ định sự kiện Standard Meta CAPI tương ứng sẽ tự động kích hoạt khi khách hàng chuyển sang từng trạng thái phễu.
               </p>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '380px', overflowY: 'auto', paddingRight: '4px', border: '1px solid var(--color-border-light)', borderRadius: '8px', padding: '0.75rem', background: 'rgba(0, 0, 0, 0.01)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid var(--color-border-light)', borderRadius: '8px', padding: '0.75rem', background: 'rgba(0, 0, 0, 0.01)' }}>
                 {pipelineStatuses.map(status => (
                   <div key={status} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
