@@ -168,6 +168,7 @@ const SettingsInner = () => {
       title: t('Dữ liệu & Vòng đời'),
       items: [
         { value: 'duplicate_filter', label: t('Nhận diện & Lọc trùng'), icon: <Search size={15} /> },
+        { value: 'blacklist', label: t('Danh sách đen & Loại trừ'), icon: <Shield size={15} /> },
         { value: 'pipeline_stages', label: t('Vòng đời & Trạng thái'), icon: <Layers size={15} /> },
         { value: 'tag_management', label: t('Quản lý Thẻ (Tags)'), icon: <Tag size={15} /> },
         { value: 'legacy_mapping', label: t('Ánh xạ dữ liệu cũ'), icon: <FileSpreadsheet size={15} /> }
@@ -380,6 +381,11 @@ const SettingsInner = () => {
   const [blacklistSearchQuery, setBlacklistSearchQuery] = useState('');
   const [blacklistContactTab, setBlacklistContactTab] = useState<'phone' | 'email'>('phone');
 
+  // Real estate dynamic business config
+  const [depositCancelDemotedStatus, setDepositCancelDemotedStatus] = useState('da_gap');
+  const [depositCancelDemotedBookingStatus, setDepositCancelDemotedBookingStatus] = useState('booking');
+  const [capiEventTriggers, setCapiEventTriggers] = useState('');
+
   // Ticket Auto-Approve config
   const [ticketAutoApproveEnabled, setTicketAutoApproveEnabled] = useState(false);
   const [ticketAutoApproveKeywords, setTicketAutoApproveKeywords] = useState('');
@@ -555,6 +561,9 @@ const SettingsInner = () => {
         if (json.data.global_exclusion_keys) setExclusionKeys(json.data.global_exclusion_keys);
         if (json.data.global_exclusion_contacts) setExclusionContacts(json.data.global_exclusion_contacts);
         if (json.data.duplicate_check_months) setDuplicateCheckMonths(Number(json.data.duplicate_check_months));
+        if (json.data.deposit_cancel_demoted_status) setDepositCancelDemotedStatus(json.data.deposit_cancel_demoted_status);
+        if (json.data.deposit_cancel_demoted_booking_status) setDepositCancelDemotedBookingStatus(json.data.deposit_cancel_demoted_booking_status);
+        if (json.data.capi_event_triggers) setCapiEventTriggers(json.data.capi_event_triggers);
         setReassignIfOwnerInactive(json.data.reassign_if_owner_inactive === undefined || json.data.reassign_if_owner_inactive === '1' || json.data.reassign_if_owner_inactive === 1);
         if (json.data.starvation_prevention_enabled !== undefined) {
           setStarvationPreventionEnabled(json.data.starvation_prevention_enabled === '1' || json.data.starvation_prevention_enabled === 1);
@@ -914,6 +923,9 @@ const SettingsInner = () => {
       global_exclusion_keys: exclusionKeys,
       global_exclusion_contacts: exclusionContacts,
       duplicate_check_months: duplicateCheckMonths,
+      deposit_cancel_demoted_status: depositCancelDemotedStatus,
+      deposit_cancel_demoted_booking_status: depositCancelDemotedBookingStatus,
+      capi_event_triggers: capiEventTriggers,
       reassign_if_owner_inactive: reassignIfOwnerInactive ? '1' : '0',
       starvation_prevention_enabled: starvationPreventionEnabled ? 1 : 0,
       starvation_max_leads_per_hour: starvationMaxLeadsPerHour,
@@ -1655,6 +1667,46 @@ const SettingsInner = () => {
                 </div>
               </div>
 
+              {/* Meta Conversion API (CAPI) Integration */}
+              <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', background: '#3b5998', color: 'white', padding: 6, borderRadius: 6 }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
+                  </span>
+                  {t('Tích hợp Meta Conversion API (CAPI)')}
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  {t('Cấu hình ánh xạ các sự kiện Conversions API của Meta để gửi tín hiệu hành vi khách hàng về Pixel của Facebook.')}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text-light)' }}>
+                    {t('Cấu hình Ánh xạ Sự kiện (JSON Map)')}
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={capiEventTriggers}
+                    onChange={e => setCapiEventTriggers(e.target.value)}
+                    placeholder={`{\n  "dong_y_gap": "Schedule",\n  "da_gap": "Schedule",\n  "not_lead": "BAD",\n  "dat_coc": "Purchase"\n}`}
+                    style={{
+                      padding: '10px 12px',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      fontSize: '0.875rem',
+                      outline: 'none',
+                      background: 'var(--color-bg)',
+                      color: 'var(--color-text)',
+                      width: '100%',
+                      fontFamily: 'monospace',
+                      lineHeight: 1.5,
+                      resize: 'vertical'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    {t('Nhập chuỗi JSON cấu hình ánh xạ trạng thái sang tên sự kiện CAPI của Meta (ví dụ: Schedule, Lead, Purchase, CompleteRegistration).')}
+                  </span>
+                </div>
+              </div>
 
             </div>
 
@@ -3808,6 +3860,47 @@ function doPost(e) {
                     </div>
                   </div>
 
+                  {/* Nhóm 5: Quy tắc cọc & Bể cọc */}
+                  <div style={{ background: 'var(--color-bg-secondary)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginTop: '1.25rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem' }}>
+                      <RefreshCw size={15} style={{ color: 'var(--color-primary)' }} />
+                      <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--color-text)' }}>{t('Quy tắc cọc & Bể cọc')}</h4>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+                      <div>
+                        <label className="form-label">{t('Trạng thái hạ cấp khi bể cọc (Chưa doanh thu)')}</label>
+                        <CustomSelect
+                          options={pipelineStatusHierarchy.map(status => ({
+                            value: status,
+                            label: pipelineStatusLabels[status] || status
+                          }))}
+                          value={depositCancelDemotedStatus}
+                          onChange={val => setDepositCancelDemotedStatus(val as string)}
+                          width="100%"
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Trạng thái đích mặc định của khách hàng khi hủy phiếu cọc trước khi phát sinh doanh thu (ví dụ: Đã Gặp).')}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="form-label">{t('Trạng thái hạ cấp nếu từng có Đặt chỗ (Booking)')}</label>
+                        <CustomSelect
+                          options={pipelineStatusHierarchy.map(status => ({
+                            value: status,
+                            label: pipelineStatusLabels[status] || status
+                          }))}
+                          value={depositCancelDemotedBookingStatus}
+                          onChange={val => setDepositCancelDemotedBookingStatus(val as string)}
+                          width="100%"
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
+                          {t('Trạng thái đích nếu khách hàng từng có lịch sử đặt chỗ/booking (ví dụ: Booking).')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
                 </div>
               </div>
@@ -4526,9 +4619,11 @@ function doPost(e) {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Blacklist Config Card */}
-              <div className="card" style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            {/* ===== TAB: BLACKLIST & EXCLUSION ===== */}
+            <div style={{ display: activeTab === 'blacklist' ? 'block' : 'none' }} className="subtab-enter-active">
+              <div className="card" style={{ padding: '1.5rem', marginTop: 0 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ display: 'inline-flex', background: '#374151', color: 'white', padding: 4, borderRadius: 6 }}>
                     <Shield size={16} />
@@ -4538,6 +4633,13 @@ function doPost(e) {
                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem', lineHeight: 1.5 }}>
                   {t('Data chứa các thông tin này sẽ bị chặn đứng ngay lập tức và')} <strong>{t('KHÔNG')}</strong> {t('được giao cho bất kỳ vòng nào (Kể cả vòng Fallback).')}
                 </p>
+
+                {renderHelpBanner('blacklist', t('Giải thích cơ chế Hoạt động của Danh sách đen & Loại trừ'), (
+                  <ul style={{ paddingLeft: '1.25rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <li><strong>{t('Chặn tự động:')}</strong> {t('Dữ liệu mới đổ về khớp SĐT/Email hoặc Từ khóa sẽ bị đưa thẳng vào danh sách spam/blacklist và không giao cho bất kỳ ai.')}</li>
+                    <li><strong>{t('Từ khóa loại trừ:')}</strong> {t('Bộ lọc từ khóa giúp loại bỏ các lead thử nghiệm, lead ảo hoặc lead rác (ví dụ: test, rac, spam).')}</li>
+                  </ul>
+                ))}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {/* Part 1: Exclusion Keys */}

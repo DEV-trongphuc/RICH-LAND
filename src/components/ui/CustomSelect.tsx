@@ -57,6 +57,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
+  const [dropdownDirection, setDropdownDirection] = useState<'up' | 'down'>(direction);
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
@@ -67,6 +68,19 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
+
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+        setDropdownDirection('up');
+      } else {
+        setDropdownDirection(direction);
+      }
+    }
+  }, [isOpen, direction]);
 
   const selectedOption = React.useMemo(() => {
     if (multiple) return null;
@@ -213,17 +227,17 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: direction === 'down' ? -18 : 18, scale: 0.96 }}
+            initial={{ opacity: 0, y: dropdownDirection === 'down' ? -18 : 18, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: direction === 'down' ? -18 : 18, scale: 0.96 }}
+            exit={{ opacity: 0, y: dropdownDirection === 'down' ? -18 : 18, scale: 0.96 }}
             transition={{ type: "spring", duration: 0.32, bounce: 0.05 }}
             className={styles.dropdown}
             style={{
-              top: direction === 'down' ? 'calc(100% + 0.5rem)' : 'auto',
-              bottom: direction === 'up' ? 'calc(100% + 0.5rem)' : 'auto',
+              top: dropdownDirection === 'down' ? 'calc(100% + 0.5rem)' : 'auto',
+              bottom: dropdownDirection === 'up' ? 'calc(100% + 0.5rem)' : 'auto',
               left: align === 'right' ? 'auto' : 0,
               right: align === 'right' ? 0 : 'auto',
-              transformOrigin: direction === 'down' ? 'top' : 'bottom'
+              transformOrigin: dropdownDirection === 'down' ? 'top' : 'bottom'
             }}
           >
             {searchable && (
