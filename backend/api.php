@@ -12597,7 +12597,8 @@ switch ($action) {
                 'leadSourceStats' => $leadSourceStats,
                 'errorStats' => $errorStats
             ]
-        } catch (Exception $e) {
+        ]);
+        } catch (Throwable $e) {
             echo json_encode([
                 'success' => false,
                 'message' => 'Lỗi máy chủ: ' . $e->getMessage() . ' tại dòng ' . $e->getLine() . ' trong file ' . $e->getFile()
