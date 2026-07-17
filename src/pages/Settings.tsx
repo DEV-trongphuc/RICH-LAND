@@ -1450,16 +1450,16 @@ const SettingsInner = () => {
   const showTestEmailButton = true;
 
   return (
-    <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', animation: 'fadeIn 0.3s', minWidth: 0 }}>
+    <div style={{ padding: '0.75rem 2rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'fadeIn 0.3s', minWidth: 0 }}>
       <div className="page-header settings-page-header" style={{
         position: 'sticky',
-        top: '-2rem',
+        top: '-0.75rem',
         zIndex: 90,
         background: 'var(--color-bg)',
-        paddingTop: '1.5rem',
-        paddingBottom: '1rem',
+        paddingTop: '0.5rem',
+        paddingBottom: '0.75rem',
         borderBottom: '1px solid var(--color-border)',
-        marginBottom: '2rem',
+        marginBottom: '0.25rem',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between'
@@ -1526,7 +1526,7 @@ const SettingsInner = () => {
         />
       </div>
 
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', marginTop: '1rem' }}>
+      <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', marginTop: 0 }}>
         {/* Left Sidebar (Desktop only) */}
         <div 
           className="hide-on-mobile no-scrollbar" 
