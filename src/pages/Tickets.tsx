@@ -727,9 +727,9 @@ const TicketsInner = ({ isActive, searchParams, setSearchParams }: { isActive: b
   const getUserAvatarByName = (name: string) => {
     if (!name || name === 'Hệ thống') return undefined;
     const acc = allAccounts.find(a => (a.name || a.username) === name);
-    if (acc?.avatar) return acc.avatar;
+    if (acc?.avatar || acc?.avatar_url) return acc.avatar || acc.avatar_url;
     const cons = allConsultants.find(c => c.name === name);
-    if (cons?.avatar) return cons.avatar;
+    if (cons?.avatar || cons?.avatar_url) return cons.avatar || cons.avatar_url;
     return undefined;
   };
 
@@ -5048,7 +5048,7 @@ const TicketSettingsModal = ({ open, onClose }: { open: boolean; onClose: () => 
                         transition: 'all 0.2s'
                       }}
                     >
-                      <Avatar src={acc.avatar} name={acc.name} size={36} />
+                      <Avatar src={acc.avatar || acc.avatar_url} name={acc.name} size={36} />
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: '0.9rem' }}>{acc.name}</div>

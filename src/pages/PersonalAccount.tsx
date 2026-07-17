@@ -8,6 +8,7 @@ import { Avatar } from '../components/ui/Avatar';
 import toast from 'react-hot-toast';
 import { StatRowSkeleton } from '../components/ui/Skeleton';
 import { withRouterFreezer } from '../components/RouterFreezer';
+import styles from './EntityDrawer.module.css';
 
 const PersonalAccountInner = () => {
   const { t } = useLanguage();
@@ -212,122 +213,128 @@ const PersonalAccountInner = () => {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', alignItems: 'start' }}>
+      <div className={styles.drawerBody} style={{
+        display: 'flex',
+        minHeight: '600px',
+        background: 'var(--color-surface)',
+        borderRadius: '16px',
+        border: '1px solid var(--color-border)',
+        boxShadow: 'var(--shadow-sm)',
+        overflow: 'hidden'
+      }}>
         
-        {/* Left Column: Avatar Card */}
-        <div style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '16px',
-          padding: '2rem',
-          textAlign: 'center',
-          boxShadow: 'var(--shadow-sm)'
+        {/* Left Column: Sidebar with Avatar & Vertical Tabs */}
+        <div className={styles.sidebarTabs} style={{
+          width: '280px',
+          borderRight: '1px solid var(--color-border)',
+          padding: '2rem 1.5rem',
+          background: 'var(--color-bg-light)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem'
         }}>
-          <div style={{ display: 'inline-block', position: 'relative', marginBottom: '1.25rem' }}>
-            <Avatar src={profileData.avatar} name={profileData.name || 'User'} size={110} />
-            {isUploadingAvatar && (
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600 }}>{t('Tải...')}</span>
+          {/* Avatar block */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'inline-block', position: 'relative', marginBottom: '1.25rem' }}>
+              <Avatar src={profileData.avatar} name={profileData.name || 'User'} size={96} />
+              {isUploadingAvatar && (
+                <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600 }}>{t('Tải...')}</span>
+                </div>
+              )}
+            </div>
+
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px 0' }}>
+              {profileData.name || user?.username}
+            </h2>
+            
+            <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '16px', fontSize: '0.72rem', fontWeight: 700, color: badge.color, backgroundColor: badge.bg, marginBottom: '1.25rem' }}>
+              {badge.label}
+            </div>
+
+            <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem', textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Mail size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{t('Email liên kết')}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)', wordBreak: 'break-all' }}>{profileData.email}</div>
+                </div>
               </div>
-            )}
-          </div>
 
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 6px 0' }}>
-            {profileData.name || user?.username}
-          </h2>
-          
-          <div style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 700, color: badge.color, backgroundColor: badge.bg, marginBottom: '1.5rem' }}>
-            {badge.label}
-          </div>
-
-          <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Mail size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Email liên kết')}</div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)', wordBreak: 'break-all' }}>{profileData.email}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Clock size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{t('Quyền truy cập')}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>{badge.label} System Access</div>
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Clock size={16} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{t('Quyền truy cập')}</div>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{badge.label} System Access</div>
-              </div>
+            <div style={{ marginTop: '1.5rem' }}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="btn outline sm"
+                style={{ width: '100%', fontSize: '0.75rem', height: '34px' }}
+                disabled={isUploadingAvatar}
+              >
+                {t('Thay đổi ảnh đại diện')}
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleAvatarUpload}
+                accept="image/*"
+                style={{ display: 'none' }}
+              />
             </div>
           </div>
 
-          <div style={{ marginTop: '2rem' }}>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="btn outline sm"
-              style={{ width: '100%', fontSize: '0.8rem', height: '36px' }}
-              disabled={isUploadingAvatar}
-            >
-              {t('Thay đổi ảnh đại diện')}
-            </button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleAvatarUpload}
-              accept="image/*"
-              style={{ display: 'none' }}
-            />
-          </div>
-        </div>
-
-        {/* Right Column: Profile details Tabs */}
-        <div style={{
-          background: 'var(--color-surface)',
-          border: '1px solid var(--color-border)',
-          borderRadius: '16px',
-          boxShadow: 'var(--shadow-sm)',
-          overflow: 'hidden'
-        }}>
-          
-          {/* Tabs header */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--color-border)', background: 'var(--color-bg-light)', padding: '0 1rem' }}>
+          {/* Navigation Buttons Stacked Vertically */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
             <button
               onClick={() => setActiveTab('profile')}
+              className={`${styles.sidebarTabBtn} ${activeTab === 'profile' ? styles.active : ''}`}
               style={{
-                padding: '16px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontWeight: activeTab === 'profile' ? 700 : 500,
-                color: activeTab === 'profile' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                borderBottom: activeTab === 'profile' ? '3px solid var(--color-primary)' : '3px solid transparent',
-                display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', transition: 'all 0.2s'
+                width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem'
               }}
             >
-              <User size={16} /> {t('Thông tin hồ sơ')}
+              <User size={16} />
+              <span>{t('Thông tin hồ sơ')}</span>
             </button>
             <button
               onClick={() => setActiveTab('password')}
+              className={`${styles.sidebarTabBtn} ${activeTab === 'password' ? styles.active : ''}`}
               style={{
-                padding: '16px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontWeight: activeTab === 'password' ? 700 : 500,
-                color: activeTab === 'password' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                borderBottom: activeTab === 'password' ? '3px solid var(--color-primary)' : '3px solid transparent',
-                display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', transition: 'all 0.2s'
+                width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem'
               }}
             >
-              <Key size={16} /> {t('Mật khẩu & Bảo mật')}
+              <Key size={16} />
+              <span>{t('Mật khẩu & Bảo mật')}</span>
             </button>
             <button
               onClick={() => setActiveTab('activity')}
+              className={`${styles.sidebarTabBtn} ${activeTab === 'activity' ? styles.active : ''}`}
               style={{
-                padding: '16px 12px', border: 'none', background: 'transparent', cursor: 'pointer',
-                fontWeight: activeTab === 'activity' ? 700 : 500,
-                color: activeTab === 'activity' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                borderBottom: activeTab === 'activity' ? '3px solid var(--color-primary)' : '3px solid transparent',
-                display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', transition: 'all 0.2s'
+                width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 14px', borderRadius: '8px', fontSize: '0.8125rem'
               }}
             >
-              <Activity size={16} /> {t('Lịch sử hoạt động')}
+              <Activity size={16} />
+              <span>{t('Lịch sử hoạt động')}</span>
             </button>
           </div>
+        </div>
 
-          <div style={{ padding: '2rem' }}>
+        {/* Right Column: Profile details Content Area */}
+        <div className={styles.contentArea} style={{
+          flex: 1,
+          padding: '2.5rem',
+          background: 'var(--color-surface)',
+          overflowY: 'auto'
+        }}>
             {/* Tab 1: Profile */}
             {activeTab === 'profile' && (
               <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -574,7 +581,6 @@ const PersonalAccountInner = () => {
                 )}
               </div>
             )}
-          </div>
         </div>
 
       </div>

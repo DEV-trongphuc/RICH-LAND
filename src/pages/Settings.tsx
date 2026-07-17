@@ -3053,7 +3053,7 @@ function doPost(e) {
                               }}
                               style={{ accentColor: 'var(--color-primary)', width: 16, height: 16, cursor: zaloNotifyOnlyGroup ? 'not-allowed' : 'pointer', flexShrink: 0 }}
                             />
-                            <Avatar src={admin.avatar} name={admin.name || admin.username} size={36} />
+                            <Avatar src={admin.avatar || admin.avatar_url} name={admin.name || admin.username} size={36} />
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: (isSelected && !zaloNotifyOnlyGroup) ? 'var(--color-primary)' : 'var(--color-text)' }}>
                                 {admin.name || admin.username}

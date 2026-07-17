@@ -1038,9 +1038,9 @@ const DataListInner = ({ isActive, searchParams, setSearchParams, location }: { 
   const getUserAvatarByName = (name: string) => {
     if (!name || name === 'Hệ thống') return undefined;
     const acc = allAccounts.find(a => (a.name || a.username) === name);
-    if (acc?.avatar) return acc.avatar;
+    if (acc?.avatar || acc?.avatar_url) return acc.avatar || acc.avatar_url;
     const cons = consultants.find(c => c.name === name);
-    if (cons?.avatar) return cons.avatar;
+    if (cons?.avatar || (cons as any)?.avatar_url) return cons.avatar || (cons as any).avatar_url;
     return undefined;
   };
 

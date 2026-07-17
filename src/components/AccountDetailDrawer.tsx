@@ -14,6 +14,7 @@ import { CustomSelect } from './ui/CustomSelect';
 import { Avatar } from './ui/Avatar';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import styles from '../pages/EntityDrawer.module.css';
 
 interface Props {
   isOpen: boolean;
@@ -129,15 +130,25 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
     return () => window.removeEventListener('theme-change', handleThemeChange);
   }, []);
 
+  const [isMobileOrTablet, setIsMobileOrTablet] = useState(window.innerWidth <= 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobileOrTablet(window.innerWidth <= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const [activeTab, setActiveTab] = useState<'personal' | 'erp' | 'account' | 'bank' | 'emergency' | 'schedule' | 'documents'>('personal');
+
   // Collapsible sections
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     personal: true,
     erp: true,
     account: true,
-    bank: false,
-    emergency: false,
-    schedule: false,
-    documents: false
+    bank: true,
+    emergency: true,
+    schedule: true,
+    documents: true
   });
 
   const toggleSection = (sec: string) => {
@@ -951,70 +962,57 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
         </div>
 
         {/* Content Panel */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div className={styles.drawerBody} style={{ flex: 1, display: 'flex', overflow: 'hidden', flexDirection: isMobileOrTablet ? 'column' : 'row' }}>
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', gap: '12px' }}>
               <Loader2 className="spin" size={32} style={{ color: 'var(--color-primary)' }} />
               <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>{t('Đang tải dữ liệu hồ sơ...')}</span>
             </div>
           ) : (
-            <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Avatar upload card */}
-              <div style={{
-                background: 'var(--color-bg-light)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border-light)',
-                padding: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1.5rem'
-              }}>
-                <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
-                  <Avatar src={avatar} name={name || 'S'} size={80} />
-                  <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    backgroundColor: 'var(--color-primary)',
-                    color: 'white',
-                    borderRadius: '50%',
-                    padding: '6px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '2px solid var(--color-surface)',
-                    boxShadow: 'var(--shadow-sm)'
-                  }}>
-                    <Camera size={14} />
-                  </div>
-                  {isUploadingAvatar && (
+            <>
+              {/* Sidebar Tabs */}
+              <div className={styles.sidebarTabs} style={isMobileOrTablet ? { borderRight: 'none', borderBottom: '1px solid var(--color-border)', width: '100%', height: 'auto', padding: '1rem' } : { width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem', borderRight: '1px solid var(--color-border)', padding: '1.5rem 1rem', background: 'var(--color-surface)', height: '100%' }}>
+                {/* Profile Card inside Sidebar */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', paddingBottom: '1.25rem', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.75rem' }}>
+                  <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+                    <Avatar src={avatar} name={name || 'S'} size={72} />
                     <div style={{
                       position: 'absolute',
-                      inset: 0,
-                      backgroundColor: 'rgba(0,0,0,0.5)',
+                      bottom: 0,
+                      right: 0,
+                      backgroundColor: 'var(--color-primary)',
+                      color: 'white',
                       borderRadius: '50%',
+                      padding: '4px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'white'
+                      border: '2px solid var(--color-surface)',
+                      boxShadow: 'var(--shadow-sm)'
                     }}>
-                      <Loader2 size={18} className="spin" />
+                      <Camera size={12} />
                     </div>
-                  )}
-                </div>
-                <div>
-                  <h4 style={{ fontSize: '0.9375rem', fontWeight: 700, margin: 0, color: 'var(--color-text)' }}>{t('Ảnh chân dung nhân sự')}</h4>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: '4px 0 8px' }}>
-                    {t('Chấp nhận các định dạng ảnh JPG, PNG, WEBP. Tối đa 5MB.')}
-                  </p>
-                  <button 
-                    type="button" 
-                    className="btn outline sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    style={{ borderRadius: '8px', fontSize: '0.75rem', padding: '6px 12px' }}
-                  >
-                    {t('Chọn ảnh khác')}
-                  </button>
+                    {isUploadingAvatar && (
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white'
+                      }}>
+                        <Loader2 size={16} className="spin" />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'center', marginTop: 4 }}>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 700, margin: 0, color: 'var(--color-text)', wordBreak: 'break-word' }}>{name || t('Chưa cập nhật')}</h4>
+                    <p style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', margin: '2px 0 0' }}>
+                      {employeeId ? `${t('Mã nhân viên')}: ${employeeId}` : ''}
+                    </p>
+                  </div>
                   <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -1023,38 +1021,104 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                     onChange={handleAvatarUpload} 
                   />
                 </div>
+
+                {/* Tab buttons */}
+                <div style={{ display: 'flex', flexDirection: isMobileOrTablet ? 'row' : 'column', gap: '0.25rem', overflowX: isMobileOrTablet ? 'auto' : 'visible', overflowY: isMobileOrTablet ? 'visible' : 'auto', flex: 1 }}>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'personal' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('personal')}
+                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'personal' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'personal' ? 700 : 500 }}
+                  >
+                    <User size={15} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'erp' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('erp')}
+                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'erp' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'erp' ? 700 : 500 }}
+                  >
+                    <Building2 size={15} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'account' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('account')}
+                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'account' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'account' ? 700 : 500 }}
+                  >
+                    <Lock size={15} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản & Quyền')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'bank' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('bank')}
+                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'bank' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'bank' ? 700 : 500 }}
+                  >
+                    <CreditCard size={15} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Tài khoản Ngân hàng')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'emergency' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('emergency')}
+                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'emergency' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'emergency' ? 700 : 500 }}
+                  >
+                    <Shield size={15} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'schedule' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('schedule')}
+                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'schedule' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'schedule' ? 700 : 500 }}
+                  >
+                    <Calendar size={15} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.sidebarTabBtn} ${activeTab === 'documents' ? styles.sidebarTabActive : ''}`}
+                    onClick={() => setActiveTab('documents')}
+                    style={{ padding: '10px 0.75rem', fontSize: '0.825rem', display: 'flex', alignItems: 'center', gap: '8px', width: isMobileOrTablet ? 'auto' : '100%', border: 'none', background: activeTab === 'documents' ? 'var(--color-bg-light)' : 'transparent', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', fontWeight: activeTab === 'documents' ? 700 : 500 }}
+                  >
+                    <Paperclip size={15} />
+                    <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
+                  </button>
+                </div>
               </div>
 
-              {/* CARD 1: THÔNG TIN CÁ NHÂN */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div 
-                  onClick={() => toggleSection('personal')}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    borderBottom: openSections.personal ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.personal ? 'var(--color-bg-light)' : 'transparent',
-                    borderTopLeftRadius: '15px',
-                    borderTopRightRadius: '15px',
-                    borderBottomLeftRadius: openSections.personal ? '0' : '15px',
-                    borderBottomRightRadius: openSections.personal ? '0' : '15px'
-                  }}
-                >
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                    <User size={14} style={{ color: 'var(--color-primary)' }} /> {t('THÔNG TIN CÁ NHÂN')}
-                  </span>
-                  {openSections.personal ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
+              {/* Main Content Area */}
+              <div className={styles.contentArea} style={{ flex: 1, padding: '1.5rem', overflowY: 'auto', backgroundColor: 'var(--color-bg)' }}>
+                <form id="account-detail-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                {openSections.personal && (
+              {/* CARD 1: THÔNG TIN CÁ NHÂN */}
+              {activeTab === 'personal' && (
+                <div style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div 
+                    style={{
+                      padding: '1rem 1.25rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderTopLeftRadius: '15px',
+                      borderTopRightRadius: '15px'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <User size={14} style={{ color: 'var(--color-primary)' }} /> {t('THÔNG TIN CÁ NHÂN')}
+                    </span>
+                  </div>
+
                   <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Grid A: Standard inputs */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
@@ -1172,39 +1236,34 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* CARD 2: THÔNG TIN NHÂN SỰ & ERP */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div 
-                  onClick={() => toggleSection('erp')}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    borderBottom: openSections.erp ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.erp ? 'var(--color-bg-light)' : 'transparent',
-                    borderTopLeftRadius: '15px',
-                    borderTopRightRadius: '15px',
-                    borderBottomLeftRadius: openSections.erp ? '0' : '15px',
-                    borderBottomRightRadius: openSections.erp ? '0' : '15px'
-                  }}
-                >
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                    <Building2 size={14} style={{ color: 'var(--color-primary)' }} /> {t('THÔNG TIN NHÂN SỰ & ERP')}
-                  </span>
-                  {openSections.erp ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
+              {activeTab === 'erp' && (
+                <div style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div 
+                    style={{
+                      padding: '1rem 1.25rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderTopLeftRadius: '15px',
+                      borderTopRightRadius: '15px'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <Building2 size={14} style={{ color: 'var(--color-primary)' }} /> {t('THÔNG TIN NHÂN SỰ & ERP')}
+                    </span>
+                  </div>
 
-                {openSections.erp && (
                   <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Grid A: Standard inputs */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
@@ -1322,35 +1381,32 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </div>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* CARD 3: LIÊN HỆ & TÀI KHOẢN */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div 
-                  onClick={() => toggleSection('account')}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    borderBottom: openSections.account ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.account ? 'var(--color-bg-light)' : 'transparent',
-                    borderTopLeftRadius: '15px',
-                    borderTopRightRadius: '15px',
-                    borderBottomLeftRadius: openSections.account ? '0' : '15px',
-                    borderBottomRightRadius: openSections.account ? '0' : '15px'
-                  }}
-                >
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                    <Shield size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ & TÀI KHOẢN')}
-                  </span>
+              {activeTab === 'account' && (
+                <div style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div 
+                    style={{
+                      padding: '1rem 1.25rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderTopLeftRadius: '15px',
+                      borderTopRightRadius: '15px'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <Lock size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ & TÀI KHOẢN')}
+                    </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }} onClick={e => e.stopPropagation()}>
                     {isAdmin && account && (
                       <button
@@ -1375,12 +1431,10 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         <Shield size={12} /> {t('Phân quyền chi tiết')}
                       </button>
                     )}
-                    {openSections.account ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
                 </div>
 
-                {openSections.account && (
-                  <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label">{t('Tên đăng nhập (Username)')}</label>
@@ -1515,39 +1569,34 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* CARD 4: THANH TOÁN & THUẾ */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div 
-                  onClick={() => toggleSection('bank')}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    borderBottom: openSections.bank ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.bank ? 'var(--color-bg-light)' : 'transparent',
-                    borderTopLeftRadius: '15px',
-                    borderTopRightRadius: '15px',
-                    borderBottomLeftRadius: openSections.bank ? '0' : '15px',
-                    borderBottomRightRadius: openSections.bank ? '0' : '15px'
-                  }}
-                >
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                    <CreditCard size={14} style={{ color: 'var(--color-primary)' }} /> {t('THANH TOÁN & THUẾ')}
-                  </span>
-                  {openSections.bank ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
+              {activeTab === 'bank' && (
+                <div style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div 
+                    style={{
+                      padding: '1rem 1.25rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderTopLeftRadius: '15px',
+                      borderTopRightRadius: '15px'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <CreditCard size={14} style={{ color: 'var(--color-primary)' }} /> {t('THANH TOÁN & THUẾ')}
+                    </span>
+                  </div>
 
-                {openSections.bank && (
                   <div style={{ padding: '1.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
                     <div className="form-group">
                       <label className="form-label">{t('Tên ngân hàng')}</label>
@@ -1570,39 +1619,34 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       <input className="form-input" value={insuranceId} onChange={e => setInsuranceId(e.target.value)} placeholder="01xxxxxxxx" />
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* CARD 5: LIÊN HỆ KHẨN CẤP */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div 
-                  onClick={() => toggleSection('emergency')}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    borderBottom: openSections.emergency ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.emergency ? 'var(--color-bg-light)' : 'transparent',
-                    borderTopLeftRadius: '15px',
-                    borderTopRightRadius: '15px',
-                    borderBottomLeftRadius: openSections.emergency ? '0' : '15px',
-                    borderBottomRightRadius: openSections.emergency ? '0' : '15px'
-                  }}
-                >
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                    <PhoneCall size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ KHẨN CẤP')}
-                  </span>
-                  {openSections.emergency ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
+              {activeTab === 'emergency' && (
+                <div style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div 
+                    style={{
+                      padding: '1rem 1.25rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderTopLeftRadius: '15px',
+                      borderTopRightRadius: '15px'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <Shield size={14} style={{ color: 'var(--color-primary)' }} /> {t('LIÊN HỆ KHẨN CẤP')}
+                    </span>
+                  </div>
 
-                {openSections.emergency && (
                   <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {emergencyContacts.map((contact, index) => (
                       <div key={index} style={{
@@ -1697,39 +1741,34 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       <Plus size={14} /> {t('Thêm liên hệ khẩn cấp')}
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* CARD 6: TRỰC TUYẾN & LỊCH LÀM VIỆC */}
-              <div style={{
-                background: 'var(--color-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--color-border)',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div 
-                  onClick={() => toggleSection('schedule')}
-                  style={{
-                    padding: '1rem 1.25rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    borderBottom: openSections.schedule ? '1px solid var(--color-border)' : 'none',
-                    backgroundColor: openSections.schedule ? 'var(--color-bg-light)' : 'transparent',
-                    borderTopLeftRadius: '15px',
-                    borderTopRightRadius: '15px',
-                    borderBottomLeftRadius: openSections.schedule ? '0' : '15px',
-                    borderBottomRightRadius: openSections.schedule ? '0' : '15px'
-                  }}
-                >
-                  <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
-                    <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> {t('TRỰC TUYẾN & LỊCH LÀM VIỆC')}
-                  </span>
-                  {openSections.schedule ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </div>
+              {activeTab === 'schedule' && (
+                <div style={{
+                  background: 'var(--color-surface)',
+                  borderRadius: '16px',
+                  border: '1px solid var(--color-border)',
+                  boxShadow: 'var(--shadow-sm)'
+                }}>
+                  <div 
+                    style={{
+                      padding: '1rem 1.25rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg-light)',
+                      borderTopLeftRadius: '15px',
+                      borderTopRightRadius: '15px'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
+                      <Calendar size={14} style={{ color: 'var(--color-primary)' }} /> {t('TRỰC TUYẾN & LỊCH LÀM VIỆC')}
+                    </span>
+                  </div>
 
-                {openSections.schedule && (
                   <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Vacation mode */}
                     <div style={{
@@ -1956,11 +1995,11 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                       )}
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* CARD 7: TÀI LIỆU & HỒ SƠ ĐÍNH KÈM */}
-              {account && (
+              {account && activeTab === 'documents' && (
                 <div style={{
                   background: 'var(--color-surface)',
                   borderRadius: '16px',
@@ -1968,29 +2007,23 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                   boxShadow: 'var(--shadow-sm)'
                 }}>
                   <div 
-                    onClick={() => toggleSection('documents')}
                     style={{
                       padding: '1rem 1.25rem',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
-                      cursor: 'pointer',
-                      borderBottom: openSections.documents ? '1px solid var(--color-border)' : 'none',
-                      backgroundColor: openSections.documents ? 'var(--color-bg-light)' : 'transparent',
+                      borderBottom: '1px solid var(--color-border)',
+                      backgroundColor: 'var(--color-bg-light)',
                       borderTopLeftRadius: '15px',
-                      borderTopRightRadius: '15px',
-                      borderBottomLeftRadius: openSections.documents ? '0' : '15px',
-                      borderBottomRightRadius: openSections.documents ? '0' : '15px'
+                      borderTopRightRadius: '15px'
                     }}
                   >
                     <span style={{ fontSize: '0.8125rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text)' }}>
                       <Paperclip size={14} style={{ color: 'var(--color-primary)' }} /> {t('HỒ SƠ & TÀI LIỆU ĐÍNH KÈM')}
                     </span>
-                    {openSections.documents ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                   </div>
 
-                  {openSections.documents && (
-                    <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
                           {t('Danh sách các bằng cấp, chứng chỉ, hồ sơ nhân sự.')}
@@ -2081,13 +2114,14 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
 
-            </form>
-          )}
-        </div>
+              </form>
+            </div>
+          </>
+        )}
+      </div>
       </motion.div>
 
       {/* Detailed Permission Modal */}
