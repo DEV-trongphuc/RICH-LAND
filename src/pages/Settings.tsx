@@ -838,7 +838,7 @@ const SettingsInner = () => {
     if (activeTab === 'database_maintenance') {
       fetchDbStats();
     }
-    if (activeTab === 'tag_management') {
+    if (activeTab === 'tag_management' || activeTab === 'blacklist') {
       fetchTagsData();
     }
   }, [activeTab]);
@@ -1035,6 +1035,40 @@ const SettingsInner = () => {
       icon: <Database size={14} style={{ color: 'var(--color-text-muted)' }} />
     }))
   ];
+
+  const broadcastExclusionOptions = [
+    // 1. Pipeline Statuses
+    ...pipelineStatusHierarchy.map(status => ({
+      value: status,
+      label: `${t('Trạng thái')}: ${t(pipelineStatusLabels[status] || status)}`,
+      icon: <Layers size={14} style={{ color: '#3b82f6' }} />
+    })),
+    ...(!pipelineStatusHierarchy.includes('not_lead') ? [{
+      value: 'not_lead',
+      label: `${t('Trạng thái')}: ${t('Không phải lead')}`,
+      icon: <Layers size={14} style={{ color: '#ef4444' }} />
+    }] : []),
+    // 2. Tags
+    ...tags.map(tag => ({
+      value: tag.name,
+      label: `${t('Thẻ')}: ${tag.name}`,
+      icon: <Tag size={14} style={{ color: tag.color || '#6366f1' }} />
+    }))
+  ];
+
+  const currentExclusionArr = broadcastExclusionRules 
+    ? broadcastExclusionRules.split(',').map(s => s.trim()).filter(Boolean) 
+    : [];
+  
+  currentExclusionArr.forEach(val => {
+    if (!broadcastExclusionOptions.some(o => o.value === val)) {
+      broadcastExclusionOptions.push({
+        value: val,
+        label: `${t('Khác')}: ${val}`,
+        icon: <Shield size={14} style={{ color: '#94a3b8' }} />
+      });
+    }
+  });
 
   const processUploadedFile = (file: File) => {
     if (!file) return;
@@ -1879,6 +1913,7 @@ const SettingsInner = () => {
                     <li><strong>{t('Nhãn màu sắc:')}</strong> {t('Giúp Sale và Admin nhận diện trực quan phân loại khách hàng (ví dụ: VIP, Tiềm năng cao, Cần gọi lại).')}</li>
                     <li><strong>{t('Sử dụng đa mục tiêu:')}</strong> {t('Thẻ có thể được gắn đồng thời cho Khách hàng Cá nhân (Person) hoặc Doanh nghiệp (Company).')}</li>
                     <li><strong>{t('Bộ lọc nhanh:')}</strong> {t('Nhấp vào thẻ trên bàn làm việc/danh sách để lọc nhanh tất cả các bản ghi có chung nhãn này.')}</li>
+                    <li><strong>{t('Loại trừ Broadcast:')}</strong> {t('Các thẻ phân loại được tạo tại đây có thể được sử dụng làm bộ lọc loại trừ trong mục "Danh sách đen & Loại trừ" để ngăn không gửi tin nhắn tự động hàng loạt.')}</li>
                   </ul>
                 ))}
 
@@ -3631,15 +3666,16 @@ function doPost(e) {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div>
                           <label className="form-label" style={{ fontWeight: 600 }}>{t('Luật loại trừ Broadcast')}</label>
-                          <input
-                            type="text"
-                            className="form-input"
-                            value={broadcastExclusionRules}
-                            onChange={e => setBroadcastExclusionRules(e.target.value)}
-                            placeholder="not_lead,opt_out,active_khtn"
+                          <CustomSelect
+                            options={broadcastExclusionOptions}
+                            value={currentExclusionArr}
+                            onChange={(arr: any[]) => setBroadcastExclusionRules(arr.join(','))}
+                            multiple={true}
+                            searchable={true}
+                            placeholder={t('Chọn Trạng thái hoặc Thẻ loại trừ...')}
                           />
                           <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block', lineHeight: 1.4 }}>
-                            {t('Các từ khóa loại trừ cách nhau bằng dấu phẩy (not_lead, opt_out, active_khtn).')}
+                            {t('Chọn các trạng thái phễu hoặc thẻ phân loại khách hàng để loại trừ khỏi các chiến dịch gửi tin hàng loạt (Zalo Broadcast, ZNS, SMS).')}
                           </span>
                         </div>
                       </div>
