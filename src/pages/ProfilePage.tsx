@@ -37,6 +37,7 @@ const DAY_LABELS = {
 export const ProfilePage: React.FC = () => {
   const { t } = useLanguage();
   const { user, login, logout, updateUser } = useAuth();
+  const isSales = ['sale', 'manager'].includes(user?.role || '');
   
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -857,10 +858,10 @@ export const ProfilePage: React.FC = () => {
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                  {user?.role === 'sale' ? t('TRẠNG THÁI NHẬN DATA') : t('TRẠNG THÁI HOẠT ĐỘNG & NGHỈ PHÉP')}
+                  {isSales ? t('TRẠNG THÁI NHẬN DATA') : t('TRẠNG THÁI HOẠT ĐỘNG & NGHỈ PHÉP')}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                  {user?.role === 'sale'
+                  {isSales
                     ? t('Khi kích hoạt: Nhận khách hàng mới theo vòng chia. Khi tắt (Nghỉ/Tạm ngưng): Dừng nhận khách hàng mới, nhưng khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho bạn chăm sóc.')
                     : t('Tài khoản của bạn thuộc vai trò nhân sự trong công ty. Chế độ tạm ngưng/nghỉ phép giúp báo cáo trạng thái hoạt động hiện tại của bạn cho phòng Nhân sự.')}
                 </p>
@@ -896,7 +897,7 @@ export const ProfilePage: React.FC = () => {
                 borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
               }}>
                 <AlertTriangle size={15} style={{ flexShrink: 0 }} />
-                <span>{user?.role === 'sale' ? t('Bạn hiện đang trong thời gian nghỉ phép. Hệ thống tự động khóa chế độ nhận data cho đến khi kết thúc kỳ nghỉ.') : t('Bạn hiện đang trong thời gian nghỉ phép đã được đăng ký trên hệ thống.')}</span>
+                <span>{isSales ? t('Bạn hiện đang trong thời gian nghỉ phép. Hệ thống tự động khóa chế độ nhận data cho đến khi kết thúc kỳ nghỉ.') : t('Bạn hiện đang trong thời gian nghỉ phép đã được đăng ký trên hệ thống.')}</span>
               </div>
             )}
           </div>
@@ -913,10 +914,10 @@ export const ProfilePage: React.FC = () => {
               </div>
               <div style={{ flex: 1 }}>
                 <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>
-                  {user?.role === 'sale' ? t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)') : t('ĐĂNG KÝ LÀM TĂNG CA / CA ĐÊM')}
+                  {isSales ? t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)') : t('ĐĂNG KÝ LÀM TĂNG CA / CA ĐÊM')}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                  {user?.role === 'sale'
+                  {isSales
                     ? t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')
                     : t('Đăng ký làm việc ngoài giờ / tăng ca đêm (18h - 6h sáng hôm sau). Bản ghi này phục vụ mục đích chấm công và tính lương tăng ca.')}
                 </p>
@@ -929,7 +930,7 @@ export const ProfilePage: React.FC = () => {
               border: '1px solid var(--color-border-light)'
             }}>
               <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
-                {user?.role === 'sale' ? t('Đăng ký trực hôm nay:') : t('Đăng ký tăng ca hôm nay:')}
+                {isSales ? t('Đăng ký trực hôm nay:') : t('Đăng ký tăng ca hôm nay:')}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <span style={{
@@ -939,7 +940,7 @@ export const ProfilePage: React.FC = () => {
                   padding: '3px 8px', borderRadius: '6px'
                 }}>
                   {overtimeMode 
-                    ? (user?.role === 'sale' ? t('Đã đăng ký trực') : t('Đã đăng ký tăng ca')) 
+                    ? (isSales ? t('Đã đăng ký trực') : t('Đã đăng ký tăng ca')) 
                     : t('Chưa đăng ký')}
                 </span>
                 <ToggleSwitch checked={overtimeMode} onChange={setOvertimeMode} />
@@ -962,7 +963,7 @@ export const ProfilePage: React.FC = () => {
                   {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                  {user?.role === 'sale'
+                  {isSales
                     ? t('Đăng ký nghỉ phép tạm thời để tạm dừng nhận data phân bổ tự động.')
                     : t('Đăng ký thời gian nghỉ phép của bạn để cập nhật lịch làm việc với phòng nhân sự.')}
                 </p>
@@ -1010,7 +1011,7 @@ export const ProfilePage: React.FC = () => {
                 {t('GIỜ LÀM VIỆC & LỊCH TRÌNH')}
               </h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
-                {user?.role === 'sale'
+                {isSales
                   ? t('Thiết lập thời gian nhận lead cố định hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ.')
                   : t('Thiết lập khung giờ làm việc tiêu chuẩn hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ để chấm công.')}
               </p>

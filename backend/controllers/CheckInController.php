@@ -181,7 +181,7 @@ class CheckInController {
     }
 
     public function update(array $auth, int $id): void {
-        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'assistant', 'manager', 'director']);
+        requireRole($auth, ['admin', 'superadmin', 'super_admin', 'assistant', 'director']);
         $b = getBody();
         $status = trim($b['status'] ?? '');
         $reason = trim($b['reason'] ?? ''); // Optionally update reason or note
