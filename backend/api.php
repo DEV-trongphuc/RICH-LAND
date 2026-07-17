@@ -11468,6 +11468,33 @@ switch ($action) {
         }
 
         if ($success && $successC) {
+            // Auto notification for profile update
+            $updaterName = 'Hệ thống';
+            $stmtUpdater = $conn->prepare("SELECT full_name FROM users WHERE id = ?");
+            if ($stmtUpdater) {
+                $stmtUpdater->bind_param("i", $decodedUser['id']);
+                $stmtUpdater->execute();
+                $uRow = $stmtUpdater->get_result()->fetch_assoc();
+                $stmtUpdater->close();
+                if ($uRow && !empty($uRow['full_name'])) {
+                    $updaterName = $uRow['full_name'];
+                }
+            }
+            
+            $title = "Hồ sơ cá nhân đã được cập nhật";
+            if ((int)$decodedUser['id'] === (int)$targetUserId) {
+                $body = "Bạn đã cập nhật thông tin hồ sơ cá nhân thành công.";
+            } else {
+                $body = "$updaterName đã cập nhật thông tin hồ sơ của bạn.";
+            }
+            
+            $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'mention', '/account')");
+            if ($stmtNotif) {
+                $stmtNotif->bind_param("iss", $targetUserId, $title, $body);
+                $stmtNotif->execute();
+                $stmtNotif->close();
+            }
+
             echo json_encode(['success' => true]);
         } else {
             echo json_encode(['success' => false, 'message' => 'Lỗi khi cập nhật cấu hình cá nhân.']);

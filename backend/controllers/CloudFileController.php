@@ -156,6 +156,38 @@ class CloudFileController {
             $category, $visibility, $project_id, $contact_id
         ]);
 
+        // Auto notification for consultant document upload
+        if (strpos($category, 'consultant_') === 0) {
+            $targetUserId = (int) substr($category, strlen('consultant_'));
+            if ($targetUserId > 0) {
+                // Get uploader name
+                $uploaderName = 'Hệ thống';
+                $stmtUser = $this->db->prepare("SELECT full_name FROM users WHERE id = ?");
+                $stmtUser->execute([$uid]);
+                $uRow = $stmtUser->fetch();
+                if ($uRow && !empty($uRow['full_name'])) {
+                    $uploaderName = $uRow['full_name'];
+                }
+                
+                // Get target user details to verify
+                $stmtTarget = $this->db->prepare("SELECT id FROM users WHERE id = ?");
+                $stmtTarget->execute([$targetUserId]);
+                $targetExists = $stmtTarget->fetch();
+                if ($targetExists) {
+                    $title = "Tài liệu nhân sự mới đã được tải lên";
+                    if ($uid === $targetUserId) {
+                        $body = "Bạn đã tải lên tài liệu mới: $name";
+                    } else {
+                        $body = "$uploaderName đã tải lên tài liệu mới cho bạn: $name";
+                    }
+                    
+                    // Insert notification
+                    $stmtNotif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, ?, ?, ?, 'mention', ?)");
+                    $stmtNotif->execute([$targetUserId, $tid, $title, $body, '/account']);
+                }
+            }
+        }
+
         respond(201, ['id' => $this->db->lastInsertId(), 'path' => $dbPath], 'Đã tải tệp tin lên thành công');
     }
 
