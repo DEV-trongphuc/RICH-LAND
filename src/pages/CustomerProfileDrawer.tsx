@@ -1992,7 +1992,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setDrawerQuotes([]);
         setDrawerExpenses([]);
         setDrawerTickets([]);
-        setActiveTab(initialTab || 'info');
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('highlight_activity_id')) {
+          setActiveTab('timeline');
+        } else {
+          setActiveTab(initialTab || 'info');
+        }
         setPrevContactId(contact.id);
       }
     } else {
