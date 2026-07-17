@@ -2596,29 +2596,42 @@ const ConsultantsInner = () => {
                 </div>
               </div>
 
-              <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
-                <button type="button" className="btn outline" onClick={() => setTeamModalOpen(false)}>{t('Hủy')}</button>
-                {isWriteAuthorized ? (
-                  <button type="submit" className="btn primary" disabled={isSaving}>
-                    {isSaving ? t('Đang lưu...') : t('Lưu lại')}
-                  </button>
-                ) : (
-                  <>
-                    {editingTeam && teamFormData.member_ids.includes(String(user?.id)) && (
-                      <button 
-                        type="button" 
-                        className="btn danger" 
-                        onClick={() => setConfirmLeaveTeamOpen(true)}
-                        disabled={isLeavingTeam}
-                      >
-                        {isLeavingTeam ? t('Đang rời nhóm...') : t('Rời khỏi nhóm')}
-                      </button>
-                    )}
+              <div style={{ padding: '1.25rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottomLeftRadius: 'var(--radius-xl)', borderBottomRightRadius: 'var(--radius-xl)' }}>
+                <div>
+                  {!isWriteAuthorized && editingTeam && teamFormData.member_ids.includes(String(user?.id)) && (
+                    <button 
+                      type="button" 
+                      className="btn ghost sm" 
+                      style={{ color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                      onClick={() => setConfirmLeaveTeamOpen(true)}
+                      disabled={isLeavingTeam}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.color = 'var(--color-danger)';
+                        e.currentTarget.style.borderColor = 'rgba(189, 29, 45, 0.2)';
+                        e.currentTarget.style.background = 'rgba(189, 29, 45, 0.05)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.color = 'var(--color-text-muted)';
+                        e.currentTarget.style.borderColor = 'var(--color-border)';
+                        e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      {isLeavingTeam ? t('Đang rời nhóm...') : t('Rời khỏi nhóm')}
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button type="button" className="btn outline" onClick={() => setTeamModalOpen(false)}>{t('Hủy')}</button>
+                  {isWriteAuthorized ? (
+                    <button type="submit" className="btn primary" disabled={isSaving}>
+                      {isSaving ? t('Đang lưu...') : t('Lưu lại')}
+                    </button>
+                  ) : (
                     <button type="button" className="btn primary" onClick={() => setTeamModalOpen(false)}>
                       {t('Đóng')}
                     </button>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </form>
           </div>
