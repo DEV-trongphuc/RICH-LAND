@@ -271,30 +271,50 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
-    if (tab === 'campaigns') {
+    const isCampaigns = params.get('tab') === 'campaigns' || params.get('sub') === 'campaigns';
+    if (isCampaigns) {
       setActiveSubTab('campaigns');
     } else {
       setActiveSubTab('projects');
     }
 
     const targetId = params.get('id') || params.get('project_id');
-    if (targetId && projects.length > 0) {
-      const matched = projects.find(p => String(p.id) === targetId);
-      if (matched) {
-        setEditingProject(matched);
-        setProjectModalMode('view');
-        setIsEditModalOpen(true);
+    if (targetId) {
+      if (isCampaigns) {
+        if (campaigns.length > 0) {
+          const matched = campaigns.find(c => String(c.id) === targetId);
+          if (matched) {
+            setEditingCampaign(matched);
+            setCampaignModalMode('view');
+            setIsCampaignModalOpen(true);
 
-        // clean url parameters
-        const newParams = new URLSearchParams(window.location.search);
-        newParams.delete('id');
-        newParams.delete('project_id');
-        const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
-        window.history.replaceState({}, '', cleanUrl);
+            // clean url parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('id');
+            newParams.delete('project_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }
+      } else {
+        if (projects.length > 0) {
+          const matched = projects.find(p => String(p.id) === targetId);
+          if (matched) {
+            setEditingProject(matched);
+            setProjectModalMode('view');
+            setIsEditModalOpen(true);
+
+            // clean url parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('id');
+            newParams.delete('project_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }
       }
     }
-  }, [window.location.search, projects]);
+  }, [window.location.search, projects, campaigns]);
 
   const [projectPage, setProjectPage] = useState(1);
   const [projectPageSize, setProjectPageSize] = useState(12);
@@ -492,6 +512,37 @@ export default function ProjectsPage() {
       }
     }
   }, [editingCampaign?.id]);
+
+  useEffect(() => {
+    if (detailComments.length > 0 && (isEditModalOpen || isCampaignModalOpen)) {
+      const params = new URLSearchParams(window.location.search);
+      const highlightCommentId = params.get('highlight_comment_id');
+      if (highlightCommentId) {
+        setTimeout(() => {
+          const element = document.getElementById(`project-comment-${highlightCommentId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Flash highlight comment bubble
+            const bubble = element.querySelector('div') as HTMLElement;
+            if (bubble) {
+              const originalBg = bubble.style.background;
+              bubble.style.backgroundColor = '#fef08a'; // yellow-200
+              bubble.style.transition = 'all 0.5s ease';
+              setTimeout(() => {
+                bubble.style.background = originalBg;
+              }, 2500);
+            }
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('highlight_comment_id');
+            const cleanUrl = window.location.pathname + (newParams.toString() ? '?' + newParams.toString() : '');
+            window.history.replaceState({}, '', cleanUrl);
+          }
+        }, 400);
+      }
+    }
+  }, [detailComments, isEditModalOpen, isCampaignModalOpen]);
 
   const renderDrawer = (isOpen: boolean, onClose: () => void, title: string, content: React.ReactNode, width: string = '850px', headerActions?: React.ReactNode) => {
     if (!isOpen) return null;
@@ -1132,7 +1183,7 @@ export default function ProjectsPage() {
                       </div>
                     ) : (
                       detailComments.map((comment: any) => (
-                        <div key={comment.id} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
+                        <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
                           <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1727,7 +1778,7 @@ export default function ProjectsPage() {
                       </div>
                     ) : (
                       detailComments.map((comment: any) => (
-                        <div key={comment.id} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
+                        <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
                           <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3151,7 +3202,7 @@ export default function ProjectsPage() {
                     </div>
                   ) : (
                     detailComments.map((comment: any) => (
-                      <div key={comment.id} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
+                      <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
                         <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -4515,7 +4566,7 @@ export default function ProjectsPage() {
                     </div>
                   ) : (
                     detailComments.map((comment: any) => (
-                      <div key={comment.id} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
+                      <div key={comment.id} id={`project-comment-${comment.id}`} style={{ display: 'flex', gap: '8px', fontSize: '0.8125rem' }}>
                         <Avatar name={comment.user_name || 'User'} src={comment.avatar_url || undefined} size={24} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', background: 'var(--color-bg-light)', border: '1px solid var(--color-border-light)', padding: '8px 12px', borderRadius: '12px', flex: 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

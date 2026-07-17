@@ -548,6 +548,34 @@ export default function CooperationSlipsPage() {
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
+    const slipIdParam = searchParams.get('id') || searchParams.get('slip_id');
+    if (slipIdParam && slips.length > 0) {
+      const sid = Number(slipIdParam);
+      if (sid) {
+        setExpandedSlips(prev => ({ ...prev, [sid]: true }));
+        setTimeout(() => {
+          const element = document.getElementById(`coop-slip-row-${sid}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.style.boxShadow = '0 0 0 3px rgba(189, 29, 45, 0.2)';
+            element.style.transition = 'all 0.5s ease';
+            setTimeout(() => {
+              element.style.boxShadow = '';
+            }, 2500);
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(location.search);
+            newParams.delete('id');
+            newParams.delete('slip_id');
+            navigate(location.pathname + (newParams.toString() ? '?' + newParams.toString() : ''), { replace: true });
+          }
+        }, 400);
+      }
+    }
+  }, [location.search, slips, location.pathname, navigate]);
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
     const signIdParam = searchParams.get('sign_id');
     if (signIdParam && slips.length > 0) {
       const match = slips.find((s: any) => String(s.id) === String(signIdParam));
@@ -819,6 +847,7 @@ export default function CooperationSlipsPage() {
             return (
               <div
                 key={slip.id}
+                id={`coop-slip-row-${slip.id}`}
                 className="card animate-fade"
                 style={{ 
                   padding: '1.25rem 1.5rem', 

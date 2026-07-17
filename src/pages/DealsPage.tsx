@@ -396,7 +396,13 @@ export const DealsPage: React.FC = () => {
       if (did) {
         api.get(`/deals/${did}`).then(res => {
           if (res.data.success && res.data.data) {
-            setSelectedDeal(res.data.data);
+            const deal = res.data.data;
+            const highlightNoteId = urlParams.get('highlight_note_id');
+            if (highlightNoteId && deal.contact_id) {
+              window.location.href = `/contacts?open_contact_id=${deal.contact_id}&highlight_note_id=${highlightNoteId}`;
+              return;
+            }
+            setSelectedDeal(deal);
             setShowDealDrawer(true);
             
             // Clean URL parameters

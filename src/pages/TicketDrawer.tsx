@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, MoreHorizontal, Loader2 } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -53,10 +54,40 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('vi-VN');
   };
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formData, setFormData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && comments.length > 0) {
+      const highlightCommentId = searchParams.get('highlight_comment_id');
+      if (highlightCommentId) {
+        setTimeout(() => {
+          const element = document.getElementById(`ticket-comment-${highlightCommentId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Flash highlight the inner bubble
+            const bubble = element.querySelector('div > div > div:nth-child(2)') as HTMLElement;
+            if (bubble) {
+              const originalBg = bubble.style.background;
+              bubble.style.backgroundColor = '#fef08a'; // yellow-200
+              bubble.style.transition = 'all 0.5s ease';
+              setTimeout(() => {
+                bubble.style.background = originalBg;
+              }, 2500);
+            }
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('highlight_comment_id');
+            setSearchParams(newParams, { replace: true });
+          }
+        }, 300);
+      }
+    }
+  }, [isOpen, comments, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (isOpen) {
@@ -217,6 +248,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       return (
                         <div 
                           key={msg.id || i} 
+                          id={`ticket-comment-${msg.id}`}
                           style={{ 
                             display: 'flex', 
                             gap: '1rem', 

@@ -743,32 +743,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   }, [isOpen, activeTab]);
 
-  useEffect(() => {
-    if (isOpen && activeTab === 'tags' && notes.length > 0) {
-      const params = new URLSearchParams(window.location.search);
-      const highlightNoteId = params.get('highlight_note_id');
-      if (highlightNoteId) {
-        setTimeout(() => {
-          const element = document.getElementById(`customer-note-${highlightNoteId}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            element.style.boxShadow = '0 0 0 4px rgba(189, 29, 45, 0.2)';
-            element.style.borderColor = 'var(--color-primary)';
-            setTimeout(() => {
-              element.style.boxShadow = '0 4px 12px rgba(234, 179, 8, 0.05)';
-              element.style.borderColor = '#fef08a';
-            }, 2500);
-            
-            // Clean URL parameters
-            const newParams = new URLSearchParams(searchParams);
-            newParams.delete('highlight_note_id');
-            setSearchParams(newParams, { replace: true });
-          }
-        }, 300);
-      }
-    }
-  }, [isOpen, activeTab, notes, searchParams, setSearchParams]);
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [showScoringSystemModal, setShowScoringSystemModal] = useState(false);
@@ -999,6 +973,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
     return 'cold'; // Lạnh
   }, [noteChannel, noteDuration, notes.length]);
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'tags' && notes.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const highlightNoteId = params.get('highlight_note_id');
+      if (highlightNoteId) {
+        setTimeout(() => {
+          const element = document.getElementById(`customer-note-${highlightNoteId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.style.boxShadow = '0 0 0 4px rgba(189, 29, 45, 0.2)';
+            element.style.borderColor = 'var(--color-primary)';
+            setTimeout(() => {
+              element.style.boxShadow = '0 4px 12px rgba(234, 179, 8, 0.05)';
+              element.style.borderColor = '#fef08a';
+            }, 2500);
+            
+            // Clean URL parameters
+            const newParams = new URLSearchParams(searchParams);
+            newParams.delete('highlight_note_id');
+            setSearchParams(newParams, { replace: true });
+          }
+        }, 300);
+      }
+    }
+  }, [isOpen, activeTab, notes, searchParams, setSearchParams]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [allowedProjects, setAllowedProjects] = useState<any[]>([]);
   const [allowedCampaigns, setAllowedCampaigns] = useState<any[]>([]);
