@@ -181,7 +181,7 @@ if (!function_exists('runRecurringTasksCron')) {
                     $logMsg = json_encode(['subject' => $subject, 'type' => 'task', 'recurring_parent' => $row['id']], JSON_UNESCAPED_UNICODE);
                     $stmtAudit = $conn->prepare("
                         INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data)
-                        VALUES (?, 0, 'CREATE', 'activity', ?, ?)
+                        VALUES (?, NULL, 'CREATE', 'activity', ?, ?)
                     ");
                     if ($stmtAudit) {
                         $stmtAudit->bind_param("iis", $tenantId, $newTaskId, $logMsg);

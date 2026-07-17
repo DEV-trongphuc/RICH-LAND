@@ -63,7 +63,7 @@ function runDailyReportCron($conn)
         
         $stmtLog = $conn->prepare("
             INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, ip_address) 
-            VALUES (?, 0, 'TEMPERATURE_DECAY', 'contact', ?, ?, '127.0.0.1')
+            VALUES (?, NULL, 'TEMPERATURE_DECAY', 'contact', ?, ?, '127.0.0.1')
         ");
 
         while ($c = $contactsToDecay->fetch_assoc()) {
