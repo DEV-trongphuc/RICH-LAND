@@ -142,6 +142,7 @@ const SettingsInner = () => {
   const [broadcastExclusionRules, setBroadcastExclusionRules] = useState<string>("not_lead,opt_out,active_khtn");
   const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string>("booking,da_gap,dat_coc");
   const [coopDefaultFiles, setCoopDefaultFiles] = useState<string>("UNC.png,CMND.png");
+  const [managerBehaviorMode, setManagerBehaviorMode] = useState<string>("combined");
 
   const [securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh] = useState<string>("+3 hours");
   const [securityTimerQuanTam, setSecurityTimerQuanTam] = useState<string>("+1 day");
@@ -475,6 +476,7 @@ const SettingsInner = () => {
         if (json.data.broadcast_exclusion_rules !== undefined) setBroadcastExclusionRules(json.data.broadcast_exclusion_rules);
         if (json.data.coop_eligible_statuses !== undefined) setCoopEligibleStatuses(json.data.coop_eligible_statuses);
         if (json.data.coop_default_files !== undefined) setCoopDefaultFiles(json.data.coop_default_files);
+        if (json.data.manager_behavior_mode !== undefined) setManagerBehaviorMode(json.data.manager_behavior_mode);
         if (json.data.security_timer_chua_xac_dinh !== undefined) setSecurityTimerChuaXacDinh(json.data.security_timer_chua_xac_dinh);
         if (json.data.security_timer_quan_tam !== undefined) setSecurityTimerQuanTam(json.data.security_timer_quan_tam);
         if (json.data.security_timer_thien_chi !== undefined) setSecurityTimerThienChi(json.data.security_timer_thien_chi);
@@ -715,6 +717,7 @@ const SettingsInner = () => {
       broadcast_exclusion_rules: broadcastExclusionRules,
       coop_eligible_statuses: coopEligibleStatuses,
       coop_default_files: coopDefaultFiles,
+      manager_behavior_mode: managerBehaviorMode,
       security_timer_chua_xac_dinh: securityTimerChuaXacDinh,
       security_timer_quan_tam: securityTimerQuanTam,
       security_timer_thien_chi: securityTimerThienChi,
@@ -3168,6 +3171,20 @@ function doPost(e) {
                         />
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
                           {t('Các từ khóa loại trừ cách nhau bằng dấu phẩy (not_lead, opt_out, active_khtn).')}
+                        </span>
+                      </div>
+                      <div>
+                        <label className="form-label">{t('Chế độ hoạt động của Trưởng nhóm (Manager Behavior)')}</label>
+                        <CustomSelect
+                          options={[
+                            { value: 'combined', label: t('Trưởng nhóm kiêm Sale (Nhận data, chấm công như Sale)') },
+                            { value: 'pure', label: t('Trưởng nhóm thuần túy (Không nhận data, không chấm công, duyệt công team)') }
+                          ]}
+                          value={managerBehaviorMode}
+                          onChange={val => setManagerBehaviorMode(val as string)}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                          {t('Chế độ quyết định xem trưởng nhóm có tham gia trực tiếp vào việc nhận lead và chấm công như sale hay không.')}
                         </span>
                       </div>
                     </div>

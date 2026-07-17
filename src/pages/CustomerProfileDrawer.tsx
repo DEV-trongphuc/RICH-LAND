@@ -705,7 +705,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
       'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at',
       'gender', 'zalo_link', 'fb_link', 'customer_type', 'industry', 'budget_range', 'project_id', 'campaign_id', 'ttl1_completed', 'ttl1_data',
-      'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature'
+      'stage_id', 'pipeline_status', 'temperature', 'suggested_temperature', 'collaborator_ids'
     ];
     const payload: Record<string, any> = {};
     allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
@@ -910,6 +910,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return { group1: false, group2: false, group3: false, group4: false, group5: false };
   });
   const [isSavingTTL1, setIsSavingTTL1] = useState(false);
+
+  // Cooperation Slip States and Functions (Module 4)
+  const [coopSlip, setCoopSlip] = useState<any>(null);
+  const [coopLoading, setCoopLoading] = useState(false);
+  const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string[]>([]);
+  const [coopDefaultFiles, setCoopDefaultFiles] = useState<string[]>([]);
+  const [salesUsers, setSalesUsers] = useState<any[]>([]);
+  const [coopShares, setCoopShares] = useState<{ user_id: string; percentage: string }[]>([]);
+  const [coopError, setCoopError] = useState('');
+  const [isRequestingChange, setIsRequestingChange] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
+
   const isOwnerOrAdmin = useMemo(() => {
     const scope = getModulePermissionScope(currentUser, 'leads', 'write');
     if (scope === 'all') return true;
@@ -917,6 +929,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const userTeamId = (currentUser as any)?.team_id || (currentUser as any)?.consultant_profile?.team_id;
       if (userTeamId && Number(contact?.team_id || formData.team_id) === Number(userTeamId)) return true;
     }
+    
+    const isCollaborator = (formData.collaborator_ids || contact?.collaborator_ids || '')
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean)
+      .includes(String(currentUser?.id));
+    if (isCollaborator) return true;
+
+    const isShareholder = coopSlip?.shareholders?.some((sh: any) => String(sh.user_id) === String(currentUser?.id) || String(sh.user_id) === String(currentUser?.consultant_id));
+    if (isShareholder) return true;
+
     if (scope === 'own') {
       return Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id) || Number(currentUser?.consultant_id) === Number(formData.owner_id || contact?.owner_id);
     }
@@ -926,9 +949,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
     const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
     return isOwner || isAdmin;
-  }, [currentUser, formData.owner_id, contact?.owner_id, contact?.team_id, formData.team_id]);
+  }, [currentUser, formData.owner_id, contact?.owner_id, contact?.team_id, formData.team_id, formData.collaborator_ids, contact?.collaborator_ids, coopSlip]);
   const isAdmin = currentUser?.role && ['admin', 'superadmin', 'super_admin', 'assistant', 'director', 'manager'].includes(currentUser.role);
   const isViewer = currentUser?.role === 'viewer';
+  const isMainOwnerOrManagerAdmin = useMemo(() => {
+    if (['admin', 'superadmin', 'super_admin', 'director', 'manager', 'assistant'].includes(currentUser?.role || '')) return true;
+    return Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
+  }, [currentUser, formData.owner_id, contact?.owner_id]);
   const [decayDays, setDecayDays] = useState<number>(5);
   const handleSaveTTL1 = async (updatedData: typeof ttl1Data) => {
     setIsSavingTTL1(true);
@@ -955,16 +982,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   };
 
-  // Cooperation Slip States and Functions (Module 4)
-  const [coopSlip, setCoopSlip] = useState<any>(null);
-  const [coopLoading, setCoopLoading] = useState(false);
-  const [coopEligibleStatuses, setCoopEligibleStatuses] = useState<string[]>([]);
-  const [coopDefaultFiles, setCoopDefaultFiles] = useState<string[]>([]);
-  const [salesUsers, setSalesUsers] = useState<any[]>([]);
-  const [coopShares, setCoopShares] = useState<{ user_id: string; percentage: string }[]>([]);
-  const [coopError, setCoopError] = useState('');
-  const [isRequestingChange, setIsRequestingChange] = useState(false);
-  const [changeReason, setChangeReason] = useState('');
+  // Cooperation Slip Functions (Module 4)
 
   const isCoopShareholder = useMemo(() => {
     if (!coopSlip || !currentUser) return false;
@@ -994,6 +1012,20 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const isOwner = Number(currentUser?.id) === Number(formData.owner_id || contact?.owner_id);
     return isCoopApprover || isCoopCreator || isOwner;
   }, [isCoopApprover, isCoopCreator, currentUser?.id, formData.owner_id, contact?.owner_id]);
+
+  const checkFileExists = useCallback((fileKeyword: string) => {
+    const files = coopSlip?.attachment_url ? coopSlip.attachment_url.split(',') : [];
+    const cleanKeyword = fileKeyword.split('.')[0].toLowerCase().trim();
+    if (!cleanKeyword) return false;
+    return files.some((f: string) => {
+      const filename = f.split('/').pop() || '';
+      const lower = filename.toLowerCase();
+      if (cleanKeyword === 'unc' || cleanKeyword === 'uy nhiem chi' || cleanKeyword === 'ủy nhiệm chi') {
+        return lower.includes('unc') || lower.includes('uy nhiem chi') || lower.includes('ủy nhiệm chi');
+      }
+      return lower.includes(cleanKeyword);
+    });
+  }, [coopSlip?.attachment_url]);
 
   const [isSignModalOpen, setIsSignModalOpen] = useState(false);
   const [signatureMethod, setSignatureMethod] = useState<'draw' | 'upload'>('draw');
@@ -4402,6 +4434,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               />
                             )}
                           </div>
+                          <div className="form-group">
+                            <label className="form-label">Nhân sự chăm sóc phụ (Co-care)</label>
+                            <CustomSelect
+                              multiple
+                              options={users
+                                .filter(u => Number(u.id) !== Number(formData.owner_id))
+                                .map(u => ({
+                                  value: String(u.id),
+                                  label: u.full_name,
+                                  avatar: u.avatar_url,
+                                  sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
+                                }))}
+                              value={(formData.collaborator_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean)}
+                              onChange={val => {
+                                const list = Array.isArray(val) ? val.filter((v: any) => v !== 'all') : [];
+                                setFormData((prev: any) => ({ ...prev, collaborator_ids: list.join(',') }));
+                              }}
+                              placeholder="Chọn nhân sự chăm sóc phụ..."
+                              searchable
+                              showAvatars
+                              disabled={isViewer || !isMainOwnerOrManagerAdmin}
+                            />
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                              Cho phép các sale khác có quyền xem và cùng chăm sóc khách hàng này.
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5029,6 +5087,30 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <h4 style={{ fontWeight: 700, marginBottom: '1rem', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <Paperclip size={18} /> Tài liệu hợp tác đính kèm
                             </h4>
+                            
+                            {coopDefaultFiles.length > 0 && (
+                              <div style={{ marginBottom: '1.25rem', padding: '12px 16px', background: 'rgba(59, 130, 246, 0.04)', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.12)' }}>
+                                <p style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--color-primary)', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  Danh mục tài liệu bắt buộc:
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {coopDefaultFiles.map((file, fIdx) => {
+                                    const exists = checkFileExists(file);
+                                    return (
+                                      <div key={fIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 550, color: exists ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                                        {exists ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--color-success)' }}>✓</span>
+                                        ) : (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(148, 163, 184, 0.1)', color: 'var(--color-text-muted)' }}>•</span>
+                                        )}
+                                        <span>{file} (tên file chứa <strong>{file.split('.')[0].toUpperCase()}</strong>)</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
                             {coopSlip.attachment_url ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {coopSlip.attachment_url.split(',').map((s: string) => s.trim()).filter(Boolean).map((fileUrl, fIdx) => (
@@ -5101,21 +5183,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                             ) : (
                               <div>
-                                {coopDefaultFiles.length > 0 && (
-                                  <div style={{ marginBottom: '1rem', padding: '10px 14px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px', border: '1px dashed rgba(59, 130, 246, 0.3)' }}>
-                                    <p style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--color-primary)', margin: '0 0 6px 0' }}>Tài liệu yêu cầu bắt buộc:</p>
-                                    <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.775rem', color: 'var(--color-text-light)' }}>
-                                      {coopDefaultFiles.map((file, fIdx) => {
-                                        const cleanKeyword = file.split('.')[0].toLowerCase().trim();
-                                        return (
-                                          <li key={fIdx}>
-                                            {file} (Tên file upload phải chứa chữ <strong>{cleanKeyword.toUpperCase()}</strong>)
-                                          </li>
-                                        );
-                                      })}
-                                    </ul>
-                                  </div>
-                                )}
                                 <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
                                   Chưa có tài liệu/hợp đồng đính kèm cho phiếu này.
                                 </p>

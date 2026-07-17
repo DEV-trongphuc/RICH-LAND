@@ -71,10 +71,11 @@ class ContactController {
                 $where[] = '1=0';
             }
         } else if ($auth['role'] === 'sales' || $auth['role'] === 'sale') {
-            $where[] = '(c.owner_id = ? OR c.id IN (
+            $where[] = '(c.owner_id = ? OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
                 SELECT contact_id FROM cooperation_slips 
                 WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE \'{}\' END), JSON_QUOTE(CAST(? AS CHAR)))
             ))';
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         } else if ($auth['role'] === 'manager') {
@@ -82,7 +83,12 @@ class ContactController {
                 SELECT id FROM users WHERE team_id IN (
                     SELECT id FROM teams WHERE leader_id = ?
                 )
+            ) OR FIND_IN_SET(?, c.collaborator_ids) OR c.id IN (
+                SELECT contact_id FROM cooperation_slips 
+                WHERE JSON_CONTAINS(JSON_KEYS(CASE WHEN (shares_json IS NOT NULL AND JSON_VALID(shares_json)) THEN shares_json ELSE \'{}\' END), JSON_QUOTE(CAST(? AS CHAR)))
             ))';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
         }

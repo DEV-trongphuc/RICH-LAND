@@ -2207,6 +2207,44 @@ try {
 
         $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('db_version', '158') ON DUPLICATE KEY UPDATE setting_value = '158'");
 
+        // Version 159 (Manager behavior mode configuration, contact collaborators sharing, and consultants view update)
+        $logMsg("Đang chạy cập nhật phiên bản 159...", "info");
+        
+        // 1. Ensure manager_behavior_mode setting exists
+        $conn->query("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES ('manager_behavior_mode', 'combined')");
+
+        // 2. Ensure collaborator_ids column exists in contacts table
+        $chkColCollab = $conn->query("SHOW COLUMNS FROM contacts LIKE 'collaborator_ids'");
+        if ($chkColCollab && $chkColCollab->num_rows === 0) {
+            $conn->query("ALTER TABLE contacts ADD COLUMN collaborator_ids TEXT NULL DEFAULT NULL COMMENT 'JSON array or comma-separated list of co-caring sale IDs' AFTER owner_id");
+            $logMsg("Đã thêm cột collaborator_ids vào bảng contacts", "success");
+        }
+
+        // 3. Update consultants view to dynamically include manager role when behavior mode is combined
+        $conn->query("CREATE OR REPLACE VIEW `consultants` AS 
+            SELECT 
+              `id`, 
+              `full_name` AS `name`, 
+              `email`, 
+              `status`, 
+              `leave_start`, 
+              `leave_end`, 
+              `created_at`, 
+              `zalo_chat_id`, 
+              `work_start_time`, 
+              `work_end_time`, 
+              `work_schedule`, 
+              `avatar_url` AS `avatar`, 
+              `vacation_mode`,
+              `team_id`
+            FROM `users` 
+            WHERE `role` = 'sales' 
+               OR (`role` = 'manager' AND COALESCE((SELECT setting_value FROM system_settings WHERE setting_key = 'manager_behavior_mode' LIMIT 1), 'combined') = 'combined')");
+        $logMsg("Đã cập nhật view consultants hỗ trợ manager nhận data tự động", "success");
+
+        $conn->query("INSERT INTO system_settings (setting_key, setting_value) VALUES ('db_version', '159') ON DUPLICATE KEY UPDATE setting_value = '159'");
+        $currentVersion = 159;
+
     $logMsg("Tự sửa đổi cấu trúc hoàn thành thành công.", "success");
 
     $logMsg("Hệ thống đã cập nhật thành công lên phiên bản mới nhất: " . $currentVersion, "success");

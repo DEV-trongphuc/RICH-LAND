@@ -18,10 +18,12 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
   const { t } = useLanguage();
   const { user } = useAuth();
   const { showConfirm } = useUIStore();
-  const isSales = ['sale', 'manager'].includes(user?.role || '');
-  const canApprove = ['admin', 'superadmin', 'super_admin', 'director', 'assistant'].includes(user?.role || '');
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [sysSettings, setSysSettings] = useState<any>(null);
+  const managerBehaviorMode = sysSettings?.manager_behavior_mode || 'combined';
+  const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
+  const canSelectUser = ['admin', 'superadmin', 'super_admin', 'director', 'assistant', 'manager'].includes(user?.role || '');
+  const canApprove = ['admin', 'superadmin', 'super_admin', 'director', 'assistant'].includes(user?.role || '') || (user?.role === 'manager' && managerBehaviorMode === 'pure');
   useEffect(() => {
     fetchAPI('get_settings').then(res => {
       if (res && res.success) {
@@ -388,7 +390,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
           
           <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
             {/* User Select */}
-            {!isSales && (
+            {canSelectUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '180px' }}>
                 <label style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
                 <CustomSelect
@@ -964,7 +966,7 @@ export const AttendancePageInner = ({ embedMode = false }: { embedMode?: boolean
             </div>
 
             {/* User Select */}
-            {!isSales && (
+            {canSelectUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '200px' }}>
                 <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Tư vấn viên')}</label>
                 <CustomSelect

@@ -37,7 +37,16 @@ const DAY_LABELS = {
 export const ProfilePage: React.FC = () => {
   const { t } = useLanguage();
   const { user, login, logout, updateUser } = useAuth();
-  const isSales = ['sale', 'manager'].includes(user?.role || '');
+  const [sysSettings, setSysSettings] = useState<any>(null);
+  useEffect(() => {
+    fetchAPI('get_settings').then(res => {
+      if (res && res.success) {
+        setSysSettings(res.data);
+      }
+    });
+  }, []);
+  const managerBehaviorMode = sysSettings?.manager_behavior_mode || 'combined';
+  const isSales = user?.role === 'sale' || (user?.role === 'manager' && managerBehaviorMode === 'combined');
   
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);

@@ -3643,9 +3643,9 @@ switch ($action) {
             $tStmt->close();
 
             if (!empty($teamIds)) {
-                $where = " WHERE c.team_id IN (" . implode(',', $teamIds) . ")";
+                $where = " WHERE c.team_id IN (" . implode(',', $teamIds) . ") OR c.id = " . $currentUserId;
             } else {
-                $where = " WHERE 1=0";
+                $where = " WHERE c.id = " . $currentUserId;
             }
         }
 
@@ -12262,7 +12262,7 @@ switch ($action) {
                               ) dl_max ON dl.id = dl_max.max_id
                               JOIN consultants c ON dl.assigned_to = c.id 
                               WHERE $dateConditionDl $managerFilterDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error', 'reminder', 'databank_claim') 
-                              GROUP BY c.id, c.status, c.vacation_mode, dl.status";
+                              GROUP BY c.id, c.name, c.email, c.avatar, c.status, c.vacation_mode, dl.status";
         $topConsultantsRes = $conn->query($topConsultantsSql);
         $consultantStats = [];
         if ($topConsultantsRes) {
@@ -12387,7 +12387,7 @@ switch ($action) {
                           FROM distribution_logs dl 
                           JOIN distribution_rounds dr ON dl.round_id = dr.id 
                           WHERE $dateCondition $managerFilterDl AND dl.status IN ('assigned', 'compensation', 'rule_6_month', 'pending_work_hours', 'error') 
-                          GROUP BY dr.id, dl.status";
+                          GROUP BY dr.id, dr.round_name, dl.status";
         $roundRatioRes = $conn->query($roundRatioSql);
         $roundStats = [];
         if ($roundRatioRes) {
@@ -12511,7 +12511,7 @@ switch ($action) {
                      FROM data_reports dr 
                      JOIN consultants c ON dr.consultant_id = c.id
                      WHERE dr.status IN ('approved', 'approved_no_comp') AND $dateConditionCreated $managerFilterReports
-                     GROUP BY c.id ORDER BY count DESC";
+                     GROUP BY c.id, c.name ORDER BY count DESC";
         $errorResRaw = $conn->query($errorSql);
         $errorStats = [];
         if ($errorResRaw) {
