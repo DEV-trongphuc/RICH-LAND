@@ -44,6 +44,7 @@ import AttendancePage from './AttendancePage';
 import api from '../api/axios';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { WorkspaceTaskDrawer } from './WorkspaceTaskDrawer';
+import styles from './EntityDrawer.module.css';
 import vnFlag from '../assets/vn.svg';
 import usFlag from '../assets/us.svg';
 import jpFlag from '../assets/jp.svg';
@@ -802,6 +803,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
   const [ticketModalOpen, setTicketModalOpen] = useState(false);
 
   // Profile settings states
+  const [activeProfileTab, setActiveProfileTab] = useState<'personal' | 'erp' | 'contact' | 'payment' | 'emergency' | 'schedule' | 'documents'>('personal');
   const [editName, setEditName] = useState('');
   const [editAvatar, setEditAvatar] = useState('');
   const [editWorkStartTime, setEditWorkStartTime] = useState('08:00');
@@ -851,6 +853,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
     payment: true,
     emergency: false
   });
+  const [profileActiveTab, setProfileActiveTab] = useState('personal');
 
   const toggleProfileSection = (sec: string) => {
     setOpenProfileSections(prev => ({ ...prev, [sec]: !prev[sec] }));
@@ -7757,21 +7760,35 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           </button>
         </div>
 
-        {/* 2-Column Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.45fr 1fr', gap: '2rem' }}>
-
-          {/* LEFT COLUMN: Profile Card & Action Info */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-            {/* Profile Avatar Card */}
-            <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 1.5rem 0', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Settings size={20} color="var(--color-primary)" />
-                {t('ẢNH ĐẠI DIỆN')}
-              </h3>
-
-              {/* Avatar Section */}
-              <div style={{ position: 'relative', display: 'inline-flex', marginBottom: '1.5rem' }}>
+        {/* Responsive flex container with sidebar tabs */}
+        <div className={styles.drawerBody} style={{
+          background: 'var(--color-surface)',
+          borderRadius: '16px',
+          border: '1px solid var(--color-border-light)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          overflow: 'hidden',
+          minHeight: '650px',
+          margin: '0'
+        }}>
+          {/* LEFT SIDEBAR: Avatar & Tabs */}
+          <div className={styles.sidebarTabs} style={{
+            width: isMobile ? '100%' : '250px',
+            borderRight: isMobile ? 'none' : '1px solid var(--color-border-light)',
+            borderBottom: isMobile ? '1px solid var(--color-border-light)' : 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            padding: '1.5rem 1rem',
+            flexShrink: 0,
+            background: 'var(--color-bg-alt)',
+            height: isMobile ? 'auto' : '100%',
+            overflowY: isMobile ? 'visible' : 'auto'
+          }}>
+            {/* Compact Profile Avatar Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0' }}>
+              <div style={{ position: 'relative', display: 'inline-flex', marginBottom: '0.75rem' }}>
                 <div style={{
                   border: '3px solid var(--color-primary-light)',
                   borderRadius: '50%',
@@ -7780,28 +7797,21 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                   alignItems: 'center',
                   justifyContent: 'center',
                   background: 'var(--color-surface)',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.1)'
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                 }}>
-                  <Avatar src={editAvatar} name={editName} size={110} />
+                  <Avatar src={editAvatar} name={editName} size={80} />
                 </div>
-
-                {/* Upload Trigger Input */}
                 <label style={{
-                  position: 'absolute', bottom: 4, right: 4,
+                  position: 'absolute', bottom: 0, right: 0,
                   background: 'var(--color-primary)', color: 'white',
-                  width: 34, height: 34, borderRadius: '50%',
+                  width: 28, height: 28, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  cursor: 'pointer', boxShadow: '0 4px 12px rgba(163, 20, 34, 0.3)',
+                  cursor: 'pointer', boxShadow: '0 2px 6px rgba(163, 20, 34, 0.3)',
                   transition: 'all 0.2s', border: '2px solid var(--color-surface)'
                 }} className="hover-lift active-press" title={t('Tải lên ảnh đại diện mới')}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="17 8 12 3 7 8" />
-                    <line x1="12" y1="3" x2="12" y2="15" />
-                  </svg>
+                  <Camera size={12} />
                   <input type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
                 </label>
-
                 {isUploadingAvatar && (
                   <div style={{
                     position: 'absolute', inset: 4, borderRadius: '50%',
@@ -7809,30 +7819,100 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                     alignItems: 'center', justifyContent: 'center',
                     backdropFilter: 'blur(2px)'
                   }}>
-                    <RefreshCw className="spin" size={24} color="white" />
+                    <RefreshCw className="spin" size={18} color="white" />
                   </div>
                 )}
               </div>
-
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center' }}>
-                {t('Chấp nhận ảnh JPG, PNG, GIF, WEBP. Tối đa 5MB.')}
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', margin: '0 0 4px 0', textAlign: 'center' }}>
+                {editName}
+              </h4>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', textAlign: 'center', wordBreak: 'break-all' }}>
+                {profile.email}
               </span>
             </div>
 
-            {/* SECTION 1: PERSONAL INFO */}
-            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
+            {/* Sidebar Tab Menu */}
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '0.25rem', overflowX: isMobile ? 'auto' : 'visible', overflowY: isMobile ? 'visible' : 'auto', flex: 1 }} className={styles.tabGroup}>
               <button
                 type="button"
-                onClick={() => toggleProfileSection('personal')}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'personal' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('personal')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
               >
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Info size={14} /> {t('Thông tin cá nhân')}
-                </h4>
-                {openProfileSections.personal ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
+                <User size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Thông tin cá nhân')}</span>
               </button>
-              {openProfileSections.personal && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
+              <button
+                type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'erp' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('erp')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Layers size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Hồ sơ & ERP')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'contact' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('contact')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Server size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ & Tài khoản')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'payment' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('payment')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Receipt size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Thanh toán & Thuế')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'emergency' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('emergency')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Scale size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Liên hệ khẩn cấp')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'schedule' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('schedule')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Clock size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Lịch trực nhận data')}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.sidebarTabBtn} ${profileActiveTab === 'documents' ? styles.sidebarTabActive : ''}`}
+                onClick={() => setProfileActiveTab('documents')}
+                style={{ width: isMobile ? 'auto' : '100%', border: 'none', background: 'transparent', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <FileText size={15} />
+                <span style={{ whiteSpace: 'nowrap' }}>{t('Lưu trữ tài liệu')}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* RIGHT CONTENT AREA */}
+          <div className={styles.contentArea} style={{
+            flex: 1,
+            padding: '2rem',
+            background: 'var(--color-surface)',
+            overflowY: 'auto'
+          }}>
+            {/* 1. PERSONAL INFO */}
+            {profileActiveTab === 'personal' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <User size={16} color="var(--color-primary)" /> {t('Thông tin cá nhân')}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600 }}>{t('Họ và tên')}</label>
                       <input
@@ -7936,24 +8016,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </div>
                     </div>
-                  </div>
-                )}
+                </div>
               </div>
+            )}
 
-            {/* SECTION 2: WORKPLACE & ERP */}
-            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
-              <button
-                type="button"
-                onClick={() => toggleProfileSection('erp')}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
-              >
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Layers size={14} /> {t('Thông tin nhân sự & ERP')}
-                </h4>
-                {openProfileSections.erp ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
-              </button>
-              {openProfileSections.erp && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem', marginTop: '0.25rem' }}>
+            {/* 2. ERP PROFILE */}
+            {profileActiveTab === 'erp' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Layers size={16} color="var(--color-primary)" /> {t('Thông tin nhân sự & ERP')}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '0.75rem' : '1rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '0.75rem' : '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{t('Mã nhân viên')}</label>
@@ -8069,24 +8142,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         />
                       </div>
                     </div>
-                  </div>
-                )}
+                </div>
               </div>
+            )}
 
-            {/* SECTION 3: CONTACT & ACCOUNT */}
-            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
-              <button
-                type="button"
-                onClick={() => toggleProfileSection('contact')}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
-              >
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Server size={14} /> {t('Liên hệ & Tài khoản')}
-                </h4>
-                {openProfileSections.contact ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
-              </button>
-              {openProfileSections.contact && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
+            {/* 3. CONTACT & LOGIN */}
+            {profileActiveTab === 'contact' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Server size={16} color="var(--color-primary)" /> {t('Liên hệ & Tài khoản')}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 600, color: 'var(--color-text-muted)' }}>{t('Email đăng nhập')}</label>
                       <input
@@ -8137,24 +8203,17 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         style={{ minHeight: '60px', padding: '10px 14px' }}
                       />
                     </div>
-                  </div>
-                )}
+                </div>
               </div>
+            )}
 
-            {/* SECTION 4: PAYMENT & TAXES */}
-            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
-              <button
-                type="button"
-                onClick={() => toggleProfileSection('payment')}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
-              >
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Receipt size={14} /> {t('Thanh toán & Thuế')}
-                </h4>
-                {openProfileSections.payment ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
-              </button>
-              {openProfileSections.payment && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
+            {/* 4. BANKING & PAYMENTS */}
+            {profileActiveTab === 'payment' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Receipt size={16} color="var(--color-primary)" /> {t('Thanh toán & Thuế')}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600 }}>{t('Tên ngân hàng')}</label>
@@ -8208,26 +8267,19 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                           onChange={(e) => setEditInsuranceId(e.target.value)}
                           placeholder="Mã số BHXH"
                         />
+                      </div>
                     </div>
-                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* SECTION 5: EMERGENCY CONTACT */}
-            <div className="card hover-lift" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', transition: 'all 0.3s ease' }}>
-              <button
-                type="button"
-                onClick={() => toggleProfileSection('emergency')}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}
-              >
-                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <Scale size={14} /> {t('Liên hệ khẩn cấp')}
-                </h4>
-                {openProfileSections.emergency ? <ChevronUp size={16} color="var(--color-text-muted)" /> : <ChevronDown size={16} color="var(--color-text-muted)" />}
-              </button>
-              {openProfileSections.emergency && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.25rem' }}>
+            {/* 5. EMERGENCY CONTACT */}
+            {profileActiveTab === 'emergency' && (
+              <div className="card animate-fade-in" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Scale size={16} color="var(--color-primary)" /> {t('Liên hệ khẩn cấp')}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 600 }}>{t('Người liên hệ')}</label>
@@ -8261,644 +8313,610 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                         placeholder="SĐT người liên hệ"
                       />
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-          {/* RIGHT COLUMN: Vacation Toggle & Work Hour Settings */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-            {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-              <>
-            {/* Vacation Status Card */}
-            <div className="card" style={{
-              padding: '1.5rem',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border-light)',
-              borderRadius: '16px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              transition: 'all 0.3s ease'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: 'rgba(189, 29, 45, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <Clock3 size={20} color="#BD1D2D" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                    {t('TRẠNG THÁI NHẬN DATA')}
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                    {t('Khi kích hoạt: Nhận khách hàng mới theo vòng chia. Khi tắt (Nghỉ/Tạm ngưng): Dừng nhận khách hàng mới, nhưng khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho bạn chăm sóc.')}
-                  </p>
                 </div>
               </div>
+            )}
 
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'var(--color-bg-alt)',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                border: '1px solid var(--color-border-light)'
-              }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
-                  {t('Trạng thái hiện tại:')}
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    color: !portalVacationMode && !onLeave ? 'var(--color-success)' : 'var(--color-warning)',
-                    background: !portalVacationMode && !onLeave ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                    padding: '3px 8px',
-                    borderRadius: '6px'
-                  }}>
-                    {!portalVacationMode && !onLeave ? t('Sẵn sàng') :
-                      onLeave ? t('Nghỉ phép') : t('Tạm ngưng')}
-                  </span>
-                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                    <div style={{ pointerEvents: onLeave ? 'none' : 'auto', opacity: onLeave ? 0.5 : 1 }}>
-                      <ToggleSwitch
-                        checked={!portalVacationMode}
-                        onChange={() => {
-                          if (!portalVacationMode) {
-                            setVacationConfirmOpen(true);
-                          } else {
-                            handleTogglePortalVacation();
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {onLeave && (
-                <div style={{
-                  background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
-                  borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
-                }}>
-                  <AlertTriangle size={15} />
-                  <span>{t('Bạn hiện đang trong thời gian nghỉ phép. Hệ thống tự động khóa chế độ nhận data cho đến khi kết thúc kỳ nghỉ.')}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Night Shift Registration Card */}
-            <div className="card" style={{
-              padding: '1.5rem',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border-light)',
-              borderRadius: '16px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              transition: 'all 0.3s ease'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: 'rgba(245, 158, 11, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <ShieldAlert size={20} color="var(--color-warning)" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                    {t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)')}
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                    {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'var(--color-bg-alt)',
-                padding: '10px 14px',
-                borderRadius: '12px',
-                border: '1px solid var(--color-border-light)'
-              }}>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
-                  {t('Đăng ký trực hôm nay:')}
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    color: nightShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)',
-                    background: nightShiftRegistered ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)',
-                    padding: '3px 8px',
-                    borderRadius: '6px'
-                  }}>
-                    {nightShiftRegistered ? t('Đã đăng ký trực') : t('Chưa đăng ký')}
-                  </span>
-                  {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
-                    <div style={{ opacity: nightShiftCanToggle ? 1 : 0.5, pointerEvents: nightShiftCanToggle ? 'auto' : 'none' }}>
-                      <ToggleSwitch
-                        checked={nightShiftRegistered}
-                        onChange={handleToggleNightShift}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {!nightShiftCanToggle && (
-                <div style={{
-                  background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
-                  borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
-                }}>
-                  <Info size={14} />
-                  <span>{t('Đã quá 18:00. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.')}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Leave (Nghỉ phép) registration card */}
-            <div className="card" style={{
-              padding: '1.5rem',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border-light)',
-              borderRadius: '16px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1rem',
-              transition: 'all 0.3s ease'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: 'rgba(239, 68, 68, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  <Calendar size={20} color="var(--color-primary)" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
-                    {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
-                  </h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
-                    {t('Đăng ký nghỉ phép tạm thời để tạm dừng nhận data phân bổ tự động.')}
-                  </p>
-                </div>
-              </div>
-
-              {onLeave && (
-                <div style={{
-                  padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontWeight: 700, fontSize: '0.8rem',
-                  background: 'var(--color-warning-light)', color: 'var(--color-warning)', marginBottom: '0.5rem'
-                }}>
-                  {t('ĐANG TRONG KỲ NGHỈ PHÉP')}
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.25rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Từ ngày')}</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={editLeaveStart}
-                    onChange={(e) => setEditLeaveStart(e.target.value)}
-                    style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
-                  />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Đến ngày')}</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={editLeaveEnd}
-                    onChange={(e) => setEditLeaveEnd(e.target.value)}
-                    style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="btn primary"
-                style={{
-                  width: '100%',
-                  marginTop: '0.5rem',
-                  height: '38px',
-                  borderRadius: '10px',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  boxShadow: '0 4px 12px rgba(189, 29, 45, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-                onClick={handleAddLeave}
-                disabled={savingLeave}
-              >
-                {savingLeave ? (
+            {/* 6. WORK SCHEDULE & DATA ROTATION */}
+            {profileActiveTab === 'schedule' && (
+              <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
                   <>
-                    <RefreshCw size={14} className="spin" />
-                    {t('Đang đăng ký...')}
-                  </>
-                ) : (
-                  t('Đăng ký nghỉ')
-                )}
-              </button>
-
-              {/* Lịch sử đăng ký nghỉ phép */}
-              <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
-                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>{t('LỊCH SỬ NGHỈ PHÉP')}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>
-                    ({leaveHistory.length})
-                  </span>
-                </h4>
-
-                {loadingLeaves ? (
-                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
-                    <RefreshCw className="spin" size={16} style={{ marginRight: 6 }} />
-                    {t('Đang tải lịch sử...')}
-                  </div>
-                ) : leaveHistory.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
-                    {t('Chưa có đăng ký nghỉ phép nào.')}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
-                    {leaveHistory.map((leave) => {
-                      const todayStr = new Date().toISOString().split('T')[0];
-                      const isPast = leave.end_date < todayStr;
-                      const isCurrent = todayStr >= leave.start_date && todayStr <= leave.end_date;
-
-                      return (
-                        <div
-                          key={leave.id}
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '8px 12px',
-                            background: isCurrent ? 'var(--color-warning-light)' : (isPast ? 'var(--color-bg)' : 'var(--color-surface)'),
-                            border: '1px solid var(--color-border-light)',
-                            borderRadius: '8px',
-                            opacity: isPast ? 0.6 : 1
-                          }}
-                        >
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                              {new Date(leave.start_date).toLocaleDateString('vi-VN')} → {new Date(leave.end_date).toLocaleDateString('vi-VN')}
-                            </span>
-                            <span style={{ fontSize: '0.7rem', color: isCurrent ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: 600 }}>
-                              {isCurrent ? t('Đang diễn ra') : (isPast ? t('Đã qua') : t('Sắp tới'))}
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteLeave(leave.id)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--color-danger)',
-                              cursor: 'pointer',
-                              padding: '4px',
-                              borderRadius: '4px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              transition: 'background 0.2s'
-                            }}
-                            className="hover-bg-danger-light"
-                            title={t('Xóa lịch nghỉ')}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                    {/* Vacation Status Card */}
+                    <div className="card" style={{
+                      padding: '1.5rem',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          background: 'rgba(189, 29, 45, 0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Clock3 size={20} color="#BD1D2D" />
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Combined Work Hours & Schedule Card */}
-            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Clock size={18} color="var(--color-primary)" />
-                  {t('GIỜ LÀM VIỆC & LỊCH TRÌNH')}
-                </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
-                  {t('Thiết lập thời gian nhận lead cố định hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ.')}
-                </p>
-              </div>
-
-              {/* Segmented Control for Schedule Mode */}
-              <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px' }}>
-                <button
-                  type="button"
-                  onClick={() => setScheduleMode('daily')}
-                  style={{
-                    flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
-                    background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                    color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
-                    transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                  }}
-                >{t('Cố định hàng ngày')}</button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setScheduleMode('custom');
-                    if (!editWorkSchedule) {
-                      setEditWorkSchedule(DEFAULT_SCHEDULE);
-                    }
-                  }}
-                  style={{
-                    flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
-                    background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
-                    color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
-                    transition: 'all 0.2s', border: 'none', cursor: 'pointer'
-                  }}
-                >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
-              </div>
-
-              {scheduleMode === 'daily' ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'slideUp 0.15s ease-out' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{ flex: 1 }}>
-                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                        {t('Bắt đầu làm việc')}
-                      </label>
-                      <input
-                        type="time"
-                        className="form-input"
-                        value={editWorkStartTime}
-                        onChange={(e) => setEditWorkStartTime(e.target.value)}
-                        style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
-                      />
-                    </div>
-                    <div style={{ fontSize: '1.5rem', color: 'var(--color-text-muted)', paddingTop: '20px' }}>→</div>
-                    <div style={{ flex: 1 }}>
-                      <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
-                        {t('Kết thúc làm việc')}
-                      </label>
-                      <input
-                        type="time"
-                        className="form-input"
-                        value={editWorkEndTime}
-                        onChange={(e) => setEditWorkEndTime(e.target.value)}
-                        style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
-                      />
-                    </div>
-                  </div>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
-                    💡 {t('Lưu ý: Lead mới sẽ chỉ được phân bổ tự động cho bạn trong khoảng thời gian làm việc đã thiết lập.')}
-                  </p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', animation: 'slideUp 0.15s ease-out' }}>
-                  {Object.entries(DAY_LABELS).map(([dayKey, dayLabel]) => {
-                    const config = editWorkSchedule[dayKey] || { active: true, start: editWorkStartTime, end: editWorkEndTime };
-                    const isActive = config.active;
-
-                    return (
-                      <div
-                        key={dayKey}
-                        style={{
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                          padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
-                          background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
-                          transition: 'all 0.2s',
-                          boxShadow: isActive ? 'var(--shadow-xs)' : 'none'
-                        }}
-                      >
-                        {/* Day Label with custom checkbox */}
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
-                          <input
-                            type="checkbox"
-                            className="custom-checkbox"
-                            checked={isActive}
-                            onChange={(e) => handleDayActiveToggle(dayKey, e.target.checked)}
-                          />
-                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
-                            {t(dayLabel)}
-                          </span>
-                        </label>
-
-                        {/* Day Hour Inputs / Offline badge */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          {isActive ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <input
-                                type="time"
-                                className="form-input"
-                                style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
-                                value={config.start || editWorkStartTime}
-                                onChange={(e) => handleDayTimeChange(dayKey, 'start', e.target.value)}
-                              />
-                              <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>-</span>
-                              <input
-                                type="time"
-                                className="form-input"
-                                style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
-                                value={config.end || editWorkEndTime}
-                                onChange={(e) => handleDayTimeChange(dayKey, 'end', e.target.value)}
-                              />
-                            </div>
-                          ) : (
-                            <span style={{
-                              padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
-                              background: 'var(--color-danger-light)',
-                              color: 'var(--color-danger)'
-                            }}>
-                              {t('Nghỉ')}
-                            </span>
-                          )}
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                            {t('TRẠNG THÁI NHẬN DATA')}
+                          </h3>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                            {t('Khi kích hoạt: Nhận khách hàng mới theo vòng chia. Khi tắt (Nghỉ/Tạm ngưng): Dừng nhận khách hàng mới, nhưng khách hàng cũ đăng ký lại VẪN sẽ tự động chuyển và gửi tin nhắn Nhắc trùng cho bạn chăm sóc.')}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            </>
-          )}
 
-          {/* TÀI LIỆU & HỢP ĐỒNG NHÂN SỰ */}
-            <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FileText size={18} color="var(--color-primary)" />
-                  {t('HỒ SƠ & TÀI LIỆU NHÂN SỰ')}
-                </h3>
-                {/* Admin/Manager upload button */}
-                {(['admin', 'superadmin', 'manager', 'assistant'].includes(user?.role as any)) && (
-                  <label style={{
-                    background: 'var(--color-primary-light)', color: 'var(--color-primary)',
-                    padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
-                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', margin: 0
-                  }}>
-                    <Plus size={14} />
-                    {t('Tải lên')}
-                    <input type="file" onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !targetConsultantId) return;
-                      setUploadingDoc(true);
-                      try {
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        formData.append('name', file.name);
-                        formData.append('category', `consultant_${targetConsultantId}`);
-                        formData.append('visibility', 'personal');
-                        
-                        const uploadRes = await api.post('/cloud-files', formData, {
-                          headers: { 'Content-Type': 'multipart/form-data' }
-                        });
-                        if (uploadRes.data && uploadRes.data.success) {
-                          toast.success(t('Đã tải tài liệu lên thành công!'));
-                          fetchConsultantDocs();
-                        } else {
-                          toast.error(uploadRes.data.message || t('Lỗi tải tài liệu lên'));
-                        }
-                      } catch (err: any) {
-                        toast.error(t('Lỗi kết nối tải tài liệu: ') + err.message);
-                      } finally {
-                        setUploadingDoc(false);
-                      }
-                    }} style={{ display: 'none' }} />
-                  </label>
-                )}
-              </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                {t('Danh sách tài liệu hợp đồng, quyết định khen thưởng/kỷ luật hoặc hồ sơ nhân sự.')}
-              </p>
-
-              {uploadingDoc && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                  <RefreshCw className="spin" size={14} />
-                  {t('Đang tải tài liệu lên...')}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '0.5rem' }}>
-                {consultantDocs.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic', background: 'var(--color-bg)', borderRadius: '8px' }}>
-                    {t('Chưa có tài liệu nào được tải lên.')}
-                  </div>
-                ) : (
-                  consultantDocs.map((doc) => (
-                    <div
-                      key={doc.id}
-                      style={{
+                      <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        padding: '10px 12px',
-                        background: 'var(--color-bg)',
-                        border: '1px solid var(--color-border-light)',
-                        borderRadius: '8px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', marginRight: '8px' }}>
-                        <a
-                          href={resolveAttachmentUrl(doc.file_path)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            fontSize: '0.8rem',
-                            fontWeight: 600,
-                            color: 'var(--color-primary)',
-                            textDecoration: 'none',
-                            whiteSpace: 'nowrap',
-                            textOverflow: 'ellipsis',
-                            overflow: 'hidden'
-                          }}
-                          className="hover-underline"
-                        >
-                          {doc.name}
-                        </a>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-                          {t('Tải lên bởi')} {doc.uploader_name || t('Hệ thống')} • {new Date(doc.created_at).toLocaleDateString('vi-VN')}
+                        background: 'var(--color-bg-alt)',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--color-border-light)'
+                      }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
+                          {t('Trạng thái hiện tại:')}
                         </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            color: !portalVacationMode && !onLeave ? 'var(--color-success)' : 'var(--color-warning)',
+                            background: !portalVacationMode && !onLeave ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                            padding: '3px 8px',
+                            borderRadius: '6px'
+                          }}>
+                            {!portalVacationMode && !onLeave ? t('Sẵn sàng') :
+                              onLeave ? t('Nghỉ phép') : t('Tạm ngưng')}
+                          </span>
+                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                            <div style={{ pointerEvents: onLeave ? 'none' : 'auto', opacity: onLeave ? 0.5 : 1 }}>
+                              <ToggleSwitch
+                                checked={!portalVacationMode}
+                                onChange={() => {
+                                  if (!portalVacationMode) {
+                                    setVacationConfirmOpen(true);
+                                  } else {
+                                    handleTogglePortalVacation();
+                                  }
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {/* Download link */}
-                        <a
-                          href={resolveAttachmentUrl(doc.file_path)}
-                          download
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--color-primary)',
-                            cursor: 'pointer',
-                            padding: '4px',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                          className="hover-bg-primary-light"
-                          title={t('Tải xuống')}
-                        >
-                          <ArrowUpRight size={15} />
-                        </a>
+                      {onLeave && (
+                        <div style={{
+                          background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
+                          borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
+                        }}>
+                          <AlertTriangle size={15} />
+                          <span>{t('Bạn hiện đang trong thời gian nghỉ phép. Hệ thống tự động khóa chế độ nhận data cho đến khi kết thúc kỳ nghỉ.')}</span>
+                        </div>
+                      )}
+                    </div>
 
-                        {/* Admin/Manager delete button */}
-                        {(['admin', 'superadmin', 'manager', 'assistant'].includes(user?.role as any)) && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              if (!window.confirm(t('Bạn có chắc chắn muốn xóa tài liệu này?'))) return;
-                              try {
-                                const res = await api.delete(`/cloud-files/${doc.id}`);
-                                if (res.data && res.data.success) {
-                                  toast.success(t('Đã xóa tài liệu thành công!'));
-                                  fetchConsultantDocs();
-                                } else {
-                                  toast.error(res.data.message || t('Lỗi khi xóa tài liệu'));
-                                }
-                              } catch (err: any) {
-                                  toast.error(t('Lỗi kết nối xóa tài liệu: ') + err.message);
-                              }
+                    {/* Night Shift Registration Card */}
+                    <div className="card" style={{
+                      padding: '1.5rem',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          background: 'rgba(245, 158, 11, 0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <ShieldAlert size={20} color="var(--color-warning)" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                            {t('ĐĂNG KÝ TRỰC CA ĐÊM (18h-6h)')}
+                          </h3>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                            {t('Nhận lead tự động trong ca đêm. Danh sách đăng ký tự reset vào lúc 6:00 sáng hôm sau.')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        background: 'var(--color-bg-alt)',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        border: '1px solid var(--color-border-light)'
+                      }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--color-text-light)' }}>
+                          {t('Đăng ký trực hôm nay:')}
+                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            color: nightShiftRegistered ? 'var(--color-success)' : 'var(--color-text-muted)',
+                            background: nightShiftRegistered ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.08)',
+                            padding: '3px 8px',
+                            borderRadius: '6px'
+                          }}>
+                            {nightShiftRegistered ? t('Đã đăng ký trực') : t('Chưa đăng ký')}
+                          </span>
+                          {['sale', 'manager'].includes(String(effectiveRole).toLowerCase()) && (
+                            <div style={{ opacity: nightShiftCanToggle ? 1 : 0.5, pointerEvents: nightShiftCanToggle ? 'auto' : 'none' }}>
+                              <ToggleSwitch
+                                checked={nightShiftRegistered}
+                                onChange={handleToggleNightShift}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {!nightShiftCanToggle && (
+                        <div style={{
+                          background: 'var(--color-warning-light)', color: 'var(--color-warning)', padding: '10px 14px',
+                          borderRadius: '10px', border: '1px solid rgba(245, 158, 11, 0.2)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 8
+                        }}>
+                          <Info size={14} />
+                          <span>{t('Đã quá 18:00. Bạn không thể thay đổi đăng ký trực ca đêm hôm nay.')}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Leave (Nghỉ phép) registration card */}
+                    <div className="card" style={{
+                      padding: '1.5rem',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      borderRadius: '16px',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.02), inset 0 1px 0 rgba(255, 255, 255, 0.6)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '1rem',
+                      transition: 'all 0.3s ease'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '10px',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Calendar size={20} color="var(--color-primary)" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, letterSpacing: '-0.01em' }}>
+                            {t('ĐĂNG KÝ NGHỈ PHÉP (LEAVE)')}
+                          </h3>
+                          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0, lineHeight: '1.45' }}>
+                            {t('Đăng ký nghỉ phép tạm thời để tạm dừng nhận data phân bổ tự động.')}
+                          </p>
+                        </div>
+                      </div>
+
+                      {onLeave && (
+                        <div style={{
+                          padding: '8px 12px', borderRadius: 8, textAlign: 'center', fontWeight: 700, fontSize: '0.8rem',
+                          background: 'var(--color-warning-light)', color: 'var(--color-warning)', marginBottom: '0.5rem'
+                        }}>
+                          {t('ĐANG TRONG KỲ NGHỈ PHÉP')}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.25rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Từ ngày')}</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={editLeaveStart}
+                            onChange={(e) => setEditLeaveStart(e.target.value)}
+                            style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: 600, fontSize: '0.78rem', color: 'var(--color-text-light)', marginBottom: '4px' }}>{t('Đến ngày')}</label>
+                          <input
+                            type="date"
+                            className="form-input"
+                            value={editLeaveEnd}
+                            onChange={(e) => setEditLeaveEnd(e.target.value)}
+                            style={{ borderRadius: '10px', height: '38px', fontSize: '0.85rem' }}
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn primary"
+                        style={{
+                          width: '100%',
+                          marginTop: '0.5rem',
+                          height: '38px',
+                          borderRadius: '10px',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          boxShadow: '0 4px 12px rgba(189, 29, 45, 0.15)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px'
+                        }}
+                        onClick={handleAddLeave}
+                        disabled={savingLeave}
+                      >
+                        {savingLeave ? (
+                          <>
+                            <RefreshCw size={14} className="spin" />
+                            {t('Đang đăng ký...')}
+                          </>
+                        ) : (
+                          t('Đăng ký nghỉ')
+                        )}
+                      </button>
+
+                      {/* Lịch sử đăng ký nghỉ phép */}
+                      <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem' }}>
+                        <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>{t('LỊCH SỬ NGHỈ PHÉP')}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 400 }}>
+                            ({leaveHistory.length})
+                          </span>
+                        </h4>
+
+                        {loadingLeaves ? (
+                          <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                            <RefreshCw className="spin" size={16} style={{ marginRight: 6 }} />
+                            {t('Đang tải lịch sử...')}
+                          </div>
+                        ) : leaveHistory.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                            {t('Chưa có đăng ký nghỉ phép nào.')}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                            {leaveHistory.map((leave) => {
+                              const todayStr = new Date().toISOString().split('T')[0];
+                              const isPast = leave.end_date < todayStr;
+                              const isCurrent = todayStr >= leave.start_date && todayStr <= leave.end_date;
+
+                              return (
+                                <div
+                                  key={leave.id}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '8px 12px',
+                                    background: isCurrent ? 'var(--color-warning-light)' : (isPast ? 'var(--color-bg)' : 'var(--color-surface)'),
+                                    border: '1px solid var(--color-border-light)',
+                                    borderRadius: '8px',
+                                    opacity: isPast ? 0.6 : 1
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                      {new Date(leave.start_date).toLocaleDateString('vi-VN')} → {new Date(leave.end_date).toLocaleDateString('vi-VN')}
+                                    </span>
+                                    <span style={{ fontSize: '0.7rem', color: isCurrent ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: 600 }}>
+                                      {isCurrent ? t('Đang diễn ra') : (isPast ? t('Đã qua') : t('Sắp tới'))}
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteLeave(leave.id)}
+                                    style={{
+                                      background: 'transparent',
+                                      border: 'none',
+                                      color: 'var(--color-danger)',
+                                      cursor: 'pointer',
+                                      padding: '4px',
+                                      borderRadius: '4px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      transition: 'background 0.2s'
+                                    }}
+                                    className="hover-bg-danger-light"
+                                    title={t('Xóa lịch nghỉ')}
+                                  >
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Combined Work Hours & Schedule Card */}
+                <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Clock size={18} color="var(--color-primary)" />
+                      {t('GIỜ LÀM VIỆC & LỊCH TRÌNH')}
+                    </h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4, marginBottom: 0 }}>
+                      {t('Thiết lập thời gian nhận lead cố định hàng ngày hoặc lịch trình tùy chỉnh theo từng thứ.')}
+                    </p>
+                  </div>
+
+                  {/* Segmented Control for Schedule Mode */}
+                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setScheduleMode('daily')}
+                      style={{
+                        flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
+                        background: scheduleMode === 'daily' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
+                        color: scheduleMode === 'daily' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        boxShadow: scheduleMode === 'daily' ? 'var(--shadow-sm)' : 'none',
+                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                      }}
+                    >{t('Cố định hàng ngày')}</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScheduleMode('custom');
+                        if (!editWorkSchedule) {
+                          setEditWorkSchedule(DEFAULT_SCHEDULE);
+                        }
+                      }}
+                      style={{
+                        flex: 1, padding: '8px', borderRadius: '8px', fontWeight: 600, fontSize: '0.75rem',
+                        background: scheduleMode === 'custom' ? (theme === 'dark' ? 'var(--color-surface)' : 'white') : 'transparent',
+                        color: scheduleMode === 'custom' ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        boxShadow: scheduleMode === 'custom' ? 'var(--shadow-sm)' : 'none',
+                        transition: 'all 0.2s', border: 'none', cursor: 'pointer'
+                      }}
+                    >{t('Tùy chỉnh (Thứ 2 - CN)')}</button>
+                  </div>
+
+                  {scheduleMode === 'daily' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', animation: 'slideUp 0.15s ease-out' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                            {t('Bắt đầu làm việc')}
+                          </label>
+                          <input
+                            type="time"
+                            className="form-input"
+                            value={editWorkStartTime}
+                            onChange={(e) => setEditWorkStartTime(e.target.value)}
+                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
+                          />
+                        </div>
+                        <div style={{ fontSize: '1.5rem', color: 'var(--color-text-muted)', paddingTop: '20px' }}>→</div>
+                        <div style={{ flex: 1 }}>
+                          <label className="form-label" style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px', fontWeight: 600 }}>
+                            {t('Kết thúc làm việc')}
+                          </label>
+                          <input
+                            type="time"
+                            className="form-input"
+                            value={editWorkEndTime}
+                            onChange={(e) => setEditWorkEndTime(e.target.value)}
+                            style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'center', letterSpacing: '0.05em' }}
+                          />
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.4 }}>
+                        💡 {t('Lưu ý: Lead mới sẽ chỉ được phân bổ tự động cho bạn trong khoảng thời gian làm việc đã thiết lập.')}
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', animation: 'slideUp 0.15s ease-out' }}>
+                      {Object.entries(DAY_LABELS).map(([dayKey, dayLabel]) => {
+                        const config = editWorkSchedule[dayKey] || { active: true, start: editWorkStartTime, end: editWorkEndTime };
+                        const isActive = config.active;
+
+                        return (
+                          <div
+                            key={dayKey}
+                            style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              padding: '10px 14px', borderRadius: '12px', border: '1px solid var(--color-border-light)',
+                              background: isActive ? 'var(--color-surface)' : 'var(--color-bg)',
+                              transition: 'all 0.2s',
+                              boxShadow: isActive ? 'var(--shadow-xs)' : 'none'
                             }}
+                          >
+                            {/* Day Label with custom checkbox */}
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+                              <input
+                                type="checkbox"
+                                className="custom-checkbox"
+                                checked={isActive}
+                                onChange={(e) => handleDayActiveToggle(dayKey, e.target.checked)}
+                              />
+                              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                                {t(dayLabel)}
+                              </span>
+                            </label>
+
+                            {/* Day Hour Inputs / Offline badge */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              {isActive ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  <input
+                                    type="time"
+                                    className="form-input"
+                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                    value={config.start || editWorkStartTime}
+                                    onChange={(e) => handleDayTimeChange(dayKey, 'start', e.target.value)}
+                                  />
+                                  <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>-</span>
+                                  <input
+                                    type="time"
+                                    className="form-input"
+                                    style={{ width: '92px', height: '34px', fontSize: '0.8rem', padding: '0 6px', textAlign: 'center', borderRadius: '6px' }}
+                                    value={config.end || editWorkEndTime}
+                                    onChange={(e) => handleDayTimeChange(dayKey, 'end', e.target.value)}
+                                  />
+                                </div>
+                              ) : (
+                                <span style={{
+                                  padding: '2px 8px', borderRadius: '6px', fontSize: '0.725rem', fontWeight: 700,
+                                  background: 'var(--color-danger-light)',
+                                  color: 'var(--color-danger)'
+                                }}>
+                                  {t('Nghỉ')}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* 7. DOCUMENTS & CONTRACTS */}
+            {profileActiveTab === 'documents' && (
+              <div className="card animate-fade-in" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border-light)', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <FileText size={18} color="var(--color-primary)" />
+                    {t('HỒ SƠ & TÀI LIỆU NHÂN SỰ')}
+                  </h3>
+                  {/* Admin/Manager upload button */}
+                  {(['admin', 'superadmin', 'manager', 'assistant'].includes(user?.role as any)) && (
+                    <label style={{
+                      background: 'var(--color-primary-light)', color: 'var(--color-primary)',
+                      padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', margin: 0
+                    }}>
+                      <Plus size={14} />
+                      {t('Tải lên')}
+                      <input type="file" onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !targetConsultantId) return;
+                        setUploadingDoc(true);
+                        try {
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          formData.append('name', file.name);
+                          formData.append('category', `consultant_${targetConsultantId}`);
+                          formData.append('visibility', 'personal');
+                          
+                          const uploadRes = await api.post('/cloud-files', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                          });
+                          if (uploadRes.data && uploadRes.data.success) {
+                            toast.success(t('Đã tải tài liệu lên thành công!'));
+                            fetchConsultantDocs();
+                          } else {
+                            toast.error(uploadRes.data.message || t('Lỗi tải tài liệu lên'));
+                          }
+                        } catch (err: any) {
+                          toast.error(t('Lỗi kết nối tải tài liệu: ') + err.message);
+                        } finally {
+                          setUploadingDoc(false);
+                        }
+                      }} style={{ display: 'none' }} />
+                    </label>
+                  )}
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                  {t('Danh sách tài liệu hợp đồng, quyết định khen thưởng/kỷ luật hoặc hồ sơ nhân sự.')}
+                </p>
+
+                {uploadingDoc && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 0', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                    <RefreshCw className="spin" size={14} />
+                    {t('Đang tải tài liệu lên...')}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '0.5rem' }}>
+                  {consultantDocs.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--color-text-muted)', fontSize: '0.8rem', fontStyle: 'italic', background: 'var(--color-bg)', borderRadius: '8px' }}>
+                      {t('Chưa có tài liệu nào được tải lên.')}
+                    </div>
+                  ) : (
+                    consultantDocs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '10px 12px',
+                          background: 'var(--color-bg)',
+                          border: '1px solid var(--color-border-light)',
+                          borderRadius: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', overflow: 'hidden', marginRight: '8px' }}>
+                          <a
+                            href={resolveAttachmentUrl(doc.file_path)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
+                              color: 'var(--color-primary)',
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                              textOverflow: 'ellipsis',
+                              overflow: 'hidden'
+                            }}
+                            className="hover-underline"
+                          >
+                            {doc.name}
+                          </a>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                            {t('Tải lên bởi')} {doc.uploader_name || t('Hệ thống')} • {new Date(doc.created_at).toLocaleDateString('vi-VN')}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <a
+                            href={resolveAttachmentUrl(doc.file_path)}
+                            download
+                            target="_blank"
+                            rel="noopener noreferrer"
                             style={{
                               background: 'transparent',
                               border: 'none',
-                              color: 'var(--color-danger)',
+                              color: 'var(--color-primary)',
                               cursor: 'pointer',
                               padding: '4px',
                               borderRadius: '4px',
@@ -8906,21 +8924,54 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
                               alignItems: 'center',
                               justifyContent: 'center'
                             }}
-                            className="hover-bg-danger-light"
-                            title={t('Xóa tài liệu')}
+                            className="hover-bg-primary-light"
+                            title={t('Tải xuống')}
                           >
-                            <Trash2 size={15} />
-                          </button>
-                        )}
+                            <ArrowUpRight size={15} />
+                          </a>
+
+                          {(['admin', 'superadmin', 'manager', 'assistant'].includes(user?.role as any)) && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!window.confirm(t('Bạn có chắc chắn muốn xóa tài liệu này?'))) return;
+                                try {
+                                  const res = await api.delete(`/cloud-files/${doc.id}`);
+                                  if (res.data.success || res.data.success) {
+                                    toast.success(t('Đã xóa tài liệu thành công!'));
+                                    fetchConsultantDocs();
+                                  } else {
+                                    toast.error(res.data.message || t('Lỗi khi xóa tài liệu'));
+                                  }
+                                } catch (err: any) {
+                                    toast.error(t('Lỗi kết nối xóa tài liệu: ') + err.message);
+                                }
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--color-danger)',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              className="hover-bg-danger-light"
+                              title={t('Xóa tài liệu')}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-
+            )}
           </div>
-
         </div>
       </div>
     );

@@ -1543,6 +1543,12 @@ try {
         $logMsg("Đã thêm team_id cho users", "success");
     }
 
+    $chkColExtra = $conn->query("SHOW COLUMNS FROM users LIKE 'extra_fields_json'");
+    if ($chkColExtra && $chkColExtra->num_rows === 0) {
+        $conn->query("ALTER TABLE users ADD COLUMN extra_fields_json LONGTEXT NULL");
+        $logMsg("Đã thêm extra_fields_json cho users", "success");
+    }
+
     // 3b. image_url in expenses
     $chkCol = $conn->query("SHOW COLUMNS FROM expenses LIKE 'image_url'");
     if ($chkCol && $chkCol->num_rows === 0) {
@@ -1921,6 +1927,11 @@ try {
         $conn->query("ALTER TABLE `users` ADD COLUMN `overtime_mode` TINYINT(1) DEFAULT 0");
     } catch (Throwable $e) {}
 
+    // Self-healing: Ensure extra_fields_json exists in users table
+    try {
+        $conn->query("ALTER TABLE `users` ADD COLUMN `extra_fields_json` LONGTEXT DEFAULT NULL");
+    } catch (Throwable $e) {}
+
     // Recreate the consultants VIEW to support extended profile fields (dob, gender, etc.)
     $conn->query("DROP VIEW IF EXISTS `consultants`");
     $conn->query("
@@ -1947,7 +1958,8 @@ try {
           `citizen_id`,
           `address`,
           `bank_name`,
-          `bank_account`
+          `bank_account`,
+          `extra_fields_json`
         FROM `users`
         WHERE `role` = 'sales'
     ");
