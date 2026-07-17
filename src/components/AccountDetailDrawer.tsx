@@ -756,7 +756,9 @@ export const AccountDetailDrawer: React.FC<Props> = ({ isOpen, onClose, account,
 
       toast.success(account ? t('Cập nhật nhân sự thành công!') : t('Thêm mới nhân sự thành công!'));
       onSaveSuccess();
-      onClose();
+      if (!account) {
+        onClose();
+      }
     } catch (err: any) {
       toast.error(err.message || t('Lỗi hệ thống khi lưu'));
     } finally {
