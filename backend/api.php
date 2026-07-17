@@ -11480,19 +11480,16 @@ switch ($action) {
                     $updaterName = $uRow['full_name'];
                 }
             }
-            
-            $title = "Hồ sơ cá nhân đã được cập nhật";
-            if ((int)$decodedUser['id'] === (int)$targetUserId) {
-                $body = "Bạn đã cập nhật thông tin hồ sơ cá nhân thành công.";
-            } else {
+            if ((int)$decodedUser['id'] !== (int)$targetUserId) {
+                $title = "Hồ sơ cá nhân đã được cập nhật";
                 $body = "$updaterName đã cập nhật thông tin hồ sơ của bạn.";
-            }
-            
-            $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'mention', '/account')");
-            if ($stmtNotif) {
-                $stmtNotif->bind_param("iss", $targetUserId, $title, $body);
-                $stmtNotif->execute();
-                $stmtNotif->close();
+                
+                $stmtNotif = $conn->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?, 1, ?, ?, 'mention', '/account')");
+                if ($stmtNotif) {
+                    $stmtNotif->bind_param("iss", $targetUserId, $title, $body);
+                    $stmtNotif->execute();
+                    $stmtNotif->close();
+                }
             }
 
             echo json_encode(['success' => true]);

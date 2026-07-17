@@ -351,7 +351,9 @@ class ContactController {
                     VALUES (?, ?, ?, ?, ?, ?)
                 ");
                 foreach ($admins as $adminId) {
-                    $insertNotif->execute([$adminId, $auth['tenant_id'], $title, $body, $type, $link]);
+                    if ((int)$adminId !== (int)$auth['user_id']) {
+                        $insertNotif->execute([$adminId, $auth['tenant_id'], $title, $body, $type, $link]);
+                    }
                 }
             }
         }
