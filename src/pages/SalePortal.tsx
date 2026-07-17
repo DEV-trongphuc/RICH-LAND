@@ -7840,7 +7840,7 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
           boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
-          overflow: 'hidden',
+          overflow: 'visible',
           minHeight: '650px',
           margin: '0'
         }}>
@@ -7858,7 +7858,10 @@ const SalePortalInner = ({ location, activeTabProp, embedMode = false }: SalePor
             position: isMobile ? 'static' : 'sticky',
             top: isMobile ? 'auto' : '5rem',
             alignSelf: isMobile ? 'stretch' : 'flex-start',
-            zIndex: 10
+            zIndex: 10,
+            borderTopLeftRadius: isMobile ? '16px' : '16px',
+            borderTopRightRadius: isMobile ? '16px' : '0px',
+            borderBottomLeftRadius: isMobile ? '0px' : '16px'
           }}>
             {/* Compact Profile Avatar Section */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.5rem 0' }}>
