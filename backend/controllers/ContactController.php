@@ -1073,10 +1073,10 @@ class ContactController {
 
         $coopSettingStmt = $this->db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'coop_eligible_statuses' LIMIT 1");
         $coopSettingVal = $coopSettingStmt ? $coopSettingStmt->fetchColumn() : '';
-        $coopStatuses = ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'];
         if (!empty($coopSettingVal)) {
-            $parsedCoop = array_map('trim', explode(',', $coopSettingVal));
-            $coopStatuses = array_unique(array_merge($coopStatuses, $parsedCoop));
+            $coopStatuses = array_map('trim', explode(',', $coopSettingVal));
+        } else {
+            $coopStatuses = ['dat_coc', 'da_coc', 'dong_deal', 'thanh_cong'];
         }
 
         if (in_array($currStatus, $coopStatuses, true)) {
