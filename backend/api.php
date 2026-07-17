@@ -401,7 +401,7 @@ if (!in_array($action, $publicActions)) {
         $stmtC->close();
         if ($cRow) {
             $currentSaleConsultantId = (int)$cRow['id'];
-        } else if (isset($decodedUser['role']) && ($decodedUser['role'] === 'sale' || $decodedUser['role'] === 'sales')) {
+        } else if (isset($decodedUser['role']) && in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true)) {
             // Auto-create consultant record if missing for this company user
             $stmtInsert = $conn->prepare("INSERT INTO consultants (name, email, status, work_start_time, work_end_time, vacation_mode, overtime_mode) VALUES (?, ?, 'active', '08:00', '17:30', 0, 0)");
             $userName = $decodedUser['name'] ?? $decodedUser['username'] ?? 'User';
@@ -2140,7 +2140,7 @@ switch ($action) {
         break;
 
     case 'get_sale_portal_data':
-        $isSale = $decodedUser['role'] === 'sale';
+        $isSale = in_array($decodedUser['role'], ['sale', 'sales', 'manager'], true);
         $saleFilterId = isset($_GET['sale_id']) && $_GET['sale_id'] !== '' ? (int) $_GET['sale_id'] : null;
         $saleId = $isSale ? $currentSaleConsultantId : ($saleFilterId !== null ? $saleFilterId : (int) $decodedUser['id']);
 
