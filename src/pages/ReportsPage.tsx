@@ -84,7 +84,7 @@ export const ReportsPage: React.FC = () => {
 
   const fetchSales = async () => {
     if (DEV_MODE) {
-      setLoading(true);
+      if (!salesData) setLoading(true);
       const state = getFilteredMockState();
       let usersList = [...(state.users || [])];
       let dealsList = [...(state.deals || [])];
@@ -160,7 +160,7 @@ export const ReportsPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    if (!salesData) setLoading(true);
     try {
       const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       setSalesData(r.data.data);
@@ -173,7 +173,7 @@ export const ReportsPage: React.FC = () => {
 
   const fetchPipeline = async () => {
     if (DEV_MODE) {
-      setLoading(true);
+      if (pipelineData.length === 0) setLoading(true);
       const state = getFilteredMockState();
       let contactsList = [...(state.contacts || [])];
 
@@ -199,7 +199,7 @@ export const ReportsPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    if (pipelineData.length === 0) setLoading(true);
     try {
       const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data || [];
@@ -216,7 +216,7 @@ export const ReportsPage: React.FC = () => {
 
   const fetchActivities = async () => {
     if (DEV_MODE) {
-      setLoading(true);
+      if (!activityData) setLoading(true);
       const state = getFilteredMockState();
       const types = ['call', 'email', 'meeting', 'task', 'note'];
       let usersList = [...(state.users || [])];
@@ -256,7 +256,7 @@ export const ReportsPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    if (!activityData) setLoading(true);
     try {
       const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
@@ -272,7 +272,7 @@ export const ReportsPage: React.FC = () => {
 
   const fetchCustomers = async () => {
     if (DEV_MODE) {
-      setLoading(true);
+      if (!customerData) setLoading(true);
       const state = getFilteredMockState();
       let contactsList = [...(state.contacts || [])];
 
@@ -329,7 +329,7 @@ export const ReportsPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    if (!customerData) setLoading(true);
     try {
       const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
@@ -346,7 +346,7 @@ export const ReportsPage: React.FC = () => {
 
   const fetchCompanies = async () => {
     if (DEV_MODE) {
-      setLoading(true);
+      if (!companyData) setLoading(true);
       const state = getFilteredMockState();
       let contactsList = [...(state.contacts || [])];
 
@@ -403,7 +403,7 @@ export const ReportsPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    if (!companyData) setLoading(true);
     try {
       const r = await api.get('/reports/companies', { params: { team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
@@ -420,7 +420,7 @@ export const ReportsPage: React.FC = () => {
 
   const fetchExpenses = async () => {
     if (DEV_MODE) {
-      setLoading(true);
+      if (!expenseData) setLoading(true);
       const state = getFilteredMockState();
       let expensesList = [...(state.expenses || [])];
 
@@ -458,7 +458,7 @@ export const ReportsPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    if (!expenseData) setLoading(true);
     try {
       const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to, team_id: getEffectiveTeamId() } });
       const raw = r.data.data;
@@ -497,7 +497,16 @@ export const ReportsPage: React.FC = () => {
           )}
         </div>
         <div className="flex gap-2">
-          <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); }} />
+          <PeriodFilter value={period} onChange={(p, r) => { 
+            setPeriod(p); 
+            setDateRange(r);
+            setSalesData(null);
+            setPipelineData([]);
+            setCustomerData(null);
+            setCompanyData(null);
+            setExpenseData(null);
+            setActivityData(null);
+          }} />
           <button className="btn secondary" onClick={() => {
             addToast('Đang tạo báo cáo PDF...', 'info');
             setTimeout(() => window.print(), 1000);

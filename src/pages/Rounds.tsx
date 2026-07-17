@@ -1002,14 +1002,13 @@ const RoundsInner = ({ isActive }: { isActive: boolean }) => {
                       )
                     )}
                   </div>
-
                   <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', display: 'flex', gap: '0.75rem' }}>
-                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1, padding: '0.375rem 0.5rem' }}>
+                    <button className="btn outline sm" onClick={() => openEditModal(r)} style={{ flex: 1.5, padding: '0.375rem 0.5rem' }}>
                       <Info size={13} /> {isReadOnly ? t("Xem chi tiết") : t("Chi tiết")}
                     </button>
                     {!isReadOnly && (
                       <button className="btn secondary sm" onClick={() => openCompModal(r)} style={{ flex: 1, padding: '0.375rem 0.5rem' }}>
-                        <Zap size={13} /> {t("Bù Data")}
+                        <Zap size={13} /> {t("Bù")}
                       </button>
                     )}
                     {!isReadOnly && (
