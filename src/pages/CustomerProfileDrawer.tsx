@@ -4456,7 +4456,70 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               showAvatars
                               disabled={isViewer || !isMainOwnerOrManagerAdmin}
                             />
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
+                            
+                            {(() => {
+                              const list = (formData.collaborator_ids || '').split(',').map((s: string) => s.trim()).filter(Boolean);
+                              if (list.length === 0) return null;
+                              return (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                                  {list.map(cId => {
+                                    const u = users.find(x => String(x.id) === String(cId));
+                                    if (!u) return null;
+                                    return (
+                                      <div
+                                        key={cId}
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '6px',
+                                          background: 'rgba(59, 130, 246, 0.05)',
+                                          border: '1px solid rgba(59, 130, 246, 0.15)',
+                                          borderRadius: '20px',
+                                          padding: '4px 10px 4px 4px',
+                                          fontSize: '0.785rem',
+                                          fontWeight: 600,
+                                          color: 'var(--color-primary)'
+                                        }}
+                                      >
+                                        <Avatar src={u.avatar_url} name={u.full_name} size={22} />
+                                        <span>{u.full_name}</span>
+                                        {!(isViewer || !isMainOwnerOrManagerAdmin) && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const remaining = list.filter(x => x !== cId);
+                                              setFormData((prev: any) => ({ ...prev, collaborator_ids: remaining.join(',') }));
+                                            }}
+                                            style={{
+                                              border: 'none',
+                                              background: 'none',
+                                              padding: 0,
+                                              marginLeft: '4px',
+                                              cursor: 'pointer',
+                                              color: 'var(--color-text-muted)',
+                                              display: 'inline-flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              fontWeight: 'bold',
+                                              fontSize: '1rem',
+                                              width: '14px',
+                                              height: '14px',
+                                              borderRadius: '50%'
+                                            }}
+                                            title="Xóa nhân sự này"
+                                            className="hover-remove-btn"
+                                          >
+                                            ×
+                                          </button>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '6px', display: 'block' }}>
                               Cho phép các sale khác có quyền xem và cùng chăm sóc khách hàng này.
                             </span>
                           </div>
