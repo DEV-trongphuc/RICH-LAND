@@ -152,6 +152,7 @@ const SettingsInner = () => {
   const [securityTimerDaGap, setSecurityTimerDaGap] = useState<string>("+5 days");
   const [securityTimerBooking, setSecurityTimerBooking] = useState<string>("+3 months");
   const [databankApplicableSources, setDatabankApplicableSources] = useState<string>("R3_Fb,R3,R2,broadcast");
+  const [availableSources, setAvailableSources] = useState<string[]>([]);
 
   const [pipelineStatusHierarchy, setPipelineStatusHierarchy] = useState<string[]>([
     'chua_xac_dinh', 'quan_tam', 'dong_y_gap', 'da_gap', 'booking', 'dat_coc', 'dong_deal'
@@ -400,6 +401,15 @@ const SettingsInner = () => {
       const connectionsJson = await fetchAPI('get_connections');
       if (connectionsJson.success) {
         setConnections(connectionsJson.data || []);
+      }
+
+      try {
+        const sourcesJson = await fetchAPI('get_unique_sources');
+        if (sourcesJson.success) {
+          setAvailableSources(sourcesJson.data || []);
+        }
+      } catch (err) {
+        console.error("Error fetching unique sources:", err);
       }
 
       const json = await fetchAPI('get_settings');
@@ -3516,6 +3526,50 @@ function doPost(e) {
                         <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'block' }}>
                           {t('Các nguồn lead cách nhau bằng dấu phẩy (ví dụ: R3_Fb,R3,R2,broadcast).')}
                         </span>
+                        {availableSources.length > 0 && (
+                          <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-light)', width: '100%', marginBottom: '2px' }}>{t('Nguồn hiện có trong hệ thống (Click để bật/tắt):')}</span>
+                            {availableSources.map(src => {
+                              const activeSources = databankApplicableSources.split(',').map(s => s.trim()).filter(Boolean);
+                              const isActive = activeSources.includes(src);
+                              return (
+                                <button
+                                  key={src}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isActive) {
+                                      const filtered = activeSources.filter(s => s !== src);
+                                      setDatabankApplicableSources(filtered.join(','));
+                                    } else {
+                                      const updated = [...activeSources, src];
+                                      setDatabankApplicableSources(updated.join(','));
+                                    }
+                                  }}
+                                  style={{
+                                    background: isActive ? 'var(--color-primary-light)' : 'var(--color-bg)',
+                                    color: isActive ? 'var(--color-primary)' : 'var(--color-text-light)',
+                                    border: `1px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                                    borderRadius: '6px',
+                                    padding: '3px 8px',
+                                    fontSize: '0.725rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s',
+                                    outline: 'none'
+                                  }}
+                                  onMouseEnter={e => {
+                                    if (!isActive) e.currentTarget.style.borderColor = 'var(--color-text-muted)';
+                                  }}
+                                  onMouseLeave={e => {
+                                    if (!isActive) e.currentTarget.style.borderColor = 'var(--color-border)';
+                                  }}
+                                >
+                                  {src} {isActive ? '✓' : '+'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                       {renderDurationInput('Thời gian Chưa Xác Định', securityTimerChuaXacDinh, setSecurityTimerChuaXacDinh, 'Hạn bảo mật mặc định (ví dụ: +3 hours).')}
                       {renderDurationInput('Thời gian Quan Tâm', securityTimerQuanTam, setSecurityTimerQuanTam, 'Hạn bảo mật mặc định (ví dụ: +1 day).')}

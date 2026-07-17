@@ -420,7 +420,10 @@ const AccountsInner = () => {
     setIsDeleting(false);
   };
 
+  const [resendingEmailId, setResendingEmailId] = useState<number | null>(null);
+
   const handleResendConfirm = async (accId: number) => {
+    setResendingEmailId(accId);
     try {
       const json = await fetchAPI('resend_confirm_email', {
         method: 'POST',
@@ -433,6 +436,8 @@ const AccountsInner = () => {
       }
     } catch (e: any) {
       toast.error(`${t('Lỗi')}: ` + e.message);
+    } finally {
+      setResendingEmailId(null);
     }
   };
 
@@ -893,8 +898,24 @@ const AccountsInner = () => {
                         </div>
                         {acc.email && Number(acc.is_confirmed) === 0 && (
                           <div style={{ marginTop: 6, paddingLeft: 20 }}>
-                            <button onClick={(e) => { e.stopPropagation(); handleResendConfirm(acc.id); }} className="btn ghost" style={{ fontSize: '0.75rem', padding: '2px 8px', color: 'var(--color-primary)' }}>
-                              <Send size={12} style={{ marginRight: 4 }} /> {t('Gửi lại link')}
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); handleResendConfirm(acc.id); }} 
+                              disabled={resendingEmailId === acc.id}
+                              className="btn ghost" 
+                              style={{ 
+                                fontSize: '0.75rem', 
+                                padding: '2px 8px', 
+                                color: 'var(--color-primary)',
+                                opacity: resendingEmailId === acc.id ? 0.6 : 1,
+                                cursor: resendingEmailId === acc.id ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              {resendingEmailId === acc.id ? (
+                                <Loader2 size={12} className="animate-spin" style={{ marginRight: 4 }} />
+                              ) : (
+                                <Send size={12} style={{ marginRight: 4 }} />
+                              )}
+                              {resendingEmailId === acc.id ? t('Đang gửi...') : t('Gửi lại link')}
                             </button>
                           </div>
                         )}
