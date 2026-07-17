@@ -3,8 +3,23 @@
 
 Write-Host "=== STARTING AUTOMATED DEPLOYMENT & MIGRATION ===" -ForegroundColor Cyan
 
-# 1. Upload all backend files
-Write-Host "1. Uploading backend files via SCP..." -ForegroundColor Yellow
+# 0. Build frontend
+Write-Host "0. Building frontend locally..." -ForegroundColor Yellow
+npm run build
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Failed to build frontend." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+# 1. Upload all files (dist and backend)
+Write-Host "1. Uploading built frontend files via SCP..." -ForegroundColor Yellow
+scp -4 -P 2210 -o StrictHostKeyChecking=no -r dist/* vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "ERROR: Failed to upload frontend built files." -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+Write-Host "1b. Uploading backend files via SCP..." -ForegroundColor Yellow
 scp -4 -P 2210 -o StrictHostKeyChecking=no -r backend/* vhvxoigh@chiefaiofficer.vn:/home/vhvxoigh/open.domation.net/richland/
 
 if ($LASTEXITCODE -ne 0) {
