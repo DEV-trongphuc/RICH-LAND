@@ -85,6 +85,17 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
   const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
   const [notifFilter, setNotifFilter] = useState<'all' | 'unread' | 'read'>('all');
 
+  const [showNotifSettings, setShowNotifSettings] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState<any>({
+    email_warning: 1,
+    email_mention: 1,
+    email_approval_request: 1,
+    email_project_document: 0,
+    email_project_comment: 0,
+    email_project_roster: 0,
+    email_info: 0
+  });
+
   const fetchNotifications = async () => {
     try {
       const res = await fetchAPI('notifications');
@@ -95,6 +106,32 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       }
     } catch (err) {
       console.error("Error fetching notifications:", err);
+    }
+  };
+
+  const fetchNotifPrefs = async () => {
+    try {
+      const res = await fetchAPI('notifications/settings');
+      if (res.success && res.data) {
+        setNotifPrefs(res.data);
+      }
+    } catch (err) {
+      console.error("Error fetching notification settings:", err);
+    }
+  };
+
+  const handleTogglePref = async (key: string, value: number) => {
+    const updated = { ...notifPrefs, [key]: value };
+    setNotifPrefs(updated);
+    try {
+      await fetchAPI('notifications/settings', {
+        method: 'PATCH',
+        body: JSON.stringify(updated)
+      });
+      toast.success('Đã lưu cấu hình');
+    } catch (err) {
+      console.error("Error updating notification setting:", err);
+      toast.error('Không thể lưu cấu hình');
     }
   };
 
@@ -1767,376 +1804,538 @@ export const Header = ({ onActivityFeedClick, onMenuClick, version }: { onActivi
       {/* Notifications Modal */}
       <CustomModal
         isOpen={isNotifModalOpen}
-        onClose={() => setIsNotifModalOpen(false)}
+        onClose={() => {
+          setIsNotifModalOpen(false);
+          setShowNotifSettings(false);
+        }}
         title={t("Thông báo hệ thống")}
         width={700}
       >
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: '400px', maxHeight: '70vh' }}>
-          {/* Header Controls */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
-            {/* Filter Tabs */}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              {(['all', 'unread', 'read'] as const).map(tab => (
+          {showNotifSettings ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '0.5rem 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                  Cấu hình Email thông báo cá nhân
+                </h3>
                 <button
-                  key={tab}
-                  onClick={() => setNotifFilter(tab)}
+                  onClick={() => setShowNotifSettings(false)}
                   style={{
-                    padding: '6px 16px',
-                    borderRadius: '20px',
-                    fontSize: '0.8125rem',
-                    fontWeight: 600,
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: notifFilter === tab ? 'var(--color-primary-light)' : 'transparent',
-                    color: notifFilter === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                    outline: 'none'
-                  }}
-                >
-                  {tab === 'all' && t("Tất cả")}
-                  {tab === 'unread' && `${t("Chưa đọc")} (${unreadCount})`}
-                  {tab === 'read' && t("Đã đọc")}
-                </button>
-              ))}
-            </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllRead}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 8px',
                     background: 'none',
                     border: 'none',
                     color: 'var(--color-primary)',
-                    fontSize: '0.75rem',
+                    fontSize: '0.8125rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    outline: 'none'
-                  }}
-                >
-                  <Check size={14} />
-                  {t("Đọc tất cả")}
-                </button>
-              )}
-              {notifications.length > 0 && (
-                <button
-                  onClick={handleClearAllNotif}
-                  style={{
+                    outline: 'none',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 8px',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--color-text-muted)',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    outline: 'none'
+                    gap: '4px'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
                 >
-                  <Trash2 size={14} />
-                  {t("Xóa toàn bộ")}
+                  Quay lại thông báo
                 </button>
-              )}
-            </div>
-          </div>
-
-          {/* List area */}
-          <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
-            {(() => {
-              const filtered = notifications.filter(n => {
-                if (notifFilter === 'unread') return !n.is_read;
-                if (notifFilter === 'read') return !!n.is_read;
-                return true;
-              });
-
-              if (filtered.length === 0) {
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '1rem', color: 'var(--color-text-muted)' }}>
-                    <Bell size={48} style={{ opacity: 0.25 }} />
-                    <p style={{ fontSize: '0.875rem' }}>{t("Không có thông báo nào")}</p>
-                  </div>
-                );
-              }
-
-              const parseActorName = (body: string) => {
-                if (!body) return null;
-                const match = body.match(/^(\p{Lu}\p{Ll}*(?:\s+\p{Lu}\p{Ll}*){1,4})\s+(?:đã|có)\s+/u);
-                if (match) {
-                  return match[1].trim();
-                }
-                return null;
-              };
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {filtered.map(notif => {
-                    const actorName = parseActorName(notif.body);
-                    const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn')));
-                    
-                    const bgBase = notif.is_read 
-                      ? 'var(--color-surface)' 
-                      : (isWarning ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.02) 0%, rgba(239, 68, 68, 0.06) 100%)' : 'linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(59, 130, 246, 0.06) 100%)');
-                    
-                    const borderColor = notif.is_read
-                      ? 'var(--color-border-light)'
-                      : (isWarning ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)');
-
-                    return (
-                      <div
-                        key={notif.id}
-                        onClick={() => handleNotifClick(notif)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'start',
-                          gap: '0.875rem',
-                          padding: '14px 16px',
-                          borderRadius: '12px',
-                          background: bgBase,
-                          border: `1px solid ${borderColor}`,
-                          cursor: notif.link || isWarning ? 'pointer' : 'default',
-                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-                          position: 'relative',
-                          boxShadow: notif.is_read ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)',
-                          opacity: notif.is_read ? 0.75 : 1
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.borderColor = isWarning ? '#ef4444' : '#3b82f6';
-                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08)';
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                          if (notif.is_read) {
-                            e.currentTarget.style.opacity = '1';
-                          }
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.borderColor = borderColor;
-                          e.currentTarget.style.boxShadow = notif.is_read ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)';
-                          e.currentTarget.style.transform = 'none';
-                          if (notif.is_read) {
-                            e.currentTarget.style.opacity = '0.75';
-                          }
-                        }}
-                      >
-                        <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
-                          {actorName ? (
-                            <div style={{ position: 'relative', display: 'inline-flex' }}>
-                              <Avatar src={notifAvatars[actorName] || undefined} name={actorName} size={38} />
-                              <span style={{
-                                position: 'absolute',
-                                bottom: -2,
-                                right: -2,
-                                width: 18,
-                                height: 18,
-                                borderRadius: '50%',
-                                background: (() => {
-                                  switch (notif.type) {
-                                    case 'warning': return '#ef4444';
-                                    case 'mention':
-                                    case 'task_assignment':
-                                    case 'task_participant':
-                                    case 'approval_request': return '#3b82f6';
-                                    case 'project_roster': return '#10b981';
-                                    case 'project_document': return '#f59e0b';
-                                    case 'project_comment': return '#8b5cf6';
-                                    default: return '#6b7280';
-                                  }
-                                })(),
-                                border: '1.5px solid var(--color-surface, #ffffff)',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                              }}>
-                                {(() => {
-                                  switch (notif.type) {
-                                    case 'mention':
-                                    case 'task_assignment':
-                                    case 'task_participant':
-                                    case 'approval_request':
-                                      return <CheckSquare size={11} style={{ color: 'white' }} />;
-                                    case 'project_roster':
-                                      return <Users size={11} style={{ color: 'white' }} />;
-                                    case 'project_document':
-                                      return <FileText size={11} style={{ color: 'white' }} />;
-                                    case 'project_comment':
-                                      return <MessageSquare size={11} style={{ color: 'white' }} />;
-                                    case 'warning':
-                                      return <AlertTriangle size={11} style={{ color: 'white' }} />;
-                                    default:
-                                      return <Info size={11} style={{ color: 'white' }} />;
-                                  }
-                                })()}
-                              </span>
-                            </div>
-                          ) : (
-                            <div style={{
-                              width: 38,
-                              height: 38,
-                              borderRadius: '50%',
-                              background: isWarning ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)'
-                            }}>
-                              {(() => {
-                                switch (notif.type) {
-                                  case 'mention':
-                                  case 'task_assignment':
-                                  case 'task_participant':
-                                  case 'approval_request':
-                                    return <CheckSquare size={18} style={{ color: '#3b82f6' }} />;
-                                  case 'project_roster':
-                                    return <Users size={18} style={{ color: '#10b981' }} />;
-                                  case 'project_document':
-                                    return <FileText size={18} style={{ color: '#f59e0b' }} />;
-                                  case 'project_comment':
-                                    return <MessageSquare size={18} style={{ color: '#8b5cf6' }} />;
-                                  case 'warning':
-                                    return <AlertTriangle size={18} style={{ color: '#ef4444' }} />;
-                                  default:
-                                    return <Info size={18} style={{ color: '#6b7280' }} />;
-                                }
-                              })()}
-                            </div>
-                          )}
-                        </div>
-
-                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
-                            <h4 style={{
-                              margin: 0,
-                              fontSize: '0.875rem',
-                              fontWeight: notif.is_read ? 700 : 800,
-                              color: 'var(--color-text)',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: 'flex',
-                              alignItems: 'center'
-                            }}>
-                              {notif.title}
-                              {!notif.is_read && (
-                                <span style={{
-                                  width: 6,
-                                  height: 6,
-                                  borderRadius: '50%',
-                                  background: isWarning ? '#ef4444' : '#3b82f6',
-                                  display: 'inline-block',
-                                  marginLeft: '6px',
-                                  boxShadow: `0 0 6px ${isWarning ? '#ef4444' : '#3b82f6'}`
-                                }} />
-                              )}
-                            </h4>
-                            <span style={{ 
-                              fontSize: '0.72rem', 
-                              color: 'var(--color-text-muted)', 
-                              fontWeight: 600, 
-                              whiteSpace: 'nowrap' 
-                            }}>
-                              {(() => {
-                                if (!notif.created_at) return '';
-                                const d = new Date(notif.created_at.replace(' ', 'T'));
-                                if (isNaN(d.getTime())) return notif.created_at;
-                                const now = new Date();
-                                const diffMs = now.getTime() - d.getTime();
-                                const diffMins = Math.floor(diffMs / 60000);
-                                const diffHours = Math.floor(diffMs / 3600000);
-                                const diffDays = Math.floor(diffMs / 86400000);
-                                if (diffMins < 1) return t('Vừa xong');
-                                if (diffMins < 60) return `${diffMins} ${t('phút trước')}`;
-                                if (diffHours < 24) return `${diffHours} ${t('giờ trước')}`;
-                                if (diffDays < 7) return `${diffDays} ${t('ngày trước')}`;
-                                return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                              })()}
-                            </span>
-                          </div>
-                          <p style={{
-                            margin: 0,
-                            fontSize: '0.8125rem',
-                            color: notif.is_read ? 'var(--color-text-muted)' : 'var(--color-text-light)',
-                            lineHeight: '1.45',
-                            wordBreak: 'break-word',
-                            fontWeight: notif.is_read ? 500 : 600
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', maxHeight: '55vh', paddingRight: '4px' }} className="custom-scrollbar">
+                {[
+                  { key: 'email_warning', title: 'Cảnh báo trùng số & rửa nguồn', desc: 'Cảnh báo khi có trùng số điện thoại hoặc các hành vi rửa nguồn data.', isImportant: true },
+                  { key: 'email_mention', title: 'Nhắc nhở & gắn thẻ (@)', desc: 'Khi bạn được gắn thẻ vào bình luận dự án, công việc hoặc ticket.', isImportant: true },
+                  { key: 'email_approval_request', title: 'Yêu cầu hợp tác & phê duyệt', desc: 'Khi có yêu cầu hợp tác đại lý hoặc phê duyệt data.', isImportant: true },
+                  { key: 'email_project_document', title: 'Tài liệu dự án mới', desc: 'Khi có tài liệu dự án mới được tải lên hệ thống.', isImportant: false },
+                  { key: 'email_project_comment', title: 'Thảo luận dự án', desc: 'Cho các bình luận mới trong dự án của bạn (không tag trực tiếp).', isImportant: false },
+                  { key: 'email_project_roster', title: 'Thay đổi nhân sự dự án', desc: 'Khi có thành viên mới gia nhập hoặc rời khỏi dự án.', isImportant: false },
+                  { key: 'email_info', title: 'Báo cáo hiệu suất & thông tin khác', desc: 'Báo cáo định kỳ tự động và các thông tin hệ thống chung.', isImportant: false },
+                ].map(pref => (
+                  <div
+                    key={pref.key}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '14px 16px',
+                      borderRadius: '12px',
+                      background: 'var(--color-surface)',
+                      border: '1px solid var(--color-border-light)',
+                      gap: '1rem',
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }}>
+                          {pref.title}
+                        </span>
+                        {pref.isImportant ? (
+                          <span style={{
+                            fontSize: '0.625rem',
+                            fontWeight: 700,
+                            color: '#ef4444',
+                            background: 'rgba(239, 68, 68, 0.08)',
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            textTransform: 'uppercase'
                           }}>
-                            {notif.body}
-                          </p>
-                        </div>
+                            Mặc định Bật
+                          </span>
+                        ) : (
+                          <span style={{
+                            fontSize: '0.625rem',
+                            fontWeight: 700,
+                            color: 'var(--color-text-light)',
+                            background: 'var(--color-border-light)',
+                            padding: '2px 6px',
+                            borderRadius: '10px',
+                            textTransform: 'uppercase'
+                          }}>
+                            Mặc định Tắt
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                        {pref.desc}
+                      </span>
+                    </div>
+                    
+                    <label style={{ position: 'relative', display: 'inline-block', width: 42, height: 22, flexShrink: 0, cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={notifPrefs[pref.key] === 1}
+                        onChange={e => handleTogglePref(pref.key, e.target.checked ? 1 : 0)}
+                        style={{ opacity: 0, width: 0, height: 0 }}
+                      />
+                      <span style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: notifPrefs[pref.key] === 1 ? 'var(--color-primary)' : '#cbd5e1',
+                        transition: 'all 0.2s ease',
+                        borderRadius: '20px'
+                      }}>
+                        <span style={{
+                          position: 'absolute',
+                          height: 16,
+                          width: 16,
+                          left: notifPrefs[pref.key] === 1 ? 23 : 3,
+                          bottom: 3,
+                          backgroundColor: 'white',
+                          transition: 'all 0.2s ease',
+                          borderRadius: '50%',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
+                        }} />
+                      </span>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Header Controls */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+                {/* Filter Tabs */}
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  {(['all', 'unread', 'read'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setNotifFilter(tab)}
+                      style={{
+                        padding: '6px 16px',
+                        borderRadius: '20px',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        background: notifFilter === tab ? 'var(--color-primary-light)' : 'transparent',
+                        color: notifFilter === tab ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        outline: 'none'
+                      }}
+                    >
+                      {tab === 'all' && t("Tất cả")}
+                      {tab === 'unread' && `${t("Chưa đọc")} (${unreadCount})`}
+                      {tab === 'read' && t("Đã đọc")}
+                    </button>
+                  ))}
+                </div>
 
-                        <div
-                          style={{ display: 'flex', gap: '2px', alignSelf: 'center', opacity: 0.8, marginLeft: '6px' }}
-                          onClick={e => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => handleMarkRead(notif.id, notif.is_read ? 0 : 1)}
-                            style={{
-                              padding: '6px',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--color-text-light)',
-                              borderRadius: '6px',
-                              transition: 'all 0.2s',
-                              outline: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                            title={notif.is_read ? t("Đánh dấu chưa đọc") : t("Đánh dấu đã đọc")}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.color = 'var(--color-primary)';
-                              e.currentTarget.style.background = 'var(--color-bg)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.color = 'var(--color-text-light)';
-                              e.currentTarget.style.background = 'none';
-                            }}
-                          >
-                            {notif.is_read ? <EyeOff size={14} /> : <Eye size={14} />}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteNotif(notif.id)}
-                            style={{
-                              padding: '6px',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--color-text-light)',
-                              borderRadius: '6px',
-                              transition: 'all 0.2s',
-                              outline: 'none',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                            title={t("Xóa")}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.color = '#ef4444';
-                              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.color = 'var(--color-text-light)';
-                              e.currentTarget.style.background = 'none';
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <button
+                    onClick={() => {
+                      fetchNotifPrefs();
+                      setShowNotifSettings(true);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 8px',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-text-muted)',
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.color = 'var(--color-primary)'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                  >
+                    <Settings size={14} />
+                    {t("Cấu hình Email")}
+                  </button>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-primary)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <Check size={14} />
+                      {t("Đọc tất cả")}
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={handleClearAllNotif}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-text-muted)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                      onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-muted)'}
+                    >
+                      <Trash2 size={14} />
+                      {t("Xóa toàn bộ")}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* List area */}
+              <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }} className="custom-scrollbar">
+                {(() => {
+                  const filtered = notifications.filter(n => {
+                    if (notifFilter === 'unread') return !n.is_read;
+                    if (notifFilter === 'read') return !!n.is_read;
+                    return true;
+                  });
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '1rem', color: 'var(--color-text-muted)' }}>
+                        <Bell size={48} style={{ opacity: 0.25 }} />
+                        <p style={{ fontSize: '0.875rem' }}>{t("Không có thông báo nào")}</p>
                       </div>
                     );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
+                  }
+
+                  const parseActorName = (body: string) => {
+                    if (!body) return null;
+                    const match = body.match(/^(\p{Lu}\p{Ll}*(?:\s+\p{Lu}\p{Ll}*){1,4})\s+(?:đã|có)\s+/u);
+                    if (match) {
+                      return match[1].trim();
+                    }
+                    return null;
+                  };
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {filtered.map(notif => {
+                        const actorName = parseActorName(notif.body);
+                        const isWarning = notif.type === 'warning' || (notif.title && (notif.title.toLowerCase().includes('trùng số') || notif.title.toLowerCase().includes('rửa nguồn')));
+                        
+                        const bgBase = notif.is_read 
+                          ? 'var(--color-surface)' 
+                          : (isWarning ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.02) 0%, rgba(239, 68, 68, 0.06) 100%)' : 'linear-gradient(135deg, rgba(59, 130, 246, 0.02) 0%, rgba(59, 130, 246, 0.06) 100%)');
+                        
+                        const borderColor = notif.is_read
+                          ? 'var(--color-border-light)'
+                          : (isWarning ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)');
+
+                        return (
+                          <div
+                            key={notif.id}
+                            onClick={() => handleNotifClick(notif)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'start',
+                              gap: '0.875rem',
+                              padding: '14px 16px',
+                              borderRadius: '12px',
+                              background: bgBase,
+                              border: `1px solid ${borderColor}`,
+                              cursor: notif.link || isWarning ? 'pointer' : 'default',
+                              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                              position: 'relative',
+                              boxShadow: notif.is_read ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)',
+                              opacity: notif.is_read ? 0.75 : 1
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.borderColor = isWarning ? '#ef4444' : '#3b82f6';
+                              e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.08)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                              if (notif.is_read) {
+                                e.currentTarget.style.opacity = '1';
+                              }
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.borderColor = borderColor;
+                              e.currentTarget.style.boxShadow = notif.is_read ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.03)';
+                              e.currentTarget.style.transform = 'none';
+                              if (notif.is_read) {
+                                e.currentTarget.style.opacity = '0.75';
+                              }
+                            }}
+                          >
+                            <div style={{ position: 'relative', display: 'flex', flexShrink: 0, marginTop: 2 }}>
+                              {actorName ? (
+                                <div style={{ position: 'relative', display: 'inline-flex' }}>
+                                  <Avatar src={notifAvatars[actorName] || undefined} name={actorName} size={38} />
+                                  <span style={{
+                                    position: 'absolute',
+                                    bottom: -2,
+                                    right: -2,
+                                    width: 18,
+                                    height: 18,
+                                    borderRadius: '50%',
+                                    background: (() => {
+                                      switch (notif.type) {
+                                        case 'warning': return '#ef4444';
+                                        case 'mention':
+                                        case 'task_assignment':
+                                        case 'task_participant':
+                                        case 'approval_request': return '#3b82f6';
+                                        case 'project_roster': return '#10b981';
+                                        case 'project_document': return '#f59e0b';
+                                        case 'project_comment': return '#8b5cf6';
+                                        default: return '#6b7280';
+                                      }
+                                    })(),
+                                    border: '1.5px solid var(--color-surface, #ffffff)',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}>
+                                    {(() => {
+                                      switch (notif.type) {
+                                        case 'mention':
+                                        case 'task_assignment':
+                                        case 'task_participant':
+                                        case 'approval_request':
+                                          return <CheckSquare size={11} style={{ color: 'white' }} />;
+                                        case 'project_roster':
+                                          return <Users size={11} style={{ color: 'white' }} />;
+                                        case 'project_document':
+                                          return <FileText size={11} style={{ color: 'white' }} />;
+                                        case 'project_comment':
+                                          return <MessageSquare size={11} style={{ color: 'white' }} />;
+                                        case 'warning':
+                                          return <AlertTriangle size={11} style={{ color: 'white' }} />;
+                                        default:
+                                          return <Info size={11} style={{ color: 'white' }} />;
+                                      }
+                                    })()}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div style={{
+                                  width: 38,
+                                  height: 38,
+                                  borderRadius: '50%',
+                                  background: isWarning ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.02)'
+                                }}>
+                                  {(() => {
+                                    switch (notif.type) {
+                                      case 'mention':
+                                      case 'task_assignment':
+                                      case 'task_participant':
+                                      case 'approval_request':
+                                        return <CheckSquare size={18} style={{ color: '#3b82f6' }} />;
+                                      case 'project_roster':
+                                        return <Users size={18} style={{ color: '#10b981' }} />;
+                                      case 'project_document':
+                                        return <FileText size={18} style={{ color: '#f59e0b' }} />;
+                                      case 'project_comment':
+                                        return <MessageSquare size={18} style={{ color: '#8b5cf6' }} />;
+                                      case 'warning':
+                                        return <AlertTriangle size={18} style={{ color: '#ef4444' }} />;
+                                      default:
+                                        return <Info size={18} style={{ color: '#6b7280' }} />;
+                                    }
+                                  })()}
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+                                <h4 style={{
+                                  margin: 0,
+                                  fontSize: '0.875rem',
+                                  fontWeight: notif.is_read ? 700 : 800,
+                                  color: 'var(--color-text)',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}>
+                                  {notif.title}
+                                  {!notif.is_read && (
+                                    <span style={{
+                                      width: 6,
+                                      height: 6,
+                                      borderRadius: '50%',
+                                      background: isWarning ? '#ef4444' : '#3b82f6',
+                                      display: 'inline-block',
+                                      marginLeft: '6px',
+                                      boxShadow: `0 0 6px ${isWarning ? '#ef4444' : '#3b82f6'}`
+                                    }} />
+                                  )}
+                                </h4>
+                                <span style={{ 
+                                  fontSize: '0.72rem', 
+                                  color: 'var(--color-text-muted)', 
+                                  fontWeight: 600, 
+                                  whiteSpace: 'nowrap' 
+                                }}>
+                                  {(() => {
+                                    if (!notif.created_at) return '';
+                                    const d = new Date(notif.created_at.replace(' ', 'T'));
+                                    if (isNaN(d.getTime())) return notif.created_at;
+                                    
+                                    const now = new Date();
+                                    const diffMs = now.getTime() - d.getTime();
+                                    const diffMins = Math.floor(diffMs / 60000);
+                                    
+                                    if (diffMins < 1) return t("Vừa xong");
+                                    if (diffMins < 60) return `${diffMins} ${t("phút trước")}`;
+                                    if (diffMins < 1440) {
+                                      const hrs = Math.floor(diffMins / 60);
+                                      return `${hrs} ${t("giờ trước")}`;
+                                    }
+                                    const days = Math.floor(diffMins / 1440);
+                                    return `${days} ${t("ngày trước")}`;
+                                  })()}
+                                </span>
+                              </div>
+                              <p style={{
+                                margin: 0,
+                                fontSize: '0.8125rem',
+                                color: 'var(--color-text-muted)',
+                                lineHeight: '1.4',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden'
+                              }}>
+                                {notif.body}
+                              </p>
+                            </div>
+
+                            <div 
+                              className="notif-actions"
+                              style={{ 
+                                display: 'flex', 
+                                gap: '4px', 
+                                flexShrink: 0, 
+                                opacity: 0.8,
+                                alignSelf: 'center'
+                              }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <button
+                                onClick={() => handleMarkRead(notif.id, notif.is_read ? 0 : 1)}
+                                style={{
+                                  padding: '6px',
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--color-text-light)',
+                                  borderRadius: '6px',
+                                  transition: 'all 0.2s',
+                                  outline: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                title={notif.is_read ? t("Đánh dấu chưa đọc") : t("Đánh dấu đã đọc")}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.color = 'var(--color-primary)';
+                                  e.currentTarget.style.background = 'var(--color-primary-light)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.color = 'var(--color-text-light)';
+                                  e.currentTarget.style.background = 'none';
+                                }}
+                              >
+                                {notif.is_read ? <EyeOff size={14} /> : <Eye size={14} />}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteNotif(notif.id)}
+                                style={{
+                                  padding: '6px',
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--color-text-light)',
+                                  borderRadius: '6px',
+                                  transition: 'all 0.2s',
+                                  outline: 'none',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                title={t("Xóa")}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.color = '#ef4444';
+                                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.05)';
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.color = 'var(--color-text-light)';
+                                  e.currentTarget.style.background = 'none';
+                                }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </>
+          )}
         </div>
       </CustomModal>
     </header>

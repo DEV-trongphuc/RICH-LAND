@@ -632,22 +632,32 @@ switch ($resource) {
     case 'notifications':
         $auth = requireAuth();
         $ctrl = new NotificationController($db);
-        if ($method === 'GET') {
-            $ctrl->index($auth);
-        } elseif ($method === 'PATCH') {
-            if ($resourceId) {
-                $ctrl->update($auth, (int)$resourceId);
+        if ($resourceId === 'settings') {
+            if ($method === 'GET') {
+                $ctrl->getSettings($auth);
+            } elseif ($method === 'PATCH') {
+                $ctrl->updateSettings($auth);
             } else {
-                $ctrl->markAllRead($auth);
-            }
-        } elseif ($method === 'DELETE') {
-            if ($resourceId) {
-                $ctrl->destroy($auth, (int)$resourceId);
-            } else {
-                $ctrl->clearAll($auth);
+                respond(405, null, 'Phương thức không hỗ trợ cho settings', false);
             }
         } else {
-            respond(404, null, 'Route không tồn tại', false);
+            if ($method === 'GET') {
+                $ctrl->index($auth);
+            } elseif ($method === 'PATCH') {
+                if ($resourceId) {
+                    $ctrl->update($auth, (int)$resourceId);
+                } else {
+                    $ctrl->markAllRead($auth);
+                }
+            } elseif ($method === 'DELETE') {
+                if ($resourceId) {
+                    $ctrl->destroy($auth, (int)$resourceId);
+                } else {
+                    $ctrl->clearAll($auth);
+                }
+            } else {
+                respond(404, null, 'Route không tồn tại', false);
+            }
         }
         break;
 

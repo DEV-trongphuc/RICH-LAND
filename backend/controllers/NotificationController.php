@@ -51,4 +51,67 @@ class NotificationController {
         
         respond(200, null, 'Đã xóa tất cả thông báo');
     }
+
+    public function getSettings(array $auth): void {
+        $stmt = $this->db->prepare("SELECT * FROM user_notification_settings WHERE user_id = ? AND tenant_id = ?");
+        $stmt->execute([$auth['user_id'], $auth['tenant_id']]);
+        $settings = $stmt->fetch();
+        
+        if (!$settings) {
+            $settings = [
+                'email_warning' => 1,
+                'email_mention' => 1,
+                'email_approval_request' => 1,
+                'email_project_document' => 0,
+                'email_project_comment' => 0,
+                'email_project_roster' => 0,
+                'email_info' => 0
+            ];
+        } else {
+            foreach ($settings as $k => $v) {
+                if (str_starts_with($k, 'email_')) {
+                    $settings[$k] = (int)$v;
+                }
+            }
+        }
+        respond(200, $settings);
+    }
+
+    public function updateSettings(array $auth): void {
+        $b = getBody();
+        
+        $email_warning = isset($b['email_warning']) ? (int)$b['email_warning'] : 1;
+        $email_mention = isset($b['email_mention']) ? (int)$b['email_mention'] : 1;
+        $email_approval_request = isset($b['email_approval_request']) ? (int)$b['email_approval_request'] : 1;
+        $email_project_document = isset($b['email_project_document']) ? (int)$b['email_project_document'] : 0;
+        $email_project_comment = isset($b['email_project_comment']) ? (int)$b['email_project_comment'] : 0;
+        $email_project_roster = isset($b['email_project_roster']) ? (int)$b['email_project_roster'] : 0;
+        $email_info = isset($b['email_info']) ? (int)$b['email_info'] : 0;
+
+        $stmt = $this->db->prepare("INSERT INTO user_notification_settings 
+            (user_id, tenant_id, email_warning, email_mention, email_approval_request, email_project_document, email_project_comment, email_project_roster, email_info)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE 
+                email_warning = VALUES(email_warning),
+                email_mention = VALUES(email_mention),
+                email_approval_request = VALUES(email_approval_request),
+                email_project_document = VALUES(email_project_document),
+                email_project_comment = VALUES(email_project_comment),
+                email_project_roster = VALUES(email_project_roster),
+                email_info = VALUES(email_info)");
+        
+        $stmt->execute([
+            $auth['user_id'],
+            $auth['tenant_id'],
+            $email_warning,
+            $email_mention,
+            $email_approval_request,
+            $email_project_document,
+            $email_project_comment,
+            $email_project_roster,
+            $email_info
+        ]);
+
+        respond(200, null, 'Cập nhật cấu hình thông báo thành công');
+    }
 }
