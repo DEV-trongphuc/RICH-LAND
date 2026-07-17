@@ -823,10 +823,24 @@ const IntegrationsInner = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button onClick={() => setShowAddConn(true)} className="btn outline" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
+            <button 
+              onClick={() => setShowAddConn(true)} 
+              className="btn primary hover-lift" 
+              style={{ 
+                width: '100%', 
+                justifyContent: 'center', 
+                height: 40, 
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                border: 'none',
+                color: '#fff',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                fontWeight: 700
+              }}
+            >
               <FileSpreadsheet size={16} /> {t('Thêm kết nối Sheets')}
             </button>
-            <button onClick={() => setShowAddApi(true)} className="btn primary" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
+            <button onClick={() => setShowAddApi(true)} className="btn primary hover-lift" style={{ width: '100%', justifyContent: 'center', height: 40, borderRadius: 10 }}>
               <Zap size={16} /> {t('Thêm API Landing Page')}
             </button>
           </div>
