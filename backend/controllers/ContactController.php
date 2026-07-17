@@ -425,7 +425,7 @@ class ContactController {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b = getBody();
         // 1. Pre-fetch current contact state for lifecycle validation
-        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id, email, phone, mobile FROM contacts WHERE id = ? AND tenant_id = ?");
+        $stmtCurr = $this->db->prepare("SELECT pipeline_status, ttl1_completed, owner_id, first_name, last_name, person_id, email, phone, mobile, collaborator_ids FROM contacts WHERE id = ? AND tenant_id = ?");
         $stmtCurr->execute([$id, $auth['tenant_id']]);
         $currentContact = $stmtCurr->fetch();
         if (!$currentContact) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -668,6 +668,32 @@ class ContactController {
             $sql = "UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
+
+            // SEND SYSTEM NOTIFICATION TO NEWLY ADDED CO-CARE SALES
+            if (array_key_exists('collaborator_ids', $b)) {
+                $oldCollabs = array_filter(array_map('trim', explode(',', $currentContact['collaborator_ids'] ?? '')));
+                $newCollabs = array_filter(array_map('trim', explode(',', $b['collaborator_ids'] ?? '')));
+                $addedCollabs = array_diff($newCollabs, $oldCollabs);
+
+                if (!empty($addedCollabs)) {
+                    $fullName = trim($currentContact['first_name'] . ' ' . ($currentContact['last_name'] ?? ''));
+                    $title = "Bạn được thêm làm nhân sự chăm sóc phụ (Co-care)";
+                    $body = "Bạn đã được sale " . ($auth['full_name'] ?? 'đồng nghiệp') . " thêm làm nhân sự chăm sóc phụ cho khách hàng: " . $fullName;
+                    $type = "info";
+                    $link = "/contacts?id=" . $id;
+
+                    $insertNotif = $this->db->prepare("
+                        INSERT INTO notifications (user_id, tenant_id, title, body, type, link)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ");
+                    foreach ($addedCollabs as $collabUserId) {
+                        $collabUserId = (int)$collabUserId;
+                        if ($collabUserId > 0 && $collabUserId !== (int)$auth['user_id']) {
+                            $insertNotif->execute([$collabUserId, $auth['tenant_id'], $title, $body, $type, $link]);
+                        }
+                    }
+                }
+            }
 
             // AUTO TRIGGER META CAPI EVENTS ON STATE TRANSITION AND UPDATE SECURITY TIMERS / DATABANK STATUS
             if ($newStatus && $newStatus !== $currStatus) {
