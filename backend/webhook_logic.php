@@ -3414,6 +3414,12 @@ function ensurePersonAndContact($conn, $leadId) {
             ");
             if ($stmtContact) {
                 $createdBy = 1;
+                if ($projectId !== null) {
+                    $chkExists = $conn->query("SELECT id FROM projects WHERE id = " . (int)$projectId);
+                    if (!$chkExists || $chkExists->num_rows === 0) {
+                        $projectId = null;
+                    }
+                }
                 $stmtContact->bind_param("iiiissssssssss", $person_id, $projectId, $ownerUserId, $createdBy, $firstName, $lastName, $email, $phone, $source, $secExpiresTime, $note, $type, $initTemp, $initTemp);
                 $stmtContact->execute();
                 $stmtContact->close();

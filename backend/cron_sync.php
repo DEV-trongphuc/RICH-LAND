@@ -2223,6 +2223,13 @@ function assignParallelLeads($conn) {
             $chuaXacDinhDuration = get_system_setting($conn, 'security_timer_chua_xac_dinh') ?: '+3 hours';
             $secExpiresTime = date('Y-m-d H:i:s', strtotime($chuaXacDinhDuration));
 
+            if ($projectId !== null) {
+                $chkExists = $conn->query("SELECT id FROM projects WHERE id = " . (int)$projectId);
+                if (!$chkExists || $chkExists->num_rows === 0) {
+                    $projectId = null;
+                }
+            }
+
             $stmtIns = $conn->prepare("
                 INSERT INTO contacts (tenant_id, person_id, project_id, owner_id, created_by, first_name, last_name, email, phone, source, status, pipeline_status, parallel_assigned, security_expires_at, notes, customer_type)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', 'chua_xac_dinh', 1, ?, ?, ?)
